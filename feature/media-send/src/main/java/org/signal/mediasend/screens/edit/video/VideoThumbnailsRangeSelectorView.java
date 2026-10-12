@@ -28,7 +28,7 @@ import java.util.concurrent.TimeUnit;
 
 public final class VideoThumbnailsRangeSelectorView extends VideoThumbnailsView {
 
-  private static final long  MINIMUM_SELECTABLE_RANGE    = TimeUnit.MILLISECONDS.toMicros(500);
+  private static final long  MINIMUM_SELECTABLE_RANGE    = TellomiVideoTrim.MINIMUM_RANGE_US;
   private static final int   ANIMATION_DURATION_MS       = 100;
   private static final float THUMB_RECT_CORNER_RADIUS    = DimensionUnit.DP.toPixels(4);
   private static final float ACTIVE_REGION_CORNER_RADIUS = DimensionUnit.DP.toPixels(8);
@@ -214,12 +214,14 @@ public final class VideoThumbnailsRangeSelectorView extends VideoThumbnailsView 
     int verticalThumbInset = drawableHeight / 4;
     int halfThumbWidth     = thumbSizePixels / 2;
     // draw thumb rectangles
-    paint.setStyle(Paint.Style.FILL_AND_STROKE);
-    paint.setColor(thumbColor);
-    timePillRect.set(left - halfThumbWidth, verticalThumbInset, left + halfThumbWidth, drawableHeight - verticalThumbInset);
-    canvas.drawRoundRect(timePillRect, THUMB_RECT_CORNER_RADIUS, THUMB_RECT_CORNER_RADIUS, paint);
-    timePillRect.set(right - halfThumbWidth, verticalThumbInset, right + halfThumbWidth, drawableHeight - verticalThumbInset);
-    canvas.drawRoundRect(timePillRect, THUMB_RECT_CORNER_RADIUS, THUMB_RECT_CORNER_RADIUS, paint);
+    if (TellomiVideoTrim.isTrimmable(duration)) {
+      paint.setStyle(Paint.Style.FILL_AND_STROKE);
+      paint.setColor(thumbColor);
+      timePillRect.set(left - halfThumbWidth, verticalThumbInset, left + halfThumbWidth, drawableHeight - verticalThumbInset);
+      canvas.drawRoundRect(timePillRect, THUMB_RECT_CORNER_RADIUS, THUMB_RECT_CORNER_RADIUS, paint);
+      timePillRect.set(right - halfThumbWidth, verticalThumbInset, right + halfThumbWidth, drawableHeight - verticalThumbInset);
+      canvas.drawRoundRect(timePillRect, THUMB_RECT_CORNER_RADIUS, THUMB_RECT_CORNER_RADIUS, paint);
+    }
 
     // draw time hint pill
     if (thumbHintTextSize > 0) {
@@ -400,6 +402,11 @@ public final class VideoThumbnailsRangeSelectorView extends VideoThumbnailsView 
   }
 
   private Thumb closestThumb(@Px float x) {
+    // Tellomi（V-4）：短于 1.5 秒的视频不给裁，按到哪里都是拖播放位置。
+    if (!TellomiVideoTrim.isTrimmable(getDuration())) {
+      return Thumb.POSITION;
+    }
+
     float midPoint       = (right + left) / 2f;
     Thumb possibleThumb  = x < midPoint ? Thumb.MIN : Thumb.MAX;
     int   possibleThumbX = x < midPoint ? left : right;
