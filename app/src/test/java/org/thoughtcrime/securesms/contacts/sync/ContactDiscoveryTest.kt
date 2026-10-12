@@ -53,7 +53,7 @@ class ContactDiscoveryTest {
   fun givenContactsPermissionAndNoCdsi_whenIRefreshAll_thenSavedContactNameIsShownAndMarkedAsSystemContact() {
     // GIVEN: 系统通讯录里已经存了一个人（名字「张三」），授权了 READ_CONTACTS
     Shadows.shadowOf(context).grantPermissions(Manifest.permission.READ_CONTACTS)
-    every { SystemContactsRepository.getAllSystemContacts(any(), any()) } returns contactsOf(
+    every { SystemContactsRepository.getAllSystemContacts(context, any()) } returns contactsOf(
       SystemContactsRepository.ContactDetails(
         givenName = "张",
         familyName = "三",
@@ -78,7 +78,7 @@ class ContactDiscoveryTest {
     ContactDiscovery.refreshAll(context, notifyOfNewUsers = false)
 
     // THEN
-    verify(exactly = 0) { SystemContactsRepository.getAllSystemContacts(any(), any()) }
+    verify(exactly = 0) { SystemContactsRepository.getAllSystemContacts(context, any()) }
   }
 
   private fun contactsOf(vararg details: SystemContactsRepository.ContactDetails): SystemContactsRepository.ContactIterator {
