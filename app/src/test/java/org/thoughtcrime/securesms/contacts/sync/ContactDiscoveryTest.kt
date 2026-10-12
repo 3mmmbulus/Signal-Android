@@ -23,6 +23,7 @@ import org.robolectric.RobolectricTestRunner
 import org.robolectric.Shadows
 import org.robolectric.annotation.Config
 import org.signal.contacts.SystemContactsRepository
+import org.thoughtcrime.securesms.dependencies.AppDependencies
 import org.thoughtcrime.securesms.recipients.Recipient
 import org.thoughtcrime.securesms.testutil.RecipientTestRule
 
@@ -65,6 +66,8 @@ class ContactDiscoveryTest {
     ContactDiscovery.refreshAll(context, notifyOfNewUsers = false)
 
     // THEN: 名字写进了本地库，「添加到通讯录」的判断（isSystemContact）变成 true
+    // 测试里 databaseObserver 是 mock，缓存里的 Recipient 快照不会因为库里改了而刷新；清掉缓存后再从库里读
+    AppDependencies.recipientCache.clear()
     val recipient: Recipient = Recipient.externalContact("+15550001111")!!
     assertTrue(recipient.isSystemContact)
     assertTrue(recipient.getDisplayName(context).contains("张三"))
