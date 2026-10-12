@@ -106,7 +106,8 @@ internal class MediaSelectViewModel(
       MediaSelectScreenEvents.Refresh -> refresh()
       MediaSelectScreenEvents.RequestMediaPermissions -> requestReadMediaPermissions(reportDenial = true)
       MediaSelectScreenEvents.SelectMorePhotos -> requestReadMediaPermissions(reportDenial = false)
-      is MediaSelectScreenEvents.OpenMedia -> parentEventEmitter(MediaSendFlowEvent.OpenInEditor(event.media))
+      is MediaSelectScreenEvents.OpenMedia -> openAlbumViewer(event.media)
+      is MediaSelectScreenEvents.OpenSelectedMedia -> parentEventEmitter(MediaSendFlowEvent.OpenInEditor(event.media))
       is MediaSelectScreenEvents.SwitchFolder -> parentEventEmitter(MediaSendFlowEvent.SwitchFolder(event.mediaFolder))
       is MediaSelectScreenEvents.AddMessage -> parentEventEmitter(MediaSendFlowEvent.AddMessageRequested(event.startWithEmojiKeyboard))
       MediaSelectScreenEvents.ToggleViewOnce -> parentEventEmitter(MediaSendFlowEvent.ToggleViewOnce)
@@ -132,6 +133,12 @@ internal class MediaSelectViewModel(
       page != null -> parentEventEmitter(MediaSendFlowEvent.OpenAttachmentPage(page))
       else -> parentEventEmitter(MediaSendFlowEvent.AttachmentDockEntrySelected(entry.id))
     }
+  }
+
+  /** Tellomi（tellomi/tellomi#1261 V-1）：相册查看器里的相册就是这个文件夹的全部照片，和网格同序。 */
+  private fun openAlbumViewer(media: Media) {
+    val album = (_state.value as? MediaSelectState.Files)?.selectedMediaFolderItems.orEmpty()
+    parentEventEmitter(MediaSendFlowEvent.OpenAlbumViewer(media, album))
   }
 
   private fun applyMediaClickEvent(media: Media) {

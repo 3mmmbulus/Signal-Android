@@ -125,7 +125,10 @@ class MediaEditViewModelTest {
       isSending = true,
       isTouchEnabled = false,
       isMuteVideoAudioEnabled = true,
-      viewOnceToggleState = MediaSendFlowState.ViewOnceToggleState.ONCE
+      viewOnceToggleState = MediaSendFlowState.ViewOnceToggleState.ONCE,
+      album = listOf(MEDIA),
+      albumFocusedMedia = MEDIA,
+      isBrowsingAlbum = true
     )
 
     val state = createViewModel(MutableStateFlow(parentState)).state.value
@@ -147,7 +150,10 @@ class MediaEditViewModelTest {
         isMuteVideoAudioEnabled = true,
         isViewOnceAvailable = true,
         isViewOnceEnabled = true,
-        isSavingMedia = false
+        isSavingMedia = false,
+        album = listOf(MEDIA),
+        albumFocusedMedia = MEDIA,
+        isBrowsingAlbum = true
       )
     )
   }
@@ -198,7 +204,10 @@ class MediaEditViewModelTest {
       MediaEditScreenEvents.StickerClick to MediaSendFlowEvent.StickerRequested,
       MediaEditScreenEvents.NextClick to MediaSendFlowEvent.NextRequested,
       MediaEditScreenEvents.NavigateToGallery to MediaSendFlowEvent.NavigateToFolders,
-      MediaEditScreenEvents.NavigateBack to MediaSendFlowEvent.NavigateBackFromEdit
+      MediaEditScreenEvents.NavigateBack to MediaSendFlowEvent.NavigateBackFromEdit,
+      MediaEditScreenEvents.ToggleAlbumSelected(MEDIA) to MediaSendFlowEvent.ToggleAlbumSelected(MEDIA),
+      MediaEditScreenEvents.AlbumFocusedMediaChanged(MEDIA) to MediaSendFlowEvent.SetAlbumFocusedMedia(MEDIA),
+      MediaEditScreenEvents.ShowSelectedFilmstrip to MediaSendFlowEvent.ShowSelectedFilmstrip
     )
 
     handOffs.forEach { (screenEvent, expected) ->

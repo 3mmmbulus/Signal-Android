@@ -37,4 +37,13 @@ sealed interface MediaEditScreenEvents {
   data class VideoTrimChanged(val videoTrimData: VideoTrimData, val editingComplete: Boolean) : MediaEditScreenEvents
   data class VideoSeek(val positionUs: Long, val editingComplete: Boolean) : MediaEditScreenEvents
   data object ToggleVideoMuted : MediaEditScreenEvents
+
+  /** V-1：相册查看器右上角的勾：选上或取消这一张。 */
+  data class ToggleAlbumSelected(val media: Media) : MediaEditScreenEvents
+
+  /** V-1：相册查看器滑到了另一张。 */
+  data class AlbumFocusedMediaChanged(val media: Media) : MediaEditScreenEvents
+
+  /** V-1：相册查看器里点选中计数，切到已选胶片。 */
+  data object ShowSelectedFilmstrip : MediaEditScreenEvents
 }

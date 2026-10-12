@@ -8,6 +8,7 @@ package org.signal.mediasend
 import android.net.Uri
 import android.os.Parcel
 import android.os.Parcelable
+import kotlinx.parcelize.IgnoredOnParcel
 import kotlinx.parcelize.Parceler
 import kotlinx.parcelize.Parcelize
 import kotlinx.parcelize.WriteWith
@@ -143,7 +144,16 @@ data class MediaSendFlowState(
   val attachmentSheet: MediaSendFlowActivityContract.AttachmentSheet? = null,
 
   /** Tellomi（tellomi/tellomi#1121 F-1）：附件 Sheet 现在显示哪一页（dock 的「相册」/「文件」）。 */
-  val attachmentPage: MediaSendFlowActivityContract.AttachmentPage = MediaSendFlowActivityContract.AttachmentPage.GALLERY
+  val attachmentPage: MediaSendFlowActivityContract.AttachmentPage = MediaSendFlowActivityContract.AttachmentPage.GALLERY,
+
+  /** Tellomi（tellomi/tellomi#1261 V-1）：相册查看器里可左右滑的整个相册（和网格同序）；不随进程回收保存。 */
+  @IgnoredOnParcel val album: List<Media> = emptyList(),
+
+  /** Tellomi（tellomi/tellomi#1261 V-1）：相册查看器停在哪一张，和它是否选中无关。 */
+  @IgnoredOnParcel val albumFocusedMedia: Media? = null,
+
+  /** Tellomi（tellomi/tellomi#1261 V-1）：编辑页位置上显示的是相册查看器（true）还是已选胶片（false）。 */
+  @IgnoredOnParcel val isBrowsingAlbum: Boolean = false
 ) : Parcelable {
 
   /**

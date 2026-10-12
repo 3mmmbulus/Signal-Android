@@ -45,6 +45,7 @@ import org.signal.core.ui.navigation.TransitionSpecs
 import org.signal.mediasend.screens.capture.MediaCaptureScreen
 import org.signal.mediasend.screens.capture.MediaCaptureScreenEvents
 import org.signal.mediasend.screens.capture.MediaCaptureViewModel
+import org.signal.mediasend.screens.edit.MediaAlbumScreen
 import org.signal.mediasend.screens.edit.MediaEditScreen
 import org.signal.mediasend.screens.edit.MediaEditScreenDialogs
 import org.signal.mediasend.screens.edit.MediaEditViewModel
@@ -202,12 +203,19 @@ internal fun MediaSendNavigation(
           editViewModel.writeStoragePermission.Content()
 
           OpaqueInAttachmentSheet {
-            MediaEditScreen(
-              state = state,
-              onEvent = editViewModel::onEvent,
-              imageControllers = viewModel.imageControllers,
-              mediaInputFactory = MediaSendDependencies.mediaInputFactory
-            )
+            if (state.isBrowsingAlbum) {
+              MediaAlbumScreen(
+                state = state,
+                onEvent = editViewModel::onEvent
+              )
+            } else {
+              MediaEditScreen(
+                state = state,
+                onEvent = editViewModel::onEvent,
+                imageControllers = viewModel.imageControllers,
+                mediaInputFactory = MediaSendDependencies.mediaInputFactory
+              )
+            }
           }
         }
 

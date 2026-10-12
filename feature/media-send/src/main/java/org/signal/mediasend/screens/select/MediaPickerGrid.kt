@@ -180,7 +180,10 @@ internal fun MediaPickerFilesScreen(
         onEvent = onEvent,
         recipientChatColor = recipientChatColor,
         showSelectedOnly = showSelectedOnly,
-        onShowSelectedOnly = { showSelectedOnly = true },
+        onShowSelectedOnly = {
+          showSelectedOnly = true
+          scope.launch { attachmentSheet?.expand() }
+        },
         onBack = { showSelectedOnly = false },
         withStatusBarInset = attachmentSheet == null
       )
@@ -199,7 +202,7 @@ internal fun MediaPickerFilesScreen(
             caption = state.sendOptions.message,
             recipientId = state.recipientId?.id,
             recipientChatColor = recipientChatColor,
-            onOpen = { onEvent(MediaSelectScreenEvents.OpenMedia(it)) },
+            onOpen = { onEvent(MediaSelectScreenEvents.OpenSelectedMedia(it)) },
             onDeselect = deselectInPreview,
             onReorder = { from, to -> onEvent(MediaSelectScreenEvents.ReorderSelectedMedia(from, to)) },
             modifier = Modifier.fillMaxSize()
@@ -305,7 +308,12 @@ internal fun MediaPickerFilesScreen(
         )
       }
 
-      PickerSendBar(state = state, onEvent = onEvent, recipientChatColor = recipientChatColor)
+      PickerSendBar(
+        state = state,
+        onEvent = onEvent,
+        recipientChatColor = recipientChatColor,
+        bottomPadding = if (showSelectedOnly) SelectedOnlySendBarBottomPadding else SendBarBottomPadding
+      )
     }
   }
 }
@@ -711,6 +719,7 @@ internal fun SelectionCheck(
   onClick: () -> Unit,
   modifier: Modifier = Modifier,
   touchSize: Dp = PickerMetrics.checkTouchSize,
+  visualSize: Dp = PickerMetrics.checkVisualSize,
   visualInset: Dp? = null
 ) {
   val isSelected = selectionIndex >= 0
@@ -732,7 +741,7 @@ internal fun SelectionCheck(
       contentAlignment = Alignment.Center,
       modifier = Modifier
         .then(if (visualInset != null) Modifier.padding(top = visualInset, end = visualInset) else Modifier)
-        .size(PickerMetrics.checkVisualSize)
+        .size(visualSize)
         .shadow(elevation = 2.dp, shape = CircleShape, clip = false)
         .background(color = if (isSelected) color else Color.Black.copy(alpha = 0.12f), shape = CircleShape)
         .border(width = PickerMetrics.checkBorder, color = Color.White, shape = CircleShape)
@@ -787,12 +796,18 @@ private fun LimitedAccessBanner(onEvent: (MediaSelectScreenEvents) -> Unit) {
   }
 }
 
+private val SendBarBottomPadding = 12.dp
+
+// 与相册查看页底栏对齐：行内 16dp + 外层 10dp。
+private val SelectedOnlySendBarBottomPadding = 26.dp
+
 /** P-9：一有选中就出现「添加说明…」+ 表情 + 发送；聊天输入框里已打的字随流程带过来（上游的 initialMessage）。 */
 @Composable
 private fun PickerSendBar(
   state: MediaSelectState.Files,
   onEvent: (MediaSelectScreenEvents) -> Unit,
-  recipientChatColor: Color?
+  recipientChatColor: Color?,
+  bottomPadding: Dp
 ) {
   val options = state.sendOptions
 
@@ -822,7 +837,7 @@ private fun PickerSendBar(
       recipientChatColor = recipientChatColor,
       modifier = Modifier
         .background(MaterialTheme.colorScheme.surface)
-        .padding(horizontal = 16.dp, vertical = 12.dp)
+        .padding(start = 16.dp, top = 12.dp, end = 16.dp, bottom = bottomPadding)
         .testTag(TestTags.MEDIA_PICKER_SEND_BAR)
     )
   }

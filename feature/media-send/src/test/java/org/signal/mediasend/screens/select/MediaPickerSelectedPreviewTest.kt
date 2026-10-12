@@ -155,7 +155,7 @@ class MediaPickerSelectedPreviewTest {
 
     assertEquals(listOf(MediaSelectScreenEvents.ReorderSelectedMedia(fromIndex = 0, toIndex = 1)), events.filterIsInstance<MediaSelectScreenEvents.ReorderSelectedMedia>())
     assertEquals(listOf(MEDIA[10], MEDIA[4], MEDIA[1]), selection)
-    assertTrue("拖动不是点按", events.none { it is MediaSelectScreenEvents.OpenMedia })
+    assertTrue("拖动不是点按", events.none { it is MediaSelectScreenEvents.OpenSelectedMedia })
   }
 
   @Test
@@ -251,7 +251,7 @@ class MediaPickerSelectedPreviewTest {
     composeTestRule.onNodeWithTag(TestTags.mediaPickerPreviewCard(MEDIA[0].uri.toString())).performScrollTo().performClick()
     composeTestRule.waitForIdle()
 
-    assertEquals(listOf(MediaSelectScreenEvents.OpenMedia(MEDIA[0])), events.filterIsInstance<MediaSelectScreenEvents.OpenMedia>())
+    assertEquals(listOf(MediaSelectScreenEvents.OpenSelectedMedia(MEDIA[0])), events.filterIsInstance<MediaSelectScreenEvents.OpenSelectedMedia>())
   }
 
   @Test

@@ -65,8 +65,20 @@ internal sealed interface MediaSendFlowEvent {
 
   //region Tellomi（tellomi/tellomi#1261 选图面板）
 
-  /** P-10：点照片本身（不是勾）——还没选就先选上，然后在编辑器里打开这一张（裁剪、涂鸦、一次性查看等沿用上游）。 */
+  /** V-1：点已选胶片里的一张，在编辑器里打开它（裁剪、涂鸦、一次性查看等沿用上游）。只对已选中的照片有效。 */
   data class OpenInEditor(val media: Media) : MediaSendFlowEvent
+
+  /** V-1：网格里点一张，进相册查看器——可左右滑看整个相册，不改变选中。 */
+  data class OpenAlbumViewer(val media: Media, val album: List<Media>) : MediaSendFlowEvent
+
+  /** V-1：相册查看器滑到了另一张。 */
+  data class SetAlbumFocusedMedia(val media: Media) : MediaSendFlowEvent
+
+  /** V-1：相册查看器右上角的勾：选上或取消这一张。 */
+  data class ToggleAlbumSelected(val media: Media) : MediaSendFlowEvent
+
+  /** V-1：相册查看器里点选中计数，切到已选胶片。 */
+  data object ShowSelectedFilmstrip : MediaSendFlowEvent
 
   /** P-1：顶栏「最近 ⌄」里换相册。 */
   data class SwitchFolder(val mediaFolder: MediaFolder) : MediaSendFlowEvent

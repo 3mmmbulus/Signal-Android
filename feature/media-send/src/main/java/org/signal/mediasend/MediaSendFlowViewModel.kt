@@ -287,13 +287,17 @@ class MediaSendFlowViewModel(
       // Tellomi（#1261 P-1）：相机里的「相册」、编辑器里的「添加」都回到选图网格，不再先进相册列表。
       MediaSendFlowEvent.NavigateToFolders -> backStack.goToRecents()
       is MediaSendFlowEvent.OpenInEditor -> openInEditor(event.media)
+      is MediaSendFlowEvent.OpenAlbumViewer -> openAlbumViewer(event.media, event.album)
+      is MediaSendFlowEvent.SetAlbumFocusedMedia -> updateState { copy(albumFocusedMedia = event.media) }
+      is MediaSendFlowEvent.ToggleAlbumSelected -> toggleAlbumSelected(event.media)
+      MediaSendFlowEvent.ShowSelectedFilmstrip -> showSelectedFilmstrip()
       is MediaSendFlowEvent.SwitchFolder -> backStack.switchFolder(event.mediaFolder)
       is MediaSendFlowEvent.SendNow -> sendNow(event.quality, event.separately)
       is MediaSendFlowEvent.AttachmentDockEntrySelected -> sendHudCommand(MediaSendFlowHudCommand.AttachmentDockEntrySelected(event.id))
       is MediaSendFlowEvent.ShowToast -> internalToastEvents.trySend(event.toast)
       is MediaSendFlowEvent.OpenAttachmentPage -> internalState.update { it.copy(attachmentPage = event.page) }
       is MediaSendFlowEvent.SendAttachmentFiles -> sendHudCommand(MediaSendFlowHudCommand.SendAttachmentFiles(event.result))
-      MediaSendFlowEvent.NavigateToEdit -> backStack.goToEdit()
+      MediaSendFlowEvent.NavigateToEdit -> goToEditLeavingAlbum()
       MediaSendFlowEvent.NavigateToCamera -> backStack.goToCamera()
       MediaSendFlowEvent.NavigateToTextStory -> backStack.goToTextStory()
       MediaSendFlowEvent.NavigateBackFromSelect -> onPopFromSelect()
@@ -408,7 +412,7 @@ class MediaSendFlowViewModel(
       addMedia(setOf(media), focusNewlyAdded = true)
     }
 
-    backStack.goToEdit()
+    goToEditLeavingAlbum()
   }
 
   private fun sendHudCommand(hudCommand: MediaSendFlowHudCommand) {
@@ -440,19 +444,46 @@ class MediaSendFlowViewModel(
     }
   }
 
-  /**
-   * Tellomi（tellomi/tellomi#1261 P-10）：点照片本身——还没选就先选上（选不上就停在网格，提示照旧），然后在编辑器里打开这一张。
-   * 在同一次持有选择的过程中做完，焦点不会落在还没进选择的那一张上。
-   */
+  /** Tellomi（tellomi/tellomi#1261 V-1）：点已选胶片里的一张，在编辑器里打开它；没选中的照片不会被选上。 */
   private fun openInEditor(media: Media) {
     mutateSelection {
-      if (state.value.selectedMedia.none { it.uri == media.uri }) {
-        addMediaHoldingSelection(setOf(media), focusNewlyAdded = true)
-      }
       val selected = state.value.selectedMedia.firstOrNull { it.uri == media.uri } ?: return@mutateSelection
       updateState { copy(focusedMedia = selected) }
-      backStack.goToEdit()
+      goToEditLeavingAlbum()
     }
+  }
+
+  /** Tellomi（tellomi/tellomi#1261 V-1）：网格里点一张进相册查看器；选中只在查看器右上角的勾里改。 */
+  private fun openAlbumViewer(media: Media, album: List<Media>) {
+    updateState { copy(album = album, albumFocusedMedia = media, isBrowsingAlbum = true) }
+    backStack.goToEdit()
+  }
+
+  /** Tellomi（tellomi/tellomi#1261 V-1）：查看器右上角的勾：没选就加进选择（焦点不动），选了就取消。 */
+  private fun toggleAlbumSelected(media: Media) {
+    mutateSelection {
+      if (state.value.selectedMedia.any { it.uri == media.uri }) {
+        removeMediaHoldingSelection(setOf(media))
+      } else {
+        addMediaHoldingSelection(setOf(media), focusNewlyAdded = false)
+      }
+    }
+  }
+
+  /** Tellomi（tellomi/tellomi#1261 V-1）：点查看器里的选中计数，切到已选胶片，焦点优先停在查看器当前这张。 */
+  private fun showSelectedFilmstrip() {
+    mutateSelection {
+      val snapshot = state.value
+      fun selectedCopyOf(wanted: Media?): Media? = wanted?.let { w -> snapshot.selectedMedia.firstOrNull { it.uri == w.uri } }
+      val focus = selectedCopyOf(snapshot.albumFocusedMedia) ?: selectedCopyOf(snapshot.focusedMedia) ?: snapshot.selectedMedia.firstOrNull()
+      updateState { copy(isBrowsingAlbum = false, focusedMedia = focus) }
+    }
+  }
+
+  /** Tellomi（tellomi/tellomi#1261 V-1）：进编辑页时一并清掉相册标记，免得还停在查看器上。 */
+  private fun goToEditLeavingAlbum() {
+    updateState { copy(isBrowsingAlbum = false) }
+    backStack.goToEdit()
   }
 
   /** Tellomi（#1261）：这次发送是否一张一条（「···」→「单独发送」），只管紧接着的这一次。 */
@@ -563,7 +594,7 @@ class MediaSendFlowViewModel(
     }
     updateState { copy(isSelectionRejected = true) }
 
-    if (isSelectionEmpty && backStack.lastOrNull() == MediaSendRoute.Edit) {
+    if (isSelectionEmpty && backStack.lastOrNull() == MediaSendRoute.Edit && !state.value.isBrowsingAlbum) {
       backStack.resetTo(if (state.value.isCameraFirst) MediaSendRoute.Capture.Camera else MediaSendRoute.Select.Files(recentsFolder()))
     }
   }
@@ -656,48 +687,53 @@ class MediaSendFlowViewModel(
    */
   fun removeMedia(media: Set<Media>) {
     mutateSelection {
-      val snapshot = state.value
-      val removedUris: Set<Uri> = media.mapTo(mutableSetOf()) { it.uri }
-
-      // Removal is by URI, not by equality. Population and editing both replace a selected item with a new, non-equal
-      // Media for the same URI, so the instance a caller is holding is rarely the one we have.
-      val newSelection = snapshot.selectedMedia.filterNot { it.uri in removedUris }
-
-      val newFocus = when {
-        newSelection.isEmpty() -> null
-        snapshot.focusedMedia?.uri in removedUris -> {
-          val oldFocusIndex = snapshot.selectedMedia.indexOfFirst { it.uri == snapshot.focusedMedia?.uri }
-          newSelection[oldFocusIndex.coerceIn(0, newSelection.size - 1)]
-        }
-
-        else -> snapshot.focusedMedia
-      }
-
-      val newCameraFirstCapture = if (snapshot.cameraFirstCapture?.uri in removedUris) null else snapshot.cameraFirstCapture
-
-      updateState {
-        copy(
-          selectedMedia = newSelection,
-          focusedMedia = newFocus,
-          editorStateMap = editorStateMap - removedUris,
-          cameraFirstCapture = newCameraFirstCapture
-        )
-      }
-
-      removedUris.forEach { imageControllers.remove(it) }
-
-      // Update story requirements
-      viewModelScope.launch {
-        updateStorySendRequirements(newSelection)
-      }
-
-      // Delete blobs and cancel uploads
-      viewModelScope.launch {
-        repository.deleteBlobs(media.toList())
-      }
-      preUploadController.cancelUpload(media)
-      preUploadController.updateDisplayOrder(newSelection)
+      removeMediaHoldingSelection(media)
     }
+  }
+
+  /** The body of [removeMedia], for callers that already hold the selection. */
+  private fun removeMediaHoldingSelection(media: Set<Media>) {
+    val snapshot = state.value
+    val removedUris: Set<Uri> = media.mapTo(mutableSetOf()) { it.uri }
+
+    // Removal is by URI, not by equality. Population and editing both replace a selected item with a new, non-equal
+    // Media for the same URI, so the instance a caller is holding is rarely the one we have.
+    val newSelection = snapshot.selectedMedia.filterNot { it.uri in removedUris }
+
+    val newFocus = when {
+      newSelection.isEmpty() -> null
+      snapshot.focusedMedia?.uri in removedUris -> {
+        val oldFocusIndex = snapshot.selectedMedia.indexOfFirst { it.uri == snapshot.focusedMedia?.uri }
+        newSelection[oldFocusIndex.coerceIn(0, newSelection.size - 1)]
+      }
+
+      else -> snapshot.focusedMedia
+    }
+
+    val newCameraFirstCapture = if (snapshot.cameraFirstCapture?.uri in removedUris) null else snapshot.cameraFirstCapture
+
+    updateState {
+      copy(
+        selectedMedia = newSelection,
+        focusedMedia = newFocus,
+        editorStateMap = editorStateMap - removedUris,
+        cameraFirstCapture = newCameraFirstCapture
+      )
+    }
+
+    removedUris.forEach { imageControllers.remove(it) }
+
+    // Update story requirements
+    viewModelScope.launch {
+      updateStorySendRequirements(newSelection)
+    }
+
+    // Delete blobs and cancel uploads
+    viewModelScope.launch {
+      repository.deleteBlobs(media.toList())
+    }
+    preUploadController.cancelUpload(media)
+    preUploadController.updateDisplayOrder(newSelection)
   }
 
   /**

@@ -50,8 +50,11 @@ sealed interface MediaSelectScreenEvents {
 
   //region Tellomi（tellomi/tellomi#1261 选图面板）
 
-  /** P-10：点照片本身（不是右上角的勾）：选上并进单张预览 / 编辑。点勾仍是 [MediaClick]（选上 / 取消）。 */
+  /** V-1：点网格里照片本身：进相册查看器，可左右滑看整个相册，不改变选中。点勾仍是 [MediaClick]（选上 / 取消）。 */
   data class OpenMedia(val media: Media) : MediaSelectScreenEvents
+
+  /** V-1：点底部已选胶片里的一张：在编辑器里打开它。 */
+  data class OpenSelectedMedia(val media: Media) : MediaSelectScreenEvents
 
   /** P-1：顶栏「最近 ⌄」里换相册。 */
   data class SwitchFolder(val mediaFolder: MediaFolder) : MediaSelectScreenEvents

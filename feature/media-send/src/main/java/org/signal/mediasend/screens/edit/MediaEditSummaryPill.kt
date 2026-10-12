@@ -103,7 +103,7 @@ private fun MultiRowPill(multiRow: MediaEditSummaryPillTargetState.MultiRow) {
 }
 
 @Composable
-private fun Pill(modifier: Modifier = Modifier, content: @Composable () -> Unit) {
+internal fun Pill(modifier: Modifier = Modifier, content: @Composable () -> Unit) {
   Box(
     modifier = Modifier
       .background(

@@ -77,6 +77,7 @@ fun AddAMessageRow(
   onNextClick: () -> Unit,
   modifier: Modifier = Modifier,
   enabled: Boolean = true,
+  sendEnabled: Boolean = enabled,
   canScheduleSend: Boolean = false,
   viewOnceAvailable: Boolean = false,
   viewOnce: Boolean = false,
@@ -152,7 +153,7 @@ fun AddAMessageRow(
       val nextButtonColor = recipientChatColor ?: MaterialTheme.colorScheme.primaryContainer
 
       IconButtons.IconButton(
-        enabled = enabled,
+        enabled = sendEnabled,
         onClick = onNextClick,
         size = NextButtonSize,
         onLongClick = if (canScheduleSend) scheduleSendMenuController::show else null,

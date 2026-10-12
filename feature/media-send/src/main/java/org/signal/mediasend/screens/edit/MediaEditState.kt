@@ -37,7 +37,12 @@ internal data class MediaEditState(
   val isViewOnceAvailable: Boolean = false,
   val isViewOnceEnabled: Boolean = false,
   /** Whether the focused image is currently being written out to shared storage. */
-  val isSavingMedia: Boolean = false
+  val isSavingMedia: Boolean = false,
+  /** The album the viewer swipes through, in grid order. Only shown while [isBrowsingAlbum]. */
+  val album: List<Media> = emptyList(),
+  val albumFocusedMedia: Media? = null,
+  /** Whether this screen is the album viewer rather than the editor over the selected media. */
+  val isBrowsingAlbum: Boolean = false
 ) {
 
   val focusedEditorState: EditorState?
@@ -70,6 +75,9 @@ internal data class MediaEditState(
     isTouchEnabled = parentState.isTouchEnabled,
     isMuteVideoAudioEnabled = parentState.isMuteVideoAudioEnabled,
     isViewOnceAvailable = parentState.isViewOnceAvailable,
-    isViewOnceEnabled = parentState.isViewOnceEnabled
+    isViewOnceEnabled = parentState.isViewOnceEnabled,
+    album = parentState.album,
+    albumFocusedMedia = parentState.albumFocusedMedia,
+    isBrowsingAlbum = parentState.isBrowsingAlbum
   )
 }
