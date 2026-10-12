@@ -21,7 +21,7 @@
   <!-- Progress dialog message shown while the media being edited is written out to the phone\'s storage. -->
   <string name="MediaSendDialogs__saving_media">儲存緊個附件去儲存空間……</string>
   <!-- Dialog message asking the user to confirm that the media should be added to a group\'s story. The placeholder is the group\'s name. -->
-  <string name="MediaSendDialogs__add_to_the_group_story">新增至「%1$s」群組嘅限時動態</string>
+  <string name="MediaSendDialogs__add_to_the_group_story">新增至「%1$s」群組嘅快拍</string>
   <!-- Confirmation button that adds the media to the group\'s story. -->
   <string name="MediaSendDialogs__add_to_story">加料落是日花生</string>
   <!-- Accessibility label for the row that lets the user add a text message to accompany the media being sent. -->
