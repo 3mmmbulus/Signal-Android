@@ -9,7 +9,6 @@ import android.Manifest
 import android.app.Application
 import android.net.Uri
 import androidx.test.core.app.ApplicationProvider
-import io.mockk.eq
 import io.mockk.every
 import io.mockk.mockkObject
 import io.mockk.unmockkObject
