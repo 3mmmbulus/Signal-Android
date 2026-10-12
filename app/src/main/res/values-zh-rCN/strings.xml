@@ -361,7 +361,7 @@
     <!-- Contact search header for individuals who the user has not started a conversation with but is in a group with -->
     <string name="ContactsCursorLoader_group_members">群组成员</string>
     <!-- Label for my stories when selecting who to send media to -->
-    <string name="ContactsCursorLoader_my_stories">我的动态</string>
+    <string name="ContactsCursorLoader_my_stories">我的快拍</string>
     <!-- Text for a button that brings up a bottom sheet to create a new story. -->
     <string name="ContactsCursorLoader_new">新建</string>
     <!-- Header for conversation search section labeled "Chats" -->
@@ -2258,7 +2258,7 @@
     <!-- Recipient -->
     <string name="Recipient_you">您</string>
     <!-- Name of recipient representing user\'s \'My Story\' -->
-    <string name="Recipient_my_story">我的动态</string>
+    <string name="Recipient_my_story">我的快拍</string>
     <!-- Name of recipient for a call link without a name -->
     <string name="Recipient_signal_call">Tellomi 通话</string>
 
@@ -2515,7 +2515,7 @@
 
     <!-- AboutSheet -->
     <!-- Displayed in a sheet row and allows user to open signal connection explanation on tap -->
-    <string name="AboutSheet__signal_connection">Tellomi 密友</string>
+    <string name="AboutSheet__signal_connection">好友</string>
     <!-- Displayed in a sheet row describing that the user has marked this contact as \'verified\' from within the app -->
     <string name="AboutSheet__verified">已验证</string>
     <!-- Displayed in a sheet row that tells users that profile names are not verified -->
@@ -2921,9 +2921,9 @@
     <!-- Displayed in the notification when the user has opened a received gift -->
     <string name="ThreadRecord__you_redeemed_a_badge">您领取了一个徽章</string>
     <!-- Displayed in the conversation list when someone reacted to your story -->
-    <string name="ThreadRecord__reacted_s_to_your_story">用 %1$s 回应了您的动态</string>
+    <string name="ThreadRecord__reacted_s_to_your_story">用 %1$s 回应了您的快拍</string>
     <!-- Displayed in the conversation list when you reacted to someone\'s story -->
-    <string name="ThreadRecord__reacted_s_to_their_story">用 %1$s 回应了对方的动态</string>
+    <string name="ThreadRecord__reacted_s_to_their_story">用 %1$s 回应了对方的快拍</string>
     <!-- Displayed in the conversation list when your most recent message is a payment to or from the person the conversation is with -->
     <string name="ThreadRecord_payment">付款</string>
     <!-- Displayed in the conversation list when your only message in a conversation is a scheduled send. -->
@@ -3125,7 +3125,7 @@
     <string name="MessageNotifier_locked_message">锁定消息</string>
     <string name="MessageNotifier_message_delivery_failed">消息发送失败。</string>
     <!-- Shown in a notification when a story the user tries to send fails to be sent -->
-    <string name="MessageNotifier_story_delivery_failed">动态发送失败</string>
+    <string name="MessageNotifier_story_delivery_failed">快拍发送失败</string>
     <!-- Shown as notification title for when a notification about a story sent to a group story %1$s replaced with the group name -->
     <string name="MessageNotifier_group_story_title">您发送至%1$s</string>
     <string name="MessageNotifier_failed_to_deliver_message">消息发送失败。</string>
@@ -3261,7 +3261,7 @@
     <string name="SingleRecipientNotificationBuilder_message_request">消息请求</string>
     <string name="SingleRecipientNotificationBuilder_you">您</string>
     <!-- Notification subtext for group stories -->
-    <string name="SingleRecipientNotificationBuilder__s_dot_story">%1$s • 动态</string>
+    <string name="SingleRecipientNotificationBuilder__s_dot_story">%1$s • 快拍</string>
 
     <!-- NewWaysToConnectDialogFragment -->
     <!-- Fragment title, displayed at the top of the content -->
@@ -3544,9 +3544,9 @@
     <string name="QuoteView_you">您</string>
     <string name="QuoteView_original_missing">未找到原始消息</string>
     <!-- Author formatting for group stories -->
-    <string name="QuoteView_s_story">%1$s · 动态</string>
+    <string name="QuoteView_s_story">%1$s · 快拍</string>
     <!-- Label indicating that a quote is for a reply to a story you created -->
-    <string name="QuoteView_your_story">您 · 动态</string>
+    <string name="QuoteView_your_story">您 · 快拍</string>
     <!-- Label indicating that the story being replied to no longer exists -->
     <string name="QuoteView_no_longer_available">已不存在</string>
     <!-- Label for quoted gift -->
@@ -3665,7 +3665,7 @@
     <!-- Displayed in a toast when user long presses an item in MyStories -->
     <string name="MyStoriesFragment__copied_sent_timestamp_to_clipboard">发送的时间戳已复制到剪贴板。</string>
     <!-- Displayed when there are no outgoing stories -->
-    <string name="MyStoriesFragment__updates_to_your_story_will_show_up_here">您的动态更新将会在这里显示。</string>
+    <string name="MyStoriesFragment__updates_to_your_story_will_show_up_here">您的快拍更新将会在这里显示。</string>
 
     <!-- GroupUtil -->
     <plurals name="GroupUtil_joined_the_group">
@@ -4044,7 +4044,7 @@
     <!-- Preference label for making one-time donations to Signal -->
     <string name="preferences__privacy">隐私</string>
     <!-- Preference label for stories -->
-    <string name="preferences__stories">动态</string>
+    <string name="preferences__stories">快拍</string>
     <string name="preferences__data_and_storage">数据和存储</string>
     <string name="preferences__storage">存储</string>
     <string name="preferences__payments">付款</string>
@@ -5842,15 +5842,15 @@
 
     <!-- ConversationSettingsFragment -->
     <!-- Dialog title displayed when non-admin tries to add a story to an audience group -->
-    <string name="ConversationSettingsFragment__cant_add_to_group_story">无法添加到群组动态</string>
+    <string name="ConversationSettingsFragment__cant_add_to_group_story">无法添加到群组快拍</string>
     <!-- Dialog message displayed when non-admin tries to add a story to an audience group -->
-    <string name="ConversationSettingsFragment__only_admins_of_this_group_can_add_to_its_story">只有该组管理员才可以添加到群组动态</string>
+    <string name="ConversationSettingsFragment__only_admins_of_this_group_can_add_to_its_story">只有该组管理员才可以添加到群组快拍</string>
     <!-- Error toasted when no activity can handle the add contact intent -->
     <string name="ConversationSettingsFragment__contacts_app_not_found">未找到联系人应用</string>
     <string name="ConversationSettingsFragment__start_video_call">发起视频通话</string>
     <string name="ConversationSettingsFragment__start_audio_call">发起语音通话</string>
     <!-- Button label with hyphenation. Translation can use soft hyphen - Unicode U+00AD -->
-    <string name="ConversationSettingsFragment__story">动态</string>
+    <string name="ConversationSettingsFragment__story">快拍</string>
     <!-- Button label with hyphenation. Translation can use soft hyphen - Unicode U+00AD -->
     <string name="ConversationSettingsFragment__message">消息</string>
     <!-- Button label with hyphenation. Translation can use soft hyphen - Unicode U+00AD -->
@@ -6038,9 +6038,9 @@
     <string name="MultiselectForwardFragment__add_a_message">添加消息</string>
     <string name="MultiselectForwardFragment__faster_forwards">快捷转发</string>
     <!-- Displayed when user selects a video that will be clipped before sharing to a story -->
-    <string name="MultiselectForwardFragment__videos_will_be_trimmed">视频将会被剪成 30 秒的片段并以多个动态发送。</string>
+    <string name="MultiselectForwardFragment__videos_will_be_trimmed">视频将会被剪成 30 秒的片段并以多个快拍发送。</string>
     <!-- Displayed when user selects a video that cannot be sent as a story -->
-    <string name="MultiselectForwardFragment__videos_sent_to_stories_cant">发送到动态的视频时长不能超过 30 秒。</string>
+    <string name="MultiselectForwardFragment__videos_sent_to_stories_cant">发送到快拍的视频时长不能超过 30 秒。</string>
     <!-- Body in alert dialog telling users that messages are now sent immediately -->
     <string name="MultiselectForwardFragment__forwarded_messages_are_now">转发的消息现在将立即发送。</string>
     <plurals name="MultiselectForwardFragment_send_d_messages">
@@ -6077,9 +6077,9 @@
 
     <!-- Media V2 -->
     <!-- Dialog message when sending a story via an add to group story button -->
-    <string name="MediaReviewFragment__add_to_the_group_story">添加到群组动态“%1$s”</string>
+    <string name="MediaReviewFragment__add_to_the_group_story">添加到群组快拍“%1$s”</string>
     <!-- Positive dialog action when sending a story via an add to group story button -->
-    <string name="MediaReviewFragment__add_to_story">添加到动态</string>
+    <string name="MediaReviewFragment__add_to_story">添加到快拍</string>
     <string name="MediaReviewFragment__add_a_message">添加消息</string>
     <string name="MediaReviewFragment__send_to">发送给</string>
     <!-- Accessibility label describing the toggle view once button on the Media review screen -->
@@ -6569,21 +6569,21 @@
     <!-- Label for Calls tab in home app screen -->
     <string name="ConversationListTabs__calls">通话</string>
     <!-- Label for Stories tab in home app screen -->
-    <string name="ConversationListTabs__stories">动态</string>
+    <string name="ConversationListTabs__stories">快拍</string>
     <!-- String for counts above 99 in conversation list tabs -->
     <string name="ConversationListTabs__99p">99+</string>
     <!-- Menu item on stories landing page -->
-    <string name="StoriesLandingFragment__story_privacy">动态隐私</string>
+    <string name="StoriesLandingFragment__story_privacy">快拍隐私</string>
     <!-- Title for "My Stories" row item in Stories landing page -->
-    <string name="StoriesLandingFragment__my_stories">我的动态</string>
+    <string name="StoriesLandingFragment__my_stories">我的快拍</string>
     <!-- Subtitle for "My Stories" row item when user has not added stories -->
     <string name="StoriesLandingFragment__tap_to_add">点击添加</string>
     <!-- Displayed when there are no stories to display -->
     <string name="StoriesLandingFragment__no_recent_updates_to_show_right_now">目前没有可显示的更新。</string>
     <!-- Context menu option to hide a story -->
-    <string name="StoriesLandingItem__hide_story">隐藏动态</string>
+    <string name="StoriesLandingItem__hide_story">隐藏快拍</string>
     <!-- Context menu option to unhide a story -->
-    <string name="StoriesLandingItem__unhide_story">取消隐藏动态</string>
+    <string name="StoriesLandingItem__unhide_story">取消隐藏快拍</string>
     <!-- Context menu option to forward a story -->
     <string name="StoriesLandingItem__forward">转发</string>
     <!-- Context menu option to share a story -->
@@ -6603,15 +6603,15 @@
     <!-- Status label when a story fails to send indicating user action to retry -->
     <string name="StoriesLandingItem__tap_to_retry">点击重试</string>
     <!-- Title of dialog confirming decision to hide a story -->
-    <string name="StoriesLandingFragment__hide_story">要隐藏动态吗？</string>
+    <string name="StoriesLandingFragment__hide_story">要隐藏快拍吗？</string>
     <!-- Message of dialog confirming decision to hide a story -->
-    <string name="StoriesLandingFragment__new_story_updates">隐藏后%1$s的新动态更新将不会显示在动态列表的顶部。</string>
+    <string name="StoriesLandingFragment__new_story_updates">隐藏后%1$s的新快拍更新将不会显示在快拍列表的顶部。</string>
     <!-- Positive action of dialog confirming decision to hide a story -->
     <string name="StoriesLandingFragment__hide">隐藏</string>
     <!-- Displayed in Snackbar after story is hidden -->
-    <string name="StoriesLandingFragment__story_hidden">已隐藏的动态</string>
+    <string name="StoriesLandingFragment__story_hidden">已隐藏的快拍</string>
     <!-- Section header for hidden stories -->
-    <string name="StoriesLandingFragment__hidden_stories">隐藏的动态</string>
+    <string name="StoriesLandingFragment__hidden_stories">隐藏的快拍</string>
     <!-- Displayed on each sent story under My Stories -->
     <plurals name="MyStories__d_views">
         <item quantity="other">%1$d 次浏览</item>
@@ -6619,13 +6619,13 @@
     <!-- Forward story label, displayed in My Stories context menu -->
     <string name="MyStories_forward">转发</string>
     <!-- Label for stories for a single user. Format is {given name}\'s Story -->
-    <string name="MyStories__ss_story">%1$s的动态</string>
+    <string name="MyStories__ss_story">%1$s的快拍</string>
     <!-- Title of dialog to confirm deletion of story -->
-    <string name="MyStories__delete_story">要删除动态吗？</string>
+    <string name="MyStories__delete_story">要删除快拍吗？</string>
     <!-- Message of dialog to confirm deletion of story -->
-    <string name="MyStories__this_story_will_be_deleted">您和收到此动态的所有人将看不到此动态。</string>
+    <string name="MyStories__this_story_will_be_deleted">您和收到此快拍的所有人将看不到此快拍。</string>
     <!-- Message of dialog to confirm deletion of story in a terminated group -->
-    <string name="MyStories__delete_story_terminated_group">由于该群组已解散，此动态将仅对您删除。</string>
+    <string name="MyStories__delete_story_terminated_group">由于该群组已解散，此快拍将仅对您删除。</string>
     <!-- Toast shown when story media cannot be saved -->
     <string name="MyStories__unable_to_save">无法保存</string>
 
@@ -6666,7 +6666,7 @@
   <!-- Removed by excludeNonTranslatables <string name="StoryArchive__select_story" translatable="false">Select story</string> -->
     <!-- Confirmation dialog body when deleting stories from archive -->
     <plurals name="StoryArchive__delete_n_stories">
-        <item quantity="other">要删除 %1$d 个动态吗？此操作无法撤销。</item>
+        <item quantity="other">要删除 %1$d 个快拍吗？此操作无法撤销。</item>
     </plurals>
     <!-- Title shown in toolbar when in multi-select mode in story archive, %d is count of selected items -->
     <plurals name="StoryArchive__d_selected">
@@ -6682,7 +6682,7 @@
         <item quantity="other">%1$d 个回复</item>
     </plurals>
     <!-- Toast / Snackbar label when unhiding a story during viewer -->
-    <string name="StoryViewerPageFragment__story_no_longer_hidden">动态已公开</string>
+    <string name="StoryViewerPageFragment__story_no_longer_hidden">快拍已公开</string>
     <!-- Label on group stories to add a story -->
     <string name="StoryViewerPageFragment__add">添加</string>
     <!-- Used when view receipts are disabled -->
@@ -6706,7 +6706,7 @@
     <!-- Displayed when a story has no views -->
     <string name="StoryViewsFragment__no_views_yet">未有浏览</string>
     <!-- Displayed when user has disabled receipts -->
-    <string name="StoryViewsFragment__enable_view_receipts_to_see_whos_viewed_your_story">启用浏览回执功能，看看谁浏览了您的动态。</string>
+    <string name="StoryViewsFragment__enable_view_receipts_to_see_whos_viewed_your_story">启用浏览回执功能，看看谁浏览了您的快拍。</string>
     <!-- Button label displayed when user has disabled receipts -->
     <string name="StoryViewsFragment__go_to_settings">前往设置</string>
     <!-- Dialog action to remove viewer from a story -->
@@ -6720,17 +6720,17 @@
     <!-- Displayed when a story has no replies yet -->
     <string name="StoryGroupReplyFragment__no_replies_yet">未有回复</string>
     <!-- Displayed when no longer a group member -->
-    <string name="StoryGroupReplyFragment__you_cant_reply">您已不是此群组的成员，因此不能回复此动态。</string>
+    <string name="StoryGroupReplyFragment__you_cant_reply">您已不是此群组的成员，因此不能回复此快拍。</string>
     <!-- Displayed for when you reacted to a story when viewing replies -->
-    <string name="StoryGroupReactionReplyItem__you_reacted_to_the_story">回应了此动态</string>
+    <string name="StoryGroupReactionReplyItem__you_reacted_to_the_story">回应了此快拍</string>
     <!-- Displayed for other users that reacted to a story when viewing replies -->
-    <string name="StoryGroupReactionReplyItem__someone_reacted_to_the_story">回应了此动态</string>
+    <string name="StoryGroupReactionReplyItem__someone_reacted_to_the_story">回应了此快拍</string>
     <!-- Label for story views tab -->
     <string name="StoryViewsAndRepliesDialogFragment__views">浏览</string>
     <!-- Label for story replies tab -->
     <string name="StoryViewsAndRepliesDialogFragment__replies">回复</string>
     <!-- Description of action for reaction button -->
-    <string name="StoryReplyComposer__react_to_this_story">回应此动态</string>
+    <string name="StoryReplyComposer__react_to_this_story">回应此快拍</string>
     <!-- Displayed when the user is replying privately to someone who replied to one of their stories -->
     <string name="StoryReplyComposer__reply_to_s">回复 %1$s</string>
     <!-- Context menu item to privately reply to a story response -->
@@ -6739,7 +6739,7 @@
     <!-- Context menu item to delete a story response -->
     <string name="StoryGroupReplyItem__delete">删除</string>
     <!-- Page title for My Story options -->
-    <string name="MyStorySettingsFragment__my_story">我的动态</string>
+    <string name="MyStorySettingsFragment__my_story">我的快拍</string>
     <!-- Number of total signal connections displayed in "All connections" row item -->
     <plurals name="MyStorySettingsFragment__viewers">
         <item quantity="other">%1$d 位访客</item>
@@ -6747,15 +6747,15 @@
     <!-- Button on all signal connections row to view all signal connections. Please keep as short as possible. -->
     <string name="MyStorySettingsFragment__view">查看</string>
     <!-- Section heading for story visibility -->
-    <string name="MyStorySettingsFragment__who_can_view_this_story">谁可以看到此动态</string>
+    <string name="MyStorySettingsFragment__who_can_view_this_story">谁可以看到此快拍</string>
     <!-- Clickable option for selecting people to hide your story from -->
     <!-- Privacy setting title for sending stories to all your signal connections -->
-    <string name="MyStorySettingsFragment__all_signal_connections">所有 Tellomi 密友</string>
+    <string name="MyStorySettingsFragment__all_signal_connections">所有好友</string>
     <!-- Privacy setting description for sending stories to all your signal connections -->
     <!-- Privacy setting title for sending stories to all except the specified connections -->
     <string name="MyStorySettingsFragment__all_except">所有人，除了……</string>
     <!-- Privacy setting description for sending stories to all except the specified connections -->
-    <string name="MyStorySettingsFragment__hide_your_story_from_specific_people">对特定用户隐藏您的动态</string>
+    <string name="MyStorySettingsFragment__hide_your_story_from_specific_people">对特定用户隐藏您的快拍</string>
     <!-- Summary of clickable option displaying how many people you have excluded from your story -->
     <plurals name="MyStorySettingsFragment__d_people_excluded">
         <item quantity="other">已排除 %1$d 人</item>
@@ -6769,17 +6769,17 @@
         <item quantity="other">%1$d 位访客</item>
     </plurals>
     <!-- My story privacy fine print about what the privacy settings are for -->
-    <string name="MyStorySettingsFragment__choose_who_can_view_your_story">选择谁可以查看您的动态。此更改不会影响您已发送的动态。</string>
+    <string name="MyStorySettingsFragment__choose_who_can_view_your_story">选择谁可以查看您的快拍。此更改不会影响您已发送的快拍。</string>
     <!-- Section header for options related to replies and reactions -->
     <string name="MyStorySettingsFragment__replies_amp_reactions">回复和回应</string>
     <!-- Switchable option for allowing replies and reactions on your stories -->
     <string name="MyStorySettingsFragment__allow_replies_amp_reactions">允许回复和回应</string>
     <!-- Summary for switchable option allowing replies and reactions on your story -->
-    <string name="MyStorySettingsFragment__let_people_who_can_view_your_story_react_and_reply">让动态的可见对象回应和回复</string>
+    <string name="MyStorySettingsFragment__let_people_who_can_view_your_story_react_and_reply">让快拍的可见对象回应和回复</string>
     <!-- Signal connections bolded text in the Signal Connections sheet -->
-    <string name="SignalConnectionsBottomSheet___signal_connections">Tellomi 密友</string>
+    <string name="SignalConnectionsBottomSheet___signal_connections">好友</string>
     <!-- Displayed at the top of the signal connections sheet. Please remember to insert strong tag as required. -->
-    <string name="SignalConnectionsBottomSheet__signal_connections_are_people">Tellomi 密友是您选择信任的人，选择方式有：</string>
+    <string name="SignalConnectionsBottomSheet__signal_connections_are_people">好友是您选择信任的人，选择方式有：</string>
     <!-- Signal connections sheet bullet point 1 -->
     <string name="SignalConnectionsBottomSheet__starting_a_conversation">发起聊天</string>
     <!-- Signal connections sheet bullet point 2 -->
@@ -6787,23 +6787,23 @@
     <!-- Signal connections sheet bullet point 3 -->
     <string name="SignalConnectionsBottomSheet__having_them_in_your_system_contacts">对方在您的手机通讯录中</string>
     <!-- Note at the bottom of the Signal connections sheet -->
-    <string name="SignalConnectionsBottomSheet__your_connections_can_see_your_name">"您的密友能看到您的名称和照片，还能看到您在“我的动态”中发布的帖子，除非您向对方隐藏动态。"</string>
+    <string name="SignalConnectionsBottomSheet__your_connections_can_see_your_name">"您的好友能看到您的名称和照片，还能看到您在“我的快拍”中发布的帖子，除非您向对方隐藏快拍。"</string>
     <!-- Clickable option to add a viewer to a custom story -->
     <string name="PrivateStorySettingsFragment__add_viewer">添加访客</string>
     <!-- Clickable option to delete a custom story -->
-    <string name="PrivateStorySettingsFragment__delete_custom_story">删除自定义动态</string>
+    <string name="PrivateStorySettingsFragment__delete_custom_story">删除自定义快拍</string>
     <!-- Dialog title when attempting to remove someone from a custom story -->
     <string name="PrivateStorySettingsFragment__remove_s">要移除%1$s吗？</string>
     <!-- Dialog message when attempting to remove someone from a custom story -->
-    <string name="PrivateStorySettingsFragment__this_person_will_no_longer">此人将无法再看到您的动态。</string>
+    <string name="PrivateStorySettingsFragment__this_person_will_no_longer">此人将无法再看到您的快拍。</string>
     <!-- Positive action label when attempting to remove someone from a custom story -->
     <string name="PrivateStorySettingsFragment__remove">移除</string>
     <!-- Dialog title when deleting a custom story -->
     <!-- Dialog message when deleting a custom story -->
     <!-- Page title for editing a custom story name -->
-    <string name="EditPrivateStoryNameFragment__edit_story_name">编辑动态名称</string>
+    <string name="EditPrivateStoryNameFragment__edit_story_name">编辑快拍名称</string>
     <!-- Input field hint when editing a custom story name -->
-    <string name="EditPrivateStoryNameFragment__story_name">动态名称</string>
+    <string name="EditPrivateStoryNameFragment__story_name">快拍名称</string>
     <!-- Save button label when editing a custom story name -->
     <!-- Displayed in text post creator before user enters text -->
     <string name="TextStoryPostCreationFragment__tap_to_add_text">点击添加文本</string>
@@ -6815,7 +6815,7 @@
     <!-- Hint for entering a URL for a text post -->
     <string name="TextStoryPostLinkEntryFragment__type_or_paste_a_url">输入或粘贴 URL</string>
     <!-- Displayed prior to the user entering a URL for a text post -->
-    <string name="TextStoryPostLinkEntryFragment__share_a_link_with_viewers_of_your_story">向您的动态访客分享链接</string>
+    <string name="TextStoryPostLinkEntryFragment__share_a_link_with_viewers_of_your_story">向您的快拍访客分享链接</string>
     <!-- Hint text for searching for a story text post recipient. -->
     <string name="TextStoryPostSendFragment__search">搜索</string>
     <!-- Toast shown when an unexpected error occurs while sending a text story -->
@@ -6828,15 +6828,15 @@
     <!-- Done button label for hide story from screen -->
     <string name="HideStoryFromFragment__done">完成</string>
     <!-- Dialog title for removing a group story -->
-    <string name="StoryDialogs__remove_group_story">要移除群组动态吗？</string>
+    <string name="StoryDialogs__remove_group_story">要移除群组快拍吗？</string>
     <!-- Dialog message for removing a group story -->
     <string name="StoryDialogs__s_will_be_removed">“%1$s”将被移除。</string>
     <!-- Dialog positive action for removing a group story -->
     <string name="StoryDialogs__remove">删除</string>
     <!-- Dialog title for deleting a custom story -->
-    <string name="StoryDialogs__delete_custom_story">要删除自定义动态吗？</string>
+    <string name="StoryDialogs__delete_custom_story">要删除自定义快拍吗？</string>
     <!-- Dialog message for deleting a custom story -->
-    <string name="StoryDialogs__s_and_updates_shared">分享到此动态的“%1$s”和更新将被移除。</string>
+    <string name="StoryDialogs__s_and_updates_shared">分享到此快拍的“%1$s”和更新将被移除。</string>
     <!-- Dialog positive action for deleting a custom story -->
     <string name="StoryDialogs__delete">删除</string>
     <!-- Dialog title for first time sending something to a beta story -->
@@ -6846,7 +6846,7 @@
     <!-- First time share to story dialog: Positive action to go ahead and add to story -->
     <!-- First time share to story dialog: Neutral action to edit who can view "My Story" -->
     <!-- Error message shown when a failure occurs during story send -->
-    <string name="StoryDialogs__story_could_not_be_sent">动态无法发送。请检查您的网络连接并重试。</string>
+    <string name="StoryDialogs__story_could_not_be_sent">快拍无法发送。请检查您的网络连接并重试。</string>
     <!-- Error message dialog button to resend a previously failed story send -->
     <string name="StoryDialogs__send">发送</string>
     <!-- Action button for turning off stories when stories are present on the device -->
@@ -6862,11 +6862,11 @@
         <item quantity="other">%1$d 位访客</item>
     </plurals>
     <!-- Name story screen title -->
-    <string name="CreateStoryWithViewersFragment__name_story">动态命名</string>
+    <string name="CreateStoryWithViewersFragment__name_story">快拍命名</string>
     <!-- Name story screen note under text field -->
-    <string name="CreateStoryWithViewersFragment__only_you_can">只有您能看到此动态的名称。</string>
+    <string name="CreateStoryWithViewersFragment__only_you_can">只有您能看到此快拍的名称。</string>
     <!-- Name story screen label hint -->
-    <string name="CreateStoryWithViewersFragment__story_name_required">动态名称（必填）</string>
+    <string name="CreateStoryWithViewersFragment__story_name_required">快拍名称（必填）</string>
     <!-- Name story screen viewers subheading -->
     <string name="CreateStoryWithViewersFragment__viewers">访客</string>
     <!-- Name story screen create button label -->
@@ -6874,17 +6874,17 @@
     <!-- Name story screen error when save attempted with no label -->
     <string name="CreateStoryWithViewersFragment__this_field_is_required">必须填写此项。</string>
     <!-- Name story screen error when save attempted but label is duplicate -->
-    <string name="CreateStoryWithViewersFragment__there_is_already_a_story_with_this_name">此动态名称已被使用。</string>
+    <string name="CreateStoryWithViewersFragment__there_is_already_a_story_with_this_name">此快拍名称已被使用。</string>
     <!-- Text for select all action when editing recipients for a story -->
     <string name="BaseStoryRecipientSelectionFragment__select_all">选择全部</string>
     <!-- Choose story type bottom sheet title -->
-    <string name="ChooseStoryTypeBottomSheet__choose_your_story_type">选择您的动态类型</string>
+    <string name="ChooseStoryTypeBottomSheet__choose_your_story_type">选择您的快拍类型</string>
     <!-- Choose story type bottom sheet new story row title -->
-    <string name="ChooseStoryTypeBottomSheet__new_custom_story">新自定义动态</string>
+    <string name="ChooseStoryTypeBottomSheet__new_custom_story">新自定义快拍</string>
     <!-- Choose story type bottom sheet new story row summary -->
     <string name="ChooseStoryTypeBottomSheet__visible_only_to">仅对特定用户可见</string>
     <!-- Choose story type bottom sheet group story title -->
-    <string name="ChooseStoryTypeBottomSheet__group_story">群组动态</string>
+    <string name="ChooseStoryTypeBottomSheet__group_story">群组快拍</string>
     <!-- Choose story type bottom sheet group story summary -->
     <string name="ChooseStoryTypeBottomSheet__share_to_an_existing_group">分享给一个现有群组</string>
     <!-- Choose groups bottom sheet title -->
@@ -6896,19 +6896,19 @@
     <!-- Displayed in toast after sending a direct reply -->
     <string name="StoryDirectReplyDialogFragment__sending_reply">正在发送回复……</string>
     <!-- Displayed in the viewer when a story is no longer available -->
-    <string name="StorySlateView__this_story_is_no_longer_available">此动态已不存在。</string>
+    <string name="StorySlateView__this_story_is_no_longer_available">此快拍已不存在。</string>
     <!-- Displayed in the viewer when a story has permanently failed to download. -->
-    <string name="StorySlateView__cant_download_story_s_will_need_to_share_it_again">无法下载动态。%1$s需要再分享一遍。</string>
+    <string name="StorySlateView__cant_download_story_s_will_need_to_share_it_again">无法下载快拍。%1$s需要再分享一遍。</string>
     <!-- Displayed in the viewer when the network is not available -->
     <string name="StorySlateView__no_internet_connection">无可用的互联网连接</string>
     <!-- Displayed in the viewer when network is available but content could not be downloaded -->
     <string name="StorySlateView__couldnt_load_content">无法加载内容</string>
     <!-- Toasted when the user externally shares to a text story successfully -->
-    <string name="TextStoryPostCreationFragment__sent_story">已发送动态</string>
+    <string name="TextStoryPostCreationFragment__sent_story">已发送快拍</string>
     <!-- Toasted when the user external share to a text story fails -->
-    <string name="TextStoryPostCreationFragment__failed_to_send_story">无法发送动态</string>
+    <string name="TextStoryPostCreationFragment__failed_to_send_story">无法发送快拍</string>
     <!-- Displayed in a dialog to let the user select a given users story -->
-    <string name="StoryDialogs__view_story">查看动态</string>
+    <string name="StoryDialogs__view_story">查看快拍</string>
     <!-- Displayed in a dialog to let the user select a given users profile photo -->
     <string name="StoryDialogs__view_profile_photo">查看个人资料照片</string>
 
@@ -6918,11 +6918,11 @@
     <!-- Label for a button in a notification at the bottom of the chat list to turn off censorship circumvention -->
 
     <!-- Conversation Item label for when you react to someone else\'s story -->
-    <string name="ConversationItem__you_reacted_to_s_story">您回应了%1$s的动态</string>
+    <string name="ConversationItem__you_reacted_to_s_story">您回应了%1$s的快拍</string>
     <!-- Conversation Item label for reactions to your story -->
-    <string name="ConversationItem__reacted_to_your_story">回应了您的动态</string>
+    <string name="ConversationItem__reacted_to_your_story">回应了您的快拍</string>
     <!-- Conversation Item label for reactions to an unavailable story -->
-    <string name="ConversationItem__reacted_to_a_story">回应了动态</string>
+    <string name="ConversationItem__reacted_to_a_story">回应了快拍</string>
 
     <!-- endregion -->
     <!-- Content description for expand contacts chevron -->
@@ -6985,11 +6985,11 @@
     <string name="ContactSearchItems__only_share_with">只分享给</string>
     <!-- Label under name for custom stories -->
     <plurals name="ContactSearchItems__custom_story_d_viewers">
-        <item quantity="other">自定义动态 · %1$d 位访客</item>
+        <item quantity="other">自定义快拍 · %1$d 位访客</item>
     </plurals>
     <!-- Label under name for group stories -->
     <plurals name="ContactSearchItems__group_story_d_viewers">
-        <item quantity="other">群组动态 · %1$d 位访客</item>
+        <item quantity="other">群组快拍 · %1$d 位访客</item>
     </plurals>
     <!-- Label under name for groups -->
     <plurals name="ContactSearchItems__group_d_members">
@@ -7006,21 +7006,21 @@
     <!-- Label under name for My Story when first sending to my story -->
     <string name="ContactSearchItems__tap_to_choose_your_viewers">点击选择您的访客</string>
     <!-- Label for context menu item to open story settings -->
-    <string name="ContactSearchItems__story_settings">动态设置</string>
+    <string name="ContactSearchItems__story_settings">快拍设置</string>
     <!-- Label for context menu item to remove a group story from contact results -->
-    <string name="ContactSearchItems__remove_story">移除动态</string>
+    <string name="ContactSearchItems__remove_story">移除快拍</string>
     <!-- Label for context menu item to delete a custom story -->
-    <string name="ContactSearchItems__delete_story">删除动态</string>
+    <string name="ContactSearchItems__delete_story">删除快拍</string>
     <!-- Dialog title for removing a group story -->
-    <string name="ContactSearchMediator__remove_group_story">要移除群组动态吗？</string>
+    <string name="ContactSearchMediator__remove_group_story">要移除群组快拍吗？</string>
     <!-- Dialog message for removing a group story -->
-    <string name="ContactSearchMediator__this_will_remove">此操作将会从清单中移除此动态。您仍然可以查看群组的动态。</string>
+    <string name="ContactSearchMediator__this_will_remove">此操作将会从清单中移除此快拍。您仍然可以查看群组的快拍。</string>
     <!-- Dialog action item for removing a group story -->
     <string name="ContactSearchMediator__remove">移除</string>
     <!-- Dialog title for deleting a custom story -->
-    <string name="ContactSearchMediator__delete_story">要删除动态吗？</string>
+    <string name="ContactSearchMediator__delete_story">要删除快拍吗？</string>
     <!-- Dialog message for deleting a custom story -->
-    <string name="ContactSearchMediator__delete_the_custom">要删除自定义动态“%1$s”吗？</string>
+    <string name="ContactSearchMediator__delete_the_custom">要删除自定义快拍“%1$s”吗？</string>
     <!-- Dialog action item for deleting a custom story -->
     <string name="ContactSearchMediator__delete">删除</string>
     <!-- Donation for a friend expiry days remaining -->
@@ -7064,12 +7064,12 @@
     <string name="SafetyNumberBottomSheetFragment__all_connections_have_been_reviewed">已检查所有联系人，请点击发送以继续操作。</string>
     <!-- Message of safety number changes bottom sheet when not showing individual records -->
     <plurals name="SafetyNumberBottomSheetFragment__you_have_d_connections_plural">
-        <item quantity="other">%1$d 位密友可能已重新安装 Tellomi 或更改设备。您可以检查对方的安全码或继续发送。</item>
+        <item quantity="other">%1$d 位好友可能已重新安装 Tellomi 或更改设备。您可以检查对方的安全码或继续发送。</item>
     </plurals>
     <!-- Menu action to launch safety number verification screen -->
     <string name="SafetyNumberBottomSheetFragment__verify_safety_number">验证安全代码</string>
     <!-- Menu action to remove user from story -->
-    <string name="SafetyNumberBottomSheetFragment__remove_from_story">移除出动态</string>
+    <string name="SafetyNumberBottomSheetFragment__remove_from_story">移除出快拍</string>
     <!-- Action button at bottom of SafetyNumberBottomSheetFragment to send anyway -->
     <string name="SafetyNumberBottomSheetFragment__send_anyway">仍要发送</string>
     <!-- Action button at bottom of SafetyNumberBottomSheetFragment to review connections -->
@@ -7092,11 +7092,11 @@
     <string name="SafetyNumberReviewConnectionsFragment__remove">移除</string>
 
     <!-- Title of initial My Story settings configuration shown when sending to My Story for the first time -->
-    <string name="ChooseInitialMyStoryMembershipFragment__my_story_privacy">我的动态隐私</string>
+    <string name="ChooseInitialMyStoryMembershipFragment__my_story_privacy">我的快拍隐私</string>
     <!-- Subtitle of initial My Story settings configuration shown when sending to My Story for the first time -->
-    <string name="ChooseInitialMyStoryMembershipFragment__choose_who_can_see_posts_to_my_story_you_can_always_make_changes_in_settings">选择谁可以查看“我的动态”帖子。您可以随时在设置中更改。</string>
+    <string name="ChooseInitialMyStoryMembershipFragment__choose_who_can_see_posts_to_my_story_you_can_always_make_changes_in_settings">选择谁可以查看“我的快拍”帖子。您可以随时在设置中更改。</string>
     <!-- All connections option for initial My Story settings configuration shown when sending to My Story for the first time -->
-    <string name="ChooseInitialMyStoryMembershipFragment__all_signal_connections">所有 Tellomi 密友</string>
+    <string name="ChooseInitialMyStoryMembershipFragment__all_signal_connections">所有好友</string>
     <!-- All connections except option for initial My Story settings configuration shown when sending to My Story for the first time -->
     <string name="ChooseInitialMyStoryMembershipFragment__all_except">所有人，除了……</string>
     <!-- Only with selected connections option for initial My Story settings configuration shown when sending to My Story for the first time -->
@@ -7115,39 +7115,39 @@
 
     <!-- StoriesPrivacySettingsFragment -->
     <!-- Explanation about how stories are deleted and managed -->
-    <string name="StoriesPrivacySettingsFragment__story_updates_automatically_disappear">动态更新将会在 24 小时后自动消失。请选择谁可以查看您的动态，或创建对特定访客或群组可见的新动态。</string>
+    <string name="StoriesPrivacySettingsFragment__story_updates_automatically_disappear">快拍更新将会在 24 小时后自动消失。请选择谁可以查看您的快拍，或创建对特定访客或群组可见的新快拍。</string>
     <!-- Preference title to turn off stories -->
-    <string name="StoriesPrivacySettingsFragment__turn_off_stories">关闭动态</string>
+    <string name="StoriesPrivacySettingsFragment__turn_off_stories">关闭快拍</string>
     <!-- Preference summary to turn off stories -->
-    <string name="StoriesPrivacySettingsFragment__if_you_opt_out">如果您选择关闭动态，您将无法再分享或浏览动态。</string>
+    <string name="StoriesPrivacySettingsFragment__if_you_opt_out">如果您选择关闭快拍，您将无法再分享或浏览快拍。</string>
     <!-- Preference title to turn on stories -->
-    <string name="StoriesPrivacySettingsFragment__turn_on_stories">开启动态</string>
+    <string name="StoriesPrivacySettingsFragment__turn_on_stories">开启快拍</string>
     <!-- Preference summary to turn on stories -->
-    <string name="StoriesPrivacySettingsFragment__share_and_view">分享自己的动态和浏览其他人的动态。动态将会在 24 小时后自动消失。</string>
+    <string name="StoriesPrivacySettingsFragment__share_and_view">分享自己的快拍和浏览其他人的快拍。快拍将会在 24 小时后自动消失。</string>
     <!-- Dialog title to turn off stories -->
-    <string name="StoriesPrivacySettingsFragment__turn_off_stories_question">要关闭动态吗？</string>
+    <string name="StoriesPrivacySettingsFragment__turn_off_stories_question">要关闭快拍吗？</string>
     <!-- Dialog message to turn off stories -->
-    <string name="StoriesPrivacySettingsFragment__you_will_no_longer_be_able_to_share">您将无法再分享或浏览动态。您最近发布的动态更新也将会被删除。</string>
+    <string name="StoriesPrivacySettingsFragment__you_will_no_longer_be_able_to_share">您将无法再分享或浏览快拍。您最近发布的快拍更新也将会被删除。</string>
     <!-- Page title when launched from stories landing screen -->
-    <string name="StoriesPrivacySettingsFragment__story_privacy">动态隐私</string>
+    <string name="StoriesPrivacySettingsFragment__story_privacy">快拍隐私</string>
     <!-- Header for section that lists out stories -->
-    <string name="StoriesPrivacySettingsFragment__stories">动态</string>
+    <string name="StoriesPrivacySettingsFragment__stories">快拍</string>
     <!-- Story views header -->
     <!-- Story view receipts toggle title -->
     <string name="StoriesPrivacySettingsFragment__view_receipts">浏览回执</string>
     <!-- Story view receipts toggle message -->
-    <string name="StoriesPrivacySettingsFragment__see_and_share">当动态被浏览时您可以查看和分享。如果禁用此功能，其他人浏览您的动态时您将看不到浏览情况。</string>
+    <string name="StoriesPrivacySettingsFragment__see_and_share">当快拍被浏览时您可以查看和分享。如果禁用此功能，其他人浏览您的快拍时您将看不到浏览情况。</string>
 
     <!-- NewStoryItem -->
-    <string name="NewStoryItem__new_story">新动态</string>
+    <string name="NewStoryItem__new_story">新快拍</string>
 
     <!-- GroupStorySettingsFragment -->
     <!-- Section header for who can view a group story -->
-    <string name="GroupStorySettingsFragment__who_can_view_this_story">谁可以看到此动态</string>
+    <string name="GroupStorySettingsFragment__who_can_view_this_story">谁可以看到此快拍</string>
     <!-- Explanation of who can view a group story -->
-    <string name="GroupStorySettingsFragment__members_of_the_group_s">"“%1$s”群组的成员可以浏览和回复此动态。您可以更新此群组聊天的成员资格。"</string>
+    <string name="GroupStorySettingsFragment__members_of_the_group_s">"“%1$s”群组的成员可以浏览和回复此快拍。您可以更新此群组聊天的成员资格。"</string>
     <!-- Preference label for removing this group story -->
-    <string name="GroupStorySettingsFragment__remove_group_story">移除群组动态</string>
+    <string name="GroupStorySettingsFragment__remove_group_story">移除群组快拍</string>
 
     <!-- Generic title for overflow menus -->
     <string name="OverflowMenu__overflow_menu">溢出菜单</string>
@@ -7365,13 +7365,13 @@
 
     <!-- GroupStoryEducationSheet -->
     <!-- Displayed as the title of the education bottom sheet -->
-    <string name="GroupStoryEducationSheet__introducing_group_stories">群组动态火热上线</string>
+    <string name="GroupStoryEducationSheet__introducing_group_stories">群组快拍火热上线</string>
     <!-- Line item on the sheet explaining group stories -->
-    <string name="GroupStoryEducationSheet__share_story_updates_to">您可以在已加入的群组中分享动态更新。</string>
+    <string name="GroupStoryEducationSheet__share_story_updates_to">您可以在已加入的群组中分享快拍更新。</string>
     <!-- Line item on the sheet explaining that anyone in the group can share to group stories -->
-    <string name="GroupStoryEducationSheet__anyone_in_the_group">群组中的任何成员均可以追加动态内容。</string>
+    <string name="GroupStoryEducationSheet__anyone_in_the_group">群组中的任何成员均可以追加快拍内容。</string>
     <!-- Line item on the sheet explaining that anyone in the group can view replies -->
-    <string name="GroupStoryEducationSheet__all_group_chat_members">所有的群组聊天成员均可以查看动态回复记录。</string>
+    <string name="GroupStoryEducationSheet__all_group_chat_members">所有的群组聊天成员均可以查看快拍回复记录。</string>
     <!-- Button label to dismiss sheet -->
     <string name="GroupStoryEducationSheet__next">下一步</string>
 
