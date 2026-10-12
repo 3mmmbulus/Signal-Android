@@ -7742,6 +7742,9 @@ https://docs.gradle.org/current/userguide/dependency_verification.html
          <artifact name="libsignal-android-0.102.2-tellomi.4.module">
             <sha256 value="9914671019db03a6c4c1830ebb89ed0d40f9c9578a85c459e5871f2f9d6020bb" origin="GitHub Release tellomi/libsignal v0.102.2-tellomi.4（4c8e772b5）"/>
          </artifact>
+         <artifact name="libsignal-android-0.102.2-tellomi.4.pom">
+            <sha256 value="f3fed39f2f58406c9ecd1a05bec01f4f18e7b2c08ee1ee5f7cacf99fd0cd8120" origin="GitHub Release tellomi/libsignal v0.102.2-tellomi.4（4c8e772b5）"/>
+         </artifact>
       </component>
       <component group="org.signal" name="libsignal-client" version="0.102.2">
          <artifact name="libsignal-client-0.102.2.jar">
@@ -7773,6 +7776,9 @@ https://docs.gradle.org/current/userguide/dependency_verification.html
          </artifact>
          <artifact name="libsignal-client-0.102.2-tellomi.4.module">
             <sha256 value="5cc1a02c5665a957411b7ff960c6e02cff973e3d5483cdd591a71a5ed32f03ea" origin="GitHub Release tellomi/libsignal v0.102.2-tellomi.4（4c8e772b5）"/>
+         </artifact>
+         <artifact name="libsignal-client-0.102.2-tellomi.4.pom">
+            <sha256 value="e8c46dcb9449722bfe820cf0b38f212e82d2264c7dbab249b71a0237bce2a890" origin="GitHub Release tellomi/libsignal v0.102.2-tellomi.4（4c8e772b5）"/>
          </artifact>
       </component>
       <component group="org.signal" name="ringrtc-android" version="2.72.0">
