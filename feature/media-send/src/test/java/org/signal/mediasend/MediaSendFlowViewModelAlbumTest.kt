@@ -174,6 +174,75 @@ class MediaSendFlowViewModelAlbumTest {
     assertThat(viewModel.backStack.lastOrNull()).isEqualTo(MediaSendRoute.Edit)
   }
 
+  @Test
+  fun `Given a browsed picture that is not selected, when a shortcut is tapped, then it is selected, focused and opened in the editor`() = runTest {
+    val viewModel = viewModel()
+    openAlbum(viewModel, focus = PHOTO_A)
+    send(viewModel, MediaSendFlowEvent.ToggleAlbumSelected(PHOTO_A))
+
+    send(viewModel, MediaSendFlowEvent.EditFromAlbum(PHOTO_C, AlbumEditTool.CROP))
+
+    val state = viewModel.state.value
+    assertThat(state.selectedMedia).containsExactly(PHOTO_A, PHOTO_C)
+    assertThat(state.focusedMedia).isEqualTo(PHOTO_C)
+    assertThat(state.isBrowsingAlbum).isFalse()
+    assertThat(viewModel.backStack.lastOrNull()).isEqualTo(MediaSendRoute.Edit)
+  }
+
+  @Test
+  fun `Given a browsed picture that is already selected, when a shortcut is tapped, then the selection keeps its order and that picture is focused`() = runTest {
+    val viewModel = viewModel()
+    openAlbum(viewModel, focus = PHOTO_A)
+    send(viewModel, MediaSendFlowEvent.ToggleAlbumSelected(PHOTO_A))
+    send(viewModel, MediaSendFlowEvent.ToggleAlbumSelected(PHOTO_B))
+
+    send(viewModel, MediaSendFlowEvent.EditFromAlbum(PHOTO_A, AlbumEditTool.DRAW))
+
+    val state = viewModel.state.value
+    assertThat(state.selectedMedia).containsExactly(PHOTO_A, PHOTO_B)
+    assertThat(state.focusedMedia).isEqualTo(PHOTO_A)
+    assertThat(state.isBrowsingAlbum).isFalse()
+  }
+
+  @Test
+  fun `Given the shortcut's picture is refused, then the album stays open with nothing selected`() = runTest {
+    coEvery { repository.validateAndFilterMedia(any(), any(), any()) } returns
+      MediaFilterResult(filteredMedia = emptyList(), error = MediaFilterError.ItemTooLarge(media = PHOTO_B))
+    val viewModel = viewModel()
+    openAlbum(viewModel, focus = PHOTO_B)
+
+    send(viewModel, MediaSendFlowEvent.EditFromAlbum(PHOTO_B, AlbumEditTool.CROP))
+
+    val state = viewModel.state.value
+    assertThat(state.selectedMedia).isEmpty()
+    assertThat(state.isBrowsingAlbum).isTrue()
+    assertThat(viewModel.backStack.lastOrNull()).isEqualTo(MediaSendRoute.Edit)
+  }
+
+  @Test
+  fun `Given the album is browsed, when it is swiped closed, then it goes back like the back button and keeps the selection`() = runTest {
+    val viewModel = viewModel()
+    openAlbum(viewModel, focus = PHOTO_A)
+    send(viewModel, MediaSendFlowEvent.ToggleAlbumSelected(PHOTO_B))
+    val withAlbum = viewModel.backStack.toList()
+    assertThat(withAlbum.last()).isEqualTo(MediaSendRoute.Edit)
+
+    send(viewModel, MediaSendFlowEvent.CloseAlbumViewer)
+
+    assertThat(viewModel.backStack.toList()).isEqualTo(withAlbum.dropLast(1))
+    assertThat(viewModel.state.value.selectedMedia).containsExactly(PHOTO_B)
+  }
+
+  @Test
+  fun `Given the editor is open without the album, when a close arrives, then the editor stays`() = runTest {
+    val viewModel = viewModel()
+    send(viewModel, MediaSendFlowEvent.NavigateToEdit)
+
+    send(viewModel, MediaSendFlowEvent.CloseAlbumViewer)
+
+    assertThat(viewModel.backStack.lastOrNull()).isEqualTo(MediaSendRoute.Edit)
+  }
+
   private fun viewModel(): MediaSendFlowViewModel {
     val savedStateHandle = SavedStateHandle(
       mapOf(

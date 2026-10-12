@@ -78,6 +78,8 @@ internal class MediaEditViewModel(
       is MediaEditScreenEvents.ToggleAlbumSelected -> parentEventEmitter(MediaSendFlowEvent.ToggleAlbumSelected(event.media))
       is MediaEditScreenEvents.AlbumFocusedMediaChanged -> parentEventEmitter(MediaSendFlowEvent.SetAlbumFocusedMedia(event.media))
       MediaEditScreenEvents.ShowSelectedFilmstrip -> parentEventEmitter(MediaSendFlowEvent.ShowSelectedFilmstrip)
+      is MediaEditScreenEvents.EditFromAlbum -> parentEventEmitter(MediaSendFlowEvent.EditFromAlbum(event.media, event.tool))
+      MediaEditScreenEvents.CloseAlbum -> parentEventEmitter(MediaSendFlowEvent.CloseAlbumViewer)
       is MediaEditScreenEvents.AddMessageClick -> parentEventEmitter(MediaSendFlowEvent.AddMessageRequested(event.startWithEmojiKeyboard))
       is MediaEditScreenEvents.ScheduleSendClick -> parentEventEmitter(MediaSendFlowEvent.ScheduleSendRequested(event.option))
       MediaEditScreenEvents.StickerClick -> parentEventEmitter(MediaSendFlowEvent.StickerRequested)

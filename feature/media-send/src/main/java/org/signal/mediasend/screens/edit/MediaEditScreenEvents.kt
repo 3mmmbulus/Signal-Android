@@ -6,6 +6,7 @@
 package org.signal.mediasend.screens.edit
 
 import org.signal.core.models.media.Media
+import org.signal.mediasend.AlbumEditTool
 import org.signal.mediasend.MediaSendFlowState
 import org.signal.mediasend.SentMediaQuality
 import org.signal.mediasend.screens.edit.image.BrushTool
@@ -46,4 +47,10 @@ sealed interface MediaEditScreenEvents {
 
   /** V-1：相册查看器里点选中计数，切到已选胶片。 */
   data object ShowSelectedFilmstrip : MediaEditScreenEvents
+
+  /** V-1（D11）：相册查看器底部「裁剪」「绘制」。 */
+  data class EditFromAlbum(val media: Media, val tool: AlbumEditTool) : MediaEditScreenEvents
+
+  /** V-2：相册查看器下滑关闭。 */
+  data object CloseAlbum : MediaEditScreenEvents
 }

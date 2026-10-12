@@ -291,6 +291,8 @@ class MediaSendFlowViewModel(
       is MediaSendFlowEvent.SetAlbumFocusedMedia -> updateState { copy(albumFocusedMedia = event.media) }
       is MediaSendFlowEvent.ToggleAlbumSelected -> toggleAlbumSelected(event.media)
       MediaSendFlowEvent.ShowSelectedFilmstrip -> showSelectedFilmstrip()
+      is MediaSendFlowEvent.EditFromAlbum -> editFromAlbum(event.media, event.tool)
+      MediaSendFlowEvent.CloseAlbumViewer -> closeAlbumViewer()
       is MediaSendFlowEvent.SwitchFolder -> backStack.switchFolder(event.mediaFolder)
       is MediaSendFlowEvent.SendNow -> sendNow(event.quality, event.separately)
       is MediaSendFlowEvent.AttachmentDockEntrySelected -> sendHudCommand(MediaSendFlowHudCommand.AttachmentDockEntrySelected(event.id))
@@ -477,6 +479,36 @@ class MediaSendFlowViewModel(
       fun selectedCopyOf(wanted: Media?): Media? = wanted?.let { w -> snapshot.selectedMedia.firstOrNull { it.uri == w.uri } }
       val focus = selectedCopyOf(snapshot.albumFocusedMedia) ?: selectedCopyOf(snapshot.focusedMedia) ?: snapshot.selectedMedia.firstOrNull()
       updateState { copy(isBrowsingAlbum = false, focusedMedia = focus) }
+    }
+  }
+
+  /**
+   * Tellomi（tellomi/tellomi#1518 V-1，D11 / D13）：查看器底部「裁剪」「绘制」。没选就先选上（打开即选，D13），
+   * 再在编辑器里打开这一张并直接进入对应工具；超出上限等原因选不上时留在查看器，提示照常。
+   */
+  private fun editFromAlbum(media: Media, tool: AlbumEditTool) {
+    mutateSelection {
+      if (state.value.selectedMedia.none { it.uri == media.uri }) {
+        addMediaHoldingSelection(setOf(media), focusNewlyAdded = true)
+      }
+      val selected = state.value.selectedMedia.firstOrNull { it.uri == media.uri } ?: return@mutateSelection
+      updateState { copy(focusedMedia = selected) }
+      goToEditLeavingAlbum()
+      val controller = focusedImageController() ?: return@mutateSelection
+      when (tool) {
+        AlbumEditTool.CROP -> controller.beginCropAndRotateEdit()
+        AlbumEditTool.DRAW -> controller.beginDrawEdit()
+      }
+    }
+  }
+
+  /**
+   * Tellomi（tellomi/tellomi#1518 V-2）：查看器下滑关闭，和系统返回一样弹出编辑页、回到网格。
+   * 相册标记不在这里清：先清掉的话，淡出那一下会闪出编辑页。
+   */
+  private fun closeAlbumViewer() {
+    if (state.value.isBrowsingAlbum && backStack.lastOrNull() == MediaSendRoute.Edit) {
+      backStack.pop()
     }
   }
 
