@@ -10,8 +10,8 @@ import android.app.Application
 import android.net.Uri
 import androidx.test.core.app.ApplicationProvider
 import io.mockk.every
-import io.mockk.mockkObject
-import io.mockk.unmockkObject
+import io.mockk.mockkStatic
+import io.mockk.unmockkStatic
 import io.mockk.verify
 import org.junit.After
 import org.junit.Assert.assertTrue
@@ -41,12 +41,12 @@ class ContactDiscoveryTest {
 
   @Before
   fun setUp() {
-    mockkObject(SystemContactsRepository)
+    mockkStatic(SystemContactsRepository::class)
   }
 
   @After
   fun tearDown() {
-    unmockkObject(SystemContactsRepository)
+    unmockkStatic(SystemContactsRepository::class)
   }
 
   @Test
