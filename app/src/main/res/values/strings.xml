@@ -333,6 +333,12 @@
     <string name="TellomiUpdateRequired__notification_text">This version needs an update to send and receive messages. Tap to update.</string>
     <!-- Message of the confirmation shown before switching to read-only from the update-required screen -->
     <string name="TellomiUpdateRequired__view_chats_only_confirm_message">Until you update, you can view your chats but can\'t send or receive messages.</string>
+    <!-- Reason on the update-required screen when the version manifest marks this version as having a security problem (tellomi/tellomi#1491) -->
+    <string name="TellomiUpdateRequired__reason_security">This version has a security problem. To protect your account and messages, update to keep using Tellomi.</string>
+    <!-- Reason on the update-required screen when the version manifest requires this update for another reason (tellomi/tellomi#1491) -->
+    <string name="TellomiUpdateRequired__reason_other">This version needs an update to keep sending and receiving messages.</string>
+    <!-- Text link on the update-required screen that opens the release notes on our website -->
+    <string name="TellomiUpdateRequired__learn_more">What\'s in this update</string>
 
     <!-- ClockSkewActivity -->
     <!-- Title of the full-screen dialog shown when the device clock is too far off from the real time -->

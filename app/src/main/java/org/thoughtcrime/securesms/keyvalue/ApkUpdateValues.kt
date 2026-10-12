@@ -22,6 +22,10 @@ class ApkUpdateValues(store: KeyValueStore) : SignalStoreValues(store) {
     private const val AVAILABLE_UPDATE_VERSION_CODE = "apk_update.available_update_version_code"
     private const val DOWNLOAD_ALLOWS_METERED = "apk_update.download_allows_metered"
     private const val READ_ONLY_CHOSEN_VERSION_CODE = "apk_update.read_only_chosen_version_code"
+    private const val UPDATE_MANIFEST = "apk_update.update_manifest"
+    private const val UPDATE_MANIFEST_SERIAL = "apk_update.update_manifest_serial"
+    private const val UPDATE_MANIFEST_CHECKED_AT = "apk_update.update_manifest_checked_at"
+    private const val READ_ONLY_SINCE_MANIFEST_SERIAL = "apk_update.read_only_since_manifest_serial"
   }
 
   public override fun onFirstEverAppLaunch() = Unit
@@ -54,6 +58,32 @@ class ApkUpdateValues(store: KeyValueStore) : SignalStoreValues(store) {
    * 等于当前 versionCode 就不再自动盖阻断页；装上新版本后自然作废。0 = 没选过。
    */
   var readOnlyChosenVersionCode: Int by integerValue(READ_ONLY_CHOSEN_VERSION_CODE, 0)
+
+  /**
+   * Tellomi（tellomi/tellomi#1491）：最后一份采信的更新清单（验过签的原始字节，[org.thoughtcrime.securesms.updaterequired.UpdateManifests]）；
+   * 没有则为 null。断网时照它判档（需求 §3.2「缓存」）。
+   */
+  val updateManifest: ByteArray? get() = store.getBlob(UPDATE_MANIFEST, null)
+
+  /** 上面那份清单的 serial；还没有时为 0。新拉到的清单 serial 比它小就不采信（防重放）。 */
+  val updateManifestSerial: Long by longValue(UPDATE_MANIFEST_SERIAL, 0)
+
+  /** 最近一次拉清单（不管采没采信）的时间，用来节流。 */
+  var updateManifestCheckedAt: Long by longValue(UPDATE_MANIFEST_CHECKED_AT, 0)
+
+  /**
+   * 进入只读（`misc.isClientDeprecated`）时缓存里那份清单的 serial；-1 = 没在只读。
+   * 之后拉到一份 serial 更大、而且不判「必须」的清单才放行——这就是「撤销」（需求 §3.2.1）。
+   */
+  var readOnlySinceManifestSerial: Long by longValue(READ_ONLY_SINCE_MANIFEST_SERIAL, -1)
+
+  fun setUpdateManifest(raw: ByteArray, serial: Long) {
+    store
+      .beginWrite()
+      .putBlob(UPDATE_MANIFEST, raw)
+      .putLong(UPDATE_MANIFEST_SERIAL, serial)
+      .commit()
+  }
 
   /**
    * Tellomi（tellomi/tellomi#1138）：最近一次清单检查看到的、比当前安装更新的版本号（清单的 versionName）；没有则为 null。

@@ -124,6 +124,7 @@ import org.thoughtcrime.securesms.service.RotateSignedPreKeyListener;
 import org.thoughtcrime.securesms.service.webrtc.ActiveCallManager;
 import org.thoughtcrime.securesms.service.webrtc.AndroidTelecomUtil;
 import org.thoughtcrime.securesms.storage.StorageSyncHelper;
+import org.thoughtcrime.securesms.updaterequired.UpdateManifests;
 import org.thoughtcrime.securesms.util.AppStartup;
 import org.thoughtcrime.securesms.util.BatterySnapshotTracker;
 import org.signal.core.util.DeviceProperties;
@@ -294,6 +295,7 @@ public class ApplicationContext extends Application implements AppForegroundObse
       KeyCachingService.onAppForegrounded(this);
       AppDependencies.getShakeToReport().enable();
       checkBuildExpiration();
+      UpdateManifests.onForeground();
       checkFreeDiskSpace();
       MemoryTracker.start();
       BackupSubscriptionCheckJob.enqueueIfAble();

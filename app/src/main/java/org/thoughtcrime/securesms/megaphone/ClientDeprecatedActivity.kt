@@ -27,6 +27,7 @@ import org.thoughtcrime.securesms.updaterequired.UpdateRequiredScreen
 import org.thoughtcrime.securesms.updaterequired.UpdateRequiredScreenAction
 import org.thoughtcrime.securesms.updaterequired.UpdateRequiredScreenEvent
 import org.thoughtcrime.securesms.updaterequired.UpdateRequiredViewModel
+import org.thoughtcrime.securesms.util.CommunicationActions
 import org.thoughtcrime.securesms.util.DynamicNoActionBarTheme
 import org.thoughtcrime.securesms.util.PlayStoreUtil
 import org.thoughtcrime.securesms.util.viewModel
@@ -83,6 +84,9 @@ class ClientDeprecatedActivity : BaseActivity() {
             UpdateRequiredScreenAction.ConfirmViewChatsOnly -> confirmViewChatsOnly()
             UpdateRequiredScreenAction.EnterReadOnly -> enterReadOnly()
             UpdateRequiredScreenAction.LeavePage -> finish()
+            is UpdateRequiredScreenAction.OpenNotes -> CommunicationActions.openBrowserLink(this@ClientDeprecatedActivity, action.url)
+            // 更新清单撤销了「必须」（tellomi/tellomi#1491）：和进只读一样从路由重新进 App，这次能收发
+            UpdateRequiredScreenAction.Released -> enterReadOnly()
           }
         }
       }

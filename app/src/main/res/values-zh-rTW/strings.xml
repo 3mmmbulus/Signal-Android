@@ -318,6 +318,9 @@
     <string name="TellomiUpdateRequired__input_needs_update">此版本需要更新才能收發訊息。</string>
     <string name="TellomiUpdateRequired__notification_text">此版本需要更新才能收發訊息，輕按即可更新。</string>
     <string name="TellomiUpdateRequired__view_chats_only_confirm_message">更新之前可以看聊天紀錄，但不能收發訊息。</string>
+    <string name="TellomiUpdateRequired__reason_security">此版本存在安全問題，為保護你的帳戶和訊息，請更新後繼續使用。</string>
+    <string name="TellomiUpdateRequired__reason_other">此版本需要更新，更新後才能繼續收發訊息。</string>
+    <string name="TellomiUpdateRequired__learn_more">了解更新內容</string>
 
     <!-- ClockSkewActivity -->
     <!-- Title of the full-screen dialog shown when the device clock is too far off from the real time -->

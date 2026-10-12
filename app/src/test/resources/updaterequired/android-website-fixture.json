@@ -1,0 +1,21 @@
+{
+  "channel": "website",
+  "issuedAt": "2026-10-13T12:00:00Z",
+  "latest": {
+    "build": 175401,
+    "releaseDate": "2026-10-13T12:00:00Z",
+    "sha256": "abababababababababababababababababababababababababababababababab",
+    "size": 123456789,
+    "url": "https://updates.tellomi.app/android/Tellomi-website-prod-universal-release-0.1.5.apk",
+    "version": "0.1.5"
+  },
+  "name": "tellomi-update",
+  "notesUrl": "https://www.tellomi.app/changelog/#android",
+  "platform": "android",
+  "recommendedMinBuild": 175301,
+  "requiredFrom": "2026-10-20T00:00:00Z",
+  "requiredMinBuild": 175201,
+  "requiredReason": "security",
+  "schema": 1,
+  "serial": 20261013120000
+}

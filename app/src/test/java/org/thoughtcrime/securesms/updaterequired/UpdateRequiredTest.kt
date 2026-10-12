@@ -51,4 +51,23 @@ class UpdateRequiredTest {
     assertThat(UpdateRequired.shouldBlock(isRequired = true, reason = UpdateRequiredState.Reason.SERVER_REJECTED, readOnlyChosenVersionCode = 175101, currentVersionCode = 175101)).isFalse()
     assertThat(UpdateRequired.shouldBlock(isRequired = true, reason = UpdateRequiredState.Reason.SERVER_REJECTED, readOnlyChosenVersionCode = 175101, currentVersionCode = 175201)).isTrue()
   }
+
+  // ==================== tellomi/tellomi#1491：更新清单写的原因 ====================
+
+  @Test
+  fun `the manifest's reason picks the sentence on the blocking page`() {
+    val serverRejected = UpdateRequiredState.Reason.SERVER_REJECTED
+
+    assertThat(UpdateRequired.displayReason(serverRejected, UpdateManifest.RequiredReason.SECURITY)).isEqualTo(UpdateRequiredState.Reason.SECURITY)
+    assertThat(UpdateRequired.displayReason(serverRejected, UpdateManifest.RequiredReason.OTHER)).isEqualTo(UpdateRequiredState.Reason.OTHER)
+    // 协议和服务端 499 是同一句「此版本已无法与服务器正常通信」
+    assertThat(UpdateRequired.displayReason(serverRejected, UpdateManifest.RequiredReason.PROTOCOL)).isEqualTo(serverRejected)
+    assertThat(UpdateRequired.displayReason(serverRejected, null)).isEqualTo(serverRejected)
+  }
+
+  @Test
+  fun `an expired build says too old whatever the manifest says`() {
+    assertThat(UpdateRequired.displayReason(UpdateRequiredState.Reason.BUILD_EXPIRED, UpdateManifest.RequiredReason.SECURITY))
+      .isEqualTo(UpdateRequiredState.Reason.BUILD_EXPIRED)
+  }
 }

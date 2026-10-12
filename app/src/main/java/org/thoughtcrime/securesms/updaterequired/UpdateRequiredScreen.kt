@@ -51,10 +51,12 @@ object UpdateRequiredTestTags {
   const val PRIMARY_BUTTON = "update_required_primary_button"
   const val DOWNLOAD_FROM_WEBSITE = "update_required_download_from_website"
   const val VIEW_CHATS_ONLY = "update_required_view_chats_only"
+  const val LEARN_MORE = "update_required_learn_more"
 }
 
 /**
- * 「必须更新」阻断页（tellomi/tellomi#1138，需求 3.4）：Tellomi 标 → 标题 → 一句原因 → 版本与大小 → 主按钮。
+ * 「必须更新」阻断页（tellomi/tellomi#1138，需求 3.4）：Tellomi 标 → 标题 → 一句原因（服务端拒绝 / 构建到期 / 更新清单写的安全或其它，#1491）
+ * → 版本与大小 → 主按钮 →「了解更新内容」（更新清单给了地址时）。
  * 下载进度画在主按钮里；失败时按钮变「重试」，下方给「去官网下载」。
  * 最下面始终有「暂不更新，只看聊天记录」（owner 2026-09-24 规则 1）：聊天记录只在这台手机上，不能拦死。
  */
@@ -113,6 +115,8 @@ fun UpdateRequiredScreen(
               when (state.reason) {
                 UpdateRequiredState.Reason.SERVER_REJECTED -> R.string.TellomiUpdateRequired__reason_server_rejected
                 UpdateRequiredState.Reason.BUILD_EXPIRED -> R.string.TellomiUpdateRequired__reason_build_expired
+                UpdateRequiredState.Reason.SECURITY -> R.string.TellomiUpdateRequired__reason_security
+                UpdateRequiredState.Reason.OTHER -> R.string.TellomiUpdateRequired__reason_other
               }
             ),
             style = MaterialTheme.typography.bodyLarge,
@@ -159,6 +163,16 @@ fun UpdateRequiredScreen(
               .testTag(UpdateRequiredTestTags.DOWNLOAD_FROM_WEBSITE)
           ) {
             Text(text = stringResource(R.string.TellomiUpdateRequired__download_from_website))
+          }
+        }
+
+        // 需求 3.4 的布局：主按钮下面是次级文字链「了解更新内容」（更新清单给了地址才有，tellomi/tellomi#1491）
+        if (state.notesUrl != null) {
+          TextButton(
+            onClick = { onEvent(UpdateRequiredScreenEvent.LearnMoreClicked) },
+            modifier = Modifier.testTag(UpdateRequiredTestTags.LEARN_MORE)
+          ) {
+            Text(text = stringResource(R.string.TellomiUpdateRequired__learn_more))
           }
         }
 

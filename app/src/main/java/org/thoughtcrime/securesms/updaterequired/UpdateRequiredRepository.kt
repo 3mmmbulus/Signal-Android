@@ -21,6 +21,7 @@ import org.thoughtcrime.securesms.dependencies.AppDependencies
 import org.thoughtcrime.securesms.jobmanager.JobTracker
 import org.thoughtcrime.securesms.jobmanager.impl.NetworkConstraint
 import org.thoughtcrime.securesms.jobs.ApkUpdateJob
+import org.thoughtcrime.securesms.jobs.UpdateManifestJob
 import org.thoughtcrime.securesms.keyvalue.SignalStore
 import kotlin.time.Duration.Companion.seconds
 
@@ -72,6 +73,32 @@ object UpdateRequired {
       UpdateRequiredState.Reason.BUILD_EXPIRED
     } else {
       UpdateRequiredState.Reason.SERVER_REJECTED
+    }
+  }
+
+  /** 本机构建过了有效期（Signal 自带的构建过期兜底）。这种只读不归更新清单管（[UpdateManifests.reconcile]）。 */
+  @JvmStatic
+  fun isBuildExpired(): Boolean = reason() == UpdateRequiredState.Reason.BUILD_EXPIRED
+
+  /**
+   * 阻断页上显示的原因（tellomi/tellomi#1491，需求 3.4「按 requiredReason」）：服务端判定的那一类，再按更新清单写的原因细分——
+   * 安全、其它各一句；协议和服务端 499 是同一句「此版本已无法与服务器正常通信」。
+   *
+   * @param manifestReason 更新清单此刻判「必须」时写的原因；不是清单要求的（只是 499）为 null
+   */
+  @JvmStatic
+  @JvmOverloads
+  fun displayReason(
+    base: UpdateRequiredState.Reason = reason(),
+    manifestReason: UpdateManifest.RequiredReason? = UpdateManifests.requiredReason()
+  ): UpdateRequiredState.Reason {
+    if (base == UpdateRequiredState.Reason.BUILD_EXPIRED) {
+      return base
+    }
+    return when (manifestReason) {
+      UpdateManifest.RequiredReason.SECURITY -> UpdateRequiredState.Reason.SECURITY
+      UpdateManifest.RequiredReason.OTHER -> UpdateRequiredState.Reason.OTHER
+      UpdateManifest.RequiredReason.PROTOCOL, null -> UpdateRequiredState.Reason.SERVER_REJECTED
     }
   }
 }
@@ -126,7 +153,28 @@ interface UpdateRequiredRepository {
 
   /** 这一页现在是不是自动盖上的阻断页（见 [UpdateRequired.shouldBlock]）；不是的话，出口不用再确认。 */
   fun isBlocking(): Boolean
+
+  /** 更新清单里给这一页用的几样（tellomi/tellomi#1491）；没有清单时为 null。 */
+  fun manifestInfo(): UpdateManifestInfo? = null
+
+  /**
+   * 同步拉一次更新清单：阻断页每次回到前台都拉，撤销才能尽快生效（需求 3.4「撤销」、判据 7）。拉不到就照缓存。
+   *
+   * @return 拉完以后是否还要更新（[UpdateRequired.isRequired]）
+   */
+  @WorkerThread
+  fun refreshRequiredState(): Boolean = true
 }
+
+/** 更新清单里给阻断页用的几样（tellomi/tellomi#1491）。 */
+data class UpdateManifestInfo(
+  /** 比当前安装更新的最新版版本号；清单里的最新版不比现在新时为 null。 */
+  val newerVersionName: String?,
+  /** 最新版安装包的大小（字节）；清单没写时为 null。 */
+  val sizeBytes: Long?,
+  /** 「了解更新内容」的网页。 */
+  val notesUrl: String?
+)
 
 class DefaultUpdateRequiredRepository(private val context: Context) : UpdateRequiredRepository {
 
@@ -139,7 +187,28 @@ class DefaultUpdateRequiredRepository(private val context: Context) : UpdateRequ
 
   override val managesAppUpdates: Boolean = BuildConfig.MANAGES_APP_UPDATES
 
-  override fun reason(): UpdateRequiredState.Reason = UpdateRequired.reason()
+  override fun reason(): UpdateRequiredState.Reason = UpdateRequired.displayReason()
+
+  override fun manifestInfo(): UpdateManifestInfo? {
+    if (!UpdateManifests.isEnabled) {
+      return null
+    }
+    val manifest = UpdateManifests.current() ?: return null
+    val newer = manifest.latest.build > BuildConfig.VERSION_CODE
+    return UpdateManifestInfo(
+      newerVersionName = manifest.latest.version.takeIf { newer },
+      sizeBytes = manifest.latest.size.takeIf { newer },
+      notesUrl = manifest.notesUrl
+    )
+  }
+
+  override fun refreshRequiredState(): Boolean {
+    if (UpdateManifests.isEnabled) {
+      val result = AppDependencies.jobManager.runSynchronously(UpdateManifestJob(), CHECK_TIMEOUT.inWholeMilliseconds)
+      Log.i(TAG, "Update manifest refresh finished: ${result.orElse(null)}")
+    }
+    return UpdateRequired.isRequired()
+  }
 
   override fun canRequestPackageInstalls(): Boolean {
     return Build.VERSION.SDK_INT < 26 || context.packageManager.canRequestPackageInstalls()

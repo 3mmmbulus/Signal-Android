@@ -46,12 +46,17 @@ class UpdateRequiredViewModel(
   }
 
   private val _state = MutableStateFlow(
-    UpdateRequiredState(
-      reason = repository.reason(),
-      managesAppUpdates = repository.managesAppUpdates,
-      newVersionName = repository.availableVersionName(),
-      isOffline = !repository.isOnline()
-    )
+    repository.manifestInfo().let { manifest ->
+      UpdateRequiredState(
+        reason = repository.reason(),
+        managesAppUpdates = repository.managesAppUpdates,
+        // 下载前就能显示「版本 x · 大小」：上游的清单检查还没跑过时，先用更新清单里的（tellomi/tellomi#1491）
+        newVersionName = repository.availableVersionName() ?: manifest?.newerVersionName,
+        totalBytes = manifest?.sizeBytes,
+        isOffline = !repository.isOnline(),
+        notesUrl = manifest?.notesUrl
+      )
+    }
   )
   val state: StateFlow<UpdateRequiredState> = _state.asStateFlow()
 
@@ -83,6 +88,7 @@ class UpdateRequiredViewModel(
       UpdateRequiredScreenEvent.ScreenResumed -> onScreenResumed()
       UpdateRequiredScreenEvent.PrimaryClicked -> onPrimaryClicked()
       UpdateRequiredScreenEvent.DownloadFromWebsiteClicked -> _actions.trySend(UpdateRequiredScreenAction.OpenDownloadPage)
+      UpdateRequiredScreenEvent.LearnMoreClicked -> _state.value.notesUrl?.let { _actions.trySend(UpdateRequiredScreenAction.OpenNotes(it)) }
       UpdateRequiredScreenEvent.ViewChatsOnlyClicked -> _actions.trySend(if (repository.isBlocking()) UpdateRequiredScreenAction.ConfirmViewChatsOnly else UpdateRequiredScreenAction.LeavePage)
       UpdateRequiredScreenEvent.ViewChatsOnlyConfirmed -> onViewChatsOnlyConfirmed()
     }
@@ -103,6 +109,26 @@ class UpdateRequiredViewModel(
     // 从系统设置回来：权限给了就接着更新（需求 3.4「先说明再跳系统设置，回来后继续安装」）。
     if (_state.value.download == Download.NeedsInstallPermission && repository.canRequestPackageInstalls()) {
       startDownload()
+    }
+
+    // 每次回到这一页都重拉一次更新清单（tellomi/tellomi#1491）：「必须」撤销了就放行（需求 3.4「撤销」、判据 7），
+    // 原因和「了解更新内容」也跟着最新的清单走。
+    viewModelScope.launch(SignalDispatchers.IO) {
+      if (!repository.refreshRequiredState()) {
+        Log.i(TAG, "No update is required anymore.")
+        _actions.trySend(UpdateRequiredScreenAction.Released)
+        return@launch
+      }
+
+      val manifest = repository.manifestInfo()
+      _state.update {
+        it.copy(
+          reason = repository.reason(),
+          notesUrl = manifest?.notesUrl ?: it.notesUrl,
+          newVersionName = it.newVersionName ?: manifest?.newerVersionName,
+          totalBytes = it.totalBytes ?: manifest?.sizeBytes
+        )
+      }
     }
   }
 

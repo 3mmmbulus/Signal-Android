@@ -432,6 +432,58 @@ class UpdateRequiredViewModelTest {
    * 页面开着时轮询不会自己停：「等 Wi-Fi」要一直看着，连上了就接着显示进度。
    * runTest 在用例体跑完后会把调度器推到空闲，轮询还在就永远推不完，所以先关掉 ViewModel 的作用域，和页面关掉时一样。
    */
+  // ==================== tellomi/tellomi#1491：更新清单 ====================
+
+  @Test
+  fun `before any download the page shows the manifest's version, size and release notes link`() = runViewModelTest {
+    repository.availableVersion = null
+    repository.manifest = UpdateManifestInfo(newerVersionName = "0.1.5", sizeBytes = 120_000_000, notesUrl = "https://www.tellomi.app/changelog/#android")
+
+    val state = createViewModel().state.value
+
+    assertThat(state.newVersionName).isEqualTo("0.1.5")
+    assertThat(state.totalBytes).isEqualTo(120_000_000L)
+    assertThat(state.notesUrl).isEqualTo("https://www.tellomi.app/changelog/#android")
+  }
+
+  @Test
+  fun `what's in this update opens the release notes`() = runViewModelTest {
+    repository.manifest = UpdateManifestInfo(newerVersionName = "0.1.5", sizeBytes = null, notesUrl = "https://www.tellomi.app/changelog/#android")
+    val viewModel = createViewModel()
+    val actions = collectActions(viewModel)
+
+    viewModel.onEvent(UpdateRequiredScreenEvent.LearnMoreClicked)
+    runCurrent()
+
+    assertThat(actions).containsExactly(UpdateRequiredScreenAction.OpenNotes("https://www.tellomi.app/changelog/#android"))
+  }
+
+  @Test
+  fun `coming back after the required update was withdrawn lets the user back in`() = runViewModelTest {
+    val viewModel = createViewModel()
+    val actions = collectActions(viewModel)
+    repository.stillRequired = false
+
+    viewModel.onEvent(UpdateRequiredScreenEvent.ScreenResumed)
+    runCurrent()
+
+    assertThat(repository.refreshes).isEqualTo(1)
+    assertThat(actions).containsExactly(UpdateRequiredScreenAction.Released)
+  }
+
+  @Test
+  fun `coming back while still required refreshes the reason from the latest manifest`() = runViewModelTest {
+    val viewModel = createViewModel()
+    val actions = collectActions(viewModel)
+    repository.reasonValue = UpdateRequiredState.Reason.SECURITY
+
+    viewModel.onEvent(UpdateRequiredScreenEvent.ScreenResumed)
+    runCurrent()
+
+    assertThat(viewModel.state.value.reason).isEqualTo(UpdateRequiredState.Reason.SECURITY)
+    assertThat(actions).isEmpty()
+  }
+
   private fun runViewModelTest(body: suspend TestScope.() -> Unit) = runTest(testDispatcher) {
     try {
       body()
@@ -470,6 +522,10 @@ class UpdateRequiredViewModelTest {
     var blocking = true
     var readOnlyChoices = 0
     val installs = mutableListOf<Long>()
+    var reasonValue = UpdateRequiredState.Reason.SERVER_REJECTED
+    var manifest: UpdateManifestInfo? = null
+    var stillRequired = true
+    var refreshes = 0
 
     /** 每次 [currentDownload] 取下一个；取完之后一直返回最后一个。 */
     private val scripted = ArrayDeque<UpdateDownloadSnapshot>()
@@ -479,8 +535,14 @@ class UpdateRequiredViewModelTest {
       scripted.addAll(snapshots)
     }
 
-    override fun reason(): UpdateRequiredState.Reason = UpdateRequiredState.Reason.SERVER_REJECTED
+    override fun reason(): UpdateRequiredState.Reason = reasonValue
     override fun canRequestPackageInstalls(): Boolean = canInstall
+    override fun manifestInfo(): UpdateManifestInfo? = manifest
+
+    override fun refreshRequiredState(): Boolean {
+      refreshes++
+      return stillRequired
+    }
     override fun isOnline(): Boolean = online
 
     override fun runRequiredUpdateCheck(restartStuckDownload: Boolean): Boolean {
