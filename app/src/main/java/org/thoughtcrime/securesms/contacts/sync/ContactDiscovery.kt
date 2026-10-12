@@ -65,6 +65,9 @@ object ContactDiscovery {
   @WorkerThread
   fun refreshAll(context: Context, notifyOfNewUsers: Boolean) {
     if (cdsiUnavailable("refresh-all")) {
+      // Tellomi（#1346）：CDSI 关着时，授权通讯录和「刷新联系人」只做只读的系统通讯录同步（名字、头像、isSystemContact），
+      // 不查 CDS、不上传、不写系统通讯录。不这样做的话，授权以后名字不显示，「添加到通讯录」也一直出现。
+      syncRecipientInfoWithSystemContacts(context)
       return
     }
 
