@@ -8,6 +8,7 @@ package org.thoughtcrime.securesms.attachments
 import android.net.Uri
 import android.os.Parcel
 import org.signal.blurhash.BlurHash
+import org.signal.core.models.media.TransformProperties
 import org.signal.core.util.Base64
 import org.thoughtcrime.securesms.database.AttachmentTable
 import org.thoughtcrime.securesms.stickers.StickerLocator
@@ -51,7 +52,8 @@ class ArchivedAttachment : Attachment {
     quoteTargetContentType: String?,
     uuid: UUID?,
     fileName: String?,
-    localBackupKey: ByteArray?
+    localBackupKey: ByteArray?,
+    transformProperties: TransformProperties? = null
   ) : super(
     contentType = contentType ?: "",
     quote = quote,
@@ -76,7 +78,7 @@ class ArchivedAttachment : Attachment {
     stickerLocator = stickerLocator,
     blurHash = BlurHash.parseOrNull(blurHash),
     audioHash = null,
-    transformProperties = null,
+    transformProperties = transformProperties,
     uuid = uuid
   ) {
     this.archiveCdn = archiveCdn

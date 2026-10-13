@@ -43,6 +43,7 @@ import org.thoughtcrime.securesms.attachments.PointerAttachment
 import org.thoughtcrime.securesms.attachments.TombstoneAttachment
 import org.thoughtcrime.securesms.backup.v2.ImportSkips
 import org.thoughtcrime.securesms.backup.v2.ImportState
+import org.thoughtcrime.securesms.backup.v2.util.TellomiArchiveAttachments
 import org.thoughtcrime.securesms.backup.v2.util.toLocalAttachment
 import org.thoughtcrime.securesms.contactshare.Contact
 import org.thoughtcrime.securesms.database.AttachmentTable
@@ -83,6 +84,7 @@ import org.thoughtcrime.securesms.recipients.RecipientId
 import org.thoughtcrime.securesms.stickers.StickerLocator
 import org.thoughtcrime.securesms.util.Environment
 import org.thoughtcrime.securesms.util.MessageUtil
+import org.thoughtcrime.securesms.util.TellomiCaptionAbove
 import org.whispersystems.signalservice.api.payments.Money
 import org.whispersystems.signalservice.internal.push.DataMessage
 import java.math.BigDecimal
@@ -867,6 +869,11 @@ class ChatItemArchiveImporter(
     if (quote != null) {
       this.addQuote(quote)
     }
+
+    // Tellomi (ADR-0068 §4.7)
+    TellomiCaptionAbove.extras(standardMessage.tellomi?.captionAboveMedia == true)?.let {
+      this.put(MessageTable.MESSAGE_EXTRAS, it.encode())
+    }
   }
 
   private fun ContentValues.addUpdateMessage(updateMessage: ChatUpdateMessage, fromRecipientId: RecipientId, toRecipientId: RecipientId, chatRecipientId: RecipientId) {
@@ -1297,7 +1304,9 @@ class ChatItemArchiveImporter(
       fileName = pointer.fileName,
       uuid = clientUuid,
       quote = quote,
-      quoteTargetContentType = quoteTargetContentType
+      quoteTargetContentType = quoteTargetContentType,
+      // Tellomi (ADR-0068 §4.5): as a file, covered, live photo -- the rules of receiving it
+      tellomi = TellomiArchiveAttachments.toLocal(tellomi, contentType, quote)
     )
   }
 

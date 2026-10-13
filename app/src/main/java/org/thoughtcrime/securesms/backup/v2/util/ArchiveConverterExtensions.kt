@@ -8,6 +8,7 @@ package org.thoughtcrime.securesms.backup.v2.util
 import okio.ByteString
 import okio.ByteString.Companion.toByteString
 import org.signal.archive.proto.FilePointer
+import org.signal.core.models.media.TransformProperties
 import org.signal.core.util.Base64
 import org.signal.core.util.UuidUtil
 import org.signal.core.util.isNotNullOrBlank
@@ -48,7 +49,8 @@ fun FilePointer?.toLocalAttachment(
   fileName: String? = this?.fileName,
   uuid: ByteString? = null,
   quote: Boolean = false,
-  quoteTargetContentType: String? = null
+  quoteTargetContentType: String? = null,
+  tellomi: TransformProperties? = null
 ): Attachment? {
   if (this == null) return null
   val locatorInfo = this.locatorInfo ?: return null
@@ -90,7 +92,8 @@ fun FilePointer?.toLocalAttachment(
         quoteTargetContentType = quoteTargetContentType,
         uuid = UuidUtil.fromByteStringOrNull(uuid),
         fileName = fileName,
-        localBackupKey = locatorInfo.localKey?.toByteArray()
+        localBackupKey = locatorInfo.localKey?.toByteArray(),
+        transformProperties = tellomi
       )
     }
     AttachmentType.TRANSIT -> {
@@ -113,7 +116,10 @@ fun FilePointer?.toLocalAttachment(
         caption = Optional.ofNullable(this.caption),
         blurHash = Optional.ofNullable(this.blurHash),
         uploadTimestamp = locatorInfo.transitTierUploadTimestamp?.clampToValidBackupRange() ?: 0,
-        uuid = UuidUtil.fromByteStringOrNull(uuid)
+        uuid = UuidUtil.fromByteStringOrNull(uuid),
+        tellomiAsFile = tellomi?.tellomiAsFile == true,
+        tellomiSpoiler = tellomi?.tellomiSpoiler == true,
+        tellomiLivePhotoVideo = tellomi?.tellomiLivePhotoVideo?.let { Base64.decode(it) }
       )
       PointerAttachment.forPointer(
         pointer = Optional.of(signalAttachmentPointer),
@@ -139,7 +145,8 @@ fun FilePointer?.toLocalAttachment(
         quote = quote,
         quoteTargetContentType = quoteTargetContentType,
         stickerLocator = stickerLocator,
-        uuid = UuidUtil.fromByteStringOrNull(uuid)
+        uuid = UuidUtil.fromByteStringOrNull(uuid),
+        transformProperties = tellomi
       )
     }
   }

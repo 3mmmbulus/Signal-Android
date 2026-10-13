@@ -40,6 +40,7 @@ import org.signal.archive.proto.SimpleChatUpdate
 import org.signal.archive.proto.StandardMessage
 import org.signal.archive.proto.Sticker
 import org.signal.archive.proto.StickerMessage
+import org.signal.archive.proto.TellomiStandardMessage
 import org.signal.archive.proto.Text
 import org.signal.archive.proto.ThreadMergeChatUpdate
 import org.signal.archive.proto.ViewOnceMessage
@@ -76,6 +77,7 @@ import org.thoughtcrime.securesms.backup.v2.BackupMode
 import org.thoughtcrime.securesms.backup.v2.ExportOddities
 import org.thoughtcrime.securesms.backup.v2.ExportSkips
 import org.thoughtcrime.securesms.backup.v2.ExportState
+import org.thoughtcrime.securesms.backup.v2.util.TellomiArchiveAttachments
 import org.thoughtcrime.securesms.backup.v2.util.clampToValidBackupRange
 import org.thoughtcrime.securesms.backup.v2.util.toRemoteFilePointer
 import org.thoughtcrime.securesms.contactshare.Contact
@@ -109,6 +111,7 @@ import org.thoughtcrime.securesms.payments.State
 import org.thoughtcrime.securesms.polls.PollRecord
 import org.thoughtcrime.securesms.recipients.RecipientId
 import org.thoughtcrime.securesms.util.MediaUtil
+import org.thoughtcrime.securesms.util.TellomiCaptionAbove
 import org.thoughtcrime.securesms.util.mb
 import java.io.Closeable
 import java.io.IOException
@@ -1213,7 +1216,9 @@ private fun BackupMessageRecord.toRemoteStandardMessage(exportState: ExportState
     attachments = messageAttachments.toRemoteAttachments(exportState.backupMode).withFixedVoiceNotes(textPresent = text != null || longTextAttachment != null),
     linkPreview = linkPreviews.map { it.toRemoteLinkPreview(exportState.backupMode) },
     longText = longTextAttachment?.toRemoteFilePointer(backupMode = exportState.backupMode),
-    reactions = reactionRecords.toRemote(exportState)
+    reactions = reactionRecords.toRemote(exportState),
+    // Tellomi (ADR-0068 §4.7)
+    tellomi = TellomiStandardMessage(captionAboveMedia = true).takeIf { TellomiCaptionAbove.isCaptionAboveMedia(this.messageExtras) }
   )
 }
 
@@ -1408,7 +1413,9 @@ private fun DatabaseAttachment.toRemoteMessageAttachment(backupMode: BackupMode,
     } else {
       MessageAttachment.Flag.NONE
     },
-    clientUuid = this.uuid?.let { UuidUtil.toByteString(uuid) }
+    clientUuid = this.uuid?.let { UuidUtil.toByteString(uuid) },
+    // Tellomi (ADR-0068 §4.5): as a file, covered, live photo
+    tellomi = TellomiArchiveAttachments.toRemote(this)
   )
 }
 
