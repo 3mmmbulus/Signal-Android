@@ -31,6 +31,7 @@ import org.thoughtcrime.securesms.feed.net.FeedEditPostRequest
 import org.thoughtcrime.securesms.feed.net.FeedEntry
 import org.thoughtcrime.securesms.feed.net.FeedEventPayload
 import org.thoughtcrime.securesms.feed.net.FeedFollowRequest
+import org.thoughtcrime.securesms.feed.net.FeedHideLists
 import org.thoughtcrime.securesms.feed.net.FeedImageUploader
 import org.thoughtcrime.securesms.feed.net.FeedInterests
 import org.thoughtcrime.securesms.feed.net.FeedItemRef
@@ -174,6 +175,11 @@ interface FeedSource {
 
   /** 「查看数据」，只有作者能看。 */
   suspend fun postInsights(contentId: String): FeedPostInsights
+
+  suspend fun hideLists(): FeedHideLists
+
+  /** 「不看 TA」（[FeedApi.HIDE_MUTE]）/「不让 TA 看」（[FeedApi.HIDE_FROM]）的加进、移出。 */
+  suspend fun setHideList(list: String, profileId: String, on: Boolean)
 }
 
 /**
@@ -319,6 +325,8 @@ class RemoteFeedSource(
   override suspend fun saveNotificationSettings(settings: FeedNotificationSettings): FeedNotificationSettings = api.putNotificationSettings(settings)
   override suspend fun updatePostSettings(contentId: String, update: FeedPostSettingsUpdate) = api.updatePostSettings(contentId, update)
   override suspend fun postInsights(contentId: String): FeedPostInsights = api.postInsights(contentId)
+  override suspend fun hideLists(): FeedHideLists = api.hideLists()
+  override suspend fun setHideList(list: String, profileId: String, on: Boolean) = api.setHideList(list, profileId, on)
 
   override suspend fun search(query: String, scope: String, cursor: String?): FeedSearchPage {
     val response = api.search(query, scope, cursor)
@@ -446,6 +454,8 @@ object EmptyFeedSource : FeedSource {
   override suspend fun saveNotificationSettings(settings: FeedNotificationSettings): FeedNotificationSettings = throw IllegalStateException("feed is not available")
   override suspend fun updatePostSettings(contentId: String, update: FeedPostSettingsUpdate) = throw IllegalStateException("feed is not available")
   override suspend fun postInsights(contentId: String): FeedPostInsights = throw IllegalStateException("feed is not available")
+  override suspend fun hideLists(): FeedHideLists = throw IllegalStateException("feed is not available")
+  override suspend fun setHideList(list: String, profileId: String, on: Boolean) = throw IllegalStateException("feed is not available")
 }
 
 object FeedSources {

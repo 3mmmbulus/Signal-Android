@@ -45,6 +45,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.SnackbarResult
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
@@ -138,12 +139,21 @@ fun FeedListPane(
   }
 
   val pinLimitMessage = stringResource(R.string.TellomiFeed__pin_limit)
+  val profileRequiredMessage = stringResource(R.string.TellomiFeed__hide_profile_required)
+  val mutedMessage = stringResource(R.string.TellomiFeed__muted_done)
+  val undoLabel = stringResource(R.string.TellomiFeed__undo)
+  LaunchedEffect(state.mutedAuthor) {
+    val author = state.mutedAuthor ?: return@LaunchedEffect
+    viewModel.onMutedNoticeShown()
+    if (snackbarHostState.showSnackbar(mutedMessage, actionLabel = undoLabel) == SnackbarResult.ActionPerformed) viewModel.unmuteAuthor(author)
+  }
   LaunchedEffect(state.transientError) {
     val error = state.transientError ?: return@LaunchedEffect
     snackbarHostState.showSnackbar(
       when (error) {
         FeedState.TransientError.NETWORK -> networkMessage
         FeedState.TransientError.PIN_LIMIT -> pinLimitMessage
+        FeedState.TransientError.PROFILE_REQUIRED -> profileRequiredMessage
         FeedState.TransientError.ACTION_FAILED -> actionMessage
       }
     )
@@ -224,6 +234,7 @@ fun FeedListPane(
       onNotInterestedClick = viewModel::notInterested,
       onUndoNotInterested = viewModel::undoNotInterested,
       onBlockAuthorClick = { confirmBlock = it },
+      onMuteAuthorClick = viewModel::muteAuthor,
       onManagePreferences = { context.startActivity(FeedRecommendationSettingsActivity.intent(context)) },
       onCardsVisible = viewModel::onCardsVisible,
       onMyPostsClick = { context.startActivity(FeedMyPostsActivity.intent(context)) },
@@ -303,6 +314,7 @@ private fun FeedPager(
   onUndoNotInterested: (FeedCard) -> Unit = {},
   onManagePreferences: () -> Unit = {},
   onBlockAuthorClick: (FeedCard) -> Unit = {},
+  onMuteAuthorClick: (FeedCard) -> Unit = {},
   onMyPostsClick: () -> Unit,
   modifier: Modifier = Modifier,
   onEditClick: (FeedEditTarget) -> Unit = {},
@@ -376,6 +388,7 @@ private fun FeedPager(
         onUndoNotInterested = onUndoNotInterested,
         onManagePreferences = onManagePreferences,
         onBlockAuthorClick = onBlockAuthorClick,
+        onMuteAuthorClick = onMuteAuthorClick,
         isCurrentPage = pagerState.currentPage == page,
         onNearTopChanged = chrome::onNearTopChanged,
         onCardsVisible = { onCardsVisible(tab, it) },
@@ -407,6 +420,7 @@ private fun FeedTimeline(
   onUndoNotInterested: (FeedCard) -> Unit,
   onManagePreferences: () -> Unit,
   onBlockAuthorClick: (FeedCard) -> Unit,
+  onMuteAuthorClick: (FeedCard) -> Unit,
   isCurrentPage: Boolean,
   onCardsVisible: (Set<String>) -> Unit,
   onNearTopChanged: (Boolean) -> Unit = {},
@@ -495,7 +509,8 @@ private fun FeedTimeline(
             onAuthorClick = onAuthorClick,
             onVote = onVote,
             onOwnPostAction = onOwnPostAction,
-            onBlockAuthorClick = if (card.viewer.isAuthor) null else onBlockAuthorClick
+            onBlockAuthorClick = if (card.viewer.isAuthor) null else onBlockAuthorClick,
+            onMuteAuthorClick = if (card.viewer.isAuthor) null else onMuteAuthorClick
           )
           HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
         }

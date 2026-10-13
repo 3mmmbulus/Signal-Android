@@ -19,6 +19,9 @@ import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import org.signal.core.util.logging.Log
+import org.thoughtcrime.securesms.feed.net.FeedApi
+import org.thoughtcrime.securesms.feed.net.FeedApiException
+import org.thoughtcrime.securesms.feed.net.FeedAuthor
 import org.thoughtcrime.securesms.feed.net.FeedCard
 import org.thoughtcrime.securesms.feed.net.FeedConfig
 import org.thoughtcrime.securesms.feed.net.FeedPollState
@@ -206,6 +209,45 @@ class FeedViewModel(
     }
   }
 
+  /**
+   * 「不看 TA 的动态」：TA 的帖子先从两栏拿掉，再报给引擎；提示条上能撤销。
+   * 没有自己的公开主页时引擎回 409 `profile_required`，单独提示。
+   */
+  fun muteAuthor(card: FeedCard) {
+    val author = card.author?.takeIf { it.isNative } ?: return
+    internalState.update { state ->
+      state.copy(tabStates = state.tabStates.mapValues { (_, tabState) -> tabState.copy(cards = tabState.cards.filterNot { it.author?.profileId == author.profileId }) })
+    }
+    viewModelScope.launch {
+      try {
+        withContext(ioDispatcher) { source.setHideList(FeedApi.HIDE_MUTE, author.profileId, on = true) }
+        internalState.update { it.copy(mutedAuthor = author) }
+      } catch (e: Exception) {
+        Log.w(TAG, "mute failed", e)
+        val profileRequired = e is FeedApiException && e.code == "profile_required"
+        internalState.update { it.copy(transientError = if (profileRequired) FeedState.TransientError.PROFILE_REQUIRED else FeedState.TransientError.ACTION_FAILED) }
+        FeedTab.entries.forEach { refresh(it) }
+      }
+    }
+  }
+
+  /** 提示条上的「撤销」：移出名单，两栏重新拉。 */
+  fun unmuteAuthor(author: FeedAuthor) {
+    viewModelScope.launch {
+      try {
+        withContext(ioDispatcher) { source.setHideList(FeedApi.HIDE_MUTE, author.profileId, on = false) }
+        FeedTab.entries.forEach { refresh(it) }
+      } catch (e: Exception) {
+        Log.w(TAG, "unmute failed", e)
+        internalState.update { it.copy(transientError = FeedState.TransientError.ACTION_FAILED) }
+      }
+    }
+  }
+
+  fun onMutedNoticeShown() {
+    internalState.update { it.copy(mutedAuthor = null) }
+  }
+
   fun onBlockedNoticeShown() {
     internalState.update { it.copy(blockedNotice = false) }
   }
@@ -382,6 +424,8 @@ data class FeedState(
   val hidden: Set<String> = emptySet(),
   /** 刚屏蔽了一位作者，提示「已屏蔽」。 */
   val blockedNotice: Boolean = false,
+  /** 刚「不看 TA」的作者，提示条带「撤销」。 */
+  val mutedAuthor: FeedAuthor? = null,
   val transientError: TransientError? = null,
   val publishNotice: String? = null,
   /** 刚保存的编辑，服务端给的 `state`。 */
@@ -395,7 +439,7 @@ data class FeedState(
   val isEditorialRecommend: Boolean
     get() = config?.recommendMode != FeedConfig.RECOMMEND_MODE_SCORED
 
-  enum class TransientError { NETWORK, ACTION_FAILED, PIN_LIMIT }
+  enum class TransientError { NETWORK, ACTION_FAILED, PIN_LIMIT, PROFILE_REQUIRED }
 }
 
 data class FeedTabState(

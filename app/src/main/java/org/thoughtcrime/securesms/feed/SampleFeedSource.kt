@@ -24,6 +24,7 @@ import org.thoughtcrime.securesms.feed.net.FeedCreatePostResponse
 import org.thoughtcrime.securesms.feed.net.FeedEntry
 import org.thoughtcrime.securesms.feed.net.FeedEventPayload
 import org.thoughtcrime.securesms.feed.net.FeedFollowRequest
+import org.thoughtcrime.securesms.feed.net.FeedHideLists
 import org.thoughtcrime.securesms.feed.net.FeedInterest
 import org.thoughtcrime.securesms.feed.net.FeedInterests
 import org.thoughtcrime.securesms.feed.net.FeedKeywordRequest
@@ -589,6 +590,21 @@ object SampleFeedSource : FeedSource {
     val card = mine.firstOrNull { it.id == contentId } ?: throw FeedApiException(404, code = "not_found")
     val likes = card.stats.likes + if (card.id in liked) 1 else 0
     FeedPostInsights(opens = 12 + likes * 7, likes = likes, comments = commentsFor(card.id).size, reposts = card.stats.reposts, saves = likes / 2)
+  }
+
+  /** 「不看 TA」「不让 TA 看」：样例里只记名单，信息流不跟着变。 */
+  private val hideListMembers = mapOf(FeedApi.HIDE_MUTE to mutableListOf<String>(), FeedApi.HIDE_FROM to mutableListOf())
+
+  override suspend fun hideLists(): FeedHideLists = synchronized(this) {
+    fun people(list: String) = hideListMembers.getValue(list).asReversed().mapNotNull { summaryOf(it) }
+    FeedHideLists(mute = people(FeedApi.HIDE_MUTE), hideFrom = people(FeedApi.HIDE_FROM))
+  }
+
+  override suspend fun setHideList(list: String, profileId: String, on: Boolean): Unit = synchronized(this) {
+    val members = hideListMembers[list] ?: throw FeedApiException(404, code = "not_found")
+    if (summaryOf(profileId) == null || profileId in blocked) throw FeedApiException(404, code = "not_found")
+    members -= profileId
+    if (on) members += profileId
   }
 
   /** 引擎的置顶上限。 */

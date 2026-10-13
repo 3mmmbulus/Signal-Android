@@ -562,6 +562,13 @@ data class FeedPersonSummary(
   @SerialName("avatar_key") val avatarKey: String? = null
 )
 
+/** `GET /v1/feed/me/hide-lists`：「不看 TA」和「不让 TA 看」两张名单，最近加的在前。 */
+@Serializable
+data class FeedHideLists(
+  val mute: List<FeedPersonSummary> = emptyList(),
+  @SerialName("hide_from") val hideFrom: List<FeedPersonSummary> = emptyList()
+)
+
 /** `GET /v1/feed/me/follow-requests`：别人想关注我的私密账号。 */
 @Serializable
 data class FeedFollowRequestsResponse(

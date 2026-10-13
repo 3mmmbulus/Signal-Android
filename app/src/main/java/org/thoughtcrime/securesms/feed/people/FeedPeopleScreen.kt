@@ -47,6 +47,7 @@ object FeedPeopleTestTags {
   const val APPROVE = "feed_people_approve"
   const val DECLINE = "feed_people_decline"
   const val UNBLOCK = "feed_people_unblock"
+  const val REMOVE = "feed_people_remove"
 }
 
 /**
@@ -63,13 +64,15 @@ fun FeedPeopleScreen(
   onDecline: (FeedPeopleRow) -> Unit,
   onUnblock: (FeedPeopleRow) -> Unit,
   onOpenProfile: (FeedPersonSummary) -> Unit,
-  onNoticeShown: () -> Unit
+  onNoticeShown: () -> Unit,
+  onRemove: (FeedPeopleRow) -> Unit = {}
 ) {
   val snackbarHostState = remember { SnackbarHostState() }
   val approved = stringResource(R.string.TellomiFeedPeople__approved)
   val declined = stringResource(R.string.TellomiFeedPeople__declined)
   val unblocked = stringResource(R.string.TellomiFeedPage__unblocked_done)
   val failed = stringResource(R.string.TellomiFeed__action_failed)
+  val removed = stringResource(R.string.TellomiFeedPeople__removed)
   LaunchedEffect(state.notice) {
     val notice = state.notice ?: return@LaunchedEffect
     onNoticeShown()
@@ -78,6 +81,7 @@ fun FeedPeopleScreen(
         FeedPeopleState.Notice.APPROVED -> approved
         FeedPeopleState.Notice.DECLINED -> declined
         FeedPeopleState.Notice.UNBLOCKED -> unblocked
+        FeedPeopleState.Notice.REMOVED -> removed
         FeedPeopleState.Notice.FAILED -> failed
       }
     )
@@ -88,6 +92,8 @@ fun FeedPeopleScreen(
       when (mode) {
         FeedPeopleMode.FOLLOW_REQUESTS -> R.string.TellomiFeedPeople__requests_title
         FeedPeopleMode.BLOCKED -> R.string.TellomiFeedPeople__blocked_title
+        FeedPeopleMode.MUTED -> R.string.TellomiFeedPeople__muted_title
+        FeedPeopleMode.HIDDEN_FROM -> R.string.TellomiFeedPeople__hidden_from_title
       }
     ),
     onNavigationClick = onBack,
@@ -110,6 +116,8 @@ fun FeedPeopleScreen(
             when (mode) {
               FeedPeopleMode.FOLLOW_REQUESTS -> R.string.TellomiFeedPeople__requests_empty
               FeedPeopleMode.BLOCKED -> R.string.TellomiFeedPeople__blocked_empty
+              FeedPeopleMode.MUTED -> R.string.TellomiFeedPeople__muted_empty
+              FeedPeopleMode.HIDDEN_FROM -> R.string.TellomiFeedPeople__hidden_from_empty
             }
           ),
           style = MaterialTheme.typography.bodyLarge,
@@ -118,10 +126,16 @@ fun FeedPeopleScreen(
           modifier = Modifier.align(Alignment.Center).padding(24.dp)
         )
         else -> LazyColumn(modifier = Modifier.fillMaxSize()) {
-          if (mode == FeedPeopleMode.BLOCKED) {
+          val explain = when (mode) {
+            FeedPeopleMode.FOLLOW_REQUESTS -> null
+            FeedPeopleMode.BLOCKED -> R.string.TellomiFeedPeople__blocked_explain
+            FeedPeopleMode.MUTED -> R.string.TellomiFeedPeople__muted_explain
+            FeedPeopleMode.HIDDEN_FROM -> R.string.TellomiFeedPeople__hidden_from_explain
+          }
+          if (explain != null) {
             item(key = "explain") {
               Text(
-                text = stringResource(R.string.TellomiFeedPeople__blocked_explain),
+                text = stringResource(explain),
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.padding(horizontal = 24.dp, vertical = 12.dp)
@@ -135,7 +149,8 @@ fun FeedPeopleScreen(
               onApprove = { onApprove(row) },
               onDecline = { onDecline(row) },
               onUnblock = { onUnblock(row) },
-              onOpenProfile = onOpenProfile
+              onOpenProfile = onOpenProfile,
+              onRemove = { onRemove(row) }
             )
           }
         }
@@ -151,7 +166,8 @@ private fun PersonRow(
   onApprove: () -> Unit,
   onDecline: () -> Unit,
   onUnblock: () -> Unit,
-  onOpenProfile: (FeedPersonSummary) -> Unit
+  onOpenProfile: (FeedPersonSummary) -> Unit,
+  onRemove: () -> Unit
 ) {
   val person = row.person
   Row(
@@ -192,6 +208,9 @@ private fun PersonRow(
       }
       FeedPeopleMode.BLOCKED -> OutlinedButton(onClick = onUnblock, modifier = Modifier.testTag(FeedPeopleTestTags.UNBLOCK)) {
         Text(stringResource(R.string.TellomiFeedPage__unblock))
+      }
+      FeedPeopleMode.MUTED, FeedPeopleMode.HIDDEN_FROM -> OutlinedButton(onClick = onRemove, modifier = Modifier.testTag(FeedPeopleTestTags.REMOVE)) {
+        Text(stringResource(R.string.TellomiFeedPeople__remove))
       }
     }
   }

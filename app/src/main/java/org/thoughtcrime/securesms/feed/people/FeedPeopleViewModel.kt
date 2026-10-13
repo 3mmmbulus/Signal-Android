@@ -19,6 +19,7 @@ import kotlinx.coroutines.withContext
 import org.signal.core.util.logging.Log
 import org.thoughtcrime.securesms.feed.FeedSource
 import org.thoughtcrime.securesms.feed.FeedSources
+import org.thoughtcrime.securesms.feed.net.FeedApi
 import org.thoughtcrime.securesms.feed.net.FeedApiException
 import org.thoughtcrime.securesms.feed.net.FeedBlockEntry
 import org.thoughtcrime.securesms.feed.net.FeedPersonSummary
@@ -56,6 +57,8 @@ class FeedPeopleViewModel(
           when (mode) {
             FeedPeopleMode.FOLLOW_REQUESTS -> source.followRequests().map { FeedPeopleRow(key = it.profile.id, person = it.profile) }
             FeedPeopleMode.BLOCKED -> source.blocks().map { FeedPeopleRow(key = "${it.type}/${it.id}", person = it.profile, block = it) }
+            FeedPeopleMode.MUTED -> source.hideLists().mute.map { FeedPeopleRow(key = it.id, person = it) }
+            FeedPeopleMode.HIDDEN_FROM -> source.hideLists().hideFrom.map { FeedPeopleRow(key = it.id, person = it) }
           }
         }
         internalState.update { it.copy(loading = false, rows = rows) }
@@ -78,6 +81,13 @@ class FeedPeopleViewModel(
   fun unblock(row: FeedPeopleRow) {
     val entry = row.block ?: return
     act(row, FeedPeopleState.Notice.UNBLOCKED) { source.unblock(entry) }
+  }
+
+  /** 从「不看 TA」或「不让 TA 看」名单里移出。 */
+  fun remove(row: FeedPeopleRow) {
+    val person = row.person ?: return
+    val list = mode.hideList ?: return
+    act(row, FeedPeopleState.Notice.REMOVED) { source.setHideList(list, person.id, on = false) }
   }
 
   fun onNoticeShown() {
@@ -117,9 +127,18 @@ class FeedPeopleViewModel(
   }
 }
 
-enum class FeedPeopleMode {
+enum class FeedPeopleMode(
+  /** 对应的引擎名单（`/v1/feed/me/hide-lists/{list}`）；另外两种不是。 */
+  val hideList: String? = null
+) {
   FOLLOW_REQUESTS,
-  BLOCKED
+  BLOCKED,
+
+  /** 「不看 TA 的动态」。 */
+  MUTED(FeedApi.HIDE_MUTE),
+
+  /** 「不让 TA 看我的动态」。 */
+  HIDDEN_FROM(FeedApi.HIDE_FROM)
 }
 
 /** 名单里的一行。屏蔽来源 / 话题时没有 [person]，只有 [block]。 */
@@ -139,6 +158,7 @@ data class FeedPeopleState(
     APPROVED,
     DECLINED,
     UNBLOCKED,
+    REMOVED,
     FAILED
   }
 }

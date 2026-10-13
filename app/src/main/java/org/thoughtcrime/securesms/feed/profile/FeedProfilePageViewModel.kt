@@ -82,6 +82,43 @@ class FeedProfilePageViewModel(
       }
       internalState.update { it.copy(loading = false, gone = false, profile = profile, posts = emptyList(), cursor = null, postsLoadedOnce = false) }
       if (profile.showsPosts) loadPosts(cursor = null)
+      if (!profile.me.self && !profile.me.blocked) loadHideState()
+    }
+  }
+
+  /** 主页不带「我有没有不看 / 不让 TA 看」，从两张名单里查；查不到就不给这两项菜单。 */
+  private fun loadHideState() {
+    viewModelScope.launch {
+      val lists = try {
+        withContext(ioDispatcher) { source.hideLists() }
+      } catch (e: Exception) {
+        Log.w(TAG, "hide lists failed", e)
+        return@launch
+      }
+      val state = FeedHideState(muted = lists.mute.any { it.id == profileId }, hiddenFrom = lists.hideFrom.any { it.id == profileId })
+      internalState.update { it.copy(hideState = state) }
+    }
+  }
+
+  /** 「不看 TA 的动态」/「不让 TA 看我的动态」的加进、移出（[list] 是 [FeedApi.HIDE_MUTE] / [FeedApi.HIDE_FROM]）。先改菜单，失败改回来。 */
+  fun setHidden(list: String, on: Boolean) {
+    val before = internalState.value.hideState ?: return
+    val after = if (list == FeedApi.HIDE_MUTE) before.copy(muted = on) else before.copy(hiddenFrom = on)
+    internalState.update { it.copy(hideState = after) }
+    viewModelScope.launch {
+      val notice = try {
+        withContext(ioDispatcher) { source.setHideList(list, profileId, on) }
+        when {
+          !on -> null
+          list == FeedApi.HIDE_MUTE -> FeedProfilePageState.Notice.MUTED
+          else -> FeedProfilePageState.Notice.HIDDEN_FROM
+        }
+      } catch (e: Exception) {
+        Log.w(TAG, "hide list failed", e)
+        internalState.update { it.copy(hideState = before) }
+        if (e is FeedApiException && e.code == "profile_required") FeedProfilePageState.Notice.PROFILE_REQUIRED else FeedProfilePageState.Notice.FAILED
+      }
+      if (notice != null) internalState.update { it.copy(notice = notice) }
     }
   }
 
@@ -295,7 +332,9 @@ data class FeedProfilePageState(
   val mediaBaseUrl: String? = null,
   val showIpRegion: Boolean = false,
   /** 「查看数据」弹窗；null = 没开。 */
-  val insights: FeedInsightsState? = null
+  val insights: FeedInsightsState? = null,
+  /** 别人的主页：我对 TA 的「不看 / 不让看」；还没查到是 null。 */
+  val hideState: FeedHideState? = null
 ) {
   enum class Notice {
     /** 底部提示条带「撤销」（第三节「统一反馈」：关注能撤销）。 */
@@ -309,6 +348,10 @@ data class FeedProfilePageState(
 
     /** 置顶满 3 条。 */
     PIN_LIMIT,
+    MUTED,
+    HIDDEN_FROM,
     FAILED
   }
 }
+
+data class FeedHideState(val muted: Boolean, val hiddenFrom: Boolean)

@@ -61,6 +61,7 @@ import org.thoughtcrime.securesms.feed.FeedAvatar
 import org.thoughtcrime.securesms.feed.FeedInsightsDialog
 import org.thoughtcrime.securesms.feed.FeedOwnPostAction
 import org.thoughtcrime.securesms.feed.FeedPostCard
+import org.thoughtcrime.securesms.feed.net.FeedApi
 import org.thoughtcrime.securesms.feed.net.FeedCard
 import org.thoughtcrime.securesms.feed.net.FeedProfilePage
 import org.thoughtcrime.securesms.feed.net.FeedRelation
@@ -69,6 +70,8 @@ import org.signal.core.ui.R as CoreUiR
 object FeedProfilePageTestTags {
   const val FOLLOW = "feed_profile_page_follow"
   const val MORE = "feed_profile_page_more"
+  const val MUTE = "feed_profile_page_mute"
+  const val HIDE_FROM = "feed_profile_page_hide_from"
 }
 
 private const val LOAD_MORE_THRESHOLD = 4
@@ -96,7 +99,8 @@ fun FeedProfilePageScreen(
   onNoticeShown: () -> Unit,
   onProfileRequired: () -> Unit,
   onOwnPostAction: (FeedCard, FeedOwnPostAction) -> Unit = { _, _ -> },
-  onInsightsDismissed: () -> Unit = {}
+  onInsightsDismissed: () -> Unit = {},
+  onSetHidden: (list: String, on: Boolean) -> Unit = { _, _ -> }
 ) {
   val profile = state.profile
   val snackbarHostState = remember { SnackbarHostState() }
@@ -107,6 +111,8 @@ fun FeedProfilePageScreen(
   val unblocked = stringResource(R.string.TellomiFeedPage__unblocked_done)
   val failed = stringResource(R.string.TellomiFeed__action_failed)
   val pinLimit = stringResource(R.string.TellomiFeed__pin_limit)
+  val mutedDone = stringResource(R.string.TellomiFeed__muted_done)
+  val hiddenFromDone = stringResource(R.string.TellomiFeed__hidden_from_done)
   val undo = stringResource(R.string.TellomiFeed__undo)
   LaunchedEffect(state.notice) {
     val notice = state.notice ?: return@LaunchedEffect
@@ -120,6 +126,8 @@ fun FeedProfilePageScreen(
       FeedProfilePageState.Notice.BLOCKED -> snackbarHostState.showSnackbar(blocked)
       FeedProfilePageState.Notice.UNBLOCKED -> snackbarHostState.showSnackbar(unblocked)
       FeedProfilePageState.Notice.PIN_LIMIT -> snackbarHostState.showSnackbar(pinLimit)
+      FeedProfilePageState.Notice.MUTED -> snackbarHostState.showSnackbar(mutedDone)
+      FeedProfilePageState.Notice.HIDDEN_FROM -> snackbarHostState.showSnackbar(hiddenFromDone)
       FeedProfilePageState.Notice.FAILED -> snackbarHostState.showSnackbar(failed)
     }
   }
@@ -137,6 +145,8 @@ fun FeedProfilePageScreen(
       if (profile != null && !profile.me.self) {
         MoreMenu(
           blocked = profile.me.blocked,
+          hideState = state.hideState.takeUnless { profile.me.blocked },
+          onSetHidden = onSetHidden,
           onReport = onReport,
           onBlock = { confirmBlock = true },
           onUnblock = { onSetBlocked(false) }
@@ -205,7 +215,14 @@ fun FeedProfilePageScreen(
 }
 
 @Composable
-private fun MoreMenu(blocked: Boolean, onReport: () -> Unit, onBlock: () -> Unit, onUnblock: () -> Unit) {
+private fun MoreMenu(
+  blocked: Boolean,
+  hideState: FeedHideState?,
+  onSetHidden: (list: String, on: Boolean) -> Unit,
+  onReport: () -> Unit,
+  onBlock: () -> Unit,
+  onUnblock: () -> Unit
+) {
   var open by remember { mutableStateOf(false) }
   Box {
     IconButton(onClick = { open = true }, modifier = Modifier.testTag(FeedProfilePageTestTags.MORE)) {
@@ -215,6 +232,24 @@ private fun MoreMenu(blocked: Boolean, onReport: () -> Unit, onBlock: () -> Unit
       )
     }
     DropdownMenu(expanded = open, onDismissRequest = { open = false }) {
+      if (hideState != null) {
+        DropdownMenuItem(
+          text = { Text(stringResource(if (hideState.muted) R.string.TellomiFeed__unmute_author else R.string.TellomiFeed__mute_author)) },
+          modifier = Modifier.testTag(FeedProfilePageTestTags.MUTE),
+          onClick = {
+            open = false
+            onSetHidden(FeedApi.HIDE_MUTE, !hideState.muted)
+          }
+        )
+        DropdownMenuItem(
+          text = { Text(stringResource(if (hideState.hiddenFrom) R.string.TellomiFeed__unhide_from_author else R.string.TellomiFeed__hide_from_author)) },
+          modifier = Modifier.testTag(FeedProfilePageTestTags.HIDE_FROM),
+          onClick = {
+            open = false
+            onSetHidden(FeedApi.HIDE_FROM, !hideState.hiddenFrom)
+          }
+        )
+      }
       DropdownMenuItem(
         text = { Text(stringResource(R.string.TellomiFeedReport__title)) },
         onClick = {

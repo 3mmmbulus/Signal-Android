@@ -13,9 +13,11 @@ import org.thoughtcrime.securesms.components.settings.DSLConfiguration
 import org.thoughtcrime.securesms.components.settings.DSLSettingsText
 import org.thoughtcrime.securesms.feed.net.FeedMyProfile
 import org.thoughtcrime.securesms.feed.parseInstantMillis
+import org.thoughtcrime.securesms.feed.people.FeedPeopleActivity
+import org.thoughtcrime.securesms.feed.people.FeedPeopleMode
 
 /**
- * 插进「设置 → 隐私」的动态一段（第三节第 29、30 条）：私密账号、防骚扰模式。
+ * 插进「设置 → 隐私」的动态一段（第三节第 29、30 条）：私密账号、防骚扰模式、不看 / 不让看的名单。
  * 隐私页本身不认识动态，只在动态入口开着时调这里。
  */
 fun DSLConfiguration.feedPrivacySettingsPrefs(context: Context, state: FeedPrivacySettingsState, viewModel: FeedPrivacySettingsViewModel) {
@@ -58,6 +60,16 @@ fun DSLConfiguration.feedPrivacySettingsPrefs(context: Context, state: FeedPriva
         onSelected = { viewModel.setGuardDays(days[it]) }
       )
       textPref(summary = DSLSettingsText.from(R.string.TellomiFeedPrivacy__guard_summary))
+
+      // 不看 / 不让看（ADR-0071「设置：隐私与通知」）；快拍那一份名单还没有
+      clickPref(
+        title = DSLSettingsText.from(R.string.TellomiFeedPeople__muted_title),
+        onClick = { context.startActivity(FeedPeopleActivity.intent(context, FeedPeopleMode.MUTED)) }
+      )
+      clickPref(
+        title = DSLSettingsText.from(R.string.TellomiFeedPeople__hidden_from_title),
+        onClick = { context.startActivity(FeedPeopleActivity.intent(context, FeedPeopleMode.HIDDEN_FROM)) }
+      )
     }
   }
 }

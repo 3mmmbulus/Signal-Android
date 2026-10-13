@@ -6631,6 +6631,21 @@
     <string name="TellomiFeedInsights__reposts">转发</string>
     <string name="TellomiFeedInsights__saves">收藏</string>
     <string name="TellomiFeedInsights__load_failed">数据没能加载</string>
+    <string name="TellomiFeed__mute_author">不看 TA 的动态</string>
+    <string name="TellomiFeed__unmute_author">恢复看 TA 的动态</string>
+    <string name="TellomiFeed__hide_from_author">不让 TA 看我的动态</string>
+    <string name="TellomiFeed__unhide_from_author">恢复让 TA 看我的动态</string>
+    <string name="TellomiFeed__muted_done">不再显示 TA 的动态</string>
+    <string name="TellomiFeed__hidden_from_done">TA 看不到你的动态了</string>
+    <string name="TellomiFeed__hide_profile_required">先建好自己的公开主页</string>
+    <string name="TellomiFeedPeople__muted_title">不看 TA 的动态</string>
+    <string name="TellomiFeedPeople__hidden_from_title">不让 TA 看我的动态</string>
+    <string name="TellomiFeedPeople__muted_explain">TA 的动态不会出现在你的关注和推荐里，TA 不会知道；TA 的主页照样打得开。</string>
+    <string name="TellomiFeedPeople__hidden_from_explain">TA 看不到你的任何动态，公开的也看不到，TA 不会知道。</string>
+    <string name="TellomiFeedPeople__muted_empty">名单是空的。在别人帖子的「···」里选「不看 TA 的动态」就会加到这里。</string>
+    <string name="TellomiFeedPeople__hidden_from_empty">名单是空的。在别人主页的「···」里可以加。</string>
+    <string name="TellomiFeedPeople__remove">移出</string>
+    <string name="TellomiFeedPeople__removed">已移出</string>
     <plurals name="TellomiFeed__comments">
         <item quantity="other">%1$d 条评论</item>
     </plurals>

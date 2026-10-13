@@ -285,6 +285,17 @@ class FeedApi(
   /** 我在动态里屏蔽的作者、来源、话题。 */
   suspend fun blocks(): FeedBlocksResponse = get(url("v1/feed/me/blocks"), FeedBlocksResponse.serializer())
 
+  suspend fun hideLists(): FeedHideLists = get(url("v1/feed/me/hide-lists"), FeedHideLists.serializer())
+
+  /** 加进或移出 [list]（[HIDE_MUTE] / [HIDE_FROM]）→ 204，可以重复调。没有主页 409 `profile_required`；自己、互相屏蔽的人 404。 */
+  suspend fun setHideList(list: String, profileId: String, on: Boolean) {
+    require(list == HIDE_MUTE || list == HIDE_FROM) { "unknown hide list $list" }
+    val url = url("v1/feed/me/hide-lists").newBuilder().addPathSegment(list).addPathSegment(profileId).build()
+    val builder = Request.Builder().url(url)
+    if (on) builder.put(EMPTY_BODY) else builder.delete()
+    sendNoContent(builder)
+  }
+
   /** 一栏通知，新的在前；[before] 是上一页最后一条的 `created_at`。 */
   suspend fun notifications(tab: String, before: String?): FeedNotificationsResponse {
     val url = url("v1/feed/me/notifications").newBuilder()
@@ -499,6 +510,12 @@ class FeedApi(
     const val PROFILE_PAGE = 20
 
     const val TARGET_AUTHOR = "author"
+
+    /** 「不看 TA 的动态」：TA 的帖子不进我的关注流和推荐流。 */
+    const val HIDE_MUTE = "mute"
+
+    /** 「不让 TA 看我的动态」：我的帖子对 TA 都不可见。 */
+    const val HIDE_FROM = "hide_from"
     const val TARGET_SOURCE = "source"
     const val TARGET_TOPIC = "topic"
     const val NOT_FOUND = "not_found"

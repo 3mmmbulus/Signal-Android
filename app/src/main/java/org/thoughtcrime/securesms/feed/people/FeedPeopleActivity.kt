@@ -49,7 +49,8 @@ class FeedPeopleActivity : PassphraseRequiredActivity() {
           onDecline = { viewModel.answer(it, approve = false) },
           onUnblock = viewModel::unblock,
           onOpenProfile = { startActivity(FeedProfilePageActivity.intent(this, it.id)) },
-          onNoticeShown = viewModel::onNoticeShown
+          onNoticeShown = viewModel::onNoticeShown,
+          onRemove = viewModel::remove
         )
       }
     }

@@ -102,7 +102,9 @@ fun FeedPostCard(
   /** 别人的帖子：「···」里的屏蔽作者（第三节第 26 条）；开放内容的外部作者也能屏蔽。 */
   onBlockAuthorClick: ((FeedCard) -> Unit)? = null,
   /** 自己的帖子：「···」里的置顶、隐藏点赞数、查看数据（第三节第 26 条）。 */
-  onOwnPostAction: ((FeedCard, FeedOwnPostAction) -> Unit)? = null
+  onOwnPostAction: ((FeedCard, FeedOwnPostAction) -> Unit)? = null,
+  /** 别人的帖子：「···」里的「不看 TA 的动态」（第三节第 26 条）；开放内容的外部作者没有。 */
+  onMuteAuthorClick: ((FeedCard) -> Unit)? = null
 ) {
   val author = card.author
   val openAuthor: (() -> Unit)? = if (author != null && author.isNative && onAuthorClick != null) {
@@ -132,7 +134,8 @@ fun FeedPostCard(
           onReportClick = onReportClick,
           onAuthorClick = openAuthor,
           onBlockAuthorClick = onBlockAuthorClick,
-          onOwnPostAction = onOwnPostAction
+          onOwnPostAction = onOwnPostAction,
+          onMuteAuthorClick = onMuteAuthorClick
         )
 
         val title = card.title
@@ -230,7 +233,8 @@ private fun FeedPostHeader(
   onReportClick: ((FeedCard) -> Unit)?,
   onAuthorClick: (() -> Unit)? = null,
   onBlockAuthorClick: ((FeedCard) -> Unit)? = null,
-  onOwnPostAction: ((FeedCard, FeedOwnPostAction) -> Unit)? = null
+  onOwnPostAction: ((FeedCard, FeedOwnPostAction) -> Unit)? = null,
+  onMuteAuthorClick: ((FeedCard) -> Unit)? = null
 ) {
   val context = LocalContext.current
   val author = card.author
@@ -328,6 +332,16 @@ private fun FeedPostHeader(
                 onClick = {
                   menuOpen = false
                   onNotInterestedClick(card)
+                }
+              )
+            }
+            if (onMuteAuthorClick != null && author != null && author.isNative) {
+              DropdownMenuItem(
+                text = { Text(stringResource(R.string.TellomiFeed__mute_author)) },
+                modifier = Modifier.testTag(FeedPostCardTestTags.MUTE_AUTHOR),
+                onClick = {
+                  menuOpen = false
+                  onMuteAuthorClick(card)
                 }
               )
             }
@@ -511,6 +525,7 @@ private fun FeedActionRow(
 object FeedPostCardTestTags {
   const val SHARE = "feed_card_share"
   const val COPY_LINK = "feed_card_copy_link"
+  const val MUTE_AUTHOR = "feed_card_mute_author"
 
   fun ownAction(action: FeedOwnPostAction) = "feed_card_own_${action.name.lowercase()}"
 }

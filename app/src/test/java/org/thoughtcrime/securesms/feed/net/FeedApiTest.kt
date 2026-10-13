@@ -692,4 +692,24 @@ class FeedApiTest {
     assertThat(server.takeRequest().path).isEqualTo("/v1/feed/posts/c1/insights")
     assertThat(insights).isEqualTo(FeedPostInsights(opens = 40, likes = 5, comments = 2, reposts = 1, saves = 3))
   }
+
+  @Test
+  fun `hide lists read both lists, add is PUT and remove is DELETE`() = runBlocking {
+    server.enqueue(MockResponse().setBody("""{"mute":[{"id":"p1","handle":"shanfeng","display_name":"山风","avatar_key":null}],"hide_from":[]}"""))
+    server.enqueue(MockResponse().setResponseCode(204))
+    server.enqueue(MockResponse().setResponseCode(204))
+
+    val lists = api.hideLists()
+    api.setHideList(FeedApi.HIDE_FROM, "p2", on = true)
+    api.setHideList(FeedApi.HIDE_MUTE, "p1", on = false)
+
+    assertThat(lists.mute.map { it.displayName }).containsExactly("山风")
+    assertThat(server.takeRequest().path).isEqualTo("/v1/feed/me/hide-lists")
+    val put = server.takeRequest()
+    assertThat(put.method).isEqualTo("PUT")
+    assertThat(put.path).isEqualTo("/v1/feed/me/hide-lists/hide_from/p2")
+    val delete = server.takeRequest()
+    assertThat(delete.method).isEqualTo("DELETE")
+    assertThat(delete.path).isEqualTo("/v1/feed/me/hide-lists/mute/p1")
+  }
 }
