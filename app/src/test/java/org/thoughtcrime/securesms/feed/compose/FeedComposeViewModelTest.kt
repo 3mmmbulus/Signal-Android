@@ -92,6 +92,19 @@ class FeedComposeViewModelTest {
   }
 
   @Test
+  fun `missing profile asks to set one up, not a generic failure`() {
+    val viewModel = FeedComposeViewModel(editTarget = target, source = FakeSource(FeedApiException(409, "profile_required")), ioDispatcher = dispatcher)
+
+    viewModel.onTextChanged("新的正文")
+    viewModel.publish()
+
+    assertThat(viewModel.state.value.profileRequired).isTrue()
+    assertThat(viewModel.state.value.failed).isFalse()
+    viewModel.onProfileRequiredShown()
+    assertThat(viewModel.state.value.profileRequired).isFalse()
+  }
+
+  @Test
   fun `window check uses the publish time`() {
     val published = Instant.parse("2026-10-13T12:00:00Z")
     val card = target.copy(publishedAt = published.toString())

@@ -18,6 +18,7 @@ import org.signal.core.ui.compose.theme.SignalTheme
 import org.thoughtcrime.securesms.PassphraseRequiredActivity
 import org.thoughtcrime.securesms.feed.net.FeedCard
 import org.thoughtcrime.securesms.feed.net.FeedJson
+import org.thoughtcrime.securesms.feed.profile.FeedProfileActivity
 import org.thoughtcrime.securesms.util.DynamicNoActionBarTheme
 
 /**
@@ -34,6 +35,11 @@ class FeedPostDetailActivity : PassphraseRequiredActivity() {
         FeedPostDetailViewModel(initial = FeedJson.decodeFromString(FeedCard.serializer(), json))
       }
     }
+  }
+
+  /** 建好公开主页回来就把刚才那条评论发出去（草稿还在）。 */
+  private val profileLauncher = registerForActivityResult(FeedProfileActivity.Contract()) { saved ->
+    if (saved) viewModel.send()
   }
 
   override fun onPreCreate() {
@@ -53,7 +59,8 @@ class FeedPostDetailActivity : PassphraseRequiredActivity() {
           onReplyClick = viewModel::replyTo,
           onDraftChanged = viewModel::onDraftChanged,
           onSend = viewModel::send,
-          onNoticeShown = viewModel::onNoticeShown
+          onNoticeShown = viewModel::onNoticeShown,
+          onProfileRequired = { profileLauncher.launch(Unit) }
         )
       }
     }

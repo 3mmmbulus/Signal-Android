@@ -330,4 +330,32 @@ class FeedApiTest {
       .isInstanceOf(FeedApiException::class)
       .prop(FeedApiException::code).isEqualTo("comments_closed")
   }
+
+  @Test
+  fun `no profile yet reads as null`() = runBlocking {
+    server.enqueue(MockResponse().setResponseCode(404).setBody("""{"error":"profile_required"}"""))
+
+    assertThat(api.myProfile()).isNull()
+    assertThat(server.takeRequest().path).isEqualTo("/v1/feed/me/profile")
+  }
+
+  @Test
+  fun `save profile puts only the given fields`() = runBlocking {
+    server.enqueue(MockResponse().setBody("""{"id":"x","tellomi_number":"1234567890","handle":null,"display_name":"山风","bio":"hi","shown_interests":null,"is_private":false,"is_minor":false,"region":"cn"}"""))
+
+    val profile = api.saveProfile(FeedProfileUpdate(displayName = "山风"))
+
+    val request = server.takeRequest()
+    assertThat(request.method).isEqualTo("PUT")
+    assertThat(request.body.readUtf8()).isEqualTo("""{"display_name":"山风"}""")
+    assertThat(profile.tellomiNumber).isEqualTo("1234567890")
+    assertThat(profile.shownInterests).isEqualTo(emptyList<String>())
+  }
+
+  @Test
+  fun `other profile errors are not swallowed`() {
+    server.enqueue(MockResponse().setResponseCode(404).setBody("""{"error":"feed_hidden"}"""))
+
+    assertFailure { runBlocking { api.myProfile() } }.isInstanceOf(FeedApiException::class)
+  }
 }

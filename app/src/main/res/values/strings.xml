@@ -6906,6 +6906,13 @@
         <item quantity="one">View %1$d more reply</item>
         <item quantity="other">View %1$d more replies</item>
     </plurals>
+    <string name="TellomiFeedProfile__title">Public profile</string>
+    <string name="TellomiFeedProfile__title_new">Set up your public profile</string>
+    <string name="TellomiFeedProfile__public_note">Your name, bio and ID here are public: they show on your posts, comments and profile. Your chat profile is separate and stays end-to-end encrypted.</string>
+    <string name="TellomiFeedProfile__name">Name</string>
+    <string name="TellomiFeedProfile__bio">Bio</string>
+    <string name="TellomiFeedProfile__create">Create profile</string>
+    <string name="TellomiFeedProfile__invalid">Check your name and bio</string>
     <string name="ConversationListTabs__99p">99+</string>
     <!-- Menu item on stories landing page -->
     <string name="StoriesLandingFragment__story_privacy">Story privacy</string>

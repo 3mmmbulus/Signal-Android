@@ -95,12 +95,17 @@ fun FeedPostDetailScreen(
   onReplyClick: (FeedCard?) -> Unit,
   onDraftChanged: (String) -> Unit,
   onSend: () -> Unit,
-  onNoticeShown: () -> Unit
+  onNoticeShown: () -> Unit,
+  onProfileRequired: () -> Unit = {}
 ) {
   val snackbarHostState = remember { SnackbarHostState() }
   val noticeText = state.notice?.let { stringResource(it.messageRes()) }
   LaunchedEffect(state.notice) {
-    if (noticeText != null) {
+    if (state.notice == FeedPostDetailState.Notice.PROFILE_REQUIRED) {
+      // 还没建公开主页：直接去建，建好回来接着发
+      onNoticeShown()
+      onProfileRequired()
+    } else if (noticeText != null) {
       snackbarHostState.showSnackbar(noticeText)
       onNoticeShown()
     }

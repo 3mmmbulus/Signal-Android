@@ -106,7 +106,8 @@ class FeedComposeViewModel(
       } catch (e: FeedApiException) {
         Log.w(TAG, "publish failed: ${e.status} ${e.code}")
         val closed = e.status == 409 && (e.code == "edit_window_closed" || e.code == "not_editable")
-        internalState.update { it.copy(publishing = false, failed = !closed, editWindowClosed = closed) }
+        val noProfile = e.status == 409 && e.code == "profile_required"
+        internalState.update { it.copy(publishing = false, failed = !closed && !noProfile, editWindowClosed = closed, profileRequired = noProfile) }
       } catch (e: Exception) {
         Log.w(TAG, "publish failed", e)
         internalState.update { it.copy(publishing = false, failed = true) }
@@ -116,6 +117,11 @@ class FeedComposeViewModel(
 
   fun onFailureShown() {
     internalState.update { it.copy(failed = false, editWindowClosed = false) }
+  }
+
+  /** 已经打开了建主页的页面。 */
+  fun onProfileRequiredShown() {
+    internalState.update { it.copy(profileRequired = false) }
   }
 
   private fun updateDraft(transform: (FeedDraft) -> FeedDraft) {
@@ -131,6 +137,8 @@ data class FeedComposeState(
   val failed: Boolean = false,
   /** 编辑时引擎说过了 15 分钟（或这条已经不能改了）。 */
   val editWindowClosed: Boolean = false,
+  /** 引擎说还没建公开主页（409 `profile_required`）：先去建，建好接着发。 */
+  val profileRequired: Boolean = false,
   /** 编辑模式：在改哪一条，和打开时的样子（没改动就不让保存、关页面也不问）。 */
   val editing: FeedEditTarget? = null,
   val original: FeedDraft? = null,

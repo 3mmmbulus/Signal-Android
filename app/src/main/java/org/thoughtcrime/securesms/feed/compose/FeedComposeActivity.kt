@@ -20,6 +20,7 @@ import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
 import org.signal.core.ui.compose.theme.SignalTheme
 import org.thoughtcrime.securesms.PassphraseRequiredActivity
+import org.thoughtcrime.securesms.feed.profile.FeedProfileActivity
 import org.thoughtcrime.securesms.util.DynamicNoActionBarTheme
 
 /**
@@ -35,6 +36,11 @@ class FeedComposeActivity : PassphraseRequiredActivity() {
     viewModelFactory {
       initializer { FeedComposeViewModel(editTarget = IntentCompat.getParcelableExtra(intent, EXTRA_EDIT, FeedEditTarget::class.java)) }
     }
+  }
+
+  /** 建好公开主页回来就接着发。 */
+  private val profileLauncher = registerForActivityResult(FeedProfileActivity.Contract()) { saved ->
+    if (saved) viewModel.publish()
   }
 
   override fun onPreCreate() {
@@ -54,6 +60,12 @@ class FeedComposeActivity : PassphraseRequiredActivity() {
       }
 
       SignalTheme {
+        LaunchedEffect(state.profileRequired) {
+          if (state.profileRequired) {
+            viewModel.onProfileRequiredShown()
+            profileLauncher.launch(Unit)
+          }
+        }
         FeedComposeScreen(
           state = state,
           onClose = { finish() },

@@ -18,6 +18,8 @@ import org.thoughtcrime.securesms.feed.net.FeedEventPayload
 import org.thoughtcrime.securesms.feed.net.FeedMedia
 import org.thoughtcrime.securesms.feed.net.FeedMyPost
 import org.thoughtcrime.securesms.feed.net.FeedMyPostsPage
+import org.thoughtcrime.securesms.feed.net.FeedMyProfile
+import org.thoughtcrime.securesms.feed.net.FeedProfileUpdate
 import org.thoughtcrime.securesms.feed.net.FeedStats
 import org.thoughtcrime.securesms.feed.net.FeedTimelinePage
 import org.thoughtcrime.securesms.feed.net.FeedTopic
@@ -225,6 +227,15 @@ object SampleFeedSource : FeedSource {
   }
 
   private val comments = mutableMapOf<String, MutableList<FeedCard>>()
+
+  private var profile: FeedMyProfile? = FeedMyProfile(id = "s-me", tellomiNumber = me.tellomiNumber, displayName = me.displayName)
+
+  override suspend fun myProfile(): FeedMyProfile? = synchronized(this) { profile }
+
+  override suspend fun saveProfile(update: FeedProfileUpdate): FeedMyProfile = synchronized(this) {
+    val current = profile ?: FeedMyProfile(id = "s-me", tellomiNumber = me.tellomiNumber, displayName = update.displayName ?: throw IllegalArgumentException("name required"))
+    current.copy(displayName = update.displayName ?: current.displayName, bio = update.bio ?: current.bio).also { profile = it }
+  }
 
   private val commentTexts = listOf(
     "看着就舒服，周末也想去走走。",

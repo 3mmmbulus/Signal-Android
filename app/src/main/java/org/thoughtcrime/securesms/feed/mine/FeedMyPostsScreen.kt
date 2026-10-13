@@ -84,6 +84,7 @@ fun FeedMyPostsScreen(
   onDeleteFailureShown: () -> Unit,
   onEdit: (FeedEditTarget) -> Unit = {},
   onEditNoticeShown: () -> Unit = {},
+  onProfileClick: () -> Unit = {},
   nowMillis: () -> Long = System::currentTimeMillis
 ) {
   val snackbarHostState = remember { SnackbarHostState() }
@@ -109,7 +110,11 @@ fun FeedMyPostsScreen(
     onNavigationClick = onBack,
     navigationIcon = ImageVector.vectorResource(CoreUiR.drawable.symbol_arrow_start_24),
     navigationContentDescription = stringResource(R.string.TellomiFeedMine__back),
-    snackbarHost = { Snackbars.Host(snackbarHostState) }
+    snackbarHost = { Snackbars.Host(snackbarHostState) },
+    actions = {
+      // 公开主页的名字和简介（主页页面做好后挪过去）
+      TextButton(onClick = onProfileClick) { Text(stringResource(R.string.TellomiFeedProfile__title)) }
+    }
   ) { padding ->
     PullToRefreshBox(
       isRefreshing = state.refreshing,

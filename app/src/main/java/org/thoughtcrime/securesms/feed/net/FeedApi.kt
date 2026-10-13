@@ -160,6 +160,21 @@ class FeedApi(
     return send(Request.Builder().url(url).post(body), FeedCreateCommentResponse.serializer())
   }
 
+  /** 自己的公开主页；没建过时引擎回 404 `profile_required`，这里给 null。 */
+  suspend fun myProfile(): FeedMyProfile? {
+    return try {
+      get(url("v1/feed/me/profile"), FeedMyProfile.serializer())
+    } catch (e: FeedApiException) {
+      if (e.status == 404 && e.code == "profile_required") null else throw e
+    }
+  }
+
+  /** 建或改公开主页。400 `invalid_field` / `display_name_required`。 */
+  suspend fun saveProfile(update: FeedProfileUpdate): FeedMyProfile {
+    val body = FeedJson.encodeToString(FeedProfileUpdate.serializer(), update).toRequestBody(JSON)
+    return send(Request.Builder().url(url("v1/feed/me/profile")).put(body), FeedMyProfile.serializer())
+  }
+
   /** 删自己的帖子（204）。别人的帖子引擎回 404。 */
   suspend fun deletePost(contentId: String) {
     val url = url("v1/feed/posts").newBuilder().addPathSegment(contentId).build()

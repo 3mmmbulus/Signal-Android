@@ -15,6 +15,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import org.signal.core.ui.compose.theme.SignalTheme
 import org.thoughtcrime.securesms.PassphraseRequiredActivity
 import org.thoughtcrime.securesms.feed.compose.FeedComposeActivity
+import org.thoughtcrime.securesms.feed.profile.FeedProfileActivity
 import org.thoughtcrime.securesms.util.DynamicNoActionBarTheme
 
 /**
@@ -33,6 +34,8 @@ class FeedMyPostsActivity : PassphraseRequiredActivity() {
     if (publishState != null) viewModel.onEdited(publishState)
   }
 
+  private val profileLauncher = registerForActivityResult(FeedProfileActivity.Contract()) { }
+
   override fun onCreate(savedInstanceState: Bundle?, ready: Boolean) {
     setContent {
       val state by viewModel.state.collectAsStateWithLifecycle()
@@ -45,7 +48,8 @@ class FeedMyPostsActivity : PassphraseRequiredActivity() {
           onDelete = viewModel::delete,
           onDeleteFailureShown = viewModel::onDeleteFailureShown,
           onEdit = { editLauncher.launch(it) },
-          onEditNoticeShown = viewModel::onEditNoticeShown
+          onEditNoticeShown = viewModel::onEditNoticeShown,
+          onProfileClick = { profileLauncher.launch(Unit) }
         )
       }
     }

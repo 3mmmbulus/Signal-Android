@@ -23,6 +23,8 @@ import org.thoughtcrime.securesms.feed.net.FeedEntry
 import org.thoughtcrime.securesms.feed.net.FeedEventPayload
 import org.thoughtcrime.securesms.feed.net.FeedItemRef
 import org.thoughtcrime.securesms.feed.net.FeedMyPostsPage
+import org.thoughtcrime.securesms.feed.net.FeedMyProfile
+import org.thoughtcrime.securesms.feed.net.FeedProfileUpdate
 import org.thoughtcrime.securesms.feed.net.FeedTimelinePage
 import org.thoughtcrime.securesms.region.TellomiRegionProfile
 import org.thoughtcrime.securesms.region.TellomiRegions
@@ -61,6 +63,11 @@ interface FeedSource {
 
   /** 发评论，返回服务端给的 `state`（一般是 `pending`）。 */
   suspend fun postComment(postId: String, text: String, parentId: String?): String
+
+  /** 自己的公开主页；还没建是 null（发帖、评论、关注前要先建，引擎回 409 `profile_required`）。 */
+  suspend fun myProfile(): FeedMyProfile?
+
+  suspend fun saveProfile(update: FeedProfileUpdate): FeedMyProfile
 }
 
 /**
@@ -110,6 +117,10 @@ class RemoteFeedSource(private val api: FeedApi) : FeedSource {
   }
 
   override suspend fun reportEvents(events: List<FeedEventPayload>) = api.events(events)
+
+  override suspend fun myProfile(): FeedMyProfile? = api.myProfile()
+
+  override suspend fun saveProfile(update: FeedProfileUpdate): FeedMyProfile = api.saveProfile(update)
 
   override suspend fun publish(draft: FeedDraft, clientNonce: String): FeedCreatePostResponse {
     // 引擎发帖接口还不收图片和 client_nonce（已请补）；在那之前带图的帖子不发
@@ -166,6 +177,8 @@ object EmptyFeedSource : FeedSource {
   override suspend fun card(contentId: String): FeedCard? = null
   override suspend fun comments(postId: String, cursor: String?): FeedCommentsPage = FeedCommentsPage()
   override suspend fun postComment(postId: String, text: String, parentId: String?): String = throw IllegalStateException("feed is not available")
+  override suspend fun myProfile(): FeedMyProfile? = null
+  override suspend fun saveProfile(update: FeedProfileUpdate): FeedMyProfile = throw IllegalStateException("feed is not available")
 }
 
 object FeedSources {

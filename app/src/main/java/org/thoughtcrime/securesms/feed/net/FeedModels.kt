@@ -355,3 +355,31 @@ data class FeedCommentsPage(
   val comments: List<FeedCard> = emptyList(),
   val cursor: String? = null
 )
+
+/** `GET` / `PUT /v1/feed/me/profile`：自己的公开主页（契约第八节）。名字、ID、简介、头像明文存服务端（第三节第 9 条）。 */
+@Serializable
+data class FeedMyProfile(
+  val id: String,
+  @SerialName("tellomi_number") val tellomiNumber: String? = null,
+  val handle: String? = null,
+  @SerialName("display_name") val displayName: String,
+  @SerialName("avatar_key") val avatarKey: String? = null,
+  val bio: String? = null,
+  @SerialName("shown_interests") val shownInterests: List<String> = emptyList(),
+  @SerialName("is_private") val isPrivate: Boolean = false,
+  @SerialName("is_minor") val isMinor: Boolean = false,
+  val region: String? = null
+) {
+  companion object {
+    /** 引擎的上限（`MaxNameChars`、`MaxBioChars`）。 */
+    const val MAX_NAME_CHARS = 32
+    const val MAX_BIO_CHARS = 200
+  }
+}
+
+/** `PUT /v1/feed/me/profile`：第一次调用就是建主页（必须带名字）；没给的字段不变。 */
+@Serializable
+data class FeedProfileUpdate(
+  @SerialName("display_name") val displayName: String? = null,
+  val bio: String? = null
+)

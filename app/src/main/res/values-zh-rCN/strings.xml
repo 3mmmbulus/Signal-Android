@@ -6687,6 +6687,13 @@
     <plurals name="TellomiFeedDetail__more_replies">
         <item quantity="other">展开 %1$d 条回复</item>
     </plurals>
+    <string name="TellomiFeedProfile__title">公开主页</string>
+    <string name="TellomiFeedProfile__title_new">设置公开主页</string>
+    <string name="TellomiFeedProfile__public_note">这里的名字、简介和 ID 是公开的，会显示在你的动态、评论和主页上。聊天资料和这里分开，仍然端到端加密。</string>
+    <string name="TellomiFeedProfile__name">名字</string>
+    <string name="TellomiFeedProfile__bio">简介</string>
+    <string name="TellomiFeedProfile__create">创建主页</string>
+    <string name="TellomiFeedProfile__invalid">请检查名字和简介</string>
     <string name="ConversationListTabs__99p">99+</string>
     <!-- Menu item on stories landing page -->
     <string name="StoriesLandingFragment__story_privacy">快拍隐私</string>
