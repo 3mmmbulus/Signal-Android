@@ -147,6 +147,12 @@ fun FeedListPane(
     viewModel.onMutedNoticeShown()
     if (snackbarHostState.showSnackbar(mutedMessage, actionLabel = undoLabel) == SnackbarResult.ActionPerformed) viewModel.unmuteAuthor(author)
   }
+  val savedToNoteMessage = stringResource(R.string.TellomiFeed__saved_done)
+  LaunchedEffect(state.savedNotice) {
+    if (!state.savedNotice) return@LaunchedEffect
+    viewModel.onSavedNoticeShown()
+    snackbarHostState.showSnackbar(savedToNoteMessage)
+  }
   LaunchedEffect(state.transientError) {
     val error = state.transientError ?: return@LaunchedEffect
     snackbarHostState.showSnackbar(
@@ -231,6 +237,7 @@ fun FeedListPane(
       onRefresh = viewModel::refresh,
       onLoadMore = viewModel::loadMore,
       onLikeClick = viewModel::toggleLike,
+      onSaveClick = viewModel::toggleSave,
       onNotInterestedClick = viewModel::notInterested,
       onUndoNotInterested = viewModel::undoNotInterested,
       onNotInterestedReason = viewModel::notInterestedReason,
@@ -310,6 +317,7 @@ private fun FeedPager(
   onRefresh: (FeedTab) -> Unit,
   onLoadMore: (FeedTab) -> Unit,
   onLikeClick: (FeedCard) -> Unit,
+  onSaveClick: (FeedCard) -> Unit = {},
   onNotInterestedClick: (FeedCard) -> Unit,
   onCardsVisible: (FeedTab, Set<String>) -> Unit,
   onUndoNotInterested: (FeedCard) -> Unit = {},
@@ -385,6 +393,7 @@ private fun FeedPager(
         onRefresh = { onRefresh(tab) },
         onLoadMore = { onLoadMore(tab) },
         onLikeClick = onLikeClick,
+        onSaveClick = onSaveClick,
         onNotInterestedClick = onNotInterestedClick,
         hidden = state.hidden,
         reasonAsks = state.reasonAsks,
@@ -419,6 +428,7 @@ private fun FeedTimeline(
   onRefresh: () -> Unit,
   onLoadMore: () -> Unit,
   onLikeClick: (FeedCard) -> Unit,
+  onSaveClick: (FeedCard) -> Unit,
   onNotInterestedClick: (FeedCard) -> Unit,
   hidden: Set<String>,
   reasonAsks: Map<String, FeedNotInterestedReason?>,
@@ -508,6 +518,7 @@ private fun FeedTimeline(
             card = card,
             showIpRegion = showIpRegion,
             onLikeClick = onLikeClick,
+            onSaveClick = onSaveClick,
             onNotInterestedClick = onNotInterestedClick,
             modifier = Modifier.animateItem(),
             mediaBaseUrl = mediaBaseUrl,

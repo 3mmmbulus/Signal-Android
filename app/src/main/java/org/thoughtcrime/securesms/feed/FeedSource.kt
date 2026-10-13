@@ -68,6 +68,9 @@ interface FeedSource {
   suspend fun timeline(tab: FeedTab, cursor: String?): FeedTimelinePage
   suspend fun setLiked(contentId: String, liked: Boolean)
 
+  /** 以假名上报收藏 / 取消（第三节第 27 条）；收藏本身在「我的收藏」里。 */
+  suspend fun setSaved(contentId: String, saved: Boolean)
+
   /** 不感兴趣；[reason] 是 [FeedNotInterestedReason.apiName]，同一条再发一次带上原因。 */
   suspend fun notInterested(contentId: String, reason: String? = null)
   suspend fun undoNotInterested(contentId: String)
@@ -232,6 +235,7 @@ class RemoteFeedSource(
   }
 
   override suspend fun setLiked(contentId: String, liked: Boolean) = api.setReaction(contentId, FeedApi.REACTION_LIKE, liked)
+  override suspend fun setSaved(contentId: String, saved: Boolean) = api.setReaction(contentId, FeedApi.REACTION_SAVE, saved)
   override suspend fun notInterested(contentId: String, reason: String?) = api.notInterested(contentId, reason)
   override suspend fun undoNotInterested(contentId: String) = api.undoNotInterested(contentId)
   override suspend fun myPosts(before: String?): FeedMyPostsPage = api.myPosts(before)
@@ -389,6 +393,7 @@ object EmptyFeedSource : FeedSource {
   override suspend fun isVisible(): Boolean = false
   override suspend fun timeline(tab: FeedTab, cursor: String?): FeedTimelinePage = FeedTimelinePage()
   override suspend fun setLiked(contentId: String, liked: Boolean) = Unit
+  override suspend fun setSaved(contentId: String, saved: Boolean) = Unit
   override suspend fun notInterested(contentId: String, reason: String?) = Unit
   override suspend fun undoNotInterested(contentId: String) = Unit
   override suspend fun reportEvents(events: List<FeedEventPayload>) = Unit

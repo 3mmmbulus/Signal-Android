@@ -19,14 +19,17 @@ import kotlinx.coroutines.withContext
 import org.signal.core.util.logging.Log
 import org.thoughtcrime.securesms.feed.FeedInsightsState
 import org.thoughtcrime.securesms.feed.FeedOwnPostAction
+import org.thoughtcrime.securesms.feed.FeedSavedMessages
 import org.thoughtcrime.securesms.feed.FeedSource
 import org.thoughtcrime.securesms.feed.FeedSources
+import org.thoughtcrime.securesms.feed.NoteToSelfFeedSavedMessages
 import org.thoughtcrime.securesms.feed.isPinLimit
 import org.thoughtcrime.securesms.feed.net.FeedApiException
 import org.thoughtcrime.securesms.feed.net.FeedCard
 import org.thoughtcrime.securesms.feed.net.FeedCreatePostResponse
 import org.thoughtcrime.securesms.feed.withLiked
 import org.thoughtcrime.securesms.feed.withPollState
+import org.thoughtcrime.securesms.feed.withSaved
 import org.thoughtcrime.securesms.feed.withSettings
 
 /**
@@ -38,7 +41,8 @@ import org.thoughtcrime.securesms.feed.withSettings
 class FeedPostDetailViewModel(
   initial: FeedCard,
   private val source: FeedSource = FeedSources.current(),
-  private val ioDispatcher: CoroutineDispatcher = Dispatchers.IO
+  private val ioDispatcher: CoroutineDispatcher = Dispatchers.IO,
+  private val savedMessages: FeedSavedMessages = NoteToSelfFeedSavedMessages
 ) : ViewModel() {
 
   companion object {
@@ -112,6 +116,34 @@ class FeedPostDetailViewModel(
       } catch (e: Exception) {
         Log.w(TAG, "like failed", e)
         internalState.update { it.copy(post = it.post.withLiked(!nowLiked), notice = FeedPostDetailState.Notice.FAILED) }
+      }
+    }
+  }
+
+  private var saving = false
+
+  /** 收藏 / 取消收藏：先改「我的收藏」，再以假名上报（上报失败不改回）。 */
+  fun toggleSave() {
+    if (saving) return
+    saving = true
+    val post = internalState.value.post
+    val nowSaved = !post.viewer.saved
+    internalState.update { it.copy(post = it.post.withSaved(nowSaved)) }
+    viewModelScope.launch {
+      try {
+        withContext(ioDispatcher) { if (nowSaved) savedMessages.add(post) else savedMessages.remove(post.id) }
+        if (nowSaved) internalState.update { it.copy(notice = FeedPostDetailState.Notice.SAVED) }
+      } catch (e: Exception) {
+        Log.w(TAG, "saved messages failed", e)
+        internalState.update { it.copy(post = it.post.withSaved(!nowSaved), notice = FeedPostDetailState.Notice.FAILED) }
+        saving = false
+        return@launch
+      }
+      saving = false
+      try {
+        withContext(ioDispatcher) { source.setSaved(post.id, nowSaved) }
+      } catch (e: Exception) {
+        Log.w(TAG, "save report failed", e)
       }
     }
   }
@@ -309,6 +341,9 @@ data class FeedPostDetailState(
 
     /** 置顶已满 3 条。 */
     PIN_LIMIT,
+
+    /** 已存进「我的收藏」。 */
+    SAVED,
     FAILED
   }
 }

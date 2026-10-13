@@ -106,7 +106,9 @@ fun FeedPostCard(
   /** 自己的帖子：「···」里的置顶、隐藏点赞数、查看数据（第三节第 26 条）。 */
   onOwnPostAction: ((FeedCard, FeedOwnPostAction) -> Unit)? = null,
   /** 别人的帖子：「···」里的「不看 TA 的动态」（第三节第 26 条）；开放内容的外部作者没有。 */
-  onMuteAuthorClick: ((FeedCard) -> Unit)? = null
+  onMuteAuthorClick: ((FeedCard) -> Unit)? = null,
+  /** 收藏 / 取消收藏（第三节第 27 条：存进「我的收藏」）；null 的地方不显示。 */
+  onSaveClick: ((FeedCard) -> Unit)? = null
 ) {
   val author = card.author
   val openAuthor: (() -> Unit)? = if (author != null && author.isNative && onAuthorClick != null) {
@@ -211,6 +213,7 @@ fun FeedPostCard(
       card = card,
       onLikeClick = onLikeClick,
       onCommentClick = onOpen,
+      onSaveClick = onSaveClick,
       modifier = Modifier.padding(start = CONTENT_START - 12.dp, top = 2.dp)
     )
   }
@@ -470,6 +473,7 @@ private fun FeedActionRow(
   card: FeedCard,
   onLikeClick: (FeedCard) -> Unit,
   onCommentClick: ((FeedCard) -> Unit)?,
+  onSaveClick: ((FeedCard) -> Unit)?,
   modifier: Modifier = Modifier
 ) {
   val liked = card.viewer.liked
@@ -531,6 +535,21 @@ private fun FeedActionRow(
       }
     }
 
+    if (onSaveClick != null) {
+      val saved = card.viewer.saved
+      Icon(
+        imageVector = ImageVector.vectorResource(if (saved) R.drawable.tellomi_symbol_bookmark_fill_24 else R.drawable.tellomi_symbol_bookmark_24),
+        contentDescription = stringResource(if (saved) R.string.TellomiFeed__unsave else R.string.TellomiFeed__save),
+        tint = if (saved) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+        modifier = Modifier
+          .clip(CircleShape)
+          .clickable { onSaveClick(card) }
+          .testTag(FeedPostCardTestTags.SAVE)
+          .padding(10.dp)
+          .size(20.dp)
+      )
+    }
+
     if (card.shareable) {
       FeedShareButton(card)
     }
@@ -541,6 +560,7 @@ object FeedPostCardTestTags {
   const val SHARE = "feed_card_share"
   const val COPY_LINK = "feed_card_copy_link"
   const val MUTE_AUTHOR = "feed_card_mute_author"
+  const val SAVE = "feed_card_save"
 
   fun ownAction(action: FeedOwnPostAction) = "feed_card_own_${action.name.lowercase()}"
 

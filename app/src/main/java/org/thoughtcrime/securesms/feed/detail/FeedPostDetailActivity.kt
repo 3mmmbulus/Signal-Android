@@ -73,7 +73,8 @@ class FeedPostDetailActivity : PassphraseRequiredActivity() {
           onOwnPostAction = viewModel::onOwnPostAction,
           onDeletePost = viewModel::deletePost,
           onReportPost = { reportLauncher.launch(FeedReportTarget.content(state.post.id)) },
-          onInsightsDismissed = viewModel::onInsightsDismissed
+          onInsightsDismissed = viewModel::onInsightsDismissed,
+          onSaveClick = viewModel::toggleSave
         )
       }
     }

@@ -41,7 +41,8 @@ class FeedViewModel(
   private val clock: () -> Long = System::currentTimeMillis,
   private val blockedKeywords: FeedBlockedKeywords = StoredFeedBlockedKeywords(),
   /** 不感兴趣后问不问原因（第三节第 11 条「约一半的时候」）；测试里换掉。 */
-  private val askReason: () -> Boolean = { Random.nextBoolean() }
+  private val askReason: () -> Boolean = { Random.nextBoolean() },
+  private val savedMessages: FeedSavedMessages = NoteToSelfFeedSavedMessages
 ) : ViewModel() {
 
   companion object {
@@ -158,6 +159,40 @@ class FeedViewModel(
         internalState.update { it.copy(transientError = FeedState.TransientError.ACTION_FAILED) }
       }
     }
+  }
+
+  private val saving = mutableSetOf<String>()
+
+  /**
+   * 收藏 / 取消收藏（第三节第 27 条）：先存进或删掉「我的收藏」里那条，成功了再以假名上报；上报失败不影响收藏本身。
+   * 存不进「我的收藏」就改回来。
+   */
+  fun toggleSave(card: FeedCard) {
+    if (!saving.add(card.id)) return
+    val nowSaved = !card.viewer.saved
+    updateCard(card.id) { it.withSaved(nowSaved) }
+    viewModelScope.launch {
+      try {
+        withContext(ioDispatcher) { if (nowSaved) savedMessages.add(card) else savedMessages.remove(card.id) }
+        if (nowSaved) internalState.update { it.copy(savedNotice = true) }
+      } catch (e: Exception) {
+        Log.w(TAG, "saved messages failed", e)
+        updateCard(card.id) { it.withSaved(!nowSaved) }
+        internalState.update { it.copy(transientError = FeedState.TransientError.ACTION_FAILED) }
+        saving -= card.id
+        return@launch
+      }
+      saving -= card.id
+      try {
+        withContext(ioDispatcher) { source.setSaved(card.id, nowSaved) }
+      } catch (e: Exception) {
+        Log.w(TAG, "save report failed", e)
+      }
+    }
+  }
+
+  fun onSavedNoticeShown() {
+    internalState.update { it.copy(savedNotice = false) }
   }
 
   private val voting = mutableSetOf<String>()
@@ -431,6 +466,8 @@ internal fun FeedCard.withLiked(liked: Boolean): FeedCard {
   return copy(viewer = viewer.copy(liked = liked), stats = stats.copy(likes = likes))
 }
 
+internal fun FeedCard.withSaved(saved: Boolean): FeedCard = if (viewer.saved == saved) this else copy(viewer = viewer.copy(saved = saved))
+
 /** 投完票：换成服务端给的票数和我的选择。 */
 internal fun FeedCard.withPollState(state: FeedPollState): FeedCard = copy(pollState = state)
 
@@ -446,6 +483,8 @@ data class FeedState(
   val blockedNotice: Boolean = false,
   /** 刚「不看 TA」的作者，提示条带「撤销」。 */
   val mutedAuthor: FeedAuthor? = null,
+  /** 刚收藏了一条，提示「已存进我的收藏」。 */
+  val savedNotice: Boolean = false,
   val transientError: TransientError? = null,
   val publishNotice: String? = null,
   /** 刚保存的编辑，服务端给的 `state`。 */

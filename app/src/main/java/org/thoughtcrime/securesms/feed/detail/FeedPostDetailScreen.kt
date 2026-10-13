@@ -112,7 +112,8 @@ fun FeedPostDetailScreen(
   onOwnPostAction: (FeedOwnPostAction) -> Unit = {},
   onDeletePost: () -> Unit = {},
   onReportPost: () -> Unit = {},
-  onInsightsDismissed: () -> Unit = {}
+  onInsightsDismissed: () -> Unit = {},
+  onSaveClick: () -> Unit = {}
 ) {
   val snackbarHostState = remember { SnackbarHostState() }
   LaunchedEffect(state.deleted) { if (state.deleted) onBack() }
@@ -164,6 +165,7 @@ fun FeedPostDetailScreen(
       onOwnPostAction = onOwnPostAction,
       onDeletePost = onDeletePost,
       onReportPost = onReportPost,
+      onSaveClick = onSaveClick,
       modifier = Modifier.padding(padding).fillMaxSize()
     )
   }
@@ -187,6 +189,7 @@ private fun CommentList(
   onOwnPostAction: (FeedOwnPostAction) -> Unit,
   onDeletePost: () -> Unit,
   onReportPost: () -> Unit,
+  onSaveClick: () -> Unit,
   modifier: Modifier = Modifier
 ) {
   val listState = rememberLazyListState()
@@ -251,7 +254,8 @@ private fun CommentList(
         // 「···」：自己的给置顶 / 回复选项 / 隐藏点赞数 / 查看数据 / 删除，别人的给举报（第三节第 26 条）
         onOwnPostAction = { _, action -> onOwnPostAction(action) },
         onDeleteClick = if (state.post.viewer.isAuthor) { _ -> confirmDelete = true } else null,
-        onReportClick = if (state.post.viewer.isAuthor) null else { _ -> onReportPost() }
+        onReportClick = if (state.post.viewer.isAuthor) null else { _ -> onReportPost() },
+        onSaveClick = { onSaveClick() }
       )
       HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
     }
@@ -561,6 +565,7 @@ private fun FeedPostDetailState.Notice.messageRes(): Int {
     FeedPostDetailState.Notice.PROFILE_REQUIRED -> R.string.TellomiFeedDetail__profile_required
     FeedPostDetailState.Notice.PARENT_GONE -> R.string.TellomiFeedDetail__parent_gone
     FeedPostDetailState.Notice.PIN_LIMIT -> R.string.TellomiFeed__pin_limit
+    FeedPostDetailState.Notice.SAVED -> R.string.TellomiFeed__saved_done
     FeedPostDetailState.Notice.FAILED -> R.string.TellomiFeed__action_failed
   }
 }
