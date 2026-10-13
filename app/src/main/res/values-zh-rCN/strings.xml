@@ -7035,6 +7035,21 @@
     <plurals name="TellomiFeedKeywords__days">
         <item quantity="other">%1$d 天</item>
     </plurals>
+    <string name="TellomiFeedPrivacy__header">动态</string>
+    <string name="TellomiFeedPrivacy__private">私密账号</string>
+    <string name="TellomiFeedPrivacy__private_summary">只有好友和你批准的关注者能看你的动态</string>
+    <string name="TellomiFeedPrivacy__to_private_title">设为私密账号？</string>
+    <string name="TellomiFeedPrivacy__to_private_body">只有好友和你批准的关注者能看到你的动态，别人关注你要你批准。你的动态不能被转发、引用、分享到快拍或复制链接。</string>
+    <string name="TellomiFeedPrivacy__to_private_confirm">设为私密</string>
+    <string name="TellomiFeedPrivacy__to_public_title">改回公开？</string>
+    <string name="TellomiFeedPrivacy__to_public_body">所有人都能看到你的动态，待处理的关注请求会自动通过。</string>
+    <string name="TellomiFeedPrivacy__to_public_confirm">改回公开</string>
+    <string name="TellomiFeedPrivacy__guard">防骚扰模式</string>
+    <string name="TellomiFeedPrivacy__guard_on">防骚扰模式 · 开到 %1$s</string>
+    <string name="TellomiFeedPrivacy__guard_off">关闭</string>
+    <string name="TellomiFeedPrivacy__guard_summary">开着时只有好友和关注你满 7 天的人能评论、@你，搜索里找不到你。到期自动关。</string>
+    <string name="TellomiFeedPrivacy__no_profile">建了动态主页后才能设置</string>
+    <string name="TellomiFeedPrivacy__load_failed">动态设置读取失败</string>
     <string name="ConversationListTabs__99p">99+</string>
     <!-- Menu item on stories landing page -->
     <string name="StoriesLandingFragment__story_privacy">快拍隐私</string>

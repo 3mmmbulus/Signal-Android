@@ -7264,6 +7264,21 @@
         <item quantity="one">%1$d day</item>
         <item quantity="other">%1$d days</item>
     </plurals>
+    <string name="TellomiFeedPrivacy__header">Feed</string>
+    <string name="TellomiFeedPrivacy__private">Private account</string>
+    <string name="TellomiFeedPrivacy__private_summary">Only friends and followers you approve can see your posts</string>
+    <string name="TellomiFeedPrivacy__to_private_title">Make your account private?</string>
+    <string name="TellomiFeedPrivacy__to_private_body">Only friends and followers you approve will see your posts. New followers will need your approval. Your posts can\'t be reposted, quoted, shared to stories or copied as a link.</string>
+    <string name="TellomiFeedPrivacy__to_private_confirm">Make private</string>
+    <string name="TellomiFeedPrivacy__to_public_title">Make your account public?</string>
+    <string name="TellomiFeedPrivacy__to_public_body">Anyone can see your posts. Pending follow requests will be approved.</string>
+    <string name="TellomiFeedPrivacy__to_public_confirm">Make public</string>
+    <string name="TellomiFeedPrivacy__guard">Harassment guard</string>
+    <string name="TellomiFeedPrivacy__guard_on">Harassment guard · on until %1$s</string>
+    <string name="TellomiFeedPrivacy__guard_off">Off</string>
+    <string name="TellomiFeedPrivacy__guard_summary">While on, only friends and people who have followed you for 7 days can comment on or @mention you, and you don\'t show up in search. It turns off by itself.</string>
+    <string name="TellomiFeedPrivacy__no_profile">Set up your feed profile to use these settings</string>
+    <string name="TellomiFeedPrivacy__load_failed">Couldn\'t load feed settings</string>
     <string name="ConversationListTabs__99p">99+</string>
     <!-- Menu item on stories landing page -->
     <string name="StoriesLandingFragment__story_privacy">Story privacy</string>

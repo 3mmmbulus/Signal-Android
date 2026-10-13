@@ -16,6 +16,7 @@ import androidx.biometric.BiometricPrompt
 import androidx.biometric.BiometricPrompt.PromptInfo
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.ViewModelProvider
+import androidx.lifecycle.asLiveData
 import androidx.navigation.Navigation
 import androidx.navigation.fragment.NavHostFragment
 import androidx.navigation.fragment.navArgs
@@ -38,6 +39,9 @@ import org.thoughtcrime.securesms.components.settings.PreferenceModel
 import org.thoughtcrime.securesms.components.settings.PreferenceViewHolder
 import org.thoughtcrime.securesms.components.settings.configure
 import org.thoughtcrime.securesms.crypto.MasterSecretUtil
+import org.thoughtcrime.securesms.feed.TellomiFeed
+import org.thoughtcrime.securesms.feed.settings.FeedPrivacySettingsViewModel
+import org.thoughtcrime.securesms.feed.settings.feedPrivacySettingsPrefs
 import org.thoughtcrime.securesms.keyvalue.SignalStore
 import org.thoughtcrime.securesms.service.KeyCachingService
 import org.thoughtcrime.securesms.util.CommunicationActions
@@ -47,6 +51,7 @@ import org.thoughtcrime.securesms.util.TextSecurePreferences
 import org.thoughtcrime.securesms.util.adapter.mapping.LayoutFactory
 import org.thoughtcrime.securesms.util.adapter.mapping.MappingAdapter
 import org.thoughtcrime.securesms.util.navigation.safeNavigate
+import org.thoughtcrime.securesms.util.viewModel
 import kotlin.math.max
 import kotlin.time.Duration.Companion.milliseconds
 import kotlin.time.Duration.Companion.seconds
@@ -58,6 +63,11 @@ class PrivacySettingsFragment : DSLSettingsFragment(R.string.preferences__privac
   private lateinit var viewModel: PrivacySettingsViewModel
   private lateinit var biometricAuth: BiometricDeviceAuthentication
   private lateinit var biometricDeviceLockLauncher: ActivityResultLauncher<String>
+
+  // Tellomi（M11 第三节第 29、30 条）：动态的隐私设置加在这一页，动态入口开着时才有
+  private val feedViewModel: FeedPrivacySettingsViewModel by viewModel { FeedPrivacySettingsViewModel() }
+  private val feedEnabled: Boolean by lazy { TellomiFeed.isTabEnabled() }
+  private var latestState: PrivacySettingsState? = null
 
   private val incognitoSummary: CharSequence by lazy {
     SpannableStringBuilder(getString(R.string.preferences__this_setting_is_not_a_guarantee))
@@ -91,6 +101,7 @@ class PrivacySettingsFragment : DSLSettingsFragment(R.string.preferences__privac
   override fun onResume() {
     super.onResume()
     viewModel.refreshBlockedCount()
+    if (feedEnabled) feedViewModel.load()
   }
 
   override fun onPause() {
@@ -108,7 +119,18 @@ class PrivacySettingsFragment : DSLSettingsFragment(R.string.preferences__privac
     val args: PrivacySettingsFragmentArgs by navArgs()
     var showPaymentLock = true
 
+    if (feedEnabled) {
+      feedViewModel.state.asLiveData().observe(viewLifecycleOwner) { feedState ->
+        latestState?.let { adapter.submitList(getConfiguration(it).toMappingModelList()) }
+        if (feedState.failed) {
+          Toast.makeText(requireContext(), R.string.TellomiFeedNotificationSettings__save_failed, Toast.LENGTH_SHORT).show()
+          feedViewModel.onNoticeShown()
+        }
+      }
+    }
+
     viewModel.state.observe(viewLifecycleOwner) { state ->
+      latestState = state
       adapter.submitList(getConfiguration(state).toMappingModelList())
       if (args.showPaymentLock && showPaymentLock) {
         showPaymentLock = false
@@ -320,6 +342,11 @@ class PrivacySettingsFragment : DSLSettingsFragment(R.string.preferences__privac
       )
 
       dividerPref()
+
+      if (feedEnabled) {
+        feedPrivacySettingsPrefs(requireContext(), feedViewModel.state.value, feedViewModel)
+        dividerPref()
+      }
 
       clickPref(
         title = DSLSettingsText.from(R.string.preferences__advanced),

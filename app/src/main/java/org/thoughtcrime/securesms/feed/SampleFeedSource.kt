@@ -363,7 +363,17 @@ object SampleFeedSource : FeedSource {
 
   override suspend fun saveProfile(update: FeedProfileUpdate): FeedMyProfile = synchronized(this) {
     val current = profile ?: FeedMyProfile(id = "s-me", tellomiNumber = me.tellomiNumber, displayName = update.displayName ?: throw IllegalArgumentException("name required"))
-    current.copy(displayName = update.displayName ?: current.displayName, bio = update.bio ?: current.bio).also { profile = it }
+    val guardUntil = when (val days = update.guardDays) {
+      null -> current.guardUntil
+      0 -> null
+      else -> Instant.now().plus(days.toLong(), ChronoUnit.DAYS).toString()
+    }
+    current.copy(
+      displayName = update.displayName ?: current.displayName,
+      bio = update.bio ?: current.bio,
+      isPrivate = update.isPrivate ?: current.isPrivate,
+      guardUntil = guardUntil
+    ).also { profile = it }
   }
 
   /** 样例里关注着「关注」栏那两位；「周末烘焙」是私密账号，关注要等批准（样例里一直是待批准）。 */

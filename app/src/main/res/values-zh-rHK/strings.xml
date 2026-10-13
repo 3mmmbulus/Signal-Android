@@ -7035,6 +7035,21 @@
     <plurals name="TellomiFeedKeywords__days">
         <item quantity="other">%1$d 天</item>
     </plurals>
+    <string name="TellomiFeedPrivacy__header">動態</string>
+    <string name="TellomiFeedPrivacy__private">私密帳戶</string>
+    <string name="TellomiFeedPrivacy__private_summary">只有好友和你批准的關注者能看你的動態</string>
+    <string name="TellomiFeedPrivacy__to_private_title">設為私密帳戶？</string>
+    <string name="TellomiFeedPrivacy__to_private_body">只有好友和你批准的關注者能看到你的動態，別人關注你要你批准。你的動態不能被轉發、引用、分享到快拍或複製連結。</string>
+    <string name="TellomiFeedPrivacy__to_private_confirm">設為私密</string>
+    <string name="TellomiFeedPrivacy__to_public_title">改回公開？</string>
+    <string name="TellomiFeedPrivacy__to_public_body">所有人都能看到你的動態，待處理的關注請求會自動通過。</string>
+    <string name="TellomiFeedPrivacy__to_public_confirm">改回公開</string>
+    <string name="TellomiFeedPrivacy__guard">防騷擾模式</string>
+    <string name="TellomiFeedPrivacy__guard_on">防騷擾模式 · 開到 %1$s</string>
+    <string name="TellomiFeedPrivacy__guard_off">關閉</string>
+    <string name="TellomiFeedPrivacy__guard_summary">開著時只有好友和關注你滿 7 天的人能評論、@你，搜尋裡找不到你。到期自動關閉。</string>
+    <string name="TellomiFeedPrivacy__no_profile">建立動態主頁後才能設定</string>
+    <string name="TellomiFeedPrivacy__load_failed">動態設定讀取失敗</string>
     <string name="ConversationListTabs__99p">99+</string>
     <!-- Menu item on stories landing page -->
     <string name="StoriesLandingFragment__story_privacy">快拍隱私</string>

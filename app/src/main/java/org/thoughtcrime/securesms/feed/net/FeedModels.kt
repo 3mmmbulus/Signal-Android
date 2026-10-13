@@ -417,9 +417,14 @@ data class FeedMyProfile(
   @SerialName("shown_interests") val shownInterests: List<String> = emptyList(),
   @SerialName("is_private") val isPrivate: Boolean = false,
   @SerialName("is_minor") val isMinor: Boolean = false,
-  val region: String? = null
+  val region: String? = null,
+  /** 防骚扰模式到什么时候（第三节第 30 条）；没开是 null。 */
+  @SerialName("harassment_guard_until") val guardUntil: String? = null
 ) {
   companion object {
+    /** 防骚扰模式能选的天数；0 = 关（引擎 `harassmentGuardDays`）。 */
+    val GUARD_DAYS = listOf(0, 3, 7, 30)
+
     /** 引擎的上限（`MaxNameChars`、`MaxBioChars`）。 */
     const val MAX_NAME_CHARS = 32
     const val MAX_BIO_CHARS = 200
@@ -430,7 +435,11 @@ data class FeedMyProfile(
 @Serializable
 data class FeedProfileUpdate(
   @SerialName("display_name") val displayName: String? = null,
-  val bio: String? = null
+  val bio: String? = null,
+  /** 私密账号（第三节第 29 条）；改回公开时引擎把待处理的关注请求都通过。 */
+  @SerialName("is_private") val isPrivate: Boolean? = null,
+  /** 防骚扰模式开几天，0 = 关（第三节第 30 条）。 */
+  @SerialName("harassment_guard_days") val guardDays: Int? = null
 )
 
 /** `POST /v1/feed/posts/{id}/appeal`。 */
