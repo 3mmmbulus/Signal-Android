@@ -5,9 +5,13 @@
 
 package org.thoughtcrime.securesms.feed
 
+import okhttp3.HttpUrl.Companion.toHttpUrlOrNull
+import org.thoughtcrime.securesms.dependencies.AppDependencies
 import org.thoughtcrime.securesms.feed.compose.FeedDraft
 import org.thoughtcrime.securesms.feed.compose.FeedDraftKind
+import org.thoughtcrime.securesms.feed.net.CachingFeedTokenSource
 import org.thoughtcrime.securesms.feed.net.FeedApi
+import org.thoughtcrime.securesms.feed.net.FeedAuthApi
 import org.thoughtcrime.securesms.feed.net.FeedConfig
 import org.thoughtcrime.securesms.feed.net.FeedCreatePostRequest
 import org.thoughtcrime.securesms.feed.net.FeedCreatePostResponse
@@ -15,6 +19,8 @@ import org.thoughtcrime.securesms.feed.net.FeedEntry
 import org.thoughtcrime.securesms.feed.net.FeedEventPayload
 import org.thoughtcrime.securesms.feed.net.FeedItemRef
 import org.thoughtcrime.securesms.feed.net.FeedTimelinePage
+import org.thoughtcrime.securesms.region.TellomiRegionProfile
+import org.thoughtcrime.securesms.region.TellomiRegions
 
 /**
  * 动态页取数据的地方。界面只认这个接口，不管背后是内容引擎还是本机样例。
@@ -98,9 +104,6 @@ internal fun FeedDraft.toRequest(): FeedCreatePostRequest {
 
 /**
  * 没有可用的内容引擎时用的空来源：配置是「关」，信息流是空的。
- *
- * 内容引擎的主机还没进 RegionProfile（ADR-0071 §十四「网络」），Signal-Server 也还没有 `/v1/tellomi/feed/auth`，
- * 所以服务端下发了 `global.feed.enabled` 的账号目前也只会看到空页面。
  */
 object EmptyFeedSource : FeedSource {
   override suspend fun config(): FeedConfig = FeedConfig(enabled = false)
@@ -113,12 +116,32 @@ object EmptyFeedSource : FeedSource {
 }
 
 object FeedSources {
+
+  private var remote: Pair<String, RemoteFeedSource>? = null
+
   /**
-   * 内部用户强制打开动态标签时用本机样例（[SampleFeedSource]），看得到卡片、能点赞；其余情况在内容引擎接上之前用 [EmptyFeedSource]。
-   * 样例只在本机内存里，不发任何网络请求。
+   * 内部用户强制打开动态标签时用本机样例（[SampleFeedSource]），看得到卡片、能点赞，不发任何网络请求；
+   * 其余情况连当前区的内容引擎（RegionProfile 的 `feed`），凭证从 Signal-Server 取。
+   *
+   * 引擎或凭证接口不通时，[FeedViewModel] 读不到配置，页面停在空状态；入口本身由远程配置 `global.feed.enabled` 管。
    */
   @JvmStatic
   fun current(): FeedSource {
-    return if (TellomiFeed.isSampleDataEnabled()) SampleFeedSource else EmptyFeedSource
+    return if (TellomiFeed.isSampleDataEnabled()) SampleFeedSource else remoteFor(TellomiRegions.current())
+  }
+
+  /**
+   * 每个区一份：切区后 [TellomiRegions.current] 换了，下次取到的是新区的主机和新的凭证缓存（token 里带着区）。
+   */
+  @Synchronized
+  private fun remoteFor(region: TellomiRegionProfile): FeedSource {
+    val baseUrl = region.feed.toHttpUrlOrNull() ?: return EmptyFeedSource
+    val key = "${region.id.id} ${region.feed}"
+    remote?.takeIf { it.first == key }?.let { return it.second }
+
+    val tokens = CachingFeedTokenSource.fromSignalServer(FeedAuthApi(AppDependencies.authWebSocket))
+    val source = RemoteFeedSource(FeedApi(baseUrl, AppDependencies.okHttpClient, tokens))
+    remote = key to source
+    return source
   }
 }

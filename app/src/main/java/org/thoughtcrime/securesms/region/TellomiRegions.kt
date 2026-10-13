@@ -57,6 +57,11 @@ data class TellomiRegionProfile(
   /** 调试日志上传（#931）。 */
   val debugLog: String,
   /**
+   * 动态的内容引擎（ADR-0071 §5.3、`docs/adr/0071/client-api-2026-10.md`）。凭证从 [chat] 的 `/v1/tellomi/feed/auth` 取，
+   * 列表、卡片、发帖都打这台主机。Desktop 不做动态，没有这一项。
+   */
+  val feed: String,
+  /**
    * 静态 IP（契约第三节 staticIps，Android 独有）：主机名 → IP，系统 DNS 和 1.1.1.1 都失败时的最后一档
    * （`SignalServiceNetworkAccess.DNS` 的 StaticDns，表由 [TellomiRegions.staticIpTable] 合成）。
    * 只有 global 档有；CN 档暂无回落，CN 的主机查不到就是 UnknownHostException，落到系统 DNS 的结果。
@@ -81,7 +86,8 @@ data class TellomiRegionProfile(
       captchaChallenge,
       sfu,
       uptimeHost,
-      debugLog
+      debugLog,
+      feed
     )
   }
 }
@@ -98,6 +104,9 @@ object TellomiRegions {
 
   /** 原来写死在 `SubmitDebugLogRepository` 里，收进这里（契约第三节「写死」那几处之一）。 */
   private const val DEBUG_LOG_URL = "https://chat.tellomi.app/debuglogs"
+
+  /** 内容引擎还没有构建常量，和 [DEBUG_LOG_URL] 一样写在表里。 */
+  private const val FEED_URL = "https://feed.tellomi.app"
 
   /** global 档 = 今天的常量（契约第五节第 1 条）。 */
   @JvmField
@@ -120,6 +129,7 @@ object TellomiRegions {
     sfu = BuildConfig.SIGNAL_SFU_URL,
     uptimeHost = BuildConfig.SIGNAL_SERVICE_STATUS_URL,
     debugLog = DEBUG_LOG_URL,
+    feed = FEED_URL,
     staticIps = mapOf(
       hostOf(BuildConfig.SIGNAL_URL) to BuildConfig.SIGNAL_SERVICE_IPS.toSet(),
       hostOf(BuildConfig.STORAGE_URL) to BuildConfig.SIGNAL_STORAGE_IPS.toSet(),
@@ -248,6 +258,7 @@ object TellomiRegions {
       sfu = rehost(global.sfu),
       uptimeHost = rehost(global.uptimeHost),
       debugLog = rehost(global.debugLog),
+      feed = rehost(global.feed),
       // 契约第三节：staticIps 只属于 global 档，CN 暂无回落
       staticIps = emptyMap()
     )

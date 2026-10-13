@@ -41,6 +41,7 @@ class TellomiRegionsTest {
     assertThat(global.sfu).isEqualTo("https://chat.tellomi.app/callingService")
     assertThat(global.uptimeHost).isEqualTo("uptime.tellomi.app")
     assertThat(global.debugLog).isEqualTo("https://chat.tellomi.app/debuglogs")
+    assertThat(global.feed).isEqualTo("https://feed.tellomi.app")
   }
 
   @Test
@@ -64,6 +65,7 @@ class TellomiRegionsTest {
     assertThat(cn.contentProxyHost).isEqualTo("contentproxy.tellomi.cn")
     assertThat(cn.contentProxyPort).isEqualTo(443)
     assertThat(cn.debugLog).isEqualTo("https://chat.tellomi.cn/debuglogs")
+    assertThat(cn.feed).isEqualTo("https://feed.tellomi.cn")
 
     // App 备案要填运行时连接的全部域名：CN 档一条都不能留在 tellomi.app
     assertThat(cn.endpoints().none { it.contains("tellomi.app") }).isTrue()
