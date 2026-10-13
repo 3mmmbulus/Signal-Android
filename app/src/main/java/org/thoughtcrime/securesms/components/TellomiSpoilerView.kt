@@ -45,6 +45,12 @@ class TellomiSpoilerView @JvmOverloads constructor(
     const val REVEAL_DURATION_MS = 450L
 
     private const val SCRIM_ALPHA = 0x33
+
+    /**
+     * Under the blurred picture: until it has loaded, or where it is transparent, the sharp picture under this layer
+     * must not show through.
+     */
+    private const val BACKING_COLOR = 0xFF3B3B3B.toInt()
     private const val PARTICLE_AREA_DP = 14f
     private const val MIN_PARTICLES = 24
     private const val MAX_PARTICLES = 420
@@ -84,7 +90,7 @@ class TellomiSpoilerView @JvmOverloads constructor(
   val isRevealing: Boolean
     get() = revealAnimator?.isRunning == true
 
-  /** 罩上：[blurred] 是模糊过的图（还没加载好时可以先给 null，只画压暗和粒子）。 */
+  /** 罩上：[blurred] 是模糊过的图（还没加载好时可以先给 null，先画不透明的底、压暗和粒子）。 */
   fun cover(blurred: Drawable?) {
     revealAnimator?.cancel()
     revealAnimator = null
@@ -179,6 +185,7 @@ class TellomiSpoilerView @JvmOverloads constructor(
       }
     }
 
+    canvas.drawColor(BACKING_COLOR)
     cover?.let {
       it.setBounds(0, 0, width, height)
       it.draw(canvas)

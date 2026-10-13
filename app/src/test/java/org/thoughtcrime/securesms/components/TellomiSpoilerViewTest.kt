@@ -8,6 +8,7 @@ package org.thoughtcrime.securesms.components
 import android.app.Application
 import android.graphics.Bitmap
 import android.graphics.Canvas
+import android.graphics.Color
 import android.os.Looper
 import android.view.View
 import androidx.test.core.app.ApplicationProvider
@@ -20,11 +21,13 @@ import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.Shadows.shadowOf
 import org.robolectric.annotation.Config
+import org.robolectric.annotation.GraphicsMode
 import java.time.Duration
 
 /** Tellomi (tellomi/tellomi#1263, spec R-1): the cover over a covered image / video, and uncovering it with a tap. */
 @RunWith(RobolectricTestRunner::class)
 @Config(manifest = Config.NONE, application = Application::class)
+@GraphicsMode(GraphicsMode.Mode.NATIVE)
 class TellomiSpoilerViewTest {
 
   private val view = TellomiSpoilerView(ApplicationProvider.getApplicationContext()).apply {
@@ -39,6 +42,21 @@ class TellomiSpoilerViewTest {
     assertThat(view.isCovering).isTrue()
     assertThat(view.visibility).isEqualTo(View.VISIBLE)
     view.draw(Canvas(Bitmap.createBitmap(300, 200, Bitmap.Config.ARGB_8888)))
+  }
+
+  @Test
+  fun `nothing under the cover shows through before the blurred picture has loaded`() {
+    val bitmap = Bitmap.createBitmap(300, 200, Bitmap.Config.ARGB_8888)
+    // What's under it: a bright picture.
+    bitmap.eraseColor(Color.WHITE)
+    view.cover(null)
+
+    view.draw(Canvas(bitmap))
+
+    // Opaque backing plus the dimming: far from the white under it, wherever there's no dust.
+    val pixel = bitmap.getPixel(1, 1)
+    assertThat(Color.alpha(pixel)).isEqualTo(255)
+    assertThat(Color.red(pixel) < 0x80).isTrue()
   }
 
   @Test
