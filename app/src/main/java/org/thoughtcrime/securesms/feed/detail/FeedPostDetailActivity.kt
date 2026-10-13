@@ -20,6 +20,8 @@ import org.thoughtcrime.securesms.feed.net.FeedCard
 import org.thoughtcrime.securesms.feed.net.FeedJson
 import org.thoughtcrime.securesms.feed.profile.FeedProfileActivity
 import org.thoughtcrime.securesms.feed.profile.FeedProfilePageActivity
+import org.thoughtcrime.securesms.feed.report.FeedReportActivity
+import org.thoughtcrime.securesms.feed.report.FeedReportTarget
 import org.thoughtcrime.securesms.util.DynamicNoActionBarTheme
 
 /**
@@ -37,6 +39,8 @@ class FeedPostDetailActivity : PassphraseRequiredActivity() {
       }
     }
   }
+
+  private val reportLauncher = registerForActivityResult(FeedReportActivity.Contract()) { }
 
   /** 建好公开主页回来就把刚才那条评论发出去（草稿还在）。 */
   private val profileLauncher = registerForActivityResult(FeedProfileActivity.Contract()) { saved ->
@@ -65,7 +69,11 @@ class FeedPostDetailActivity : PassphraseRequiredActivity() {
           onAuthorClick = { startActivity(FeedProfilePageActivity.intent(this, it.profileId)) },
           onVote = viewModel::vote,
           onApproveComment = viewModel::approveComment,
-          onDeclineComment = viewModel::declineComment
+          onDeclineComment = viewModel::declineComment,
+          onOwnPostAction = viewModel::onOwnPostAction,
+          onDeletePost = viewModel::deletePost,
+          onReportPost = { reportLauncher.launch(FeedReportTarget.content(state.post.id)) },
+          onInsightsDismissed = viewModel::onInsightsDismissed
         )
       }
     }

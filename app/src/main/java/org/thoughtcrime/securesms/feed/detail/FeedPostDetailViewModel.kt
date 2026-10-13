@@ -17,13 +17,17 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import org.signal.core.util.logging.Log
+import org.thoughtcrime.securesms.feed.FeedInsightsState
+import org.thoughtcrime.securesms.feed.FeedOwnPostAction
 import org.thoughtcrime.securesms.feed.FeedSource
 import org.thoughtcrime.securesms.feed.FeedSources
+import org.thoughtcrime.securesms.feed.isPinLimit
 import org.thoughtcrime.securesms.feed.net.FeedApiException
 import org.thoughtcrime.securesms.feed.net.FeedCard
 import org.thoughtcrime.securesms.feed.net.FeedCreatePostResponse
 import org.thoughtcrime.securesms.feed.withLiked
 import org.thoughtcrime.securesms.feed.withPollState
+import org.thoughtcrime.securesms.feed.withSettings
 
 /**
  * 帖子详情：整条帖子 + 评论（`dynamic-feed.md` 第三节第 2、4、10 条；契约第五节）。
@@ -208,6 +212,61 @@ class FeedPostDetailViewModel(
   fun onNoticeShown() {
     internalState.update { it.copy(notice = null) }
   }
+
+  /** 自己帖子「···」里的置顶、隐藏点赞数（先改，失败改回）和查看数据（第三节第 26 条）。回复选项卡片自己处理。 */
+  fun onOwnPostAction(action: FeedOwnPostAction) {
+    val post = internalState.value.post
+    val update = action.settingsUpdate
+    if (update == null) {
+      if (action == FeedOwnPostAction.INSIGHTS) loadInsights(post.id)
+      return
+    }
+    internalState.update { it.copy(post = it.post.withSettings(update)) }
+    viewModelScope.launch {
+      try {
+        withContext(ioDispatcher) { source.updatePostSettings(post.id, update) }
+      } catch (e: Exception) {
+        Log.w(TAG, "post settings failed", e)
+        internalState.update {
+          it.copy(
+            post = it.post.copy(pinned = post.pinned, stats = it.post.stats.copy(likeCountHidden = post.stats.likeCountHidden)),
+            notice = if (e.isPinLimit()) FeedPostDetailState.Notice.PIN_LIMIT else FeedPostDetailState.Notice.FAILED
+          )
+        }
+      }
+    }
+  }
+
+  private fun loadInsights(contentId: String) {
+    internalState.update { it.copy(insights = FeedInsightsState.Loading) }
+    viewModelScope.launch {
+      val result = try {
+        FeedInsightsState.Ready(withContext(ioDispatcher) { source.postInsights(contentId) })
+      } catch (e: Exception) {
+        Log.w(TAG, "insights failed", e)
+        FeedInsightsState.Failed
+      }
+      internalState.update { if (it.insights == null) it else it.copy(insights = result) }
+    }
+  }
+
+  fun onInsightsDismissed() {
+    internalState.update { it.copy(insights = null) }
+  }
+
+  /** 删掉自己的帖子：删成功了页面关掉；失败留在这里提示。 */
+  fun deletePost() {
+    val post = internalState.value.post
+    viewModelScope.launch {
+      try {
+        withContext(ioDispatcher) { source.deletePost(post.id) }
+        internalState.update { it.copy(deleted = true) }
+      } catch (e: Exception) {
+        Log.w(TAG, "delete failed", e)
+        internalState.update { it.copy(notice = FeedPostDetailState.Notice.FAILED) }
+      }
+    }
+  }
 }
 
 data class FeedPostDetailState(
@@ -226,7 +285,11 @@ data class FeedPostDetailState(
   val sending: Boolean = false,
   val notice: Notice? = null,
   val mediaBaseUrl: String? = null,
-  val showIpRegion: Boolean = false
+  val showIpRegion: Boolean = false,
+  /** 「查看数据」弹窗；null = 没开。 */
+  val insights: FeedInsightsState? = null,
+  /** 自己删掉了这条，页面该关了。 */
+  val deleted: Boolean = false
 ) {
   val threads: List<FeedCommentThread> by lazy { FeedCommentThreads.build(comments) }
 
@@ -243,6 +306,9 @@ data class FeedPostDetailState(
     /** 引擎要先建公开主页才能评论；建主页的页面还没做。 */
     PROFILE_REQUIRED,
     PARENT_GONE,
+
+    /** 置顶已满 3 条。 */
+    PIN_LIMIT,
     FAILED
   }
 }

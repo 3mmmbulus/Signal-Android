@@ -20,6 +20,8 @@ import org.junit.After
 import org.junit.Before
 import org.junit.Test
 import org.thoughtcrime.securesms.feed.EmptyFeedSource
+import org.thoughtcrime.securesms.feed.FeedInsightsState
+import org.thoughtcrime.securesms.feed.FeedOwnPostAction
 import org.thoughtcrime.securesms.feed.FeedSource
 import org.thoughtcrime.securesms.feed.net.FeedApiException
 import org.thoughtcrime.securesms.feed.net.FeedCard
@@ -27,6 +29,9 @@ import org.thoughtcrime.securesms.feed.net.FeedCommentsPage
 import org.thoughtcrime.securesms.feed.net.FeedCreatePostResponse
 import org.thoughtcrime.securesms.feed.net.FeedPoll
 import org.thoughtcrime.securesms.feed.net.FeedPollState
+import org.thoughtcrime.securesms.feed.net.FeedPostInsights
+import org.thoughtcrime.securesms.feed.net.FeedPostSettingsUpdate
+import org.thoughtcrime.securesms.feed.net.FeedViewer
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class FeedPostDetailViewModelTest {
@@ -57,6 +62,13 @@ class FeedPostDetailViewModelTest {
       votes += options
       return voteResult()
     }
+    val updates = mutableListOf<FeedPostSettingsUpdate>()
+    var settingsError: Exception? = null
+    override suspend fun updatePostSettings(contentId: String, update: FeedPostSettingsUpdate) {
+      settingsError?.let { throw it }
+      updates += update
+    }
+    override suspend fun postInsights(contentId: String) = FeedPostInsights(opens = 9)
     val posted = mutableListOf<Pair<String, String?>>()
     override suspend fun card(contentId: String): FeedCard? = fresh
     override suspend fun comments(postId: String, cursor: String?): FeedCommentsPage = pages[cursor] ?: FeedCommentsPage()
@@ -208,5 +220,39 @@ class FeedPostDetailViewModelTest {
 
     assertThat(viewModel.state.value.comments.single().held).isTrue()
     assertThat(viewModel.state.value.notice).isEqualTo(FeedPostDetailState.Notice.FAILED)
+  }
+
+  @Test
+  fun `my post's pin and insights work from the detail page, a fourth pin turns back`() {
+    val mine = post.copy(viewer = FeedViewer(isAuthor = true))
+    val source = FakeSource(fresh = mine, pages = emptyMap())
+    val viewModel = FeedPostDetailViewModel(mine, source, dispatcher)
+
+    viewModel.onOwnPostAction(FeedOwnPostAction.HIDE_LIKES)
+    assertThat(viewModel.state.value.post.stats.likeCountHidden).isTrue()
+    viewModel.onOwnPostAction(FeedOwnPostAction.INSIGHTS)
+    assertThat((viewModel.state.value.insights as FeedInsightsState.Ready).insights.opens).isEqualTo(9)
+
+    source.settingsError = FeedApiException(409, code = "too_many_pinned")
+    viewModel.onOwnPostAction(FeedOwnPostAction.PIN)
+    assertThat(viewModel.state.value.post.pinned).isFalse()
+    assertThat(viewModel.state.value.notice).isEqualTo(FeedPostDetailState.Notice.PIN_LIMIT)
+    assertThat(source.updates).containsExactly(FeedPostSettingsUpdate(likeCountHidden = true))
+  }
+
+  @Test
+  fun `deleting my post closes the page, a failed delete stays`() {
+    val source = FakeSource(fresh = post, pages = emptyMap())
+    val viewModel = FeedPostDetailViewModel(post, source, dispatcher)
+
+    source.moderationError = IllegalStateException("offline")
+    viewModel.deletePost()
+    assertThat(viewModel.state.value.deleted).isFalse()
+    assertThat(viewModel.state.value.notice).isEqualTo(FeedPostDetailState.Notice.FAILED)
+
+    source.moderationError = null
+    viewModel.deletePost()
+    assertThat(viewModel.state.value.deleted).isTrue()
+    assertThat(source.moderated).containsExactly("delete p")
   }
 }

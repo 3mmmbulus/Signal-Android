@@ -61,6 +61,8 @@ import org.signal.core.ui.compose.Scaffolds
 import org.signal.core.ui.compose.Snackbars
 import org.thoughtcrime.securesms.R
 import org.thoughtcrime.securesms.feed.FeedAvatar
+import org.thoughtcrime.securesms.feed.FeedInsightsDialog
+import org.thoughtcrime.securesms.feed.FeedOwnPostAction
 import org.thoughtcrime.securesms.feed.FeedPostCard
 import org.thoughtcrime.securesms.feed.net.FeedAuthor
 import org.thoughtcrime.securesms.feed.net.FeedCard
@@ -106,9 +108,14 @@ fun FeedPostDetailScreen(
   onAuthorClick: (FeedAuthor) -> Unit = {},
   onVote: (List<Int>) -> Unit = {},
   onApproveComment: (FeedCard) -> Unit = {},
-  onDeclineComment: (FeedCard) -> Unit = {}
+  onDeclineComment: (FeedCard) -> Unit = {},
+  onOwnPostAction: (FeedOwnPostAction) -> Unit = {},
+  onDeletePost: () -> Unit = {},
+  onReportPost: () -> Unit = {},
+  onInsightsDismissed: () -> Unit = {}
 ) {
   val snackbarHostState = remember { SnackbarHostState() }
+  LaunchedEffect(state.deleted) { if (state.deleted) onBack() }
   val noticeText = state.notice?.let { stringResource(it.messageRes()) }
   LaunchedEffect(state.notice) {
     if (state.notice == FeedPostDetailState.Notice.PROFILE_REQUIRED) {
@@ -154,8 +161,15 @@ fun FeedPostDetailScreen(
       onVote = onVote,
       onApproveComment = onApproveComment,
       onDeclineComment = onDeclineComment,
+      onOwnPostAction = onOwnPostAction,
+      onDeletePost = onDeletePost,
+      onReportPost = onReportPost,
       modifier = Modifier.padding(padding).fillMaxSize()
     )
+  }
+
+  state.insights?.let { insights ->
+    FeedInsightsDialog(state = insights, onDismiss = onInsightsDismissed)
   }
 }
 
@@ -170,9 +184,27 @@ private fun CommentList(
   onVote: (List<Int>) -> Unit,
   onApproveComment: (FeedCard) -> Unit,
   onDeclineComment: (FeedCard) -> Unit,
+  onOwnPostAction: (FeedOwnPostAction) -> Unit,
+  onDeletePost: () -> Unit,
+  onReportPost: () -> Unit,
   modifier: Modifier = Modifier
 ) {
   val listState = rememberLazyListState()
+  var confirmDelete by rememberSaveable { mutableStateOf(false) }
+  if (confirmDelete) {
+    Dialogs.SimpleAlertDialog(
+      title = stringResource(R.string.TellomiFeedMine__delete_title),
+      body = stringResource(R.string.TellomiFeedMine__delete_body),
+      confirm = stringResource(R.string.TellomiFeedMine__delete),
+      dismiss = stringResource(android.R.string.cancel),
+      confirmColor = MaterialTheme.colorScheme.error,
+      onConfirm = {
+        confirmDelete = false
+        onDeletePost()
+      },
+      onDismiss = { confirmDelete = false }
+    )
+  }
   var expandedThreads by rememberSaveable { mutableStateOf(setOf<String>()) }
   val postAuthorId = state.post.author?.profileId
   // 只有帖子作者能批准 / 拒绝等着的回复
@@ -215,7 +247,11 @@ private fun CommentList(
         mediaBaseUrl = state.mediaBaseUrl,
         expanded = true,
         onAuthorClick = onAuthorClick,
-        onVote = { _, options -> onVote(options) }
+        onVote = { _, options -> onVote(options) },
+        // 「···」：自己的给置顶 / 回复选项 / 隐藏点赞数 / 查看数据 / 删除，别人的给举报（第三节第 26 条）
+        onOwnPostAction = { _, action -> onOwnPostAction(action) },
+        onDeleteClick = if (state.post.viewer.isAuthor) { _ -> confirmDelete = true } else null,
+        onReportClick = if (state.post.viewer.isAuthor) null else { _ -> onReportPost() }
       )
       HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
     }
@@ -524,6 +560,7 @@ private fun FeedPostDetailState.Notice.messageRes(): Int {
     FeedPostDetailState.Notice.REPLY_NOT_ALLOWED -> R.string.TellomiFeedDetail__reply_not_allowed
     FeedPostDetailState.Notice.PROFILE_REQUIRED -> R.string.TellomiFeedDetail__profile_required
     FeedPostDetailState.Notice.PARENT_GONE -> R.string.TellomiFeedDetail__parent_gone
+    FeedPostDetailState.Notice.PIN_LIMIT -> R.string.TellomiFeed__pin_limit
     FeedPostDetailState.Notice.FAILED -> R.string.TellomiFeed__action_failed
   }
 }

@@ -13,6 +13,7 @@ import androidx.compose.ui.test.captureToImage
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onLast
+import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.onRoot
@@ -28,6 +29,8 @@ import org.robolectric.annotation.Config
 import org.robolectric.annotation.GraphicsMode
 import org.signal.core.ui.CoreUiDependenciesRule
 import org.signal.core.ui.compose.theme.SignalTheme
+import org.thoughtcrime.securesms.feed.FeedOwnPostAction
+import org.thoughtcrime.securesms.feed.FeedPostCardTestTags
 import org.thoughtcrime.securesms.feed.net.FeedAuthor
 import org.thoughtcrime.securesms.feed.net.FeedCard
 import org.thoughtcrime.securesms.feed.net.FeedStats
@@ -98,7 +101,10 @@ class FeedPostDetailScreenTest {
           onSend = {},
           onNoticeShown = {},
           onApproveComment = { moderated += "approve ${it.id}" },
-          onDeclineComment = { moderated += "decline ${it.id}" }
+          onDeclineComment = { moderated += "decline ${it.id}" },
+          onOwnPostAction = { moderated += "own ${it.name}" },
+          onDeletePost = { moderated += "delete" },
+          onReportPost = { moderated += "report" }
         )
       }
     }
@@ -176,5 +182,29 @@ class FeedPostDetailScreenTest {
 
     composeTestRule.onNodeWithText("Visible after the author approves").assertExists()
     composeTestRule.onNodeWithTag(FeedPostDetailTestTags.APPROVE + "h").assertDoesNotExist()
+  }
+
+  @Test
+  fun `my post has its own menu on the detail page, delete asks first`() {
+    show(FeedPostDetailState(post = post.copy(viewer = post.viewer.copy(isAuthor = true)), loading = false, loadedOnce = true))
+
+    composeTestRule.onNodeWithContentDescription("More").performClick()
+    composeTestRule.onNodeWithTag(FeedPostCardTestTags.ownAction(FeedOwnPostAction.PIN)).performClick()
+    composeTestRule.onNodeWithContentDescription("More").performClick()
+    composeTestRule.onNodeWithText("Delete").performClick()
+    composeTestRule.onNodeWithText("Delete this post?").assertExists()
+    composeTestRule.onAllNodesWithText("Delete").onLast().performClick()
+
+    assertThat(moderated).isEqualTo(listOf("own PIN", "delete"))
+  }
+
+  @Test
+  fun `someone else's post can be reported from the detail page`() {
+    show(FeedPostDetailState(post = post, loading = false, loadedOnce = true))
+
+    composeTestRule.onNodeWithContentDescription("More").performClick()
+    composeTestRule.onNodeWithText("Report").performClick()
+
+    assertThat(moderated).isEqualTo(listOf("report"))
   }
 }
