@@ -565,4 +565,19 @@ class FeedApiTest {
     assertThat(request.path).isEqualTo("/v1/feed/friends")
     assertThat(request.body.readUtf8()).isEqualTo("""{"assertion":"a.b.c"}""")
   }
+
+  @Test
+  fun `notification settings are read and written as one object`() = runBlocking {
+    server.enqueue(MockResponse().setBody("""{"from_whom":"following","likes":false,"comments":true,"follows":true}"""))
+    server.enqueue(MockResponse().setBody("""{"from_whom":"none","likes":false,"comments":true,"follows":true}"""))
+
+    val settings = api.notificationSettings()
+    assertThat(settings.fromWhom).isEqualTo("following")
+    api.putNotificationSettings(settings.copy(fromWhom = "none"))
+
+    assertThat(server.takeRequest().path).isEqualTo("/v1/feed/me/notification-settings")
+    val put = server.takeRequest()
+    assertThat(put.method).isEqualTo("PUT")
+    assertThat(put.body.readUtf8()).isEqualTo("""{"from_whom":"none","likes":false,"comments":true,"follows":true}""")
+  }
 }

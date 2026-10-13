@@ -6861,6 +6861,21 @@
     <string name="TellomiFeedSearch__see_all">查看全部</string>
     <string name="TellomiFeedSearch__no_results">找不到「%1$s」相關的結果</string>
     <string name="TellomiFeedSearch__failed">暫時無法搜尋，請稍後再試</string>
+    <string name="TellomiFeedNotificationSettings__header">動態</string>
+    <string name="TellomiFeedNotificationSettings__from_whom">接收誰的通知</string>
+    <string name="TellomiFeedNotificationSettings__from_everyone">所有人</string>
+    <string name="TellomiFeedNotificationSettings__from_following">我關注的人</string>
+    <string name="TellomiFeedNotificationSettings__from_friends">好友</string>
+    <string name="TellomiFeedNotificationSettings__from_none">都不接收</string>
+    <string name="TellomiFeedNotificationSettings__likes">讚</string>
+    <string name="TellomiFeedNotificationSettings__comments">留言和回覆</string>
+    <string name="TellomiFeedNotificationSettings__follows">新關注者</string>
+    <string name="TellomiFeedNotificationSettings__system_note">自己貼文的審核結果等系統通知不受這些設定影響。</string>
+    <string name="TellomiFeedNotificationSettings__loading">正在讀取…</string>
+    <string name="TellomiFeedNotificationSettings__load_failed">讀取動態通知設定失敗</string>
+    <string name="TellomiFeedNotificationSettings__retry">點按重試</string>
+    <string name="TellomiFeedNotificationSettings__profile_required">先建好公開主頁，才能收到動態通知。</string>
+    <string name="TellomiFeedNotificationSettings__save_failed">無法儲存，請重試。</string>
     <string name="ConversationListTabs__99p">99+</string>
     <!-- Menu item on stories landing page -->
     <string name="StoriesLandingFragment__story_privacy">快拍隱私</string>

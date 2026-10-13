@@ -26,6 +26,7 @@ import org.thoughtcrime.securesms.feed.net.FeedMyPost
 import org.thoughtcrime.securesms.feed.net.FeedMyPostsPage
 import org.thoughtcrime.securesms.feed.net.FeedMyProfile
 import org.thoughtcrime.securesms.feed.net.FeedNotification
+import org.thoughtcrime.securesms.feed.net.FeedNotificationSettings
 import org.thoughtcrime.securesms.feed.net.FeedNotificationsResponse
 import org.thoughtcrime.securesms.feed.net.FeedPersonSummary
 import org.thoughtcrime.securesms.feed.net.FeedProfilePage
@@ -424,6 +425,15 @@ object SampleFeedSource : FeedSource {
       (mine + recommend).filter { it.id !in hidden && ((it.text?.contains(q, ignoreCase = true) == true) || (it.title?.contains(q, ignoreCase = true) == true)) }.take(10)
     }
     FeedSearchPage(users = users, posts = posts)
+  }
+
+  private var notificationSettings = FeedNotificationSettings()
+
+  override suspend fun notificationSettings(): FeedNotificationSettings = synchronized(this) { notificationSettings }
+
+  override suspend fun saveNotificationSettings(settings: FeedNotificationSettings): FeedNotificationSettings = synchronized(this) {
+    notificationSettings = settings
+    settings
   }
 
   /** 样例里没有真实的好友关系；好友同步不会对样例调这个。 */

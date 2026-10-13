@@ -16,10 +16,12 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -27,6 +29,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.colorResource
 import androidx.compose.ui.res.stringArrayResource
 import androidx.compose.ui.res.stringResource
@@ -56,6 +59,11 @@ import org.thoughtcrime.securesms.components.PromptBatterySaverDialogFragment
 import org.thoughtcrime.securesms.components.settings.app.routes.AppSettingsRoute
 import org.thoughtcrime.securesms.components.settings.app.routes.AppSettingsRouter
 import org.thoughtcrime.securesms.components.settings.models.Banner
+import org.thoughtcrime.securesms.feed.TellomiFeed
+import org.thoughtcrime.securesms.feed.settings.FeedNotificationSettingsActions
+import org.thoughtcrime.securesms.feed.settings.FeedNotificationSettingsState
+import org.thoughtcrime.securesms.feed.settings.FeedNotificationSettingsViewModel
+import org.thoughtcrime.securesms.feed.settings.feedNotificationSettingsItems
 import org.thoughtcrime.securesms.notifications.NotificationChannels
 import org.thoughtcrime.securesms.notifications.TurnOnNotificationsBottomSheet
 import org.thoughtcrime.securesms.util.RingtoneUtil
@@ -75,6 +83,10 @@ class NotificationsSettingsFragment : ComposeFragment() {
   }
 
   private lateinit var callbacks: DefaultNotificationsSettingsCallbacks
+
+  // Tellomi（M11 第三节第 30、43 条）：动态的通知设置加在这一页，动态入口开着时才有
+  private val feedViewModel: FeedNotificationSettingsViewModel by viewModel { FeedNotificationSettingsViewModel() }
+  private val feedEnabled: Boolean by lazy { TellomiFeed.isTabEnabled() }
 
   override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
     super.onViewCreated(view, savedInstanceState)
@@ -103,13 +115,44 @@ class NotificationsSettingsFragment : ComposeFragment() {
   override fun onResume() {
     super.onResume()
     viewModel.refresh()
+    if (feedEnabled) feedViewModel.load()
   }
 
   @Composable
   override fun FragmentContent() {
     val state by viewModel.state.collectAsStateWithLifecycle()
 
-    NotificationsSettingsScreen(state = state, callbacks = callbacks)
+    if (!feedEnabled) {
+      NotificationsSettingsScreen(state = state, callbacks = callbacks)
+      return
+    }
+
+    val feedState by feedViewModel.state.collectAsStateWithLifecycle()
+    val feedActions = remember {
+      FeedNotificationSettingsActions(
+        onFromWhom = feedViewModel::setFromWhom,
+        onLikes = feedViewModel::setLikes,
+        onComments = feedViewModel::setComments,
+        onFollows = feedViewModel::setFollows,
+        onRetry = feedViewModel::load
+      )
+    }
+    val context = LocalContext.current
+    LaunchedEffect(feedState.notice) {
+      val notice = feedState.notice ?: return@LaunchedEffect
+      val message = when (notice) {
+        FeedNotificationSettingsState.Notice.PROFILE_REQUIRED -> R.string.TellomiFeedNotificationSettings__profile_required
+        FeedNotificationSettingsState.Notice.SAVE_FAILED -> R.string.TellomiFeedNotificationSettings__save_failed
+      }
+      Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
+      feedViewModel.onNoticeShown()
+    }
+
+    NotificationsSettingsScreen(
+      state = state,
+      callbacks = callbacks,
+      feedSection = { feedNotificationSettingsItems(feedState, feedActions) }
+    )
   }
 }
 
@@ -322,7 +365,8 @@ interface NotificationsSettingsCallbacks {
 fun NotificationsSettingsScreen(
   state: NotificationsSettingsState,
   callbacks: NotificationsSettingsCallbacks,
-  deviceState: DeviceState = remember { DeviceState() }
+  deviceState: DeviceState = remember { DeviceState() },
+  feedSection: (LazyListScope.() -> Unit)? = null
 ) {
   var showDialog by remember { mutableStateOf(false) }
 
@@ -580,6 +624,8 @@ fun NotificationsSettingsScreen(
           onCheckChanged = callbacks::setCallVibrateEnabled
         )
       }
+
+      feedSection?.invoke(this)
 
       item {
         Dividers.Default()

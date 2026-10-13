@@ -7084,6 +7084,21 @@
     <string name="TellomiFeedSearch__see_all">See all</string>
     <string name="TellomiFeedSearch__no_results">No results for “%1$s”</string>
     <string name="TellomiFeedSearch__failed">Couldn\'t search right now</string>
+    <string name="TellomiFeedNotificationSettings__header">Feed</string>
+    <string name="TellomiFeedNotificationSettings__from_whom">Notify me about</string>
+    <string name="TellomiFeedNotificationSettings__from_everyone">Everyone</string>
+    <string name="TellomiFeedNotificationSettings__from_following">People I follow</string>
+    <string name="TellomiFeedNotificationSettings__from_friends">Friends</string>
+    <string name="TellomiFeedNotificationSettings__from_none">No one</string>
+    <string name="TellomiFeedNotificationSettings__likes">Likes</string>
+    <string name="TellomiFeedNotificationSettings__comments">Comments and replies</string>
+    <string name="TellomiFeedNotificationSettings__follows">New followers</string>
+    <string name="TellomiFeedNotificationSettings__system_note">Notices about your own posts, like review results, always come through.</string>
+    <string name="TellomiFeedNotificationSettings__loading">Loading…</string>
+    <string name="TellomiFeedNotificationSettings__load_failed">Couldn\'t load Feed notification settings</string>
+    <string name="TellomiFeedNotificationSettings__retry">Tap to try again</string>
+    <string name="TellomiFeedNotificationSettings__profile_required">Set up your public profile first to get Feed notifications.</string>
+    <string name="TellomiFeedNotificationSettings__save_failed">Couldn\'t save. Try again.</string>
     <string name="ConversationListTabs__99p">99+</string>
     <!-- Menu item on stories landing page -->
     <string name="StoriesLandingFragment__story_privacy">Story privacy</string>

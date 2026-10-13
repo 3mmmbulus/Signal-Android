@@ -5,6 +5,8 @@
 
 package org.thoughtcrime.securesms.feed.net
 
+import kotlinx.serialization.EncodeDefault
+import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.Transient
@@ -637,3 +639,26 @@ data class FeedFriendReportRequest(val assertion: String)
 /** 两边都报了才 `confirmed`；只报了自己这一半是 false。 */
 @Serializable
 data class FeedFriendReportResponse(val confirmed: Boolean = false)
+
+/**
+ * `GET` / `PUT /v1/feed/me/notification-settings`（第三节第 43 条）。系统通知不受这些设置影响。
+ * PUT 是整个对象覆盖，引擎把缺的布尔值当 false，所以默认值也要写出去（[EncodeDefault]）。
+ */
+@OptIn(ExperimentalSerializationApi::class)
+@Serializable
+data class FeedNotificationSettings(
+  @EncodeDefault @SerialName("from_whom") val fromWhom: String = FROM_EVERYONE,
+  @EncodeDefault val likes: Boolean = true,
+  /** 评论和回复。 */
+  @EncodeDefault val comments: Boolean = true,
+  /** 新关注者和关注请求。 */
+  @EncodeDefault val follows: Boolean = true
+) {
+  companion object {
+    const val FROM_EVERYONE = "everyone"
+    const val FROM_FOLLOWING = "following"
+    const val FROM_FRIENDS = "friends"
+    const val FROM_NONE = "none"
+    val FROM_VALUES = listOf(FROM_EVERYONE, FROM_FOLLOWING, FROM_FRIENDS, FROM_NONE)
+  }
+}

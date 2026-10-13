@@ -300,6 +300,17 @@ class FeedApi(
     sendNoContent(Request.Builder().url(url).put(body))
   }
 
+  /** 动态通知的来源和类别。没设置过给默认值（所有人、全开）。 */
+  suspend fun notificationSettings(): FeedNotificationSettings {
+    return get(url("v1/feed/me/notification-settings"), FeedNotificationSettings.serializer())
+  }
+
+  /** 改通知设置；没有公开主页时 409 `profile_required`（只有有主页的人收得到通知）。 */
+  suspend fun putNotificationSettings(settings: FeedNotificationSettings): FeedNotificationSettings {
+    val body = FeedJson.encodeToString(FeedNotificationSettings.serializer(), settings).toRequestBody(JSON)
+    return send(Request.Builder().url(url("v1/feed/me/notification-settings")).put(body), FeedNotificationSettings.serializer())
+  }
+
   /**
    * 报自己这一半好友关系（或撤回整条边）：[assertion] 是 Signal-Server `friend-assertions` 签的 JWT，原样转交。
    * 回 `confirmed`：对方也报了才是 true。

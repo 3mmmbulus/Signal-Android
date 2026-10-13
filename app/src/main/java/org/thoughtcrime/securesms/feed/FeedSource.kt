@@ -33,6 +33,7 @@ import org.thoughtcrime.securesms.feed.net.FeedImageUploader
 import org.thoughtcrime.securesms.feed.net.FeedItemRef
 import org.thoughtcrime.securesms.feed.net.FeedMyPostsPage
 import org.thoughtcrime.securesms.feed.net.FeedMyProfile
+import org.thoughtcrime.securesms.feed.net.FeedNotificationSettings
 import org.thoughtcrime.securesms.feed.net.FeedNotificationsResponse
 import org.thoughtcrime.securesms.feed.net.FeedProfilePage
 import org.thoughtcrime.securesms.feed.net.FeedProfilePostsPage
@@ -130,6 +131,11 @@ interface FeedSource {
 
   /** 把 Signal-Server 签的好友声明交给引擎（[org.thoughtcrime.securesms.feed.friends.FeedFriendSync]）；返回两边是否都报了。 */
   suspend fun reportFriend(assertion: String): Boolean
+
+  suspend fun notificationSettings(): FeedNotificationSettings
+
+  /** 返回引擎存下的设置；没有公开主页时 409 `profile_required`。 */
+  suspend fun saveNotificationSettings(settings: FeedNotificationSettings): FeedNotificationSettings
 }
 
 /**
@@ -232,6 +238,8 @@ class RemoteFeedSource(
   override suspend fun muteNotifications(contentId: String, likesOnly: Boolean) = api.muteNotifications(contentId, likesOnly)
 
   override suspend fun reportFriend(assertion: String): Boolean = api.reportFriend(assertion).confirmed
+  override suspend fun notificationSettings(): FeedNotificationSettings = api.notificationSettings()
+  override suspend fun saveNotificationSettings(settings: FeedNotificationSettings): FeedNotificationSettings = api.putNotificationSettings(settings)
 
   override suspend fun search(query: String, scope: String, cursor: String?): FeedSearchPage {
     val response = api.search(query, scope, cursor)
@@ -327,6 +335,8 @@ object EmptyFeedSource : FeedSource {
   override suspend fun muteNotifications(contentId: String, likesOnly: Boolean) = throw IllegalStateException("feed is not available")
   override suspend fun search(query: String, scope: String, cursor: String?): FeedSearchPage = FeedSearchPage()
   override suspend fun reportFriend(assertion: String): Boolean = throw IllegalStateException("feed is not available")
+  override suspend fun notificationSettings(): FeedNotificationSettings = throw IllegalStateException("feed is not available")
+  override suspend fun saveNotificationSettings(settings: FeedNotificationSettings): FeedNotificationSettings = throw IllegalStateException("feed is not available")
 }
 
 object FeedSources {
