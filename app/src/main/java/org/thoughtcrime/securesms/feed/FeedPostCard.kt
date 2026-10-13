@@ -611,6 +611,7 @@ object FeedPostCardTestTags {
   const val COPY_LINK = "feed_card_copy_link"
   const val SEND_TO_CHATS = "feed_card_send_to_chats"
   const val QUOTE = "feed_card_quote"
+  const val SHARE_TO_STORY = "feed_card_share_to_story"
   const val REPOST = "feed_card_repost"
   const val REPOSTED_BY = "feed_card_reposted_by"
   const val MUTE_AUTHOR = "feed_card_mute_author"
@@ -622,7 +623,7 @@ object FeedPostCardTestTags {
 }
 
 /**
- * 「分享」：发到聊天、转发到动态、引用、复制链接、分享到其他 App（第三节第 26 条；分享到快拍还没做）。
+ * 「分享」：发到聊天、转发到动态、引用、分享到快拍、复制链接、分享到其他 App（第三节第 26 条）。
  * 只有 [FeedCard.shareable] 才画：私密账号和非公开动态没有外链（第 29 条）。
  */
 @Composable
@@ -671,6 +672,14 @@ private fun FeedShareButton(card: FeedCard, onRepostClick: ((FeedCard) -> Unit)?
           modifier = Modifier.testTag(FeedPostCardTestTags.QUOTE)
         )
       }
+      DropdownMenuItem(
+        text = { Text(stringResource(R.string.TellomiFeed__share_to_story)) },
+        onClick = {
+          open = false
+          FeedShare.shareToStory(context, card)
+        },
+        modifier = Modifier.testTag(FeedPostCardTestTags.SHARE_TO_STORY)
+      )
       DropdownMenuItem(
         text = { Text(stringResource(R.string.TellomiFeed__copy_link)) },
         onClick = {

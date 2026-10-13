@@ -11,13 +11,20 @@ import android.content.Context
 import android.content.Intent
 import android.widget.Toast
 import androidx.core.content.ContextCompat
+import org.signal.core.util.ThreadUtil
+import org.signal.core.util.concurrent.SignalExecutors
 import org.thoughtcrime.securesms.R
+import org.thoughtcrime.securesms.contacts.paged.ContactSearchKey
+import org.thoughtcrime.securesms.database.SignalDatabase
+import org.thoughtcrime.securesms.database.model.DistributionListId
 import org.thoughtcrime.securesms.feed.net.FeedCard
+import org.thoughtcrime.securesms.mediasend.MediaSendLauncher
 import org.thoughtcrime.securesms.sharing.v2.ShareActivity
+import org.thoughtcrime.securesms.stories.Stories
 import org.thoughtcrime.securesms.util.TellomiLinks
 
 /**
- * 卡片「分享」里的「发到聊天」「复制链接」「分享到其他 App」（`dynamic-feed.md` 第三节第 26 条）。只在 [FeedCard.shareable] 时出现：
+ * 卡片「分享」里的「发到聊天」「分享到快拍」「复制链接」「分享到其他 App」（`dynamic-feed.md` 第三节第 26 条）。只在 [FeedCard.shareable] 时出现：
  * 私密账号和非公开动态没有外链（第 29 条）。链接里只有 id，打开的人照样要过 Card API 的可见性检查。
  */
 object FeedShare {
@@ -36,6 +43,27 @@ object FeedShare {
    */
   fun sendToChats(context: Context, card: FeedCard) {
     context.startActivity(ShareActivity.sendSimpleText(context, card.savedMessageBody(link(card))))
+  }
+
+  /**
+   * 分享到快拍：打开 Signal 的文字快拍编辑页，草稿是同一段「作者：开头一段 + 链接」，发给「我的快拍」（可在编辑页改范围）。
+   * 公开快拍走内容引擎（第 14 条），那条路还没有，这里只发 Signal 现有的好友范围快拍，端到端加密。
+   * 快拍功能被关了就提示去设置里打开。
+   */
+  fun shareToStory(context: Context, card: FeedCard) {
+    val draft = card.savedMessageBody(link(card))
+    SignalExecutors.BOUNDED.execute {
+      val myStory = if (Stories.isFeatureEnabled()) SignalDatabase.distributionLists.getRecipientId(DistributionListId.MY_STORY) else null
+      ThreadUtil.runOnMain {
+        if (myStory == null) {
+          Toast.makeText(context, R.string.TellomiFeed__stories_off, Toast.LENGTH_LONG).show()
+        } else {
+          context.startActivity(
+            MediaSendLauncher.share(context, emptyList(), listOf(ContactSearchKey.RecipientSearchKey(myStory, true)), draft, asTextStory = true)
+          )
+        }
+      }
+    }
   }
 
   fun shareToApps(context: Context, card: FeedCard) {

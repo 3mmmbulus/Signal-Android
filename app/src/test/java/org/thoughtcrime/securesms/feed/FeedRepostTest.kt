@@ -259,6 +259,7 @@ class FeedRepostTest {
     composeTestRule.onNodeWithText("林间 reposted").assertExists()
     composeTestRule.onNodeWithTag(FeedPostCardTestTags.SHARE).performClick()
     composeTestRule.onNodeWithText("Repost").assertExists()
+    composeTestRule.onNodeWithTag(FeedPostCardTestTags.SHARE_TO_STORY).assertExists()
     composeTestRule.onNodeWithTag(FeedPostCardTestTags.REPOST).performClick()
     assertThat(reposted).containsExactly("c1 false")
 

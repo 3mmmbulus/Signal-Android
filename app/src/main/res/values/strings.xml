@@ -6846,6 +6846,8 @@
     <string name="TellomiFeed__reposted">Reposted</string>
     <string name="TellomiFeed__quote">Quote</string>
     <string name="TellomiFeed__quote_unavailable">The original post is no longer available</string>
+    <string name="TellomiFeed__share_to_story">Share to story</string>
+    <string name="TellomiFeed__stories_off">Stories are turned off. Turn them on in Settings > Stories.</string>
     <string name="TellomiFeed__quote_deleted">The original post was deleted by its author</string>
     <string name="TellomiFeed__copy_link">Copy link</string>
     <string name="TellomiFeed__share_other_apps">Share to other apps</string>

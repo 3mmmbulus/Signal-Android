@@ -6629,6 +6629,8 @@
     <string name="TellomiFeed__reposted">轉發</string>
     <string name="TellomiFeed__quote">引用</string>
     <string name="TellomiFeed__quote_unavailable">原動態已不可見</string>
+    <string name="TellomiFeed__share_to_story">分享到快拍</string>
+    <string name="TellomiFeed__stories_off">快拍已關閉，可在「設定 > 快拍」中開啟</string>
     <string name="TellomiFeed__quote_deleted">原動態已被作者刪除</string>
     <string name="TellomiFeed__copy_link">複製連結</string>
     <string name="TellomiFeed__share_other_apps">分享到其他 App</string>
