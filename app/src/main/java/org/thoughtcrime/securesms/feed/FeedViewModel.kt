@@ -173,20 +173,14 @@ class FeedViewModel(
     updateCard(card.id) { it.withSaved(nowSaved) }
     viewModelScope.launch {
       try {
-        withContext(ioDispatcher) { if (nowSaved) savedMessages.add(card) else savedMessages.remove(card.id) }
+        savedMessages.setSaved(card, nowSaved, source, ioDispatcher)
         if (nowSaved) internalState.update { it.copy(savedNotice = true) }
       } catch (e: Exception) {
         Log.w(TAG, "saved messages failed", e)
         updateCard(card.id) { it.withSaved(!nowSaved) }
         internalState.update { it.copy(transientError = FeedState.TransientError.ACTION_FAILED) }
+      } finally {
         saving -= card.id
-        return@launch
-      }
-      saving -= card.id
-      try {
-        withContext(ioDispatcher) { source.setSaved(card.id, nowSaved) }
-      } catch (e: Exception) {
-        Log.w(TAG, "save report failed", e)
       }
     }
   }

@@ -52,7 +52,9 @@ class FeedSearchActivity : PassphraseRequiredActivity() {
           },
           onLikeClick = viewModel::toggleLike,
           onLoadMore = viewModel::loadMore,
-          onRetry = viewModel::retry
+          onRetry = viewModel::retry,
+          onSaveClick = viewModel::toggleSave,
+          onNoticeShown = viewModel::onNoticeShown
         )
       }
     }

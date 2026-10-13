@@ -73,7 +73,8 @@ class FeedProfilePageActivity : PassphraseRequiredActivity() {
           onProfileRequired = { profileLauncher.launch(Unit) },
           onOwnPostAction = viewModel::onOwnPostAction,
           onInsightsDismissed = viewModel::onInsightsDismissed,
-          onSetHidden = viewModel::setHidden
+          onSetHidden = viewModel::setHidden,
+          onSaveClick = viewModel::toggleSave
         )
       }
     }

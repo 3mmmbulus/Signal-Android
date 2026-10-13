@@ -18,13 +18,17 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import org.signal.core.util.logging.Log
+import org.thoughtcrime.securesms.feed.FeedSavedMessages
 import org.thoughtcrime.securesms.feed.FeedSource
 import org.thoughtcrime.securesms.feed.FeedSources
+import org.thoughtcrime.securesms.feed.NoteToSelfFeedSavedMessages
 import org.thoughtcrime.securesms.feed.net.FeedApi
 import org.thoughtcrime.securesms.feed.net.FeedCard
 import org.thoughtcrime.securesms.feed.net.FeedPersonSummary
 import org.thoughtcrime.securesms.feed.net.FeedSearchUser
+import org.thoughtcrime.securesms.feed.setSaved
 import org.thoughtcrime.securesms.feed.withLiked
+import org.thoughtcrime.securesms.feed.withSaved
 
 /**
  * 动态搜索（ADR-0071 二·〇「搜索（重排）」、`dynamic-feed.md` 第三节第 34 条）。
@@ -36,7 +40,8 @@ class FeedSearchViewModel(
   private val source: FeedSource = FeedSources.current(),
   private val history: FeedSearchHistory = StoredFeedSearchHistory(),
   private val ioDispatcher: CoroutineDispatcher = Dispatchers.IO,
-  private val debounceMillis: Long = 350
+  private val debounceMillis: Long = 350,
+  private val savedMessages: FeedSavedMessages = NoteToSelfFeedSavedMessages
 ) : ViewModel() {
 
   companion object {
@@ -156,6 +161,31 @@ class FeedSearchViewModel(
     }
   }
 
+  private val saving = mutableSetOf<String>()
+
+  /** 收藏 / 取消收藏（第三节第 27 条）：先改书签，存不进「我的收藏」就改回来。 */
+  fun toggleSave(card: FeedCard) {
+    if (!saving.add(card.id)) return
+    val nowSaved = !card.viewer.saved
+    updatePost(card.id) { it.withSaved(nowSaved) }
+    viewModelScope.launch {
+      try {
+        savedMessages.setSaved(card, nowSaved, source, ioDispatcher)
+        if (nowSaved) internalState.update { it.copy(notice = FeedSearchState.Notice.SAVED) }
+      } catch (e: Exception) {
+        Log.w(TAG, "saved messages failed", e)
+        updatePost(card.id) { it.withSaved(!nowSaved) }
+        internalState.update { it.copy(notice = FeedSearchState.Notice.FAILED) }
+      } finally {
+        saving -= card.id
+      }
+    }
+  }
+
+  fun onNoticeShown() {
+    internalState.update { it.copy(notice = null) }
+  }
+
   fun retry() {
     if (internalState.value.query.isNotBlank()) search(debounce = false)
   }
@@ -212,5 +242,12 @@ data class FeedSearchState(
   val recentQueries: List<String> = emptyList(),
   val recentPeople: List<FeedPersonSummary> = emptyList(),
   val mediaBaseUrl: String? = null,
-  val showIpRegion: Boolean = false
-)
+  val showIpRegion: Boolean = false,
+  val notice: Notice? = null
+) {
+  enum class Notice {
+    /** 存进了「我的收藏」。 */
+    SAVED,
+    FAILED
+  }
+}

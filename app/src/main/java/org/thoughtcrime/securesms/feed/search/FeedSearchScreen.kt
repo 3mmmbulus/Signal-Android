@@ -38,6 +38,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.InputChip
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -59,6 +60,7 @@ import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import org.signal.core.ui.compose.Snackbars
 import org.thoughtcrime.securesms.R
 import org.thoughtcrime.securesms.feed.FeedAvatar
 import org.thoughtcrime.securesms.feed.FeedPostCard
@@ -97,9 +99,20 @@ fun FeedSearchScreen(
   onLikeClick: (FeedCard) -> Unit,
   onLoadMore: () -> Unit,
   onRetry: () -> Unit,
-  autoFocus: Boolean = true
+  autoFocus: Boolean = true,
+  onSaveClick: ((FeedCard) -> Unit)? = null,
+  onNoticeShown: () -> Unit = {}
 ) {
-  Scaffold(contentWindowInsets = WindowInsets(0)) { padding ->
+  val snackbarHostState = remember { SnackbarHostState() }
+  val savedDone = stringResource(R.string.TellomiFeed__saved_done)
+  val failed = stringResource(R.string.TellomiFeed__action_failed)
+  LaunchedEffect(state.notice) {
+    val notice = state.notice ?: return@LaunchedEffect
+    onNoticeShown()
+    snackbarHostState.showSnackbar(if (notice == FeedSearchState.Notice.SAVED) savedDone else failed)
+  }
+
+  Scaffold(contentWindowInsets = WindowInsets(0), snackbarHost = { Snackbars.Host(snackbarHostState) }) { padding ->
     Column(
       modifier = Modifier
         .padding(padding)
@@ -124,6 +137,7 @@ fun FeedSearchScreen(
           onOpenPerson = onOpenPerson,
           onOpenPost = onOpenPost,
           onLikeClick = onLikeClick,
+          onSaveClick = onSaveClick,
           onSeeAllPeople = { onSelectScope(FeedApi.SEARCH_USERS) },
           onLoadMore = onLoadMore,
           onRetry = onRetry
@@ -299,6 +313,7 @@ private fun Results(
   onOpenPerson: (FeedPersonSummary) -> Unit,
   onOpenPost: (FeedCard) -> Unit,
   onLikeClick: (FeedCard) -> Unit,
+  onSaveClick: ((FeedCard) -> Unit)?,
   onSeeAllPeople: () -> Unit,
   onLoadMore: () -> Unit,
   onRetry: () -> Unit
@@ -327,6 +342,7 @@ private fun Results(
         onOpenPerson = onOpenPerson,
         onOpenPost = onOpenPost,
         onLikeClick = onLikeClick,
+        onSaveClick = onSaveClick,
         onSeeAllPeople = onSeeAllPeople,
         onLoadMore = onLoadMore
       )
@@ -344,6 +360,7 @@ private fun ResultList(
   onOpenPerson: (FeedPersonSummary) -> Unit,
   onOpenPost: (FeedCard) -> Unit,
   onLikeClick: (FeedCard) -> Unit,
+  onSaveClick: ((FeedCard) -> Unit)?,
   onSeeAllPeople: () -> Unit,
   onLoadMore: () -> Unit
 ) {
@@ -379,6 +396,7 @@ private fun ResultList(
           onNotInterestedClick = null,
           mediaBaseUrl = state.mediaBaseUrl,
           onOpen = onOpenPost,
+          onSaveClick = onSaveClick,
           onAuthorClick = { author ->
             onOpenPerson(FeedPersonSummary(id = author.profileId, handle = author.handle, displayName = author.displayName, avatarKey = author.avatarKey))
           }

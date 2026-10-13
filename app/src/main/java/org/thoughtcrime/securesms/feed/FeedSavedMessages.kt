@@ -6,6 +6,7 @@
 package org.thoughtcrime.securesms.feed
 
 import android.content.Context
+import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.signal.core.util.logging.Log
@@ -39,6 +40,21 @@ internal fun FeedCard.savedMessageBody(link: String): String {
 }
 
 private const val SNIPPET_CHARS = 60
+
+/**
+ * 收藏 / 取消收藏的两步：先存进或删掉「我的收藏」里那条（失败就抛，调用方把界面改回来），
+ * 再以假名上报（第三节第 27 条）；上报失败不影响收藏本身，只记日志。
+ */
+internal suspend fun FeedSavedMessages.setSaved(card: FeedCard, saved: Boolean, source: FeedSource, ioDispatcher: CoroutineDispatcher) {
+  withContext(ioDispatcher) { if (saved) add(card) else remove(card.id) }
+  try {
+    withContext(ioDispatcher) { source.setSaved(card.id, saved) }
+  } catch (e: Exception) {
+    Log.w(SAVE_TAG, "save report failed", e)
+  }
+}
+
+private val SAVE_TAG = Log.tag(FeedSavedMessages::class)
 
 object NoteToSelfFeedSavedMessages : FeedSavedMessages {
 

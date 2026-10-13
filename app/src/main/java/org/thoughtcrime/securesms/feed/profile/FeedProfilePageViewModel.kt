@@ -19,15 +19,19 @@ import kotlinx.coroutines.withContext
 import org.signal.core.util.logging.Log
 import org.thoughtcrime.securesms.feed.FeedInsightsState
 import org.thoughtcrime.securesms.feed.FeedOwnPostAction
+import org.thoughtcrime.securesms.feed.FeedSavedMessages
 import org.thoughtcrime.securesms.feed.FeedSource
 import org.thoughtcrime.securesms.feed.FeedSources
+import org.thoughtcrime.securesms.feed.NoteToSelfFeedSavedMessages
 import org.thoughtcrime.securesms.feed.isPinLimit
 import org.thoughtcrime.securesms.feed.net.FeedApi
 import org.thoughtcrime.securesms.feed.net.FeedApiException
 import org.thoughtcrime.securesms.feed.net.FeedCard
 import org.thoughtcrime.securesms.feed.net.FeedProfilePage
 import org.thoughtcrime.securesms.feed.net.FeedRelation
+import org.thoughtcrime.securesms.feed.setSaved
 import org.thoughtcrime.securesms.feed.withLiked
+import org.thoughtcrime.securesms.feed.withSaved
 import org.thoughtcrime.securesms.feed.withSettings
 
 /**
@@ -39,7 +43,8 @@ import org.thoughtcrime.securesms.feed.withSettings
 class FeedProfilePageViewModel(
   private val profileId: String,
   private val source: FeedSource = FeedSources.current(),
-  private val ioDispatcher: CoroutineDispatcher = Dispatchers.IO
+  private val ioDispatcher: CoroutineDispatcher = Dispatchers.IO,
+  private val savedMessages: FeedSavedMessages = NoteToSelfFeedSavedMessages
 ) : ViewModel() {
 
   companion object {
@@ -241,6 +246,27 @@ class FeedProfilePageViewModel(
     }
   }
 
+  private val saving = mutableSetOf<String>()
+
+  /** 收藏 / 取消收藏（第三节第 27 条）：先改书签，存不进「我的收藏」就改回来。 */
+  fun toggleSave(card: FeedCard) {
+    if (!saving.add(card.id)) return
+    val nowSaved = !card.viewer.saved
+    updatePost(card.id) { it.withSaved(nowSaved) }
+    viewModelScope.launch {
+      try {
+        savedMessages.setSaved(card, nowSaved, source, ioDispatcher)
+        if (nowSaved) internalState.update { it.copy(notice = FeedProfilePageState.Notice.SAVED) }
+      } catch (e: Exception) {
+        Log.w(TAG, "saved messages failed", e)
+        updatePost(card.id) { it.withSaved(!nowSaved) }
+        internalState.update { it.copy(notice = FeedProfilePageState.Notice.FAILED) }
+      } finally {
+        saving -= card.id
+      }
+    }
+  }
+
   fun onNoticeShown() {
     internalState.update { it.copy(notice = null) }
   }
@@ -336,6 +362,9 @@ data class FeedProfilePageState(
     /** 置顶满 3 条。 */
     PIN_LIMIT,
     MUTED,
+
+    /** 存进了「我的收藏」。 */
+    SAVED,
     HIDDEN_FROM,
     FAILED
   }

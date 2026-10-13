@@ -71,19 +71,22 @@ fun FeedTopicScreen(
   onOpenPost: (FeedCard) -> Unit,
   onReportPost: (FeedCard) -> Unit,
   onTopicClick: (FeedTopic) -> Unit,
-  onNoticeShown: () -> Unit
+  onNoticeShown: () -> Unit,
+  onSaveClick: ((FeedCard) -> Unit)? = null
 ) {
   val snackbarHostState = remember { SnackbarHostState() }
   val followed = stringResource(R.string.TellomiFeedTopicPage__followed)
   val unfollowed = stringResource(R.string.TellomiFeedTopicFollow__unfollowed)
   val failed = stringResource(R.string.TellomiFeed__action_failed)
   val undo = stringResource(R.string.TellomiFeed__undo)
+  val savedDone = stringResource(R.string.TellomiFeed__saved_done)
   LaunchedEffect(state.notice) {
     val notice = state.notice ?: return@LaunchedEffect
     onNoticeShown()
     when (notice) {
       FeedTopicState.Notice.FOLLOWED -> if (snackbarHostState.showSnackbar(followed, actionLabel = undo) == SnackbarResult.ActionPerformed) onToggleFollow()
       FeedTopicState.Notice.UNFOLLOWED -> snackbarHostState.showSnackbar(unfollowed)
+      FeedTopicState.Notice.SAVED -> snackbarHostState.showSnackbar(savedDone)
       FeedTopicState.Notice.FAILED -> snackbarHostState.showSnackbar(failed)
     }
   }
@@ -108,7 +111,8 @@ fun FeedTopicScreen(
           onLikeClick = onLikeClick,
           onOpenPost = onOpenPost,
           onReportPost = onReportPost,
-          onTopicClick = onTopicClick
+          onTopicClick = onTopicClick,
+          onSaveClick = onSaveClick
         )
       }
     }
@@ -125,7 +129,8 @@ private fun TopicContent(
   onLikeClick: (FeedCard) -> Unit,
   onOpenPost: (FeedCard) -> Unit,
   onReportPost: (FeedCard) -> Unit,
-  onTopicClick: (FeedTopic) -> Unit
+  onTopicClick: (FeedTopic) -> Unit,
+  onSaveClick: ((FeedCard) -> Unit)?
 ) {
   val listState = rememberLazyListState()
   val nearEnd by remember {
@@ -163,7 +168,8 @@ private fun TopicContent(
             mediaBaseUrl = state.mediaBaseUrl,
             onOpen = onOpenPost,
             onReportClick = if (card.viewer.isAuthor) null else onReportPost,
-            onTopicClick = onTopicClick
+            onTopicClick = onTopicClick,
+            onSaveClick = onSaveClick
           )
           HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
         }

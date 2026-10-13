@@ -27,6 +27,7 @@ import org.thoughtcrime.securesms.feed.isPinLimit
 import org.thoughtcrime.securesms.feed.net.FeedApiException
 import org.thoughtcrime.securesms.feed.net.FeedCard
 import org.thoughtcrime.securesms.feed.net.FeedCreatePostResponse
+import org.thoughtcrime.securesms.feed.setSaved
 import org.thoughtcrime.securesms.feed.withLiked
 import org.thoughtcrime.securesms.feed.withPollState
 import org.thoughtcrime.securesms.feed.withSaved
@@ -131,19 +132,13 @@ class FeedPostDetailViewModel(
     internalState.update { it.copy(post = it.post.withSaved(nowSaved)) }
     viewModelScope.launch {
       try {
-        withContext(ioDispatcher) { if (nowSaved) savedMessages.add(post) else savedMessages.remove(post.id) }
+        savedMessages.setSaved(post, nowSaved, source, ioDispatcher)
         if (nowSaved) internalState.update { it.copy(notice = FeedPostDetailState.Notice.SAVED) }
       } catch (e: Exception) {
         Log.w(TAG, "saved messages failed", e)
         internalState.update { it.copy(post = it.post.withSaved(!nowSaved), notice = FeedPostDetailState.Notice.FAILED) }
+      } finally {
         saving = false
-        return@launch
-      }
-      saving = false
-      try {
-        withContext(ioDispatcher) { source.setSaved(post.id, nowSaved) }
-      } catch (e: Exception) {
-        Log.w(TAG, "save report failed", e)
       }
     }
   }

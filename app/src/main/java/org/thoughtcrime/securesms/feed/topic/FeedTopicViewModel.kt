@@ -17,11 +17,15 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import org.signal.core.util.logging.Log
+import org.thoughtcrime.securesms.feed.FeedSavedMessages
 import org.thoughtcrime.securesms.feed.FeedSource
 import org.thoughtcrime.securesms.feed.FeedSources
+import org.thoughtcrime.securesms.feed.NoteToSelfFeedSavedMessages
 import org.thoughtcrime.securesms.feed.net.FeedApiException
 import org.thoughtcrime.securesms.feed.net.FeedCard
+import org.thoughtcrime.securesms.feed.setSaved
 import org.thoughtcrime.securesms.feed.withLiked
+import org.thoughtcrime.securesms.feed.withSaved
 
 /**
  * 话题页：带这个话题的帖子按时间倒序，头上一个「关注话题」（第三节第 18 条：关注的话题进「关注」栏）。
@@ -30,7 +34,8 @@ import org.thoughtcrime.securesms.feed.withLiked
 class FeedTopicViewModel(
   val slug: String,
   private val source: FeedSource = FeedSources.current(),
-  private val ioDispatcher: CoroutineDispatcher = Dispatchers.IO
+  private val ioDispatcher: CoroutineDispatcher = Dispatchers.IO,
+  private val savedMessages: FeedSavedMessages = NoteToSelfFeedSavedMessages
 ) : ViewModel() {
 
   companion object {
@@ -124,6 +129,27 @@ class FeedTopicViewModel(
     }
   }
 
+  private val saving = mutableSetOf<String>()
+
+  /** 收藏 / 取消收藏（第三节第 27 条）：先改书签，存不进「我的收藏」就改回来。 */
+  fun toggleSave(card: FeedCard) {
+    if (!saving.add(card.id)) return
+    val nowSaved = !card.viewer.saved
+    updatePost(card.id) { it.withSaved(nowSaved) }
+    viewModelScope.launch {
+      try {
+        savedMessages.setSaved(card, nowSaved, source, ioDispatcher)
+        if (nowSaved) internalState.update { it.copy(notice = FeedTopicState.Notice.SAVED) }
+      } catch (e: Exception) {
+        Log.w(TAG, "saved messages failed", e)
+        updatePost(card.id) { it.withSaved(!nowSaved) }
+        internalState.update { it.copy(notice = FeedTopicState.Notice.FAILED) }
+      } finally {
+        saving -= card.id
+      }
+    }
+  }
+
   fun onNoticeShown() {
     internalState.update { it.copy(notice = null) }
   }
@@ -150,6 +176,9 @@ data class FeedTopicState(
     /** 底部提示条带「撤销」（第三节「统一反馈」）。 */
     FOLLOWED,
     UNFOLLOWED,
+
+    /** 存进了「我的收藏」。 */
+    SAVED,
     FAILED
   }
 }

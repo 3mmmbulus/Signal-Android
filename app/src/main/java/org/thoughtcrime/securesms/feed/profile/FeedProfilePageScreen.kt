@@ -100,7 +100,8 @@ fun FeedProfilePageScreen(
   onProfileRequired: () -> Unit,
   onOwnPostAction: (FeedCard, FeedOwnPostAction) -> Unit = { _, _ -> },
   onInsightsDismissed: () -> Unit = {},
-  onSetHidden: (list: String, on: Boolean) -> Unit = { _, _ -> }
+  onSetHidden: (list: String, on: Boolean) -> Unit = { _, _ -> },
+  onSaveClick: ((FeedCard) -> Unit)? = null
 ) {
   val profile = state.profile
   val snackbarHostState = remember { SnackbarHostState() }
@@ -114,6 +115,7 @@ fun FeedProfilePageScreen(
   val mutedDone = stringResource(R.string.TellomiFeed__muted_done)
   val hiddenFromDone = stringResource(R.string.TellomiFeed__hidden_from_done)
   val undo = stringResource(R.string.TellomiFeed__undo)
+  val savedDone = stringResource(R.string.TellomiFeed__saved_done)
   LaunchedEffect(state.notice) {
     val notice = state.notice ?: return@LaunchedEffect
     onNoticeShown()
@@ -127,6 +129,7 @@ fun FeedProfilePageScreen(
       FeedProfilePageState.Notice.UNBLOCKED -> snackbarHostState.showSnackbar(unblocked)
       FeedProfilePageState.Notice.PIN_LIMIT -> snackbarHostState.showSnackbar(pinLimit)
       FeedProfilePageState.Notice.MUTED -> snackbarHostState.showSnackbar(mutedDone)
+      FeedProfilePageState.Notice.SAVED -> snackbarHostState.showSnackbar(savedDone)
       FeedProfilePageState.Notice.HIDDEN_FROM -> snackbarHostState.showSnackbar(hiddenFromDone)
       FeedProfilePageState.Notice.FAILED -> snackbarHostState.showSnackbar(failed)
     }
@@ -179,7 +182,8 @@ fun FeedProfilePageScreen(
           onLikeClick = onLikeClick,
           onOpenPost = onOpenPost,
           onReportPost = onReportPost,
-          onOwnPostAction = onOwnPostAction
+          onOwnPostAction = onOwnPostAction,
+          onSaveClick = onSaveClick
         )
       }
     }
@@ -280,7 +284,8 @@ private fun ProfileContent(
   onLikeClick: (FeedCard) -> Unit,
   onOpenPost: (FeedCard) -> Unit,
   onReportPost: (FeedCard) -> Unit,
-  onOwnPostAction: (FeedCard, FeedOwnPostAction) -> Unit
+  onOwnPostAction: (FeedCard, FeedOwnPostAction) -> Unit,
+  onSaveClick: ((FeedCard) -> Unit)?
 ) {
   val listState = rememberLazyListState()
   val nearEnd by remember {
@@ -346,7 +351,8 @@ private fun ProfileContent(
             mediaBaseUrl = state.mediaBaseUrl,
             onOpen = onOpenPost,
             onReportClick = if (card.viewer.isAuthor) null else onReportPost,
-            onOwnPostAction = onOwnPostAction
+            onOwnPostAction = onOwnPostAction,
+            onSaveClick = onSaveClick
           )
           HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
         }

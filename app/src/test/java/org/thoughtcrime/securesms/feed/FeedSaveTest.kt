@@ -35,8 +35,19 @@ import org.thoughtcrime.securesms.feed.detail.FeedPostDetailViewModel
 import org.thoughtcrime.securesms.feed.net.FeedAuthor
 import org.thoughtcrime.securesms.feed.net.FeedCard
 import org.thoughtcrime.securesms.feed.net.FeedEntry
+import org.thoughtcrime.securesms.feed.net.FeedProfilePage
+import org.thoughtcrime.securesms.feed.net.FeedProfilePostsPage
+import org.thoughtcrime.securesms.feed.net.FeedSearchPage
 import org.thoughtcrime.securesms.feed.net.FeedTimelinePage
+import org.thoughtcrime.securesms.feed.net.FeedTopicPage
 import org.thoughtcrime.securesms.feed.net.FeedViewer
+import org.thoughtcrime.securesms.feed.profile.FeedProfilePageState
+import org.thoughtcrime.securesms.feed.profile.FeedProfilePageViewModel
+import org.thoughtcrime.securesms.feed.search.FeedSearchState
+import org.thoughtcrime.securesms.feed.search.FeedSearchViewModel
+import org.thoughtcrime.securesms.feed.search.InMemoryFeedSearchHistory
+import org.thoughtcrime.securesms.feed.topic.FeedTopicState
+import org.thoughtcrime.securesms.feed.topic.FeedTopicViewModel
 
 /** 收藏 = 存进「我的收藏」+ 以假名上报（第三节第 27 条）。 */
 @OptIn(ExperimentalCoroutinesApi::class)
@@ -71,6 +82,10 @@ class FeedSaveTest {
     val reports = mutableListOf<String>()
     var reportError: Exception? = null
     override suspend fun timeline(tab: FeedTab, cursor: String?) = FeedTimelinePage(entries = listOf(FeedEntry(id = card.id, card = card)))
+    override suspend fun profile(profileId: String) = FeedProfilePage(id = profileId, displayName = "山风")
+    override suspend fun profilePosts(profileId: String, cursor: String?) = FeedProfilePostsPage(posts = listOf(card))
+    override suspend fun topicPosts(slug: String, cursor: String?) = FeedTopicPage(posts = listOf(card))
+    override suspend fun search(query: String, scope: String, cursor: String?) = FeedSearchPage(posts = listOf(card))
     override suspend fun setSaved(contentId: String, saved: Boolean) {
       reportError?.let { throw it }
       reports += "$contentId $saved"
@@ -133,6 +148,34 @@ class FeedSaveTest {
     assertThat(viewModel.state.value.post.viewer.saved).isTrue()
     assertThat(viewModel.state.value.notice).isEqualTo(FeedPostDetailState.Notice.SAVED)
     assertThat(messages.calls).containsExactly("add c1")
+  }
+
+  @Test
+  fun `profile, topic and search pages save the same way`() {
+    val messages = FakeMessages()
+    val source = FakeSource(card)
+
+    val profile = FeedProfilePageViewModel("p1", source, dispatcher, savedMessages = messages)
+    profile.toggleSave(profile.state.value.posts.single())
+    assertThat(profile.state.value.posts.single().viewer.saved).isTrue()
+    assertThat(profile.state.value.notice).isEqualTo(FeedProfilePageState.Notice.SAVED)
+
+    val topic = FeedTopicViewModel("hiking", source, dispatcher, savedMessages = messages)
+    topic.toggleSave(topic.state.value.posts.single())
+    assertThat(topic.state.value.notice).isEqualTo(FeedTopicState.Notice.SAVED)
+
+    val search = FeedSearchViewModel(source, InMemoryFeedSearchHistory(), dispatcher, debounceMillis = 0, savedMessages = messages)
+    search.onQueryChange("山")
+    search.submit()
+    search.toggleSave(search.state.value.results!!.posts.single())
+    assertThat(search.state.value.results!!.posts.single().viewer.saved).isTrue()
+
+    messages.error = IllegalStateException("db")
+    search.toggleSave(search.state.value.results!!.posts.single())
+    assertThat(search.state.value.results!!.posts.single().viewer.saved).isTrue()
+    assertThat(search.state.value.notice).isEqualTo(FeedSearchState.Notice.FAILED)
+
+    assertThat(messages.calls).containsExactly("add c1", "add c1", "add c1")
   }
 
   @Test
