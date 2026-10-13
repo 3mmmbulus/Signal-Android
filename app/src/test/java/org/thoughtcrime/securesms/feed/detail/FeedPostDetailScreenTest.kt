@@ -155,10 +155,42 @@ class FeedPostDetailScreenTest {
 
   @Test
   fun `send is off until there is text`() {
-    show(FeedPostDetailState(post = post, loading = false, loadedOnce = true))
+    show(FeedPostDetailState(post = post, loading = false, loadedOnce = true, voiceAllowed = false))
 
     composeTestRule.onNodeWithText("No comments yet").assertExists()
     composeTestRule.onNodeWithTag(FeedPostDetailTestTags.SEND).assertIsNotEnabled()
+    composeTestRule.onNodeWithTag(FeedPostDetailTestTags.MIC).assertDoesNotExist()
+  }
+
+  @Test
+  fun `an empty box shows the mic, typing turns it into send`() {
+    show(FeedPostDetailState(post = post, loading = false, loadedOnce = true))
+    composeTestRule.onNodeWithContentDescription("Hold to record a voice comment").assertExists()
+    composeTestRule.onNodeWithTag(FeedPostDetailTestTags.SEND).assertDoesNotExist()
+  }
+
+  @Test
+  fun `typed text shows send instead of the mic`() {
+    show(FeedPostDetailState(post = post, loading = false, loadedOnce = true, draft = "好看"))
+    composeTestRule.onNodeWithTag(FeedPostDetailTestTags.SEND).assertExists()
+    composeTestRule.onNodeWithTag(FeedPostDetailTestTags.MIC).assertDoesNotExist()
+  }
+
+  @Test
+  fun `recording bar shows the time and slide to cancel`() {
+    composeTestRule.setContent {
+      SignalTheme {
+        FeedVoiceRecordingBar(elapsedMs = 52_300, maxMs = 60_000, slide = 0.3f)
+      }
+    }
+    composeTestRule.onNodeWithText("0:52").assertExists()
+    composeTestRule.onNodeWithText("Slide to cancel").assertExists()
+
+    System.getenv("FEED_SCREENSHOT_DIR")?.let { dir ->
+      val bitmap = composeTestRule.onRoot().captureToImage().asAndroidBitmap()
+      File(dir).mkdirs()
+      File(dir, "feed_voice_recording.png").outputStream().use { bitmap.compress(Bitmap.CompressFormat.PNG, 100, it) }
+    }
   }
 
   @Test

@@ -75,6 +75,8 @@ class FeedPostDetailActivity : PassphraseRequiredActivity() {
           onReplyClick = viewModel::replyTo,
           onDraftChanged = viewModel::onDraftChanged,
           onSend = viewModel::send,
+          onSendVoice = viewModel::sendVoice,
+          onVoiceTooShort = viewModel::onVoiceTooShort,
           onNoticeShown = viewModel::onNoticeShown,
           onProfileRequired = { profileLauncher.launch(Unit) },
           onAuthorClick = { startActivity(FeedProfilePageActivity.intent(this, it.profileId)) },

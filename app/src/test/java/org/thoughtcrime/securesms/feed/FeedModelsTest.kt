@@ -16,6 +16,7 @@ import org.junit.Test
 import org.thoughtcrime.securesms.feed.net.FeedCard
 import org.thoughtcrime.securesms.feed.net.FeedCardResult
 import org.thoughtcrime.securesms.feed.net.FeedConfig
+import org.thoughtcrime.securesms.feed.net.FeedCreateCommentRequest
 import org.thoughtcrime.securesms.feed.net.FeedIdsPage
 import org.thoughtcrime.securesms.feed.net.FeedJson
 import org.thoughtcrime.securesms.feed.net.FeedMedia
@@ -60,6 +61,13 @@ class FeedModelsTest {
     assertThat(FeedJson.decodeFromString(FeedPostSettings.serializer(), """{"voice_comments":false}""").voiceComments).isFalse()
     assertThat(FeedJson.encodeToString(FeedPostSettingsUpdate.serializer(), FeedPostSettingsUpdate(voiceComments = false))).isEqualTo("""{"voice_comments":false}""")
     assertThat(FeedJson.decodeFromString(FeedConfig.serializer(), "{}").limits.voiceCommentMaxSeconds).isEqualTo(60)
+  }
+
+  @Test
+  fun `a voice comment request carries media keys, a text one leaves them out`() {
+    assertThat(FeedJson.encodeToString(FeedCreateCommentRequest.serializer(), FeedCreateCommentRequest(text = "", parentId = "a", mediaKeys = listOf("m/v"))))
+      .isEqualTo("""{"text":"","parent_id":"a","media_keys":["m/v"]}""")
+    assertThat(FeedJson.encodeToString(FeedCreateCommentRequest.serializer(), FeedCreateCommentRequest(text = "hi"))).isEqualTo("""{"text":"hi"}""")
   }
 
   @Test

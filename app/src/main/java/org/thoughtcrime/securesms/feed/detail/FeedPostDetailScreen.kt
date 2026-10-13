@@ -66,12 +66,14 @@ import org.thoughtcrime.securesms.feed.FeedInsightsDialog
 import org.thoughtcrime.securesms.feed.FeedOwnPostAction
 import org.thoughtcrime.securesms.feed.FeedPostCard
 import org.thoughtcrime.securesms.feed.compose.FeedEditTarget
+import org.thoughtcrime.securesms.feed.localUriOrNull
 import org.thoughtcrime.securesms.feed.net.FeedAuthor
 import org.thoughtcrime.securesms.feed.net.FeedCard
 import org.thoughtcrime.securesms.feed.net.FeedMedia
 import org.thoughtcrime.securesms.feed.parseInstantMillis
 import org.thoughtcrime.securesms.feed.remoteUrlOrNull
 import org.thoughtcrime.securesms.util.DateUtils
+import java.io.File
 import java.util.Locale
 import org.signal.core.ui.R as CoreUiR
 
@@ -80,6 +82,8 @@ object FeedPostDetailTestTags {
   const val SEND = "feed_detail_send"
   const val APPROVE = "feed_detail_approve_"
   const val DECLINE = "feed_detail_decline_"
+  const val MIC = "feed_detail_mic"
+  const val VOICE_RECORDING = "feed_detail_voice_recording"
 }
 
 /** 楼里先露几条回复，多的折起来（照 Threads）。 */
@@ -123,7 +127,9 @@ fun FeedPostDetailScreen(
   onMuteAuthor: () -> Unit = {},
   onBlockAuthor: () -> Unit = {},
   onEditPost: (FeedEditTarget) -> Unit = {},
-  onLeave: (FeedPostDetailState.Leave) -> Unit = { onBack() }
+  onLeave: (FeedPostDetailState.Leave) -> Unit = { onBack() },
+  onSendVoice: (File) -> Unit = {},
+  onVoiceTooShort: () -> Unit = {}
 ) {
   val snackbarHostState = remember { SnackbarHostState() }
   LaunchedEffect(state.deleted) { if (state.deleted) onBack() }
@@ -148,7 +154,14 @@ fun FeedPostDetailScreen(
     snackbarHost = { Snackbars.Host(snackbarHostState) },
     bottomBar = {
       if (!state.postGone) {
-        CommentComposer(state = state, onDraftChanged = onDraftChanged, onSend = onSend, onCancelReply = { onReplyClick(null) })
+        CommentComposer(
+          state = state,
+          onDraftChanged = onDraftChanged,
+          onSend = onSend,
+          onCancelReply = { onReplyClick(null) },
+          onSendVoice = onSendVoice,
+          onVoiceTooShort = onVoiceTooShort
+        )
       }
     }
   ) { padding ->
@@ -216,7 +229,7 @@ private fun CommentList(
   val listState = rememberLazyListState()
   val voicePlayer = rememberFeedVoicePlayer()
   val voicePlayback by voicePlayer.playback.collectAsStateWithLifecycle()
-  val onVoiceToggle: (FeedMedia) -> Unit = { media -> voicePlayer.toggle(media, media.remoteUrlOrNull(state.mediaBaseUrl)) }
+  val onVoiceToggle: (FeedMedia) -> Unit = { media -> voicePlayer.toggle(media, media.localUriOrNull()?.toString() ?: media.remoteUrlOrNull(state.mediaBaseUrl)) }
   val editTarget = remember(state.post, state.editWindowSeconds) {
     FeedEditTarget.of(state.post)?.takeIf { state.post.viewer.isAuthor && it.isWithinWindow(System.currentTimeMillis(), state.editWindowSeconds) }
   }
@@ -549,7 +562,9 @@ private fun CommentComposer(
   state: FeedPostDetailState,
   onDraftChanged: (String) -> Unit,
   onSend: () -> Unit,
-  onCancelReply: () -> Unit
+  onCancelReply: () -> Unit,
+  onSendVoice: (File) -> Unit,
+  onVoiceTooShort: () -> Unit
 ) {
   Surface(tonalElevation = 2.dp, modifier = Modifier.fillMaxWidth()) {
     Column(modifier = Modifier.navigationBarsPadding().imePadding()) {
@@ -584,32 +599,43 @@ private fun CommentComposer(
         }
       }
 
+      val voice = rememberFeedVoiceComposer(maxMs = state.voiceMaxSeconds * 1000L, onSendVoice = onSendVoice)
+      // 输入框空着就显示话筒（照 Telegram：有字是发送，没字是按住说话）
+      val showMic = state.voiceAllowed && state.draft.isBlank() && !state.sending
       Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(start = 12.dp, end = 4.dp, top = 6.dp, bottom = 6.dp)) {
-        OutlinedTextField(
-          value = state.draft,
-          onValueChange = onDraftChanged,
-          placeholder = {
-            Text(
-              if (target != null) {
-                stringResource(R.string.TellomiFeedDetail__hint_reply, target.author?.displayName.orEmpty())
-              } else {
-                stringResource(R.string.TellomiFeedDetail__hint)
-              }
-            )
-          },
-          maxLines = 4,
-          shape = RoundedCornerShape(20.dp),
-          modifier = Modifier.weight(1f).testTag(FeedPostDetailTestTags.COMPOSER)
-        )
-        IconButton(onClick = onSend, enabled = state.canSend, modifier = Modifier.testTag(FeedPostDetailTestTags.SEND)) {
-          if (state.sending) {
-            CircularProgressIndicator(modifier = Modifier.size(20.dp), strokeWidth = 2.dp)
-          } else {
-            Icon(
-              imageVector = ImageVector.vectorResource(R.drawable.symbol_send_fill_24),
-              contentDescription = stringResource(R.string.TellomiFeedDetail__send),
-              tint = if (state.canSend) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
-            )
+        if (voice.recording) {
+          FeedVoiceRecordingBar(elapsedMs = voice.elapsedMs, maxMs = state.voiceMaxSeconds * 1000L, slide = voice.slide, modifier = Modifier.weight(1f))
+        } else {
+          OutlinedTextField(
+            value = state.draft,
+            onValueChange = onDraftChanged,
+            placeholder = {
+              Text(
+                if (target != null) {
+                  stringResource(R.string.TellomiFeedDetail__hint_reply, target.author?.displayName.orEmpty())
+                } else {
+                  stringResource(R.string.TellomiFeedDetail__hint)
+                }
+              )
+            },
+            maxLines = 4,
+            shape = RoundedCornerShape(20.dp),
+            modifier = Modifier.weight(1f).testTag(FeedPostDetailTestTags.COMPOSER)
+          )
+        }
+        if (showMic || voice.recording) {
+          FeedMicButton(voice = voice, onTooShort = onVoiceTooShort)
+        } else {
+          IconButton(onClick = onSend, enabled = state.canSend, modifier = Modifier.testTag(FeedPostDetailTestTags.SEND)) {
+            if (state.sending) {
+              CircularProgressIndicator(modifier = Modifier.size(20.dp), strokeWidth = 2.dp)
+            } else {
+              Icon(
+                imageVector = ImageVector.vectorResource(R.drawable.symbol_send_fill_24),
+                contentDescription = stringResource(R.string.TellomiFeedDetail__send),
+                tint = if (state.canSend) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
+              )
+            }
           }
         }
       }
@@ -620,6 +646,9 @@ private fun CommentComposer(
 private fun FeedPostDetailState.Notice.messageRes(): Int {
   return when (this) {
     FeedPostDetailState.Notice.PENDING -> R.string.TellomiFeedDetail__sent_pending
+    FeedPostDetailState.Notice.VOICE_PENDING -> R.string.TellomiFeed__voice_sent_pending
+    FeedPostDetailState.Notice.VOICE_OFF -> R.string.TellomiFeed__voice_off
+    FeedPostDetailState.Notice.HOLD_TO_RECORD -> R.string.TellomiFeed__voice_hold
     FeedPostDetailState.Notice.PUBLISHED -> R.string.TellomiFeedDetail__sent
     FeedPostDetailState.Notice.CLOSED -> R.string.TellomiFeedDetail__closed_notice
     FeedPostDetailState.Notice.REPLY_NOT_ALLOWED -> R.string.TellomiFeedDetail__reply_not_allowed

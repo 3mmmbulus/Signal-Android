@@ -35,6 +35,7 @@ import org.thoughtcrime.securesms.feed.withPollState
 import org.thoughtcrime.securesms.feed.withReposted
 import org.thoughtcrime.securesms.feed.withSaved
 import org.thoughtcrime.securesms.feed.withSettings
+import java.io.File
 
 /**
  * 帖子详情：整条帖子 + 评论（`dynamic-feed.md` 第三节第 2、4、10 条；契约第五节）。
@@ -62,7 +63,7 @@ class FeedPostDetailViewModel(
     viewModelScope.launch {
       try {
         val config = withContext(ioDispatcher) { source.config() }
-        internalState.update { it.copy(mediaBaseUrl = config.mediaBaseUrl, showIpRegion = config.ipRegionVisible, editWindowSeconds = config.limits.editWindowSeconds) }
+        internalState.update { it.copy(mediaBaseUrl = config.mediaBaseUrl, showIpRegion = config.ipRegionVisible, editWindowSeconds = config.limits.editWindowSeconds, voiceMaxSeconds = config.limits.voiceCommentMaxSeconds) }
       } catch (e: Exception) {
         Log.w(TAG, "config failed", e)
       }
@@ -245,6 +246,48 @@ class FeedPostDetailViewModel(
     }
   }
 
+  /**
+   * 发一条语音评论（第三节第 4 条）：录好的 `.m4a` 传完就删。作者关了语音评论（403 `voice_comments_off`）
+   * 就收起这条帖子的话筒；语音一律人工复核，所以成功后总是说「审核通过后别人才看得到」。
+   */
+  fun sendVoice(audio: File) {
+    val state = internalState.value
+    if (state.sending || !state.canComment || !state.voiceAllowed) {
+      audio.delete()
+      return
+    }
+
+    internalState.update { it.copy(sending = true) }
+    viewModelScope.launch {
+      try {
+        withContext(ioDispatcher) { source.postVoiceComment(state.post.id, audio, state.replyTarget?.id) }
+        internalState.update { it.copy(sending = false, replyTarget = null, notice = FeedPostDetailState.Notice.VOICE_PENDING) }
+      } catch (e: FeedApiException) {
+        Log.w(TAG, "voice comment rejected: ${e.status} ${e.code}")
+        internalState.update {
+          when (e.code) {
+            "voice_comments_off" -> it.copy(sending = false, voiceAllowed = false, notice = FeedPostDetailState.Notice.VOICE_OFF)
+            "comments_closed", "not_commentable" -> it.copy(sending = false, canComment = false, notice = FeedPostDetailState.Notice.CLOSED)
+            "reply_not_allowed" -> it.copy(sending = false, notice = FeedPostDetailState.Notice.REPLY_NOT_ALLOWED)
+            "profile_required" -> it.copy(sending = false, notice = FeedPostDetailState.Notice.PROFILE_REQUIRED)
+            "invalid_parent" -> it.copy(sending = false, replyTarget = null, notice = FeedPostDetailState.Notice.PARENT_GONE)
+            else -> it.copy(sending = false, notice = FeedPostDetailState.Notice.FAILED)
+          }
+        }
+      } catch (e: Exception) {
+        Log.w(TAG, "voice comment failed", e)
+        internalState.update { it.copy(sending = false, notice = FeedPostDetailState.Notice.FAILED) }
+      } finally {
+        withContext(ioDispatcher) { audio.delete() }
+      }
+    }
+  }
+
+  /** 话筒只点了一下、没按住：提示按住说话（Telegram 同样处理）。 */
+  fun onVoiceTooShort() {
+    internalState.update { it.copy(notice = FeedPostDetailState.Notice.HOLD_TO_RECORD) }
+  }
+
   private val moderating = mutableSetOf<String>()
 
   /** 帖子作者批准一条等着的回复（第三节第 40 条）：成功后去掉「等你批准」，别人就看得到了。 */
@@ -378,6 +421,8 @@ data class FeedPostDetailState(
   val failed: Boolean = false,
   val canComment: Boolean = true,
   val draft: String = "",
+  /** 作者关了这条的语音评论时收起话筒（发的时候才知道：403 `voice_comments_off`）。 */
+  val voiceAllowed: Boolean = true,
   /** 正在回复的评论；null = 直接评论帖子。 */
   val replyTarget: FeedCard? = null,
   val sending: Boolean = false,
@@ -390,6 +435,7 @@ data class FeedPostDetailState(
   val deleted: Boolean = false,
   /** 发布后多久内能改（引擎 config）。 */
   val editWindowSeconds: Long = FeedLimits().editWindowSeconds,
+  val voiceMaxSeconds: Int = FeedLimits().voiceCommentMaxSeconds,
   /** 不感兴趣 / 不看 TA / 屏蔽成了：提示一句，页面关掉。 */
   val leaving: Leave? = null
 ) {
@@ -399,6 +445,15 @@ data class FeedPostDetailState(
     get() = canComment && !sending && draft.isNotBlank()
 
   enum class Notice {
+    /** 语音评论发出去了，人工复核通过后别人才看得到。 */
+    VOICE_PENDING,
+
+    /** 作者关了这条动态的语音评论。 */
+    VOICE_OFF,
+
+    /** 话筒要按住说话。 */
+    HOLD_TO_RECORD,
+
     /** 发出去了，等审核（大陆区一律先审后发）。 */
     PENDING,
     PUBLISHED,

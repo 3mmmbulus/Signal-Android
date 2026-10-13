@@ -6650,6 +6650,10 @@
     <string name="TellomiFeed__voice_play">播放语音评论</string>
     <string name="TellomiFeed__voice_pause">暂停语音评论</string>
     <string name="TellomiFeed__voice_play_failed">语音评论播放失败。</string>
+    <string name="TellomiFeed__voice_sent_pending">语音评论已发出，审核通过后别人才看得到。</string>
+    <string name="TellomiFeed__voice_off">作者关闭了这条动态的语音评论。</string>
+    <string name="TellomiFeed__voice_hold">按住说话，录一条语音评论</string>
+    <string name="TellomiFeed__voice_slide_to_cancel">左滑取消</string>
     <string name="TellomiFeed__insights">查看数据</string>
     <string name="TellomiFeedInsights__opens">打开次数</string>
     <string name="TellomiFeedInsights__likes">点赞</string>

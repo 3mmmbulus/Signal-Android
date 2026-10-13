@@ -58,6 +58,7 @@ import org.thoughtcrime.securesms.feed.net.FeedTimelinePage
 import org.thoughtcrime.securesms.feed.net.FeedTopicPage
 import org.thoughtcrime.securesms.region.TellomiRegionProfile
 import org.thoughtcrime.securesms.region.TellomiRegions
+import java.io.File
 import java.io.IOException
 import java.time.Instant
 
@@ -123,6 +124,9 @@ interface FeedSource {
 
   /** 发评论，返回服务端给的 `state`（一般是 `pending`）。 */
   suspend fun postComment(postId: String, text: String, parentId: String?): String
+
+  /** 发语音评论（第三节第 4 条）：先按图片同样的 tus 传 `.m4a`，再带 `media_keys` 发评论；一律进人工复核。 */
+  suspend fun postVoiceComment(postId: String, audio: File, parentId: String?): String
 
   /** 自己的公开主页；还没建是 null（发帖、评论、关注前要先建，引擎回 409 `profile_required`）。 */
   suspend fun myProfile(): FeedMyProfile?
@@ -273,6 +277,12 @@ class RemoteFeedSource(
 
   override suspend fun postComment(postId: String, text: String, parentId: String?): String {
     return api.createComment(postId, FeedCreateCommentRequest(text = text.trim(), parentId = parentId)).state
+  }
+
+  override suspend fun postVoiceComment(postId: String, audio: File, parentId: String?): String {
+    val bytes = withContext(Dispatchers.IO) { audio.readBytes() }
+    val key = uploader.upload(bytes)
+    return api.createComment(postId, FeedCreateCommentRequest(text = "", parentId = parentId, mediaKeys = listOf(key))).state
   }
 
   override suspend fun reportEvents(events: List<FeedEventPayload>) = api.events(events)
@@ -477,6 +487,7 @@ object EmptyFeedSource : FeedSource {
   override suspend fun card(contentId: String): FeedCard? = null
   override suspend fun comments(postId: String, cursor: String?): FeedCommentsPage = FeedCommentsPage()
   override suspend fun postComment(postId: String, text: String, parentId: String?): String = throw IllegalStateException("feed is not available")
+  override suspend fun postVoiceComment(postId: String, audio: File, parentId: String?): String = throw IllegalStateException("feed is not available")
   override suspend fun myProfile(): FeedMyProfile? = null
   override suspend fun appeal(contentId: String, text: String) = throw IllegalStateException("feed is not available")
   override suspend fun uploadImage(uri: Uri): String = throw IllegalStateException("feed is not available")

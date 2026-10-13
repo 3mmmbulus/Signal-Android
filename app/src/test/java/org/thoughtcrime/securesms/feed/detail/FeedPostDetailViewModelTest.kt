@@ -32,6 +32,7 @@ import org.thoughtcrime.securesms.feed.net.FeedPollState
 import org.thoughtcrime.securesms.feed.net.FeedPostInsights
 import org.thoughtcrime.securesms.feed.net.FeedPostSettingsUpdate
 import org.thoughtcrime.securesms.feed.net.FeedViewer
+import java.io.File
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class FeedPostDetailViewModelTest {
@@ -72,6 +73,13 @@ class FeedPostDetailViewModelTest {
     val posted = mutableListOf<Pair<String, String?>>()
     override suspend fun card(contentId: String): FeedCard? = fresh
     override suspend fun comments(postId: String, cursor: String?): FeedCommentsPage = pages[cursor] ?: FeedCommentsPage()
+    val voices = mutableListOf<Pair<String, String?>>()
+    var voiceResult: () -> String = { FeedCreatePostResponse.STATE_PENDING }
+    override suspend fun postVoiceComment(postId: String, audio: File, parentId: String?): String {
+      val result = voiceResult()
+      voices += audio.readText() to parentId
+      return result
+    }
     override suspend fun postComment(postId: String, text: String, parentId: String?): String {
       val result = postResult()
       posted += text to parentId
@@ -156,6 +164,55 @@ class FeedPostDetailViewModelTest {
 
     assertThat(viewModel.state.value.notice).isEqualTo(FeedPostDetailState.Notice.PROFILE_REQUIRED)
     assertThat(viewModel.state.value.canComment).isTrue()
+  }
+
+  private fun recording(): File = File.createTempFile("voice", ".m4a").apply { writeText("audio") }
+
+  @Test
+  fun `a voice comment is sent with the reply target and always says it is in review`() {
+    val source = FakeSource(fresh = post, pages = mapOf(null to FeedCommentsPage(comments = listOf(comment("a")))))
+    val viewModel = FeedPostDetailViewModel(post, source, dispatcher)
+    val audio = recording()
+
+    viewModel.replyTo(comment("a"))
+    viewModel.sendVoice(audio)
+
+    assertThat(source.voices).containsExactly("audio" to "a")
+    assertThat(audio.exists()).isFalse()
+    val state = viewModel.state.value
+    assertThat(state.replyTarget).isNull()
+    assertThat(state.sending).isFalse()
+    assertThat(state.notice).isEqualTo(FeedPostDetailState.Notice.VOICE_PENDING)
+  }
+
+  @Test
+  fun `voice comments turned off hide the mic, a rejected file says it failed`() {
+    val source = FakeSource(fresh = post, pages = emptyMap()).apply { voiceResult = { throw FeedApiException(403, "voice_comments_off") } }
+    val viewModel = FeedPostDetailViewModel(post, source, dispatcher)
+
+    viewModel.sendVoice(recording())
+    assertThat(viewModel.state.value.voiceAllowed).isFalse()
+    assertThat(viewModel.state.value.notice).isEqualTo(FeedPostDetailState.Notice.VOICE_OFF)
+
+    val later = recording()
+    viewModel.sendVoice(later)
+    assertThat(later.exists()).isFalse()
+    assertThat(source.voices.isEmpty()).isTrue()
+
+    val other = FakeSource(fresh = post, pages = emptyMap()).apply { voiceResult = { throw FeedApiException(415, "unsupported_media") } }
+    val second = FeedPostDetailViewModel(post, other, dispatcher)
+    val audio = recording()
+    second.sendVoice(audio)
+    assertThat(second.state.value.notice).isEqualTo(FeedPostDetailState.Notice.FAILED)
+    assertThat(second.state.value.voiceAllowed).isTrue()
+    assertThat(audio.exists()).isFalse()
+  }
+
+  @Test
+  fun `a tap on the mic says to hold it`() {
+    val viewModel = FeedPostDetailViewModel(post, FakeSource(fresh = post, pages = emptyMap()), dispatcher)
+    viewModel.onVoiceTooShort()
+    assertThat(viewModel.state.value.notice).isEqualTo(FeedPostDetailState.Notice.HOLD_TO_RECORD)
   }
 
   @Test

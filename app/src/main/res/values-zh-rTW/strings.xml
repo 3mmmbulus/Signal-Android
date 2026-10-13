@@ -6650,6 +6650,10 @@
     <string name="TellomiFeed__voice_play">播放語音留言</string>
     <string name="TellomiFeed__voice_pause">暫停語音留言</string>
     <string name="TellomiFeed__voice_play_failed">語音留言播放失敗。</string>
+    <string name="TellomiFeed__voice_sent_pending">語音留言已送出，審核通過後別人才看得到。</string>
+    <string name="TellomiFeed__voice_off">作者關閉了這則動態的語音留言。</string>
+    <string name="TellomiFeed__voice_hold">按住說話，錄一則語音留言</string>
+    <string name="TellomiFeed__voice_slide_to_cancel">向左滑取消</string>
     <string name="TellomiFeed__insights">查看數據</string>
     <string name="TellomiFeedInsights__opens">開啟次數</string>
     <string name="TellomiFeedInsights__likes">按讚</string>

@@ -6867,6 +6867,10 @@
     <string name="TellomiFeed__voice_play">Play voice comment</string>
     <string name="TellomiFeed__voice_pause">Pause voice comment</string>
     <string name="TellomiFeed__voice_play_failed">Couldn\'t play this voice comment.</string>
+    <string name="TellomiFeed__voice_sent_pending">Voice comment sent. Others will see it after review.</string>
+    <string name="TellomiFeed__voice_off">The author has turned off voice comments on this post.</string>
+    <string name="TellomiFeed__voice_hold">Hold to record a voice comment</string>
+    <string name="TellomiFeed__voice_slide_to_cancel">Slide to cancel</string>
     <string name="TellomiFeed__insights">View insights</string>
     <string name="TellomiFeedInsights__opens">Opens</string>
     <string name="TellomiFeedInsights__likes">Likes</string>

@@ -146,6 +146,8 @@ class FeedVoicePlayer(private val context: Context, private val scope: Coroutine
   }
 
   private fun download(url: String): File {
+    // 样例来源里自己刚录的语音是本机文件
+    if (url.startsWith("file:")) return File(requireNotNull(android.net.Uri.parse(url).path))
     val dir = File(context.cacheDir, "feed-voice").apply { mkdirs() }
     val file = File(dir, sha256(url) + ".m4a")
     if (file.length() > 0) return file

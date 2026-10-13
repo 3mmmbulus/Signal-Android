@@ -5,6 +5,7 @@
 
 package org.thoughtcrime.securesms.feed
 
+import android.media.MediaMetadataRetriever
 import android.net.Uri
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
@@ -59,6 +60,7 @@ import org.thoughtcrime.securesms.feed.net.FeedTopic
 import org.thoughtcrime.securesms.feed.net.FeedTopicPage
 import org.thoughtcrime.securesms.feed.net.FeedUnreadCounts
 import org.thoughtcrime.securesms.feed.net.FeedViewer
+import java.io.File
 import java.time.Instant
 import java.time.temporal.ChronoUnit
 
@@ -365,6 +367,38 @@ object SampleFeedSource : FeedSource {
       viewer = FeedViewer(isAuthor = true)
     )
     FeedCreatePostResponse.STATE_PUBLISHED
+  }
+
+  /** 样例里的语音评论：留一份本机副本（发送后原文件会删掉），直接出现在列表里，用 file:// 当 key 就能播。 */
+  override suspend fun postVoiceComment(postId: String, audio: File, parentId: String?): String {
+    val copy = File(audio.parentFile, "sample-" + audio.name)
+    audio.copyTo(copy, overwrite = true)
+    val durationMs = try {
+      MediaMetadataRetriever().run {
+        setDataSource(copy.absolutePath)
+        val value = extractMetadata(MediaMetadataRetriever.METADATA_KEY_DURATION)?.toLongOrNull() ?: 0L
+        release()
+        value
+      }
+    } catch (e: Exception) {
+      0L
+    }
+    return synchronized(this) {
+      val list = commentsFor(postId)
+      list += FeedCard(
+        id = "$postId-c${list.size}",
+        kind = FeedCard.KIND_COMMENT,
+        publishedAt = Instant.now().toString(),
+        author = me,
+        text = "",
+        media = listOf(FeedMedia(key = Uri.fromFile(copy).toString(), type = FeedMedia.TYPE_AUDIO, durationMs = durationMs)),
+        rootId = postId,
+        parentId = parentId,
+        ipRegionLabel = ipLabels.first(),
+        viewer = FeedViewer(isAuthor = true)
+      )
+      FeedCreatePostResponse.STATE_PUBLISHED
+    }
   }
 
   private val comments = mutableMapOf<String, MutableList<FeedCard>>()

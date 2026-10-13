@@ -456,7 +456,9 @@ data class FeedCommentsResponse(
 @Serializable
 data class FeedCreateCommentRequest(
   val text: String,
-  @SerialName("parent_id") val parentId: String? = null
+  @SerialName("parent_id") val parentId: String? = null,
+  /** 语音评论：一个上传完成的 `.m4a` 的 key（第三节第 4 条）；文字评论不带。 */
+  @SerialName("media_keys") val mediaKeys: List<String>? = null
 )
 
 /** 评论也先审后发（R-2.2）：`state` 一般是 `pending`。 */
