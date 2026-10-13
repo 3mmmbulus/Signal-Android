@@ -183,6 +183,12 @@ class FeedApi(
     sendNoContent(Request.Builder().url(url).patch(body))
   }
 
+  /** 自己帖子当前的设置（置顶、隐藏点赞数、回复选项）：只有作者能看，别人 404。 */
+  suspend fun postSettings(contentId: String): FeedPostSettings {
+    val url = url("v1/feed/posts").newBuilder().addPathSegment(contentId).addPathSegment("settings").build()
+    return get(url, FeedPostSettings.serializer())
+  }
+
   /** 「查看数据」：只有作者能看，别人 404。 */
   suspend fun postInsights(contentId: String): FeedPostInsights {
     val url = url("v1/feed/posts").newBuilder().addPathSegment(contentId).addPathSegment("insights").build()

@@ -670,7 +670,20 @@ data class FeedNotificationsReadRequest(
 @Serializable
 data class FeedPostSettingsUpdate(
   val pinned: Boolean? = null,
-  @SerialName("like_count_hidden") val likeCountHidden: Boolean? = null
+  @SerialName("like_count_hidden") val likeCountHidden: Boolean? = null,
+  @SerialName("reply_policy") val replyPolicy: String? = null,
+  @SerialName("comments_closed") val commentsClosed: Boolean? = null,
+  @SerialName("reply_moderation") val replyModeration: Boolean? = null
+)
+
+/** `GET /v1/feed/posts/{id}/settings`：自己帖子当前的设置，只有作者拿得到。 */
+@Serializable
+data class FeedPostSettings(
+  val pinned: Boolean = false,
+  @SerialName("like_count_hidden") val likeCountHidden: Boolean = false,
+  @SerialName("reply_policy") val replyPolicy: String = "everyone",
+  @SerialName("comments_closed") val commentsClosed: Boolean = false,
+  @SerialName("reply_moderation") val replyModeration: Boolean = false
 )
 
 /** `GET /v1/feed/posts/{id}/insights`：「查看数据」，只有作者拿得到。 */

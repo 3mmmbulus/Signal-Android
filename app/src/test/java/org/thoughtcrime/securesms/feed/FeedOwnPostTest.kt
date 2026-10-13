@@ -39,11 +39,14 @@ import org.robolectric.annotation.Config
 import org.robolectric.annotation.GraphicsMode
 import org.signal.core.ui.CoreUiDependenciesRule
 import org.signal.core.ui.compose.theme.SignalTheme
+import org.thoughtcrime.securesms.feed.compose.FeedReplyPolicy
+import org.thoughtcrime.securesms.feed.compose.FeedReplySettings
 import org.thoughtcrime.securesms.feed.net.FeedApiException
 import org.thoughtcrime.securesms.feed.net.FeedAuthor
 import org.thoughtcrime.securesms.feed.net.FeedCard
 import org.thoughtcrime.securesms.feed.net.FeedEntry
 import org.thoughtcrime.securesms.feed.net.FeedPostInsights
+import org.thoughtcrime.securesms.feed.net.FeedPostSettings
 import org.thoughtcrime.securesms.feed.net.FeedPostSettingsUpdate
 import org.thoughtcrime.securesms.feed.net.FeedStats
 import org.thoughtcrime.securesms.feed.net.FeedTimelinePage
@@ -70,6 +73,8 @@ class FeedOwnPostTest {
 
   private class FakeSource(val card: FeedCard) : FeedSource by EmptyFeedSource {
     val updates = mutableListOf<FeedPostSettingsUpdate>()
+    var settings = FeedPostSettings(replyPolicy = "friends", replyModeration = true)
+    override suspend fun postSettings(contentId: String): FeedPostSettings = settings
     var settingsError: Exception? = null
     var insightsGate: CompletableDeferred<Unit>? = null
     override suspend fun timeline(tab: FeedTab, cursor: String?) = FeedTimelinePage(entries = listOf(FeedEntry(id = card.id, card = card)))
@@ -101,9 +106,9 @@ class FeedOwnPostTest {
 
   @Test
   fun `only my own posts get the actions, and each one flips`() {
-    assertThat(FeedOwnPostAction.available(mine)).containsExactly(FeedOwnPostAction.PIN, FeedOwnPostAction.HIDE_LIKES, FeedOwnPostAction.INSIGHTS)
+    assertThat(FeedOwnPostAction.available(mine)).containsExactly(FeedOwnPostAction.PIN, FeedOwnPostAction.REPLY_SETTINGS, FeedOwnPostAction.HIDE_LIKES, FeedOwnPostAction.INSIGHTS)
     val flipped = mine.copy(pinned = true, stats = mine.stats.copy(likeCountHidden = true))
-    assertThat(FeedOwnPostAction.available(flipped)).containsExactly(FeedOwnPostAction.UNPIN, FeedOwnPostAction.SHOW_LIKES, FeedOwnPostAction.INSIGHTS)
+    assertThat(FeedOwnPostAction.available(flipped)).containsExactly(FeedOwnPostAction.UNPIN, FeedOwnPostAction.REPLY_SETTINGS, FeedOwnPostAction.SHOW_LIKES, FeedOwnPostAction.INSIGHTS)
     assertThat(FeedOwnPostAction.available(mine.copy(viewer = FeedViewer()))).isEmpty()
     assertThat(FeedOwnPostAction.available(mine.copy(kind = FeedCard.KIND_COMMENT))).isEmpty()
   }
@@ -188,6 +193,57 @@ class FeedOwnPostTest {
       val bitmap = composeTestRule.onNodeWithTag(FeedOwnPostTestTags.INSIGHTS_DIALOG).captureToImage().asAndroidBitmap()
       File(dir).mkdirs()
       File(dir, "feed_insights.png").outputStream().use { bitmap.compress(Bitmap.CompressFormat.PNG, 100, it) }
+    }
+  }
+
+  @Test
+  fun `reply options load the current values and send only what changed`() {
+    val source = FakeSource(mine)
+    val viewModel = FeedPostReplySettingsViewModel("c1", source, dispatcher)
+    assertThat(viewModel.state.value.settings).isEqualTo(FeedReplySettings(policy = FeedReplyPolicy.FRIENDS, moderation = true))
+
+    viewModel.onChange(viewModel.state.value.settings.copy(commentsClosed = true))
+    viewModel.onChange(viewModel.state.value.settings.copy(policy = FeedReplyPolicy.EVERYONE))
+
+    assertThat(source.updates).containsExactly(FeedPostSettingsUpdate(commentsClosed = true), FeedPostSettingsUpdate(replyPolicy = "everyone"))
+    assertThat(viewModel.state.value.settings).isEqualTo(FeedReplySettings(policy = FeedReplyPolicy.EVERYONE, commentsClosed = true, moderation = true))
+  }
+
+  @Test
+  fun `a failed reply option change turns back`() {
+    val source = FakeSource(mine).apply { settingsError = IllegalStateException("offline") }
+    val viewModel = FeedPostReplySettingsViewModel("c1", source, dispatcher)
+
+    viewModel.onChange(viewModel.state.value.settings.copy(moderation = false))
+
+    assertThat(viewModel.state.value.settings.moderation).isTrue()
+    assertThat(viewModel.state.value.saveFailed).isTrue()
+  }
+
+  @Test
+  fun `an unknown reply policy reads as everyone`() {
+    assertThat(FeedPostSettings(replyPolicy = "mentioned").toReplySettings().policy).isEqualTo(FeedReplyPolicy.EVERYONE)
+    assertThat(FeedReplySettings().diff(FeedReplySettings())).isNull()
+  }
+
+  @Test
+  fun `reply options sheet shows the current values and the note`() {
+    composeTestRule.setContent {
+      SignalTheme {
+        FeedPostReplySettingsContent(
+          state = FeedPostReplySettingsState(loading = false, settings = FeedReplySettings(policy = FeedReplyPolicy.FRIENDS, moderation = true)),
+          onChange = {},
+          onRetry = {}
+        )
+      }
+    }
+    composeTestRule.onNodeWithText("Reply options").assertExists()
+    composeTestRule.onNodeWithText("New settings apply to comments from now on. Existing comments stay as they are.").assertExists()
+
+    System.getenv("FEED_SCREENSHOT_DIR")?.let { dir ->
+      val bitmap = composeTestRule.onNodeWithTag(FeedOwnPostTestTags.REPLY_SETTINGS).captureToImage().asAndroidBitmap()
+      File(dir).mkdirs()
+      File(dir, "feed_reply_settings_after.png").outputStream().use { bitmap.compress(Bitmap.CompressFormat.PNG, 100, it) }
     }
   }
 }

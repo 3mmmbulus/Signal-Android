@@ -290,6 +290,10 @@ private fun FeedPostHeader(
     }
 
     val isAuthor = card.viewer.isAuthor
+    var replySettingsOpen by remember { mutableStateOf(false) }
+    if (replySettingsOpen) {
+      FeedPostReplySettingsSheet(contentId = card.id, onDismiss = { replySettingsOpen = false })
+    }
     val ownActions = if (isAuthor && onOwnPostAction != null) FeedOwnPostAction.available(card) else emptyList()
     if ((!isAuthor && (onNotInterestedClick != null || onReportClick != null)) || (isAuthor && (onEditClick != null || onDeleteClick != null || ownActions.isNotEmpty()))) {
       Box {
@@ -307,7 +311,7 @@ private fun FeedPostHeader(
 
         DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {
           if (isAuthor) {
-            // 顺序照需求：编辑 / 置顶 / 隐藏点赞数 / 查看数据 / 删除
+            // 顺序照需求：编辑 / 置顶 / 回复选项 / 隐藏点赞数 / 查看数据 / 删除
             if (onEditClick != null) {
               DropdownMenuItem(
                 text = { Text(stringResource(R.string.TellomiFeedMine__edit)) },
@@ -323,7 +327,7 @@ private fun FeedPostHeader(
                 modifier = Modifier.testTag(FeedPostCardTestTags.ownAction(action)),
                 onClick = {
                   menuOpen = false
-                  onOwnPostAction?.invoke(card, action)
+                  if (action == FeedOwnPostAction.REPLY_SETTINGS) replySettingsOpen = true else onOwnPostAction?.invoke(card, action)
                 }
               )
             }

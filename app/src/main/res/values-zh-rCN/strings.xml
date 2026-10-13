@@ -6624,6 +6624,7 @@
     <string name="TellomiFeed__pin_limit">最多置顶 3 条，先取消一条</string>
     <string name="TellomiFeed__hide_likes">隐藏点赞数</string>
     <string name="TellomiFeed__show_likes">显示点赞数</string>
+    <string name="TellomiFeed__reply_settings_future_only">改动只管之后的评论，已有的评论不受影响。</string>
     <string name="TellomiFeed__insights">查看数据</string>
     <string name="TellomiFeedInsights__opens">打开次数</string>
     <string name="TellomiFeedInsights__likes">点赞</string>

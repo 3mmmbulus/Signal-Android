@@ -41,6 +41,7 @@ import org.thoughtcrime.securesms.feed.net.FeedNotificationSettings
 import org.thoughtcrime.securesms.feed.net.FeedNotificationsResponse
 import org.thoughtcrime.securesms.feed.net.FeedPollState
 import org.thoughtcrime.securesms.feed.net.FeedPostInsights
+import org.thoughtcrime.securesms.feed.net.FeedPostSettings
 import org.thoughtcrime.securesms.feed.net.FeedPostSettingsUpdate
 import org.thoughtcrime.securesms.feed.net.FeedPreferences
 import org.thoughtcrime.securesms.feed.net.FeedPreferencesUpdate
@@ -172,6 +173,9 @@ interface FeedSource {
 
   /** 自己帖子「···」里的置顶、隐藏点赞数（第三节第 26 条）。置顶满 3 条 409 `too_many_pinned`。 */
   suspend fun updatePostSettings(contentId: String, update: FeedPostSettingsUpdate)
+
+  /** 自己帖子当前的设置，只有作者能看。 */
+  suspend fun postSettings(contentId: String): FeedPostSettings
 
   /** 「查看数据」，只有作者能看。 */
   suspend fun postInsights(contentId: String): FeedPostInsights
@@ -305,6 +309,7 @@ class RemoteFeedSource(
   override suspend fun notificationSettings(): FeedNotificationSettings = api.notificationSettings()
   override suspend fun saveNotificationSettings(settings: FeedNotificationSettings): FeedNotificationSettings = api.putNotificationSettings(settings)
   override suspend fun updatePostSettings(contentId: String, update: FeedPostSettingsUpdate) = api.updatePostSettings(contentId, update)
+  override suspend fun postSettings(contentId: String): FeedPostSettings = api.postSettings(contentId)
   override suspend fun postInsights(contentId: String): FeedPostInsights = api.postInsights(contentId)
   override suspend fun hideLists(): FeedHideLists = api.hideLists()
   override suspend fun followedTopics(): List<String> = api.followedTopics().topics.map { it.slug }
@@ -428,6 +433,7 @@ object EmptyFeedSource : FeedSource {
   override suspend fun notificationSettings(): FeedNotificationSettings = throw IllegalStateException("feed is not available")
   override suspend fun saveNotificationSettings(settings: FeedNotificationSettings): FeedNotificationSettings = throw IllegalStateException("feed is not available")
   override suspend fun updatePostSettings(contentId: String, update: FeedPostSettingsUpdate) = throw IllegalStateException("feed is not available")
+  override suspend fun postSettings(contentId: String): FeedPostSettings = throw IllegalStateException("feed is not available")
   override suspend fun postInsights(contentId: String): FeedPostInsights = throw IllegalStateException("feed is not available")
   override suspend fun hideLists(): FeedHideLists = throw IllegalStateException("feed is not available")
   override suspend fun followedTopics(): List<String> = emptyList()

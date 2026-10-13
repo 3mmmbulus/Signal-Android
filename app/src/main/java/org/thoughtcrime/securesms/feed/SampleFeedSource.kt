@@ -39,6 +39,7 @@ import org.thoughtcrime.securesms.feed.net.FeedPersonSummary
 import org.thoughtcrime.securesms.feed.net.FeedPoll
 import org.thoughtcrime.securesms.feed.net.FeedPollState
 import org.thoughtcrime.securesms.feed.net.FeedPostInsights
+import org.thoughtcrime.securesms.feed.net.FeedPostSettings
 import org.thoughtcrime.securesms.feed.net.FeedPostSettingsUpdate
 import org.thoughtcrime.securesms.feed.net.FeedPreferences
 import org.thoughtcrime.securesms.feed.net.FeedPreferencesUpdate
@@ -591,6 +592,20 @@ object SampleFeedSource : FeedSource {
       pinned = update.pinned ?: card.pinned,
       stats = card.stats.copy(likeCountHidden = update.likeCountHidden ?: card.stats.likeCountHidden)
     )
+    val replies = replySettings[contentId] ?: FeedPostSettings()
+    replySettings[contentId] = replies.copy(
+      replyPolicy = update.replyPolicy ?: replies.replyPolicy,
+      commentsClosed = update.commentsClosed ?: replies.commentsClosed,
+      replyModeration = update.replyModeration ?: replies.replyModeration
+    )
+  }
+
+  /** 自己帖子的回复选项：样例里只记下来，评论区不跟着变。 */
+  private val replySettings = mutableMapOf<String, FeedPostSettings>()
+
+  override suspend fun postSettings(contentId: String): FeedPostSettings = synchronized(this) {
+    val card = mine.firstOrNull { it.id == contentId } ?: throw FeedApiException(404, code = "not_found")
+    (replySettings[contentId] ?: FeedPostSettings()).copy(pinned = card.pinned, likeCountHidden = card.stats.likeCountHidden)
   }
 
   override suspend fun postInsights(contentId: String): FeedPostInsights = synchronized(this) {

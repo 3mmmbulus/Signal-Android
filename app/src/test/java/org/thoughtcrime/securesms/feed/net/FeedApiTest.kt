@@ -727,4 +727,17 @@ class FeedApiTest {
     assertThat(put.method).isEqualTo("PUT")
     assertThat(put.path).isEqualTo("/v1/feed/follow/topic/hiking")
   }
+
+  @Test
+  fun `post settings read the reply options and patch sends only the given fields`() = runBlocking {
+    server.enqueue(MockResponse().setBody("""{"pinned":false,"like_count_hidden":false,"reply_policy":"friends","comments_closed":false,"reply_moderation":true}"""))
+    server.enqueue(MockResponse().setResponseCode(204))
+
+    val settings = api.postSettings("c1")
+    api.updatePostSettings("c1", FeedPostSettingsUpdate(commentsClosed = true))
+
+    assertThat(settings).isEqualTo(FeedPostSettings(replyPolicy = "friends", replyModeration = true))
+    assertThat(server.takeRequest().path).isEqualTo("/v1/feed/posts/c1/settings")
+    assertThat(server.takeRequest().body.readUtf8()).isEqualTo("""{"comments_closed":true}""")
+  }
 }

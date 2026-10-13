@@ -6841,6 +6841,7 @@
     <string name="TellomiFeed__pin_limit">You can pin up to 3 posts. Unpin one first.</string>
     <string name="TellomiFeed__hide_likes">Hide like count</string>
     <string name="TellomiFeed__show_likes">Show like count</string>
+    <string name="TellomiFeed__reply_settings_future_only">New settings apply to comments from now on. Existing comments stay as they are.</string>
     <string name="TellomiFeed__insights">View insights</string>
     <string name="TellomiFeedInsights__opens">Opens</string>
     <string name="TellomiFeedInsights__likes">Likes</string>
