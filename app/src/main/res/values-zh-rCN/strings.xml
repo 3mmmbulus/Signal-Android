@@ -6609,6 +6609,12 @@
     <string name="TellomiFeed__hidden">已隐藏，会减少这类内容</string>
     <string name="TellomiFeedNotInterested__preferences">管理内容偏好</string>
     <string name="TellomiFeedNotInterested__uncomfortable">这条让我不舒服</string>
+    <string name="TellomiFeedNotInterested__reason_ask">能说说原因吗？（可不选）</string>
+    <string name="TellomiFeedNotInterested__reason_topic">不想看这个话题</string>
+    <string name="TellomiFeedNotInterested__reason_author">不想看这个作者</string>
+    <string name="TellomiFeedNotInterested__reason_seen">看过类似的了</string>
+    <string name="TellomiFeedNotInterested__reason_low_quality">内容质量差</string>
+    <string name="TellomiFeedNotInterested__reason_thanks">谢谢，会少推荐这类内容。</string>
     <string name="TellomiFeed__network_error">刷新失败，请检查网络</string>
     <string name="TellomiFeed__action_failed">操作失败，请重试</string>
     <string name="TellomiFeed__load_failed">加载失败</string>

@@ -164,7 +164,7 @@ object SampleFeedSource : FeedSource {
     if (liked) this.liked += contentId else this.liked -= contentId
   }
 
-  override suspend fun notInterested(contentId: String) {
+  override suspend fun notInterested(contentId: String, reason: String?) {
     hidden += contentId
   }
 

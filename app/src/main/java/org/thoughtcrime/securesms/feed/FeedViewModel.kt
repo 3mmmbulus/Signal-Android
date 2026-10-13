@@ -26,6 +26,7 @@ import org.thoughtcrime.securesms.feed.net.FeedCard
 import org.thoughtcrime.securesms.feed.net.FeedConfig
 import org.thoughtcrime.securesms.feed.net.FeedPollState
 import java.time.Instant
+import kotlin.random.Random
 
 /**
  * 动态页的状态：两个分栏各自一份列表、翻页位置和加载状态。
@@ -38,7 +39,9 @@ class FeedViewModel(
   private val source: FeedSource = FeedSources.current(),
   private val ioDispatcher: CoroutineDispatcher = Dispatchers.IO,
   private val clock: () -> Long = System::currentTimeMillis,
-  private val blockedKeywords: FeedBlockedKeywords = StoredFeedBlockedKeywords()
+  private val blockedKeywords: FeedBlockedKeywords = StoredFeedBlockedKeywords(),
+  /** 不感兴趣后问不问原因（第三节第 11 条「约一半的时候」）；测试里换掉。 */
+  private val askReason: () -> Boolean = { Random.nextBoolean() }
 ) : ViewModel() {
 
   companion object {
@@ -177,7 +180,8 @@ class FeedViewModel(
 
   fun notInterested(card: FeedCard) {
     if (card.id in internalState.value.hidden) return
-    internalState.update { it.copy(hidden = it.hidden + card.id) }
+    val ask = askReason()
+    internalState.update { it.copy(hidden = it.hidden + card.id, reasonAsks = if (ask) it.reasonAsks + (card.id to null) else it.reasonAsks) }
 
     viewModelScope.launch {
       try {
@@ -252,10 +256,24 @@ class FeedViewModel(
     internalState.update { it.copy(blockedNotice = false) }
   }
 
+  /** 反馈卡上选了原因：同一条再发一次带上原因；可以不选，选了不能改。发不出去不提示。 */
+  fun notInterestedReason(card: FeedCard, reason: FeedNotInterestedReason) {
+    val asks = internalState.value.reasonAsks
+    if (card.id !in asks || asks[card.id] != null) return
+    internalState.update { it.copy(reasonAsks = it.reasonAsks + (card.id to reason)) }
+    viewModelScope.launch {
+      try {
+        withContext(ioDispatcher) { source.notInterested(card.id, reason.apiName) }
+      } catch (e: Exception) {
+        Log.w(TAG, "not interested reason failed", e)
+      }
+    }
+  }
+
   /** 反馈卡上的「撤销」：卡片原样回来。 */
   fun undoNotInterested(card: FeedCard) {
     if (card.id !in internalState.value.hidden) return
-    internalState.update { it.copy(hidden = it.hidden - card.id) }
+    internalState.update { it.copy(hidden = it.hidden - card.id, reasonAsks = it.reasonAsks - card.id) }
 
     viewModelScope.launch {
       try {
@@ -422,6 +440,8 @@ data class FeedState(
   val tabStates: Map<FeedTab, FeedTabState> = emptyMap(),
   /** 点了「不感兴趣」、正显示成反馈卡的。 */
   val hidden: Set<String> = emptySet(),
+  /** 反馈卡上问原因的那些：值是选了的原因，还没选是 null。 */
+  val reasonAsks: Map<String, FeedNotInterestedReason?> = emptyMap(),
   /** 刚屏蔽了一位作者，提示「已屏蔽」。 */
   val blockedNotice: Boolean = false,
   /** 刚「不看 TA」的作者，提示条带「撤销」。 */

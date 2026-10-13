@@ -55,8 +55,8 @@ class FeedNotInterestedTest {
 
   private class FakeSource(var failUndo: Boolean = false) : FeedSource by EmptyFeedSource {
     val calls = mutableListOf<String>()
-    override suspend fun notInterested(contentId: String) {
-      calls += "hide $contentId"
+    override suspend fun notInterested(contentId: String, reason: String?) {
+      calls += if (reason == null) "hide $contentId" else "reason $contentId $reason"
     }
     var page = FeedTimelinePage()
     override suspend fun timeline(tab: FeedTab, cursor: String?): FeedTimelinePage = page
@@ -122,6 +122,43 @@ class FeedNotInterestedTest {
     composeTestRule.onNodeWithTag(FeedNotInterestedCardTestTags.PREFERENCES).performClick()
     composeTestRule.onNodeWithTag(FeedNotInterestedCardTestTags.UNCOMFORTABLE).performClick()
     assertThat(events).isEqualTo(listOf("undo", "prefs", "report"))
+  }
+
+  @Test
+  fun `half the time the card asks why, one pick is sent with the reason`() {
+    val source = FakeSource()
+    val asks = ArrayDeque(listOf(true, false))
+    val viewModel = FeedViewModel(source, dispatcher, blockedKeywords = InMemoryFeedBlockedKeywords(), askReason = { asks.removeFirst() })
+    val other = card.copy(id = "c2")
+
+    viewModel.notInterested(card)
+    viewModel.notInterested(other)
+    assertThat(viewModel.state.value.reasonAsks).isEqualTo(mapOf<String, FeedNotInterestedReason?>("c1" to null))
+
+    viewModel.notInterestedReason(card, FeedNotInterestedReason.AUTHOR)
+    viewModel.notInterestedReason(card, FeedNotInterestedReason.TOPIC)
+    viewModel.notInterestedReason(other, FeedNotInterestedReason.TOPIC)
+
+    assertThat(viewModel.state.value.reasonAsks).isEqualTo(mapOf<String, FeedNotInterestedReason?>("c1" to FeedNotInterestedReason.AUTHOR))
+    assertThat(source.calls).isEqualTo(listOf("hide c1", "hide c2", "reason c1 author"))
+  }
+
+  @Test
+  fun `the reason row is optional and thanks you after a pick`() {
+    var picked: FeedNotInterestedReason? = null
+    composeTestRule.setContent {
+      SignalTheme {
+        FeedNotInterestedCard(onUndo = {}, onManagePreferences = {}, onUncomfortable = {}, askReason = true, onReason = { picked = it })
+      }
+    }
+    composeTestRule.onNodeWithText("Want to tell us why? (optional)").assertExists()
+    System.getenv("FEED_SCREENSHOT_DIR")?.let { dir ->
+      val bitmap = composeTestRule.onRoot().captureToImage().asAndroidBitmap()
+      File(dir).mkdirs()
+      File(dir, "feed_not_interested_reason.png").outputStream().use { bitmap.compress(Bitmap.CompressFormat.PNG, 100, it) }
+    }
+    composeTestRule.onNodeWithTag(FeedNotInterestedCardTestTags.reason(FeedNotInterestedReason.SEEN)).performClick()
+    assertThat(picked).isEqualTo(FeedNotInterestedReason.SEEN)
   }
 
   @Test

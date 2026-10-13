@@ -67,7 +67,9 @@ interface FeedSource {
   suspend fun isVisible(): Boolean
   suspend fun timeline(tab: FeedTab, cursor: String?): FeedTimelinePage
   suspend fun setLiked(contentId: String, liked: Boolean)
-  suspend fun notInterested(contentId: String)
+
+  /** 不感兴趣；[reason] 是 [FeedNotInterestedReason.apiName]，同一条再发一次带上原因。 */
+  suspend fun notInterested(contentId: String, reason: String? = null)
   suspend fun undoNotInterested(contentId: String)
 
   /** 发一条。[clientNonce] 每条草稿一个，重试时不变（引擎补上去重后会带上）。 */
@@ -230,7 +232,7 @@ class RemoteFeedSource(
   }
 
   override suspend fun setLiked(contentId: String, liked: Boolean) = api.setReaction(contentId, FeedApi.REACTION_LIKE, liked)
-  override suspend fun notInterested(contentId: String) = api.notInterested(contentId, reason = null)
+  override suspend fun notInterested(contentId: String, reason: String?) = api.notInterested(contentId, reason)
   override suspend fun undoNotInterested(contentId: String) = api.undoNotInterested(contentId)
   override suspend fun myPosts(before: String?): FeedMyPostsPage = api.myPosts(before)
 
@@ -387,7 +389,7 @@ object EmptyFeedSource : FeedSource {
   override suspend fun isVisible(): Boolean = false
   override suspend fun timeline(tab: FeedTab, cursor: String?): FeedTimelinePage = FeedTimelinePage()
   override suspend fun setLiked(contentId: String, liked: Boolean) = Unit
-  override suspend fun notInterested(contentId: String) = Unit
+  override suspend fun notInterested(contentId: String, reason: String?) = Unit
   override suspend fun undoNotInterested(contentId: String) = Unit
   override suspend fun reportEvents(events: List<FeedEventPayload>) = Unit
   override suspend fun publish(draft: FeedDraft, clientNonce: String): FeedCreatePostResponse = throw IllegalStateException("feed is not available")

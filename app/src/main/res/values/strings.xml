@@ -6826,6 +6826,12 @@
     <string name="TellomiFeed__hidden">Post hidden. You\'ll see fewer posts like this.</string>
     <string name="TellomiFeedNotInterested__preferences">Manage content preferences</string>
     <string name="TellomiFeedNotInterested__uncomfortable">This made me uncomfortable</string>
+    <string name="TellomiFeedNotInterested__reason_ask">Want to tell us why? (optional)</string>
+    <string name="TellomiFeedNotInterested__reason_topic">Not into this topic</string>
+    <string name="TellomiFeedNotInterested__reason_author">Not into this author</string>
+    <string name="TellomiFeedNotInterested__reason_seen">Seen similar already</string>
+    <string name="TellomiFeedNotInterested__reason_low_quality">Low quality</string>
+    <string name="TellomiFeedNotInterested__reason_thanks">Thanks, we\'ll show less like this.</string>
     <string name="TellomiFeed__network_error">Couldn\'t refresh. Check your connection.</string>
     <string name="TellomiFeed__action_failed">Couldn\'t complete that. Try again.</string>
     <string name="TellomiFeed__load_failed">Couldn\'t load posts</string>
