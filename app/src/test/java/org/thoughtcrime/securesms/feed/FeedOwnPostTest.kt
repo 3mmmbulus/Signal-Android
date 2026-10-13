@@ -9,8 +9,10 @@ import android.app.Application
 import android.graphics.Bitmap
 import androidx.compose.foundation.layout.Column
 import androidx.compose.ui.graphics.asAndroidBitmap
+import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.captureToImage
 import androidx.compose.ui.test.junit4.createComposeRule
+import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
@@ -41,6 +43,8 @@ import org.signal.core.ui.CoreUiDependenciesRule
 import org.signal.core.ui.compose.theme.SignalTheme
 import org.thoughtcrime.securesms.feed.compose.FeedReplyPolicy
 import org.thoughtcrime.securesms.feed.compose.FeedReplySettings
+import org.thoughtcrime.securesms.feed.compose.FeedReplySettingsContent
+import org.thoughtcrime.securesms.feed.compose.FeedReplySettingsTestTags
 import org.thoughtcrime.securesms.feed.net.FeedApiException
 import org.thoughtcrime.securesms.feed.net.FeedAuthor
 import org.thoughtcrime.securesms.feed.net.FeedCard
@@ -224,6 +228,30 @@ class FeedOwnPostTest {
   fun `an unknown reply policy reads as everyone`() {
     assertThat(FeedPostSettings(replyPolicy = "mentioned").toReplySettings().policy).isEqualTo(FeedReplyPolicy.EVERYONE)
     assertThat(FeedReplySettings().diff(FeedReplySettings())).isNull()
+  }
+
+  @Test
+  fun `voice comments switch reads the setting and sends only voice_comments`() {
+    val before = FeedPostSettings(voiceComments = false).toReplySettings()
+    assertThat(before.voiceComments).isFalse()
+    assertThat(FeedPostSettings().toReplySettings().voiceComments).isTrue()
+    assertThat(before.diff(before.copy(voiceComments = true))).isEqualTo(FeedPostSettingsUpdate(voiceComments = true))
+  }
+
+  @Test
+  fun `voice comments switch is only on a published post, not on the compose sheet`() {
+    var changed: FeedReplySettings? = null
+    composeTestRule.setContent {
+      SignalTheme {
+        Column {
+          FeedPostReplySettingsContent(state = FeedPostReplySettingsState(loading = false), onChange = { changed = it }, onRetry = {})
+          FeedReplySettingsContent(settings = FeedReplySettings(), onChange = {})
+        }
+      }
+    }
+    composeTestRule.onAllNodesWithTag(FeedReplySettingsTestTags.VOICE).assertCountEquals(1)
+    composeTestRule.onNodeWithTag(FeedReplySettingsTestTags.VOICE).performClick()
+    assertThat(changed?.voiceComments).isEqualTo(false)
   }
 
   @Test

@@ -604,7 +604,8 @@ object SampleFeedSource : FeedSource {
     replySettings[contentId] = replies.copy(
       replyPolicy = update.replyPolicy ?: replies.replyPolicy,
       commentsClosed = update.commentsClosed ?: replies.commentsClosed,
-      replyModeration = update.replyModeration ?: replies.replyModeration
+      replyModeration = update.replyModeration ?: replies.replyModeration,
+      voiceComments = update.voiceComments ?: replies.voiceComments
     )
   }
 

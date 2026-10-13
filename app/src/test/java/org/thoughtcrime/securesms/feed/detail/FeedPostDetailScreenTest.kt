@@ -7,10 +7,15 @@ package org.thoughtcrime.securesms.feed.detail
 
 import android.app.Application
 import android.graphics.Bitmap
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.graphics.asAndroidBitmap
+import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.captureToImage
 import androidx.compose.ui.test.junit4.createComposeRule
+import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onLast
 import androidx.compose.ui.test.onNodeWithContentDescription
@@ -33,6 +38,7 @@ import org.thoughtcrime.securesms.feed.FeedOwnPostAction
 import org.thoughtcrime.securesms.feed.FeedPostCardTestTags
 import org.thoughtcrime.securesms.feed.net.FeedAuthor
 import org.thoughtcrime.securesms.feed.net.FeedCard
+import org.thoughtcrime.securesms.feed.net.FeedMedia
 import org.thoughtcrime.securesms.feed.net.FeedStats
 import java.io.File
 
@@ -173,6 +179,56 @@ class FeedPostDetailScreenTest {
     composeTestRule.onNodeWithText("Decline this reply?").assertExists()
     composeTestRule.onAllNodesWithText("Decline").onLast().performClick()
     assertThat(moderated).isEqualTo(listOf("approve h", "decline h"))
+  }
+
+  @Test
+  fun `a voice comment shows its length, and the transcript only when there is one`() {
+    val voice = FeedMedia(key = "m/v1", type = FeedMedia.TYPE_AUDIO, durationMs = 4_200)
+    val withTranscript = comment("v", third, "").copy(media = listOf(voice), transcript = "早上的鸟叫真好听")
+    val withoutTranscript = comment("w", other, "").copy(media = listOf(voice.copy(key = "m/v2", durationMs = 61_000)))
+    show(FeedPostDetailState(post = post, comments = listOf(withTranscript, withoutTranscript), loading = false, loadedOnce = true))
+
+    composeTestRule.onAllNodesWithTag(FeedVoiceTestTags.ROW).assertCountEquals(2)
+    composeTestRule.onNodeWithText("0:04").assertExists()
+    composeTestRule.onNodeWithText("1:01").assertExists()
+    composeTestRule.onAllNodesWithTag(FeedVoiceTestTags.TRANSCRIPT).assertCountEquals(1)
+    composeTestRule.onNodeWithText("早上的鸟叫真好听").assertExists()
+
+    System.getenv("FEED_SCREENSHOT_DIR")?.let { dir ->
+      val bitmap = composeTestRule.onRoot().captureToImage().asAndroidBitmap()
+      File(dir).mkdirs()
+      File(dir, "feed_voice_comments.png").outputStream().use { bitmap.compress(Bitmap.CompressFormat.PNG, 100, it) }
+    }
+  }
+
+  @Test
+  fun `voice row toggles, shows progress time while playing and a failure line`() {
+    val voice = FeedMedia(key = "m/v1", type = FeedMedia.TYPE_AUDIO, durationMs = 4_200)
+    var playback by mutableStateOf(FeedVoicePlayback())
+    val toggled = mutableListOf<String>()
+    composeTestRule.setContent {
+      SignalTheme {
+        FeedVoiceCommentRow(media = voice, transcript = "", playback = playback, onToggle = { toggled += it.key })
+      }
+    }
+    composeTestRule.onNodeWithContentDescription("Play voice comment").performClick()
+    assertThat(toggled).isEqualTo(listOf("m/v1"))
+
+    playback = FeedVoicePlayback(key = "m/v1", playing = true, positionMs = 2_500)
+    composeTestRule.onNodeWithContentDescription("Pause voice comment").assertExists()
+    composeTestRule.onNodeWithText("0:02").assertExists()
+
+    playback = FeedVoicePlayback(failedKey = "m/v1")
+    composeTestRule.onNodeWithText("Couldn't play this voice comment.").assertExists()
+    composeTestRule.onNodeWithText("0:04").assertExists()
+  }
+
+  @Test
+  fun `voice duration format`() {
+    assertThat(formatVoiceDuration(0)).isEqualTo("0:00")
+    assertThat(formatVoiceDuration(999)).isEqualTo("0:00")
+    assertThat(formatVoiceDuration(60_000)).isEqualTo("1:00")
+    assertThat(formatVoiceDuration(-5)).isEqualTo("0:00")
   }
 
   @Test

@@ -6862,6 +6862,11 @@
     <string name="TellomiFeed__unsave">Remove from saved</string>
     <string name="TellomiFeed__saved_done">Saved to Saved Messages</string>
     <string name="TellomiFeed__reply_settings_future_only">New settings apply to comments from now on. Existing comments stay as they are.</string>
+    <string name="TellomiFeed__voice_comments">Voice comments</string>
+    <string name="TellomiFeed__voice_comments_description">Let people reply to this post with a short voice clip.</string>
+    <string name="TellomiFeed__voice_play">Play voice comment</string>
+    <string name="TellomiFeed__voice_pause">Pause voice comment</string>
+    <string name="TellomiFeed__voice_play_failed">Couldn\'t play this voice comment.</string>
     <string name="TellomiFeed__insights">View insights</string>
     <string name="TellomiFeedInsights__opens">Opens</string>
     <string name="TellomiFeedInsights__likes">Likes</string>

@@ -6645,6 +6645,11 @@
     <string name="TellomiFeed__unsave">取消收藏</string>
     <string name="TellomiFeed__saved_done">已存進「我的收藏」</string>
     <string name="TellomiFeed__reply_settings_future_only">改動只影響之後的留言，已有的留言不受影響。</string>
+    <string name="TellomiFeed__voice_comments">語音留言</string>
+    <string name="TellomiFeed__voice_comments_description">允許別人用一段語音回覆這則動態。</string>
+    <string name="TellomiFeed__voice_play">播放語音留言</string>
+    <string name="TellomiFeed__voice_pause">暫停語音留言</string>
+    <string name="TellomiFeed__voice_play_failed">語音留言播放失敗。</string>
     <string name="TellomiFeed__insights">查看數據</string>
     <string name="TellomiFeedInsights__opens">開啟次數</string>
     <string name="TellomiFeedInsights__likes">按讚</string>

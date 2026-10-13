@@ -19,6 +19,8 @@ import org.thoughtcrime.securesms.feed.net.FeedConfig
 import org.thoughtcrime.securesms.feed.net.FeedIdsPage
 import org.thoughtcrime.securesms.feed.net.FeedJson
 import org.thoughtcrime.securesms.feed.net.FeedMedia
+import org.thoughtcrime.securesms.feed.net.FeedPostSettings
+import org.thoughtcrime.securesms.feed.net.FeedPostSettingsUpdate
 import org.thoughtcrime.securesms.feed.net.FeedProfilePage
 import org.thoughtcrime.securesms.feed.net.FeedStats
 import org.thoughtcrime.securesms.feed.net.FeedViewer
@@ -41,6 +43,23 @@ class FeedModelsTest {
     assertThat(card.viewer.canComment).isTrue()
     assertThat(card.author?.profileId).isEqualTo("p1")
     assertThat(card.author?.isNative).isEqualTo(true)
+  }
+
+  @Test
+  fun `voice comment card carries audio duration and transcript, settings default voice on`() {
+    val card = FeedJson.decodeFromString(
+      FeedCard.serializer(),
+      """{"id":"c","kind":"comment","text":"","transcript":"","media":[{"type":"audio","key":"m/v1","duration_ms":4200}]}"""
+    )
+    assertThat(card.media.single().isAudio).isTrue()
+    assertThat(card.media.single().durationMs).isEqualTo(4200L)
+    assertThat(card.transcript).isEqualTo("")
+    assertThat(FeedJson.decodeFromString(FeedMedia.serializer(), """{"key":"m/i"}""").isAudio).isFalse()
+
+    assertThat(FeedJson.decodeFromString(FeedPostSettings.serializer(), "{}").voiceComments).isTrue()
+    assertThat(FeedJson.decodeFromString(FeedPostSettings.serializer(), """{"voice_comments":false}""").voiceComments).isFalse()
+    assertThat(FeedJson.encodeToString(FeedPostSettingsUpdate.serializer(), FeedPostSettingsUpdate(voiceComments = false))).isEqualTo("""{"voice_comments":false}""")
+    assertThat(FeedJson.decodeFromString(FeedConfig.serializer(), "{}").limits.voiceCommentMaxSeconds).isEqualTo(60)
   }
 
   @Test

@@ -32,6 +32,7 @@ internal object FeedReplySettingsTestTags {
   const val POLICY = "feed_reply_policy_"
   const val CLOSED = "feed_reply_closed"
   const val MODERATION = "feed_reply_moderation"
+  const val VOICE = "feed_reply_voice"
 }
 
 /** 发布页底部「回复选项」弹出的面板（第三节第 40 条）。 */
@@ -51,7 +52,8 @@ fun FeedReplySettingsSheet(
 internal fun FeedReplySettingsContent(
   settings: FeedReplySettings,
   onChange: (FeedReplySettings) -> Unit,
-  modifier: Modifier = Modifier
+  modifier: Modifier = Modifier,
+  showVoiceComments: Boolean = false
 ) {
   Column(modifier = modifier) {
     Text(
@@ -99,6 +101,16 @@ internal fun FeedReplySettingsContent(
       onCheckedChange = { onChange(settings.copy(moderation = it)) },
       tag = FeedReplySettingsTestTags.MODERATION
     )
+    if (showVoiceComments) {
+      SwitchRow(
+        title = stringResource(R.string.TellomiFeed__voice_comments),
+        description = stringResource(R.string.TellomiFeed__voice_comments_description),
+        checked = settings.voiceComments,
+        enabled = !settings.commentsClosed,
+        onCheckedChange = { onChange(settings.copy(voiceComments = it)) },
+        tag = FeedReplySettingsTestTags.VOICE
+      )
+    }
   }
 }
 

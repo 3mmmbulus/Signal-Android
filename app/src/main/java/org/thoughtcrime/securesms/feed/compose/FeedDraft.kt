@@ -185,11 +185,15 @@ enum class FeedReplyPolicy(val apiName: String, @StringRes val label: Int) {
   FOLLOWING("following", R.string.TellomiFeedCompose__replies_following)
 }
 
-/** 每条单独设的回复选项：谁能回复、关闭评论、审核回复（作者批准后才公开）。 */
+/**
+ * 每条单独设的回复选项：谁能回复、关闭评论、审核回复（作者批准后才公开）、语音评论（第三节第 4 条，默认开）。
+ * 发布接口不收语音评论开关，只在发出去以后的「···」里改。
+ */
 data class FeedReplySettings(
   val policy: FeedReplyPolicy = FeedReplyPolicy.EVERYONE,
   val commentsClosed: Boolean = false,
-  val moderation: Boolean = false
+  val moderation: Boolean = false,
+  val voiceComments: Boolean = true
 ) {
   val isDefault: Boolean
     get() = this == FeedReplySettings()

@@ -214,7 +214,8 @@ internal fun FeedPostSettings.toReplySettings(): FeedReplySettings {
   return FeedReplySettings(
     policy = FeedReplyPolicy.entries.firstOrNull { it.apiName == replyPolicy } ?: FeedReplyPolicy.EVERYONE,
     commentsClosed = commentsClosed,
-    moderation = replyModeration
+    moderation = replyModeration,
+    voiceComments = voiceComments
   )
 }
 
@@ -224,7 +225,8 @@ internal fun FeedReplySettings.diff(next: FeedReplySettings): FeedPostSettingsUp
   return FeedPostSettingsUpdate(
     replyPolicy = next.policy.apiName.takeIf { next.policy != policy },
     commentsClosed = next.commentsClosed.takeIf { it != commentsClosed },
-    replyModeration = next.moderation.takeIf { it != moderation }
+    replyModeration = next.moderation.takeIf { it != moderation },
+    voiceComments = next.voiceComments.takeIf { it != voiceComments }
   )
 }
 
@@ -253,7 +255,7 @@ fun FeedPostReplySettingsContent(
         TextButton(onClick = onRetry) { Text(stringResource(R.string.TellomiFeed__retry)) }
       }
       else -> {
-        FeedReplySettingsContent(settings = state.settings, onChange = onChange)
+        FeedReplySettingsContent(settings = state.settings, onChange = onChange, showVoiceComments = true)
         Text(
           text = stringResource(R.string.TellomiFeed__reply_settings_future_only),
           style = MaterialTheme.typography.bodyMedium,

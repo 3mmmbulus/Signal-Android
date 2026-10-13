@@ -250,8 +250,10 @@ fun FeedPostCard(
       }
     }
 
-    if (card.media.isNotEmpty()) {
-      FeedMediaRow(media = card.media, mediaBaseUrl = mediaBaseUrl, modifier = Modifier.padding(top = 8.dp))
+    // 语音评论的音频不当图片画（卡片里只在评论区播放）
+    val images = card.media.filterNot { it.isAudio }
+    if (images.isNotEmpty()) {
+      FeedMediaRow(media = images, mediaBaseUrl = mediaBaseUrl, modifier = Modifier.padding(top = 8.dp))
     }
 
     FeedActionRow(

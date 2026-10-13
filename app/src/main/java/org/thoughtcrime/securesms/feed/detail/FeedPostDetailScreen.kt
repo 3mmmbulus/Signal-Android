@@ -56,6 +56,7 @@ import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import org.signal.core.ui.compose.Dialogs
 import org.signal.core.ui.compose.Scaffolds
 import org.signal.core.ui.compose.Snackbars
@@ -67,7 +68,9 @@ import org.thoughtcrime.securesms.feed.FeedPostCard
 import org.thoughtcrime.securesms.feed.compose.FeedEditTarget
 import org.thoughtcrime.securesms.feed.net.FeedAuthor
 import org.thoughtcrime.securesms.feed.net.FeedCard
+import org.thoughtcrime.securesms.feed.net.FeedMedia
 import org.thoughtcrime.securesms.feed.parseInstantMillis
+import org.thoughtcrime.securesms.feed.remoteUrlOrNull
 import org.thoughtcrime.securesms.util.DateUtils
 import java.util.Locale
 import org.signal.core.ui.R as CoreUiR
@@ -211,6 +214,9 @@ private fun CommentList(
   modifier: Modifier = Modifier
 ) {
   val listState = rememberLazyListState()
+  val voicePlayer = rememberFeedVoicePlayer()
+  val voicePlayback by voicePlayer.playback.collectAsStateWithLifecycle()
+  val onVoiceToggle: (FeedMedia) -> Unit = { media -> voicePlayer.toggle(media, media.remoteUrlOrNull(state.mediaBaseUrl)) }
   val editTarget = remember(state.post, state.editWindowSeconds) {
     FeedEditTarget.of(state.post)?.takeIf { state.post.viewer.isAuthor && it.isWithinWindow(System.currentTimeMillis(), state.editWindowSeconds) }
   }
@@ -319,7 +325,9 @@ private fun CommentList(
           onAuthorClick = onAuthorClick,
           canModerate = canModerate,
           onApprove = onApproveComment,
-          onDecline = { decliningId = it.id }
+          onDecline = { decliningId = it.id },
+          voicePlayback = voicePlayback,
+          onVoiceToggle = onVoiceToggle
         )
       }
 
@@ -338,7 +346,9 @@ private fun CommentList(
             onAuthorClick = onAuthorClick,
             canModerate = canModerate,
             onApprove = onApproveComment,
-            onDecline = { decliningId = it.id }
+            onDecline = { decliningId = it.id },
+            voicePlayback = voicePlayback,
+            onVoiceToggle = onVoiceToggle
           )
         }
       }
@@ -414,7 +424,9 @@ private fun CommentBubble(
   onAuthorClick: (FeedAuthor) -> Unit = {},
   canModerate: Boolean = false,
   onApprove: (FeedCard) -> Unit = {},
-  onDecline: (FeedCard) -> Unit = {}
+  onDecline: (FeedCard) -> Unit = {},
+  voicePlayback: FeedVoicePlayback = FeedVoicePlayback(),
+  onVoiceToggle: (FeedMedia) -> Unit = {}
 ) {
   val context = LocalContext.current
   val start = if (isReply) 16.dp + COMMENT_AVATAR + 12.dp else 16.dp
@@ -455,16 +467,23 @@ private fun CommentBubble(
         }
 
         val primary = MaterialTheme.colorScheme.primary
-        Text(
-          text = buildAnnotatedString {
-            if (replyToName != null) {
-              withStyle(SpanStyle(color = primary)) { append("@$replyToName ") }
-            }
-            append(comment.text.orEmpty())
-          },
-          style = MaterialTheme.typography.bodyMedium,
-          color = MaterialTheme.colorScheme.onSurface
-        )
+        val voice = comment.media.firstOrNull { it.isAudio }
+        // 语音评论的文字可以空：空的时候只留「@某人」，两样都没有就不占一行
+        if (voice == null || replyToName != null || !comment.text.isNullOrBlank()) {
+          Text(
+            text = buildAnnotatedString {
+              if (replyToName != null) {
+                withStyle(SpanStyle(color = primary)) { append("@$replyToName ") }
+              }
+              append(comment.text.orEmpty())
+            },
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurface
+          )
+        }
+        if (voice != null) {
+          FeedVoiceCommentRow(media = voice, transcript = comment.transcript, playback = voicePlayback, onToggle = onVoiceToggle)
+        }
       }
 
       Row(

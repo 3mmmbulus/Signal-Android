@@ -57,7 +57,8 @@ data class FeedLimits(
   @SerialName("post_text_chars") val postTextChars: Int = 500,
   @SerialName("post_images") val postImages: Int = 10,
   @SerialName("article_chars") val articleChars: Int = 10_000,
-  @SerialName("edit_window_seconds") val editWindowSeconds: Long = 900
+  @SerialName("edit_window_seconds") val editWindowSeconds: Long = 900,
+  @SerialName("voice_comment_max_seconds") val voiceCommentMaxSeconds: Int = 60
 )
 
 /** `GET /v1/feed/status`：H-1 内测名单和紧急开关都过了才是 true。 */
@@ -168,6 +169,8 @@ data class FeedCard(
   val text: String? = null,
   val summary: String? = null,
   val media: List<FeedMedia> = emptyList(),
+  /** 语音评论的服务端转写；转写还没接上时是空串，空的不显示。 */
+  val transcript: String = "",
   val topics: List<FeedTopic> = emptyList(),
   val poll: FeedPoll? = null,
   /** 被引用的帖子 id；要显示时再走一次 Card API。 */
@@ -263,8 +266,16 @@ data class FeedMedia(
   val w: Int = 0,
   val h: Int = 0,
   val alt: String = "",
-  val type: String = "image"
-)
+  val type: String = "image",
+  /** 语音评论（`type = "audio"`）的时长，服务端从文件头读。 */
+  @SerialName("duration_ms") val durationMs: Long = 0
+) {
+  val isAudio: Boolean get() = type == TYPE_AUDIO
+
+  companion object {
+    const val TYPE_AUDIO = "audio"
+  }
+}
 
 @Serializable
 data class FeedTopic(val slug: String, val label: String)
@@ -729,7 +740,8 @@ data class FeedPostSettingsUpdate(
   @SerialName("like_count_hidden") val likeCountHidden: Boolean? = null,
   @SerialName("reply_policy") val replyPolicy: String? = null,
   @SerialName("comments_closed") val commentsClosed: Boolean? = null,
-  @SerialName("reply_moderation") val replyModeration: Boolean? = null
+  @SerialName("reply_moderation") val replyModeration: Boolean? = null,
+  @SerialName("voice_comments") val voiceComments: Boolean? = null
 )
 
 /** `GET /v1/feed/posts/{id}/settings`：自己帖子当前的设置，只有作者拿得到。 */
@@ -739,7 +751,8 @@ data class FeedPostSettings(
   @SerialName("like_count_hidden") val likeCountHidden: Boolean = false,
   @SerialName("reply_policy") val replyPolicy: String = "everyone",
   @SerialName("comments_closed") val commentsClosed: Boolean = false,
-  @SerialName("reply_moderation") val replyModeration: Boolean = false
+  @SerialName("reply_moderation") val replyModeration: Boolean = false,
+  @SerialName("voice_comments") val voiceComments: Boolean = true
 )
 
 /** `GET /v1/feed/posts/{id}/insights`：「查看数据」，只有作者拿得到。 */
