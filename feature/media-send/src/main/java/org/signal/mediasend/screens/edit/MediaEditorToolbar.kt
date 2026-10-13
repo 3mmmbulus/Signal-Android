@@ -25,6 +25,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import org.signal.core.ui.WindowBreakpoint
 import org.signal.core.ui.compose.IconButtons
@@ -32,6 +33,7 @@ import org.signal.core.ui.compose.SignalIcons
 import org.signal.core.ui.compose.copied.androidx.compose.material3.IconButtonColors
 import org.signal.core.ui.rememberWindowBreakpoint
 import org.signal.mediasend.EditorState
+import org.signal.mediasend.R
 import org.signal.mediasend.SentMediaQuality
 import org.signal.mediasend.test.TestTags
 
@@ -152,13 +154,29 @@ internal fun MediaEditorToolbarSharedButtons(
   }
 
   if (isAddMediaVisible(state, editorState)) {
-    MediaEditorToolbarButton(
-      imageVector = SignalIcons.AlbumPlus.imageVector,
-      onClick = { onEvent(MediaEditScreenEvents.NavigateToGallery) },
-      enabled = enabled,
-      modifier = Modifier.testTag(TestTags.MEDIA_EDITOR_TOOLBAR_ADD_MEDIA_BUTTON)
-    )
+    if (isTakeMoreVisible(state)) {
+      // Tellomi（tellomi/tellomi#1520 C-7）：照 Telegram 相机查看器的「添加照片」——回到相机接着拍，拍下的都留着。
+      MediaEditorToolbarButton(
+        imageVector = SignalIcons.Camera.imageVector,
+        onClick = { onEvent(MediaEditScreenEvents.TakeMore) },
+        enabled = enabled,
+        contentDescription = stringResource(R.string.MediaEditScreen__take_more),
+        modifier = Modifier.testTag(TestTags.MEDIA_EDITOR_TOOLBAR_TAKE_MORE_BUTTON)
+      )
+    } else {
+      MediaEditorToolbarButton(
+        imageVector = SignalIcons.AlbumPlus.imageVector,
+        onClick = { onEvent(MediaEditScreenEvents.NavigateToGallery) },
+        enabled = enabled,
+        modifier = Modifier.testTag(TestTags.MEDIA_EDITOR_TOOLBAR_ADD_MEDIA_BUTTON)
+      )
+    }
   }
+}
+
+/** Tellomi（tellomi/tellomi#1520 C-7）：编辑页盖在相机上时添加键是「再拍」；快拍照旧去相册。 */
+internal fun isTakeMoreVisible(state: MediaEditState): Boolean {
+  return state.isOverCamera && !state.isStory
 }
 
 /**

@@ -349,6 +349,53 @@ class MediaCaptureViewModelTest {
 
   //endregion
 
+  //region Tellomi（tellomi/tellomi#1520 C-7）：拍下留在相机的胶片条
+
+  @Test
+  fun `when the flow's captures change, then the filmstrip shows the ones still selected, in selection order`() = runTest {
+    val parentState = MutableStateFlow(MediaSendFlowState())
+    val viewModel = createViewModel(parentState)
+
+    parentState.value = MediaSendFlowState(
+      selectedMedia = listOf(OTHER_CAPTURE, PICKED, MEDIA),
+      cameraCaptureUris = listOf(MEDIA.uri, OTHER_CAPTURE.uri, "content://deselected".toUri())
+    )
+    advanceUntilIdle()
+
+    assertThat(viewModel.state.value.cameraCaptures).containsExactly(OTHER_CAPTURE, MEDIA)
+    assertThat(viewModel.state.value.canDisplayFilmstrip).isTrue()
+  }
+
+  @Test
+  fun `Given nothing was captured, when created, then there is no filmstrip`() = runTest {
+    val viewModel = createViewModel(MediaSendFlowState(selectedMedia = listOf(PICKED)))
+
+    assertThat(viewModel.state.value.cameraCaptures).isEmpty()
+    assertThat(viewModel.state.value.canDisplayFilmstrip).isFalse()
+  }
+
+  @Test
+  fun `Given captures, when a recording starts, then the filmstrip steps aside`() = runTest {
+    val viewModel = createViewModel(MediaSendFlowState(selectedMedia = listOf(MEDIA), cameraCaptureUris = listOf(MEDIA.uri)))
+
+    viewModel.onEvent(camera(CameraXScreenEvents.RecordingStateChanged(isRecording = true)))
+    advanceUntilIdle()
+
+    assertThat(viewModel.state.value.canDisplayFilmstrip).isFalse()
+  }
+
+  @Test
+  fun `when a capture in the filmstrip is tapped, then the flow opens it in the editor`() = runTest {
+    val viewModel = createViewModel(MediaSendFlowState(selectedMedia = listOf(MEDIA), cameraCaptureUris = listOf(MEDIA.uri)))
+
+    viewModel.onEvent(MediaCaptureScreenEvents.CaptureClicked(MEDIA))
+    advanceUntilIdle()
+
+    assertThat(parentEvents).containsExactly(MediaSendFlowEvent.OpenInEditor(MEDIA))
+  }
+
+  //endregion
+
   //region Handing off to the flow
 
   /**
@@ -476,5 +523,8 @@ class MediaCaptureViewModelTest {
       transformProperties = null,
       fileName = null
     )
+
+    private val OTHER_CAPTURE = MEDIA.copy(uri = "content://capture/2".toUri())
+    private val PICKED = MEDIA.copy(uri = "content://media/picked".toUri())
   }
 }

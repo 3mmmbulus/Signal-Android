@@ -30,6 +30,9 @@ sealed interface MediaEditScreenEvents {
   data class ScheduleSendClick(val option: ScheduleSendOption) : MediaEditScreenEvents
   data object NavigateBack : MediaEditScreenEvents
   data object NavigateToGallery : MediaEditScreenEvents
+
+  /** Tellomi（tellomi/tellomi#1520 C-7）：编辑页在相机上面时，添加键换成「再拍」：回到相机接着拍，拍下的都留着。 */
+  data object TakeMore : MediaEditScreenEvents
   data class SetMediaQuality(val quality: SentMediaQuality) : MediaEditScreenEvents
   data object ToggleViewOnce : MediaEditScreenEvents
   data class BrushWidthChanged(val tool: BrushTool, val fraction: Float) : MediaEditScreenEvents

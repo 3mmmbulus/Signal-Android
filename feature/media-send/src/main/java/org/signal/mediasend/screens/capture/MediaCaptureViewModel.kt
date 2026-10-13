@@ -52,6 +52,7 @@ internal class MediaCaptureViewModel(
       MediaCaptureState(
         selectedCaptureScreen = selectedCaptureScreen,
         selectedMedia = selectedMedia,
+        cameraCaptures = selectedCameraCaptures,
         isCameraFirst = isCameraFirst,
         isStory = isStory,
         storiesEnabled = storiesEnabled,
@@ -67,17 +68,20 @@ internal class MediaCaptureViewModel(
 
   init {
     parentState
-      .distinctUntilChangedBy { it.selectedMedia }
+      .distinctUntilChangedBy { it.selectedMedia to it.cameraCaptureUris }
       .onEach { onEvent(MediaCaptureScreenEvents.ParentStateChanged(it)) }
       .launchIn(viewModelScope)
   }
 
   override suspend fun processEvent(event: MediaCaptureScreenEvents) {
     when (event) {
-      is MediaCaptureScreenEvents.ParentStateChanged -> _state.update { it.copy(selectedMedia = event.parentState.selectedMedia) }
+      is MediaCaptureScreenEvents.ParentStateChanged -> _state.update {
+        it.copy(selectedMedia = event.parentState.selectedMedia, cameraCaptures = event.parentState.selectedCameraCaptures)
+      }
       is MediaCaptureScreenEvents.SelectedCaptureScreenChanged -> _state.update { it.copy(selectedCaptureScreen = event.selectedCaptureScreen) }
       is MediaCaptureScreenEvents.CaptureModeSelected -> selectCaptureMode(event.mode)
       MediaCaptureScreenEvents.NextClicked -> parentEventEmitter(MediaSendFlowEvent.NavigateToEdit)
+      is MediaCaptureScreenEvents.CaptureClicked -> parentEventEmitter(MediaSendFlowEvent.OpenInEditor(event.media))
       is MediaCaptureScreenEvents.Camera -> processCameraEvent(event.event)
     }
   }

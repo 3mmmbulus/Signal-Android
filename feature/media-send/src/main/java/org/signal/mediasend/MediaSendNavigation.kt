@@ -199,6 +199,12 @@ internal fun MediaSendNavigation(
           }
           val state by editViewModel.state.collectAsStateWithLifecycle()
 
+          // Tellomi（tellomi/tellomi#1520 C-7）：编辑页正下面是不是相机，按返回栈现算（它本身是可观察的状态，退一层就跟着变）。
+          val isOverCamera = viewModel.backStack.let { stack ->
+            val index = stack.indexOf(MediaSendRoute.Edit)
+            index > 0 && stack[index - 1] == MediaSendRoute.Capture.Camera
+          }
+
           SaveToStorageDialog(editViewModel)
           editViewModel.writeStoragePermission.Content()
 
@@ -210,7 +216,7 @@ internal fun MediaSendNavigation(
               )
             } else {
               MediaEditScreen(
-                state = state,
+                state = state.copy(isOverCamera = isOverCamera),
                 onEvent = editViewModel::onEvent,
                 imageControllers = viewModel.imageControllers,
                 mediaInputFactory = MediaSendDependencies.mediaInputFactory

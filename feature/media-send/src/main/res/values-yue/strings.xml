@@ -260,4 +260,7 @@
   <string name="TellomiReRegistrationScannedDialog__title">呢個係轉移帳戶嘅二維碼</string>
   <string name="TellomiReRegistrationScannedDialog__body">新手機要求轉走你嘅帳戶。只有喺你自己換手機、而家喺新手機度註冊嘅時候先好繼續。如果係其他人叫你掃嘅，請取消——繼續會將你嘅帳戶轉去對方部手機。</string>
   <string name="TellomiReRegistrationScannedDialog__continue">繼續</string>
+  <string name="MediaEditScreen__take_more">繼續影相</string>
+  <string name="MediaCaptureScreen__captured_photo">第 %1$d 張相</string>
+  <string name="MediaCaptureScreen__captured_video">第 %1$d 段片</string>
 </resources>

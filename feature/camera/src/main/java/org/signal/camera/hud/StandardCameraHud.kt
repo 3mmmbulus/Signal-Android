@@ -91,6 +91,9 @@ private val ZOOM_BAR_BOTTOM_MARGIN = 16.dp
 /** How far the zoom bar sits in from the start edge on anything larger than a phone. */
 private val ZOOM_BAR_SIDE_MARGIN = 16.dp
 
+/** Tellomi（tellomi/tellomi#1520 C-7）：竖屏手机以外，快门在侧边，快门上方的内容贴底，离底边这么远。 */
+private val ABOVE_CONTROLS_SIDE_LAYOUT_BOTTOM_MARGIN = 16.dp
+
 /** How long the time and the paused label take to trade the recording red between them. */
 private const val PAUSED_TRANSITION_MS = 200
 
@@ -146,6 +149,8 @@ data class StringResources(
  * @param captureButtonMode Which kind of capture the button offers while it is not recording
  * @param mediaSelectionCount Number of media items currently selected (shows count indicator when > 0)
  * @param emitter Callback for HUD events (photo captured, video captured, gallery click)
+ * @param aboveControls Tellomi（tellomi/tellomi#1520 C-7）：放在快门那一排上方的内容（发图流程放拍下的胶片条）；手机竖屏在变焦条上面，
+ *   其它布局贴底居中。
  */
 @Composable
 fun BoxScope.StandardCameraHud(
@@ -155,7 +160,8 @@ fun BoxScope.StandardCameraHud(
   maxRecordingDurationMs: Long = DEFAULT_MAX_RECORDING_DURATION_MS,
   captureButtonMode: CaptureButtonMode = CaptureButtonMode.PHOTO,
   hasAudioPermission: () -> Boolean = { true },
-  stringResources: StringResources = StringResources(0, 0)
+  stringResources: StringResources = StringResources(0, 0),
+  aboveControls: @Composable () -> Unit = {}
 ) {
   val context = LocalContext.current
   val focusRequester = remember { FocusRequester() }
@@ -254,7 +260,8 @@ fun BoxScope.StandardCameraHud(
       maxRecordingDurationMs = maxRecordingDurationMs,
       captureButtonMode = captureButtonMode,
       hasAudioPermission = hasAudioPermission,
-      stringResources = stringResources
+      stringResources = stringResources,
+      aboveControls = aboveControls
     )
   }
 }
@@ -267,7 +274,8 @@ private fun BoxScope.StandardCameraHudContent(
   maxRecordingDurationMs: Long = DEFAULT_MAX_RECORDING_DURATION_MS,
   captureButtonMode: CaptureButtonMode = CaptureButtonMode.PHOTO,
   hasAudioPermission: () -> Boolean = { true },
-  stringResources: StringResources = StringResources()
+  stringResources: StringResources = StringResources(),
+  aboveControls: @Composable () -> Unit = {}
 ) {
   val breakpoint = rememberWindowBreakpoint()
   val orientation = LocalConfiguration.current.orientation
@@ -359,6 +367,14 @@ private fun BoxScope.StandardCameraHudContent(
         .align(Alignment.CenterStart)
         .padding(start = ZOOM_BAR_SIDE_MARGIN)
     )
+
+    Box(
+      modifier = Modifier
+        .align(Alignment.BottomCenter)
+        .padding(bottom = ABOVE_CONTROLS_SIDE_LAYOUT_BOTTOM_MARGIN)
+    ) {
+      aboveControls()
+    }
   }
 
   CameraControls(
@@ -371,6 +387,7 @@ private fun BoxScope.StandardCameraHudContent(
     hasAudioPermission = hasAudioPermission,
     stringResources = stringResources,
     zoomBarSlot = zoomBar,
+    aboveControls = aboveControls,
     modifier = modifier.align(if (isPortraitPhone) Alignment.BottomCenter else Alignment.CenterEnd)
   )
 }
@@ -475,7 +492,8 @@ private fun CameraControls(
   hasAudioPermission: () -> Boolean,
   stringResources: StringResources,
   zoomBarSlot: @Composable (Modifier) -> Unit,
-  modifier: Modifier = Modifier
+  modifier: Modifier = Modifier,
+  aboveControls: @Composable () -> Unit = {}
 ) {
   val orientation = LocalConfiguration.current.orientation
 
@@ -585,6 +603,7 @@ private fun CameraControls(
         stringResources = stringResources,
         emitter = emitter,
         zoomBarSlot = zoomBarSlot,
+        aboveControls = aboveControls,
         modifier = modifier
       )
     }
@@ -612,12 +631,14 @@ private fun HorizontalControlBar(
   stringResources: StringResources,
   emitter: (StandardCameraHudEvents) -> Unit,
   zoomBarSlot: @Composable (Modifier) -> Unit,
-  modifier: Modifier
+  modifier: Modifier,
+  aboveControls: @Composable () -> Unit = {}
 ) {
   Column(
     horizontalAlignment = Alignment.CenterHorizontally,
     modifier = modifier.fillMaxWidth()
   ) {
+    aboveControls()
     zoomBarSlot(Modifier.padding(bottom = ZOOM_BAR_BOTTOM_MARGIN))
 
     Box(

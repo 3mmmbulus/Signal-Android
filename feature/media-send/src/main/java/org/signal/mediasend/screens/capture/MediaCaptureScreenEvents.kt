@@ -5,6 +5,7 @@
 
 package org.signal.mediasend.screens.capture
 
+import org.signal.core.models.media.Media
 import org.signal.mediasend.MediaSendFlowState
 import org.signal.mediasend.MediaSendRoute
 
@@ -24,6 +25,9 @@ internal sealed interface MediaCaptureScreenEvents {
   data class CaptureModeSelected(val mode: MediaCaptureMode) : MediaCaptureScreenEvents
 
   data object NextClicked : MediaCaptureScreenEvents
+
+  /** Tellomi（tellomi/tellomi#1520 C-7）：点了胶片条里拍下的一张，到编辑页里看它。 */
+  data class CaptureClicked(val media: Media) : MediaCaptureScreenEvents
 
   /** Something the camera reported. What becomes of it is the flow's to decide rather than this screen's. */
   class Camera(val event: CameraXScreenEvents) : MediaCaptureScreenEvents

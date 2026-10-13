@@ -62,6 +62,11 @@ data class MediaSendFlowState(
    */
   val cameraFirstCapture: Media? = null,
   /**
+   * Tellomi（tellomi/tellomi#1520 C-7）：这次在相机里拍下的，按拍的先后。相机里的胶片条显示其中还选着的
+   * （[selectedCameraCaptures]）；已经有拍下的还选着时，再拍就留在相机，不再进编辑页。
+   */
+  val cameraCaptureUris: List<Uri> = emptyList(),
+  /**
    * Whether touch interactions are enabled (disabled during animations/transitions).
    */
   val isTouchEnabled: Boolean = true,
@@ -155,6 +160,10 @@ data class MediaSendFlowState(
   /** Tellomi（tellomi/tellomi#1261 V-1）：编辑页位置上显示的是相册查看器（true）还是已选胶片（false）。 */
   @IgnoredOnParcel val isBrowsingAlbum: Boolean = false
 ) : Parcelable {
+
+  /** Tellomi（tellomi/tellomi#1520 C-7）：拍下且还选着的，按选择的顺序；相机里的胶片条显示的就是这些。 */
+  val selectedCameraCaptures: List<Media>
+    get() = selectedMedia.filter { it.uri in cameraCaptureUris }
 
   /**
    * View-once only makes sense for a single, non-document attachment that isn't headed for a story.

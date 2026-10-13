@@ -17,6 +17,7 @@ object TestTags {
   const val MEDIA_EDITOR_TOOLBAR_QUALITY_BUTTON = "media_editor_toolbar_quality_button"
   const val MEDIA_EDITOR_TOOLBAR_SAVE_BUTTON = "media_editor_toolbar_save_button"
   const val MEDIA_EDITOR_TOOLBAR_ADD_MEDIA_BUTTON = "media_editor_toolbar_add_media_button"
+  const val MEDIA_EDITOR_TOOLBAR_TAKE_MORE_BUTTON = "media_editor_toolbar_take_more_button"
   const val MEDIA_EDITOR_TOOLBAR_MUTE_BUTTON = "media_editor_toolbar_mute_button"
 
   // Media Edit Screen
@@ -30,6 +31,8 @@ object TestTags {
   const val MEDIA_CAPTURE_PHOTO_TOGGLE = "media_capture_photo_toggle"
   const val MEDIA_CAPTURE_VIDEO_TOGGLE = "media_capture_video_toggle"
   const val MEDIA_CAPTURE_TEXT_STORY_TOGGLE = "media_capture_text_story_toggle"
+  const val MEDIA_CAPTURE_FILMSTRIP = "media_capture_filmstrip"
+  const val MEDIA_CAPTURE_FILMSTRIP_ITEM = "media_capture_filmstrip_item"
 
   // Shared. The next button is the same control on the capture and select screens, so it has one tag.
   const val MEDIA_SEND_MEDIA_COUNT = "media_send_media_count"

@@ -301,4 +301,7 @@
   <string name="TellomiReRegistrationScannedDialog__title">這是轉移帳號的 QR 碼</string>
   <string name="TellomiReRegistrationScannedDialog__body">新手機正在要求轉走你的帳號。只有在你自己換手機、正在新手機上註冊時才繼續。如果是別人要你掃的，請取消——繼續會把你的帳號轉到對方手機上。</string>
   <string name="TellomiReRegistrationScannedDialog__continue">繼續</string>
+  <string name="MediaEditScreen__take_more">繼續拍攝</string>
+  <string name="MediaCaptureScreen__captured_photo">第 %1$d 張照片</string>
+  <string name="MediaCaptureScreen__captured_video">第 %1$d 段影片</string>
 </resources>

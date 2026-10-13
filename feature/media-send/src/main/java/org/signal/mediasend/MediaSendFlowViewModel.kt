@@ -301,6 +301,7 @@ class MediaSendFlowViewModel(
       is MediaSendFlowEvent.SendAttachmentFiles -> sendHudCommand(MediaSendFlowHudCommand.SendAttachmentFiles(event.result))
       MediaSendFlowEvent.NavigateToEdit -> goToEditLeavingAlbum()
       MediaSendFlowEvent.NavigateToCamera -> backStack.goToCamera()
+      MediaSendFlowEvent.KeepShooting -> keepShooting()
       MediaSendFlowEvent.NavigateToTextStory -> backStack.goToTextStory()
       MediaSendFlowEvent.NavigateBackFromSelect -> onPopFromSelect()
       MediaSendFlowEvent.NavigateBackFromEdit -> onPopFromEdit()
@@ -401,20 +402,38 @@ class MediaSendFlowViewModel(
   }
 
   /**
-   * Takes on media the camera captured and moves the user along to edit it.
+   * Takes on media the camera captured.
+   *
+   * Tellomi（tellomi/tellomi#1520 C-7，owner 定 O1：照 Telegram 聊天路径）：相机里拍下的第一张进编辑页去看，在那里返回就丢掉它、
+   * 回到相机；已经有拍下的还选着时就留在相机，新拍的进胶片条，点发送键（相机右下角）再一起看、一起发。快拍照旧每张都进编辑页。
    *
    * @param recordingDuration How long the capture ran, for the captures that were recorded.
    */
   private fun onMediaCaptured(media: Media, recordingDuration: Duration?) {
     recordingDuration?.let { onVideoRecorded(it) }
 
-    if (args.isCameraFirst && internalState.value.cameraFirstCapture == null) {
+    val snapshot = state.value
+    val keepsShooting = !snapshot.isStory && snapshot.selectedCameraCaptures.isNotEmpty()
+    updateState { copy(cameraCaptureUris = cameraCaptureUris + media.uri) }
+
+    if (!keepsShooting && (args.isCameraFirst || !snapshot.isStory) && internalState.value.cameraFirstCapture == null) {
       addCameraFirstCapture(media)
     } else {
       addMedia(setOf(media), focusNewlyAdded = true)
     }
 
-    goToEditLeavingAlbum()
+    if (!keepsShooting) {
+      goToEditLeavingAlbum()
+    }
+  }
+
+  /**
+   * Tellomi（tellomi/tellomi#1520 C-7）：编辑页里「再拍」（照 Telegram 查看器的「添加照片」）：拍下的都留着——返回不再丢掉第一张——
+   * 回到相机接着拍，之后拍的留在相机。
+   */
+  private fun keepShooting() {
+    internalState.update { it.copy(cameraFirstCapture = null) }
+    backStack.goToCamera()
   }
 
   private fun sendHudCommand(hudCommand: MediaSendFlowHudCommand) {
@@ -749,7 +768,9 @@ class MediaSendFlowViewModel(
         selectedMedia = newSelection,
         focusedMedia = newFocus,
         editorStateMap = editorStateMap - removedUris,
-        cameraFirstCapture = newCameraFirstCapture
+        cameraFirstCapture = newCameraFirstCapture,
+        // A removed capture's file goes with it, so it leaves the camera's filmstrip for good.
+        cameraCaptureUris = cameraCaptureUris - removedUris
       )
     }
 

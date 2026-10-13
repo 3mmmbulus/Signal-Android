@@ -85,6 +85,7 @@ internal class MediaEditViewModel(
       MediaEditScreenEvents.StickerClick -> parentEventEmitter(MediaSendFlowEvent.StickerRequested)
       MediaEditScreenEvents.NextClick -> parentEventEmitter(MediaSendFlowEvent.NextRequested)
       MediaEditScreenEvents.NavigateToGallery -> parentEventEmitter(MediaSendFlowEvent.NavigateToFolders)
+      MediaEditScreenEvents.TakeMore -> parentEventEmitter(MediaSendFlowEvent.KeepShooting)
       MediaEditScreenEvents.NavigateBack -> parentEventEmitter(MediaSendFlowEvent.NavigateBackFromEdit)
       MediaEditScreenEvents.SaveMedia -> saveFocusedMediaToStorage()
       is MediaEditScreenEvents.VideoSeek -> error("VideoSeek is routed to the video player bus by MediaEditScreen and must not reach the view-model.")

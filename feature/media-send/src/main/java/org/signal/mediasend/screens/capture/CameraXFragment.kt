@@ -475,7 +475,8 @@ fun CameraXScreen(
   hasCameraPermission: () -> Boolean,
   onRequestMicPermission: () -> Unit,
   storiesEnabled: Boolean = CameraDependencies.isStoriesFeatureEnabled(),
-  implementationMode: ImplementationMode = ImplementationMode.EXTERNAL
+  implementationMode: ImplementationMode = ImplementationMode.EXTERNAL,
+  aboveControls: @Composable () -> Unit = {}
 ) {
   val context = LocalContext.current
 
@@ -640,7 +641,8 @@ fun CameraXScreen(
               photoCaptureFailed = R.string.CameraXFragment_photo_capture_failed,
               photoProcessingFailed = R.string.CameraXFragment_photo_processing_failed,
               recordingPaused = R.string.CameraXFragment_paused
-            )
+            ),
+            aboveControls = aboveControls
           )
         }
       }

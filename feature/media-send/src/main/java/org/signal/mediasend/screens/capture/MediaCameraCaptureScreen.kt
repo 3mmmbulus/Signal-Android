@@ -41,7 +41,15 @@ internal fun MediaCameraCaptureScreen(
     onRequestMicPermission = permissions.requestMicrophonePermission,
     hasCameraPermission = permissions.hasCameraPermission,
     storiesEnabled = state.storiesEnabled,
-    implementationMode = ImplementationMode.EMBEDDED
+    implementationMode = ImplementationMode.EMBEDDED,
+    aboveControls = {
+      // Tellomi（tellomi/tellomi#1520 C-7）：拍下的留在相机时，快门上方一条胶片条，点一张到编辑页里看。
+      CameraCaptureFilmstrip(
+        captures = state.cameraCaptures,
+        visible = state.canDisplayFilmstrip,
+        onCaptureClick = { onEvent(MediaCaptureScreenEvents.CaptureClicked(it)) }
+      )
+    }
   )
 }
 

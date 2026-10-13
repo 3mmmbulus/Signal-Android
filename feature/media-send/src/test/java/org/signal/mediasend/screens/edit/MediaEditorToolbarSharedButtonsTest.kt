@@ -10,6 +10,7 @@ import android.net.Uri
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithTag
+import androidx.compose.ui.test.performClick
 import androidx.test.core.app.ApplicationProvider
 import io.mockk.mockk
 import org.junit.Assert.assertFalse
@@ -145,6 +146,44 @@ class MediaEditorToolbarSharedButtonsTest {
     assertTrue(isAddMediaVisible(state(media = IMAGE), IMAGE_EDITOR_STATE))
   }
 
+  /** Tellomi（tellomi/tellomi#1520 C-7）：编辑页盖在相机上时，添加键换成「再拍」，点了回相机接着拍。 */
+  @Test
+  fun `Given the editor over the camera, when rendering the toolbar, then taking more replaces adding from the album`() {
+    val events = mutableListOf<MediaEditScreenEvents>()
+    setContent(state(media = IMAGE).copy(isOverCamera = true), IMAGE_EDITOR_STATE, onEvent = { events += it })
+
+    assertTakeMore(visible = true)
+    assertAddMedia(visible = false)
+
+    composeTestRule.onNodeWithTag(TestTags.MEDIA_EDITOR_TOOLBAR_TAKE_MORE_BUTTON).performClick()
+    assertTrue(events == listOf(MediaEditScreenEvents.TakeMore))
+  }
+
+  @Test
+  fun `Given the editor over the picker, when rendering the toolbar, then adding from the album stays`() {
+    setContent(state(media = IMAGE), IMAGE_EDITOR_STATE)
+
+    assertTakeMore(visible = false)
+    assertAddMedia(visible = true)
+  }
+
+  /** A story is still edited one capture at a time, so its editor keeps adding from the album even over the camera. */
+  @Test
+  fun `Given a story over the camera, when rendering the toolbar, then adding from the album stays`() {
+    setContent(state(media = IMAGE, isStory = true).copy(isOverCamera = true), IMAGE_EDITOR_STATE)
+
+    assertTakeMore(visible = false)
+    assertAddMedia(visible = true)
+  }
+
+  @Test
+  fun `Given a view once send over the camera, when rendering the toolbar, then neither adding nor taking more is offered`() {
+    setContent(state(media = IMAGE, viewOnce = true).copy(isOverCamera = true), IMAGE_EDITOR_STATE)
+
+    assertTakeMore(visible = false)
+    assertAddMedia(visible = false)
+  }
+
   /**
    * An empty toolbar still claims its slot on the edit screen, so the document page has to be able to tell that nothing
    * would render.
@@ -161,6 +200,8 @@ class MediaEditorToolbarSharedButtonsTest {
 
   private fun assertAddMedia(visible: Boolean) = assertTag(TestTags.MEDIA_EDITOR_TOOLBAR_ADD_MEDIA_BUTTON, visible)
 
+  private fun assertTakeMore(visible: Boolean) = assertTag(TestTags.MEDIA_EDITOR_TOOLBAR_TAKE_MORE_BUTTON, visible)
+
   private fun assertMute(visible: Boolean) = assertTag(TestTags.MEDIA_EDITOR_TOOLBAR_MUTE_BUTTON, visible)
 
   private fun assertTag(tag: String, visible: Boolean) {
@@ -172,14 +213,14 @@ class MediaEditorToolbarSharedButtonsTest {
     }
   }
 
-  private fun setContent(state: MediaEditState, editorState: EditorState) {
+  private fun setContent(state: MediaEditState, editorState: EditorState, onEvent: (MediaEditScreenEvents) -> Unit = {}) {
     composeTestRule.setContent {
       SignalTheme {
         MediaEditorToolbar {
           MediaEditorToolbarSharedButtons(
             state = state,
             editorState = editorState,
-            onEvent = {}
+            onEvent = onEvent
           )
         }
       }

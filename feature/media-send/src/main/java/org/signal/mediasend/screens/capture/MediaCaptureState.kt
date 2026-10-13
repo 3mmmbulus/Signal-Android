@@ -19,6 +19,8 @@ import kotlin.time.Duration
 internal data class MediaCaptureState(
   val selectedCaptureScreen: MediaSendRoute.Capture = MediaSendRoute.Capture.Camera,
   val selectedMedia: List<Media> = emptyList(),
+  /** Tellomi（tellomi/tellomi#1520 C-7）：这次拍下且还选着的（流程的 [org.signal.mediasend.MediaSendFlowState.selectedCameraCaptures]）。 */
+  val cameraCaptures: List<Media> = emptyList(),
   val isCameraFirst: Boolean = false,
   val isStory: Boolean = false,
   val storiesEnabled: Boolean = false,
@@ -60,6 +62,12 @@ internal data class MediaCaptureState(
   /** Whether the button for moving on to the editor is up. */
   val canDisplayNextButton: Boolean
     get() = selectedMedia.isNotEmpty() && !isRecording
+
+  /**
+   * Tellomi（tellomi/tellomi#1520 C-7）：拍下的留在相机时，快门上方一条胶片条（照 Telegram 聊天相机）。录像时让开，文字快拍没有。
+   */
+  val canDisplayFilmstrip: Boolean
+    get() = cameraCaptures.isNotEmpty() && !isRecording && selectedCaptureScreen != MediaSendRoute.Capture.TextStory
 
   /** Which of [availableCaptureModes] is showing, taking navigation's word for it over the camera's own selection. */
   val selectedCaptureMode: MediaCaptureMode

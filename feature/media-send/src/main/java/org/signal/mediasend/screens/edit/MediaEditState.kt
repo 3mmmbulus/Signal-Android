@@ -42,7 +42,12 @@ internal data class MediaEditState(
   val album: List<Media> = emptyList(),
   val albumFocusedMedia: Media? = null,
   /** Whether this screen is the album viewer rather than the editor over the selected media. */
-  val isBrowsingAlbum: Boolean = false
+  val isBrowsingAlbum: Boolean = false,
+  /**
+   * Tellomi（tellomi/tellomi#1520 C-7）：编辑页是不是直接盖在相机上面（导航的事，由放这一页的地方按返回栈填，不从流程状态来）。
+   * 是的话添加键换成「再拍」。
+   */
+  val isOverCamera: Boolean = false
 ) {
 
   val focusedEditorState: EditorState?

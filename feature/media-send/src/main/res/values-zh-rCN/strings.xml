@@ -301,4 +301,7 @@
   <string name="TellomiReRegistrationScannedDialog__title">这是转移帐户的二维码</string>
   <string name="TellomiReRegistrationScannedDialog__body">新手机正在请求转走你的帐户。只有在你自己换手机、正在新手机上注册时才继续。如果是别人让你扫的，请取消——继续会把你的帐户转到对方手机上。</string>
   <string name="TellomiReRegistrationScannedDialog__continue">继续</string>
+  <string name="MediaEditScreen__take_more">继续拍摄</string>
+  <string name="MediaCaptureScreen__captured_photo">第 %1$d 张照片</string>
+  <string name="MediaCaptureScreen__captured_video">第 %1$d 段视频</string>
 </resources>

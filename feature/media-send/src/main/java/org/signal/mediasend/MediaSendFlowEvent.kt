@@ -113,6 +113,9 @@ internal sealed interface MediaSendFlowEvent {
   data object NavigateToFolders : MediaSendFlowEvent
   data object NavigateToEdit : MediaSendFlowEvent
   data object NavigateToCamera : MediaSendFlowEvent
+
+  /** Tellomi（tellomi/tellomi#1520 C-7）：编辑页里「再拍」：拍下的都留着，回到相机接着拍（照 Telegram 查看器的「添加照片」）。 */
+  data object KeepShooting : MediaSendFlowEvent
   data object NavigateToTextStory : MediaSendFlowEvent
 
   // Backing out lands somewhere different depending on the screen doing it, so each says which it is.

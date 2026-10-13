@@ -312,4 +312,9 @@
   <string name="TellomiReRegistrationScannedDialog__title">This QR code transfers your account</string>
   <string name="TellomiReRegistrationScannedDialog__body">A new phone is asking to take over your account. Continue only if you are switching to your own new phone and registering on it right now. If someone else asked you to scan this, cancel. Continuing moves your account to their phone.</string>
   <string name="TellomiReRegistrationScannedDialog__continue">Continue</string>
+  <!-- Tellomi（tellomi/tellomi#1520 C-7）：编辑页盖在相机上时，添加键换成回相机接着拍；读屏标签。 -->
+  <string name="MediaEditScreen__take_more">Take more</string>
+  <!-- Tellomi（C-7）：相机快门上方胶片条里一张拍下的照片 / 视频的读屏标签，带它在条里的序号。 -->
+  <string name="MediaCaptureScreen__captured_photo">Photo %1$d</string>
+  <string name="MediaCaptureScreen__captured_video">Video %1$d</string>
 </resources>
