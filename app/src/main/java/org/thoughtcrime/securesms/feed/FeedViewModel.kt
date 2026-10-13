@@ -266,6 +266,46 @@ class FeedViewModel(
     }
   }
 
+  /**
+   * 自己帖子「···」里的置顶、隐藏点赞数（先改界面，失败改回来）和查看数据（第三节第 26 条）。
+   * 置顶满 3 条时引擎回 409，单独提示。
+   */
+  fun onOwnPostAction(card: FeedCard, action: FeedOwnPostAction) {
+    val update = action.settingsUpdate
+    if (update == null) {
+      loadInsights(card.id)
+      return
+    }
+    updateCard(card.id) { it.withSettings(update) }
+    viewModelScope.launch {
+      try {
+        withContext(ioDispatcher) { source.updatePostSettings(card.id, update) }
+      } catch (e: Exception) {
+        Log.w(TAG, "post settings failed", e)
+        updateCard(card.id) { it.copy(pinned = card.pinned, stats = it.stats.copy(likeCountHidden = card.stats.likeCountHidden)) }
+        internalState.update { it.copy(transientError = if (e.isPinLimit()) FeedState.TransientError.PIN_LIMIT else FeedState.TransientError.ACTION_FAILED) }
+      }
+    }
+  }
+
+  private fun loadInsights(contentId: String) {
+    internalState.update { it.copy(insights = FeedInsightsState.Loading) }
+    viewModelScope.launch {
+      val result = try {
+        FeedInsightsState.Ready(withContext(ioDispatcher) { source.postInsights(contentId) })
+      } catch (e: Exception) {
+        Log.w(TAG, "insights failed", e)
+        FeedInsightsState.Failed
+      }
+      // 等的时候关掉了弹窗就不再弹
+      internalState.update { if (it.insights == null) it else it.copy(insights = result) }
+    }
+  }
+
+  fun onInsightsDismissed() {
+    internalState.update { it.copy(insights = null) }
+  }
+
   private fun load(tab: FeedTab, refresh: Boolean) {
     loadJobs[tab]?.cancel()
     val cursor = if (refresh) null else internalState.value.tab(tab).nextCursor
@@ -345,7 +385,9 @@ data class FeedState(
   val transientError: TransientError? = null,
   val publishNotice: String? = null,
   /** 刚保存的编辑，服务端给的 `state`。 */
-  val editNotice: String? = null
+  val editNotice: String? = null,
+  /** 「查看数据」弹窗；null = 没开。 */
+  val insights: FeedInsightsState? = null
 ) {
   fun tab(tab: FeedTab): FeedTabState = tabStates[tab] ?: FeedTabState()
 
@@ -353,7 +395,7 @@ data class FeedState(
   val isEditorialRecommend: Boolean
     get() = config?.recommendMode != FeedConfig.RECOMMEND_MODE_SCORED
 
-  enum class TransientError { NETWORK, ACTION_FAILED }
+  enum class TransientError { NETWORK, ACTION_FAILED, PIN_LIMIT }
 }
 
 data class FeedTabState(

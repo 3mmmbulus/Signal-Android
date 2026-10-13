@@ -39,6 +39,8 @@ import org.thoughtcrime.securesms.feed.net.FeedMyProfile
 import org.thoughtcrime.securesms.feed.net.FeedNotificationSettings
 import org.thoughtcrime.securesms.feed.net.FeedNotificationsResponse
 import org.thoughtcrime.securesms.feed.net.FeedPollState
+import org.thoughtcrime.securesms.feed.net.FeedPostInsights
+import org.thoughtcrime.securesms.feed.net.FeedPostSettingsUpdate
 import org.thoughtcrime.securesms.feed.net.FeedPreferences
 import org.thoughtcrime.securesms.feed.net.FeedPreferencesUpdate
 import org.thoughtcrime.securesms.feed.net.FeedProfilePage
@@ -166,6 +168,12 @@ interface FeedSource {
 
   /** 返回引擎存下的设置；没有公开主页时 409 `profile_required`。 */
   suspend fun saveNotificationSettings(settings: FeedNotificationSettings): FeedNotificationSettings
+
+  /** 自己帖子「···」里的置顶、隐藏点赞数（第三节第 26 条）。置顶满 3 条 409 `too_many_pinned`。 */
+  suspend fun updatePostSettings(contentId: String, update: FeedPostSettingsUpdate)
+
+  /** 「查看数据」，只有作者能看。 */
+  suspend fun postInsights(contentId: String): FeedPostInsights
 }
 
 /**
@@ -177,13 +185,38 @@ class RemoteFeedSource(
   /** 读出要上传的图片字节（重编码成 JPEG）；测试里换掉。 */
   private val readImage: (Uri) -> ByteArray = { FeedImageUploader.prepare(AppDependencies.application, it) },
   /** 「部分可见 / 不给谁看」的名单找 Signal-Server 签（`kind`、ACI 列表 → `audience_token`）。 */
-  private val signAudience: suspend (kind: String, peerAcis: List<String>) -> String = { _, _ -> throw IllegalStateException("audience lists are not available") }
+  private val signAudience: suspend (kind: String, peerAcis: List<String>) -> String = { _, _ -> throw IllegalStateException("audience lists are not available") },
+  /** 自己的主页 id，用来认出哪些卡片是自己发的（Card API 不带「是不是作者」）；null = 走 [FeedApi.myProfile] 取一次。测试里换掉。 */
+  private val selfProfileId: (suspend () -> String?)? = null
 ) : FeedSource {
 
   private val uploader = FeedImageUploader(api)
 
   /** 已经传好的图：同一条草稿重试时不再传一遍（引擎的 key 没用在帖子上之前一直能用，一天后清掉）。 */
   private val uploaded = mutableMapOf<Pair<String, Uri>, String>()
+
+  /** 取到过的自己主页 id；还没建主页是 [NO_PROFILE]。取失败不记，下次再取。 */
+  @Volatile
+  private var cachedSelfId: String? = null
+
+  private suspend fun selfId(): String? {
+    selfProfileId?.let { return it() }
+    cachedSelfId?.let { return it.takeIf { id -> id != NO_PROFILE } }
+    return try {
+      val id = api.myProfile()?.id
+      cachedSelfId = id ?: NO_PROFILE
+      id
+    } catch (e: Exception) {
+      null
+    }
+  }
+
+  /** 把「是不是我发的」填进卡片：作者主页 id 等于自己的才算。 */
+  private suspend fun markMine(cards: List<FeedCard>): List<FeedCard> {
+    if (cards.isEmpty()) return cards
+    val self = selfId() ?: return cards
+    return cards.map { it.markedMine(self) }
+  }
 
   override suspend fun isVisible(): Boolean = api.status().visible
 
@@ -223,11 +256,11 @@ class RemoteFeedSource(
 
   override suspend fun editPost(contentId: String, draft: FeedDraft): FeedCreatePostResponse = api.editPost(contentId, draft.toEditRequest())
 
-  override suspend fun card(contentId: String): FeedCard? = api.cards(listOf(contentId)).cards.firstOrNull()?.toCard()
+  override suspend fun card(contentId: String): FeedCard? = api.cards(listOf(contentId)).cards.firstOrNull()?.toCard()?.let { markMine(listOf(it)).first() }
 
   override suspend fun comments(postId: String, cursor: String?): FeedCommentsPage {
     val response = api.comments(postId, cursor)
-    return FeedCommentsPage(comments = response.comments.mapNotNull { it.toCard() }, cursor = response.cursor)
+    return FeedCommentsPage(comments = markMine(response.comments.mapNotNull { it.toCard() }), cursor = response.cursor)
   }
 
   override suspend fun postComment(postId: String, text: String, parentId: String?): String {
@@ -247,13 +280,13 @@ class RemoteFeedSource(
 
   override suspend fun report(request: FeedReportRequest) = api.report(request)
 
-  override suspend fun saveProfile(update: FeedProfileUpdate): FeedMyProfile = api.saveProfile(update)
+  override suspend fun saveProfile(update: FeedProfileUpdate): FeedMyProfile = api.saveProfile(update).also { cachedSelfId = it.id }
 
   override suspend fun profile(profileId: String): FeedProfilePage? = api.profile(profileId)
 
   override suspend fun profilePosts(profileId: String, cursor: String?): FeedProfilePostsPage {
     val response = api.profilePosts(profileId, cursor)
-    return FeedProfilePostsPage(posts = response.posts.mapNotNull { it.toCard() }, cursor = response.cursor)
+    return FeedProfilePostsPage(posts = markMine(response.posts.mapNotNull { it.toCard() }), cursor = response.cursor)
   }
 
   override suspend fun setFollowing(profileId: String, following: Boolean): String = api.follow(FeedApi.TARGET_AUTHOR, profileId, following)
@@ -284,6 +317,8 @@ class RemoteFeedSource(
   override suspend fun answerClosePerson(ownerProfileId: String, accept: Boolean) = api.answerClosePerson(ownerProfileId, accept)
   override suspend fun notificationSettings(): FeedNotificationSettings = api.notificationSettings()
   override suspend fun saveNotificationSettings(settings: FeedNotificationSettings): FeedNotificationSettings = api.putNotificationSettings(settings)
+  override suspend fun updatePostSettings(contentId: String, update: FeedPostSettingsUpdate) = api.updatePostSettings(contentId, update)
+  override suspend fun postInsights(contentId: String): FeedPostInsights = api.postInsights(contentId)
 
   override suspend fun search(query: String, scope: String, cursor: String?): FeedSearchPage {
     val response = api.search(query, scope, cursor)
@@ -314,17 +349,27 @@ class RemoteFeedSource(
   private companion object {
     /** 推荐「还有下一页」的标记，不发给服务端。 */
     const val RECOMMEND_MORE = "more"
+
+    /** [cachedSelfId] 的「还没建主页」。 */
+    const val NO_PROFILE = ""
   }
 
   private suspend fun hydrate(items: List<FeedItemRef>): List<FeedEntry> {
     if (items.isEmpty()) return emptyList()
     val reasons = items.associate { it.id to it.reason }
+    val self = selfId()
     return items.map { it.id }.distinct().chunked(FeedApi.MAX_CARD_IDS).flatMap { ids ->
       api.cards(ids).cards.mapNotNull { result ->
-        result.toCard()?.let { FeedEntry(id = result.id, reason = reasons[result.id], card = it) }
+        result.toCard()?.let { FeedEntry(id = result.id, reason = reasons[result.id], card = if (self != null) it.markedMine(self) else it) }
       }
     }
   }
+}
+
+/** 作者主页 id 等于 [selfProfileId] 的卡片标成自己的。 */
+internal fun FeedCard.markedMine(selfProfileId: String): FeedCard {
+  val mine = author?.isNative == true && author.profileId == selfProfileId
+  return if (mine == viewer.isAuthor) this else copy(viewer = viewer.copy(isAuthor = mine))
 }
 
 internal fun FeedDraft.toEditRequest(): FeedEditPostRequest {
@@ -399,6 +444,8 @@ object EmptyFeedSource : FeedSource {
   override suspend fun answerClosePerson(ownerProfileId: String, accept: Boolean) = throw IllegalStateException("feed is not available")
   override suspend fun notificationSettings(): FeedNotificationSettings = throw IllegalStateException("feed is not available")
   override suspend fun saveNotificationSettings(settings: FeedNotificationSettings): FeedNotificationSettings = throw IllegalStateException("feed is not available")
+  override suspend fun updatePostSettings(contentId: String, update: FeedPostSettingsUpdate) = throw IllegalStateException("feed is not available")
+  override suspend fun postInsights(contentId: String): FeedPostInsights = throw IllegalStateException("feed is not available")
 }
 
 object FeedSources {

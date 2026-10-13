@@ -6618,6 +6618,19 @@
     <string name="TellomiFeed__copy_link">复制链接</string>
     <string name="TellomiFeed__share_other_apps">分享到其他 App</string>
     <string name="TellomiFeed__link_copied">链接已复制</string>
+    <string name="TellomiFeed__pin">置顶</string>
+    <string name="TellomiFeed__unpin">取消置顶</string>
+    <string name="TellomiFeed__pinned">置顶</string>
+    <string name="TellomiFeed__pin_limit">最多置顶 3 条，先取消一条</string>
+    <string name="TellomiFeed__hide_likes">隐藏点赞数</string>
+    <string name="TellomiFeed__show_likes">显示点赞数</string>
+    <string name="TellomiFeed__insights">查看数据</string>
+    <string name="TellomiFeedInsights__opens">打开次数</string>
+    <string name="TellomiFeedInsights__likes">点赞</string>
+    <string name="TellomiFeedInsights__comments">评论</string>
+    <string name="TellomiFeedInsights__reposts">转发</string>
+    <string name="TellomiFeedInsights__saves">收藏</string>
+    <string name="TellomiFeedInsights__load_failed">数据没能加载</string>
     <plurals name="TellomiFeed__comments">
         <item quantity="other">%1$d 条评论</item>
     </plurals>

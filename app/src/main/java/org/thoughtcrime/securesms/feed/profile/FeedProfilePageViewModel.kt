@@ -17,14 +17,18 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import org.signal.core.util.logging.Log
+import org.thoughtcrime.securesms.feed.FeedInsightsState
+import org.thoughtcrime.securesms.feed.FeedOwnPostAction
 import org.thoughtcrime.securesms.feed.FeedSource
 import org.thoughtcrime.securesms.feed.FeedSources
+import org.thoughtcrime.securesms.feed.isPinLimit
 import org.thoughtcrime.securesms.feed.net.FeedApi
 import org.thoughtcrime.securesms.feed.net.FeedApiException
 import org.thoughtcrime.securesms.feed.net.FeedCard
 import org.thoughtcrime.securesms.feed.net.FeedProfilePage
 import org.thoughtcrime.securesms.feed.net.FeedRelation
 import org.thoughtcrime.securesms.feed.withLiked
+import org.thoughtcrime.securesms.feed.withSettings
 
 /**
  * 别人的（或自己的）公开主页：头部、关注、屏蔽、帖子列表（`dynamic-feed.md` 第三节第 8–10、19、29、33 条；
@@ -217,6 +221,46 @@ class FeedProfilePageViewModel(
     internalState.update { it.copy(notice = null) }
   }
 
+  /**
+   * 自己帖子「···」：置顶 / 隐藏点赞数先改界面，失败改回来；置顶变了重新拉第一页，
+   * 让置顶的排到最前（引擎排序，最近置顶的在前）。查看数据开一个弹窗。
+   */
+  fun onOwnPostAction(card: FeedCard, action: FeedOwnPostAction) {
+    val update = action.settingsUpdate
+    if (update == null) {
+      loadInsights(card.id)
+      return
+    }
+    updatePost(card.id) { it.withSettings(update) }
+    viewModelScope.launch {
+      try {
+        withContext(ioDispatcher) { source.updatePostSettings(card.id, update) }
+        if (update.pinned != null) loadPosts(cursor = null)
+      } catch (e: Exception) {
+        Log.w(TAG, "post settings failed", e)
+        updatePost(card.id) { it.copy(pinned = card.pinned, stats = it.stats.copy(likeCountHidden = card.stats.likeCountHidden)) }
+        internalState.update { it.copy(notice = if (e.isPinLimit()) FeedProfilePageState.Notice.PIN_LIMIT else FeedProfilePageState.Notice.FAILED) }
+      }
+    }
+  }
+
+  private fun loadInsights(contentId: String) {
+    internalState.update { it.copy(insights = FeedInsightsState.Loading) }
+    viewModelScope.launch {
+      val result = try {
+        FeedInsightsState.Ready(withContext(ioDispatcher) { source.postInsights(contentId) })
+      } catch (e: Exception) {
+        Log.w(TAG, "insights failed", e)
+        FeedInsightsState.Failed
+      }
+      internalState.update { if (it.insights == null) it else it.copy(insights = result) }
+    }
+  }
+
+  fun onInsightsDismissed() {
+    internalState.update { it.copy(insights = null) }
+  }
+
   private fun updatePost(id: String, change: (FeedCard) -> FeedCard) {
     internalState.update { state -> state.copy(posts = state.posts.map { if (it.id == id) change(it) else it }) }
   }
@@ -249,7 +293,9 @@ data class FeedProfilePageState(
   val followBusy: Boolean = false,
   val notice: Notice? = null,
   val mediaBaseUrl: String? = null,
-  val showIpRegion: Boolean = false
+  val showIpRegion: Boolean = false,
+  /** 「查看数据」弹窗；null = 没开。 */
+  val insights: FeedInsightsState? = null
 ) {
   enum class Notice {
     /** 底部提示条带「撤销」（第三节「统一反馈」：关注能撤销）。 */
@@ -260,6 +306,9 @@ data class FeedProfilePageState(
     PROFILE_REQUIRED,
     BLOCKED,
     UNBLOCKED,
+
+    /** 置顶满 3 条。 */
+    PIN_LIMIT,
     FAILED
   }
 }

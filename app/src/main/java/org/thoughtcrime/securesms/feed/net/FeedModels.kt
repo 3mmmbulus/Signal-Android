@@ -114,7 +114,9 @@ data class FeedCardResult(
   /** 等帖子作者批准的回复（第 40 条），只有写的人和帖子作者看得到。 */
   val held: Boolean = false,
   /** 能不能给「复制链接 / 分享到其他 App」：公开动态、作者不是私密账号（第三节第 29 条）。没带就当不能。 */
-  val shareable: Boolean = false
+  val shareable: Boolean = false,
+  /** 作者置顶了（第三节第 26 条）；主页第一页排在最前。 */
+  val pinned: Boolean = false
 ) {
   /** `unavailable` 不区分原因。不认识的 state 一律按不可用处理。 */
   val isAvailable: Boolean
@@ -130,7 +132,8 @@ data class FeedCardResult(
       viewer = base.viewer.copy(liked = me?.liked ?: base.viewer.liked, saved = me?.saved ?: base.viewer.saved),
       pollState = poll,
       held = held,
-      shareable = shareable
+      shareable = shareable,
+      pinned = pinned
     )
   }
 
@@ -175,7 +178,9 @@ data class FeedCard(
   /** 外层 `held`：这条回复还在等帖子作者批准。 */
   @Transient val held: Boolean = false,
   /** 外层 `shareable`：给不给「复制链接 / 分享到其他 App」。 */
-  @Transient val shareable: Boolean = false
+  @Transient val shareable: Boolean = false,
+  /** 外层 `pinned`：作者置顶了。 */
+  @Transient val pinned: Boolean = false
 ) {
   /** P1 客户端只渲染这几种 `kind`；别的（快拍、视频等）不显示，不报错。 */
   val isRenderable: Boolean
@@ -250,7 +255,8 @@ data class FeedStats(
   val likes: Int = 0,
   val comments: Int = 0,
   val reposts: Int = 0,
-  @SerialName("like_count_hidden") val likeCountHidden: Boolean = false
+  /** 作者隐藏了点赞数：别人拿到的 [likes] 是 0，作者自己照常拿到数字（第三节第 26 条）。 */
+  @SerialName("likes_hidden") val likeCountHidden: Boolean = false
 )
 
 /** Card API 外层的 `me`。 */
@@ -636,6 +642,23 @@ data class FeedNotification(
 @Serializable
 data class FeedNotificationsReadRequest(
   val tab: String
+)
+
+/** `PATCH /v1/feed/posts/{id}/settings`：只带要改的字段，null 不发。 */
+@Serializable
+data class FeedPostSettingsUpdate(
+  val pinned: Boolean? = null,
+  @SerialName("like_count_hidden") val likeCountHidden: Boolean? = null
+)
+
+/** `GET /v1/feed/posts/{id}/insights`：「查看数据」，只有作者拿得到。 */
+@Serializable
+data class FeedPostInsights(
+  val opens: Int = 0,
+  val likes: Int = 0,
+  val comments: Int = 0,
+  val reposts: Int = 0,
+  val saves: Int = 0
 )
 
 @Serializable

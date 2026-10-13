@@ -70,7 +70,9 @@ class FeedProfilePageActivity : PassphraseRequiredActivity() {
           onOpenPost = { startActivity(FeedPostDetailActivity.intent(this, it)) },
           onReportPost = { reportLauncher.launch(FeedReportTarget.content(it.id)) },
           onNoticeShown = viewModel::onNoticeShown,
-          onProfileRequired = { profileLauncher.launch(Unit) }
+          onProfileRequired = { profileLauncher.launch(Unit) },
+          onOwnPostAction = viewModel::onOwnPostAction,
+          onInsightsDismissed = viewModel::onInsightsDismissed
         )
       }
     }

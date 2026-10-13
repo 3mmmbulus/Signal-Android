@@ -42,7 +42,7 @@ class RemoteFeedSourceTest {
     val tokens = object : FeedTokenSource {
       override suspend fun token(forceRefresh: Boolean) = "t"
     }
-    source = RemoteFeedSource(FeedApi(baseUrl = server.url("/"), client = OkHttpClient(), tokens = tokens))
+    source = RemoteFeedSource(FeedApi(baseUrl = server.url("/"), client = OkHttpClient(), tokens = tokens), selfProfileId = { "me" })
   }
 
   @After
@@ -66,6 +66,20 @@ class RemoteFeedSourceTest {
     assertThat(page.nextCursor).isEqualTo("next")
     server.takeRequest()
     assertThat(server.takeRequest().body.readUtf8()).isEqualTo("""{"ids":["a","b","c"]}""")
+  }
+
+  @Test
+  fun `my own cards are marked as mine`() = runBlocking {
+    server.enqueue(MockResponse().setBody("""{"items":[{"id":"a"},{"id":"b"}]}"""))
+    server.enqueue(
+      MockResponse().setBody(
+        """{"cards":[{"id":"a","state":"ok","card":{"kind":"post","author":{"id":"me","display_name":"我"}}},{"id":"b","state":"ok","card":{"kind":"post","author":{"id":"p2","display_name":"山风"}}}]}"""
+      )
+    )
+
+    val page = source.timeline(FeedTab.FOLLOWING, cursor = null)
+
+    assertThat(page.entries.map { it.card.viewer.isAuthor }).containsExactly(true, false)
   }
 
   @Test

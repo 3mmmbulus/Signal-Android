@@ -37,6 +37,8 @@ import org.thoughtcrime.securesms.feed.net.FeedNotificationsResponse
 import org.thoughtcrime.securesms.feed.net.FeedPersonSummary
 import org.thoughtcrime.securesms.feed.net.FeedPoll
 import org.thoughtcrime.securesms.feed.net.FeedPollState
+import org.thoughtcrime.securesms.feed.net.FeedPostInsights
+import org.thoughtcrime.securesms.feed.net.FeedPostSettingsUpdate
 import org.thoughtcrime.securesms.feed.net.FeedPreferences
 import org.thoughtcrime.securesms.feed.net.FeedPreferencesUpdate
 import org.thoughtcrime.securesms.feed.net.FeedProfilePage
@@ -414,7 +416,8 @@ object SampleFeedSource : FeedSource {
   override suspend fun profilePosts(profileId: String, cursor: String?): FeedProfilePostsPage = synchronized(this) {
     val page = profileOf(profileId) ?: return FeedProfilePostsPage()
     if (!page.canSeePosts || page.me.blocked) return FeedProfilePostsPage()
-    FeedProfilePostsPage(posts = (mine + recommend).filter { it.author?.profileId == profileId && it.id !in hidden })
+    // 置顶的排最前（引擎：第一页最前面）
+    FeedProfilePostsPage(posts = (mine + recommend).filter { it.author?.profileId == profileId && it.id !in hidden }.sortedByDescending { it.pinned })
   }
 
   override suspend fun setFollowing(profileId: String, following: Boolean): String = synchronized(this) {
@@ -570,6 +573,26 @@ object SampleFeedSource : FeedSource {
     notificationSettings = settings
     settings
   }
+
+  override suspend fun updatePostSettings(contentId: String, update: FeedPostSettingsUpdate): Unit = synchronized(this) {
+    val index = mine.indexOfFirst { it.id == contentId }
+    if (index < 0) throw FeedApiException(404, code = "not_found")
+    if (update.pinned == true && !mine[index].pinned && mine.count { it.pinned } >= MAX_PINNED) throw FeedApiException(409, code = "too_many_pinned")
+    val card = mine[index]
+    mine[index] = card.copy(
+      pinned = update.pinned ?: card.pinned,
+      stats = card.stats.copy(likeCountHidden = update.likeCountHidden ?: card.stats.likeCountHidden)
+    )
+  }
+
+  override suspend fun postInsights(contentId: String): FeedPostInsights = synchronized(this) {
+    val card = mine.firstOrNull { it.id == contentId } ?: throw FeedApiException(404, code = "not_found")
+    val likes = card.stats.likes + if (card.id in liked) 1 else 0
+    FeedPostInsights(opens = 12 + likes * 7, likes = likes, comments = commentsFor(card.id).size, reposts = card.stats.reposts, saves = likes / 2)
+  }
+
+  /** 引擎的置顶上限。 */
+  private const val MAX_PINNED = 3
 
   /** 样例里没有真实的好友关系；好友同步不会对样例调这个。 */
   override suspend fun reportFriend(assertion: String): Boolean = false

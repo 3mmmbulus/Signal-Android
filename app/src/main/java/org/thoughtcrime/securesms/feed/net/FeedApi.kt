@@ -176,6 +176,19 @@ class FeedApi(
   }
 
   /** 对未通过的帖子申诉一次（202）。409 `not_rejected` / `already_appealed`，400 `invalid_text`。 */
+  /** 自己帖子的置顶、隐藏点赞数（第三节第 26 条）→ 204。置顶满 3 条 409 `too_many_pinned`。 */
+  suspend fun updatePostSettings(contentId: String, update: FeedPostSettingsUpdate) {
+    val url = url("v1/feed/posts").newBuilder().addPathSegment(contentId).addPathSegment("settings").build()
+    val body = FeedJson.encodeToString(FeedPostSettingsUpdate.serializer(), update).toRequestBody(JSON)
+    sendNoContent(Request.Builder().url(url).patch(body))
+  }
+
+  /** 「查看数据」：只有作者能看，别人 404。 */
+  suspend fun postInsights(contentId: String): FeedPostInsights {
+    val url = url("v1/feed/posts").newBuilder().addPathSegment(contentId).addPathSegment("insights").build()
+    return get(url, FeedPostInsights.serializer())
+  }
+
   suspend fun appeal(contentId: String, text: String) {
     val url = url("v1/feed/posts").newBuilder().addPathSegment(contentId).addPathSegment("appeal").build()
     val body = FeedJson.encodeToString(FeedAppealRequest.serializer(), FeedAppealRequest(text)).toRequestBody(JSON)

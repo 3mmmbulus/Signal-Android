@@ -676,4 +676,20 @@ class FeedApiTest {
     assertThat(delete.method).isEqualTo("DELETE")
     assertThat(delete.path).isEqualTo("/v1/feed/me/keywords/a%20b")
   }
+
+  @Test
+  fun `post settings PATCH only the changed field, insights GET`() = runBlocking {
+    server.enqueue(MockResponse().setResponseCode(204))
+    server.enqueue(MockResponse().setBody("""{"opens":40,"likes":5,"comments":2,"reposts":1,"saves":3}"""))
+
+    api.updatePostSettings("c1", FeedPostSettingsUpdate(pinned = true))
+    val insights = api.postInsights("c1")
+
+    val patch = server.takeRequest()
+    assertThat(patch.method).isEqualTo("PATCH")
+    assertThat(patch.path).isEqualTo("/v1/feed/posts/c1/settings")
+    assertThat(patch.body.readUtf8()).isEqualTo("""{"pinned":true}""")
+    assertThat(server.takeRequest().path).isEqualTo("/v1/feed/posts/c1/insights")
+    assertThat(insights).isEqualTo(FeedPostInsights(opens = 40, likes = 5, comments = 2, reposts = 1, saves = 3))
+  }
 }

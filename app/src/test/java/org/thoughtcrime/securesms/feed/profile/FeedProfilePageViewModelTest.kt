@@ -22,9 +22,11 @@ import org.junit.After
 import org.junit.Before
 import org.junit.Test
 import org.thoughtcrime.securesms.feed.EmptyFeedSource
+import org.thoughtcrime.securesms.feed.FeedOwnPostAction
 import org.thoughtcrime.securesms.feed.FeedSource
 import org.thoughtcrime.securesms.feed.net.FeedApiException
 import org.thoughtcrime.securesms.feed.net.FeedCard
+import org.thoughtcrime.securesms.feed.net.FeedPostSettingsUpdate
 import org.thoughtcrime.securesms.feed.net.FeedProfilePage
 import org.thoughtcrime.securesms.feed.net.FeedProfilePostsPage
 import org.thoughtcrime.securesms.feed.net.FeedRelation
@@ -61,6 +63,11 @@ class FeedProfilePageViewModelTest {
 
     override suspend fun setBlocked(profileId: String, blocked: Boolean) {
       blockCalls += blocked
+    }
+
+    var settingsError: Exception? = null
+    override suspend fun updatePostSettings(contentId: String, update: FeedPostSettingsUpdate) {
+      settingsError?.let { throw it }
     }
   }
 
@@ -178,5 +185,20 @@ class FeedProfilePageViewModelTest {
     FeedProfilePageViewModel("p1", source, dispatcher)
 
     assertThat(source.postsCalls).isEqualTo(0)
+  }
+
+  @Test
+  fun `pinning re-reads the first page so pinned posts come first, a full pin list says so`() {
+    val source = FakeSource(page())
+    val viewModel = FeedProfilePageViewModel("p1", source, dispatcher)
+    val card = viewModel.state.value.posts.single()
+
+    viewModel.onOwnPostAction(card, FeedOwnPostAction.PIN)
+    assertThat(source.postsCalls).isEqualTo(2)
+
+    source.settingsError = FeedApiException(409, code = "too_many_pinned")
+    viewModel.onOwnPostAction(card, FeedOwnPostAction.HIDE_LIKES)
+    assertThat(viewModel.state.value.posts.single().stats.likeCountHidden).isFalse()
+    assertThat(viewModel.state.value.notice).isEqualTo(FeedProfilePageState.Notice.PIN_LIMIT)
   }
 }

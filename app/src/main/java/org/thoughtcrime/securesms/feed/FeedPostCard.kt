@@ -100,7 +100,9 @@ fun FeedPostCard(
   /** 投票（选项下标）；null 的地方只看不投，点卡片进详情投。 */
   onVote: ((FeedCard, List<Int>) -> Unit)? = null,
   /** 别人的帖子：「···」里的屏蔽作者（第三节第 26 条）；开放内容的外部作者也能屏蔽。 */
-  onBlockAuthorClick: ((FeedCard) -> Unit)? = null
+  onBlockAuthorClick: ((FeedCard) -> Unit)? = null,
+  /** 自己的帖子：「···」里的置顶、隐藏点赞数、查看数据（第三节第 26 条）。 */
+  onOwnPostAction: ((FeedCard, FeedOwnPostAction) -> Unit)? = null
 ) {
   val author = card.author
   val openAuthor: (() -> Unit)? = if (author != null && author.isNative && onAuthorClick != null) {
@@ -129,7 +131,8 @@ fun FeedPostCard(
           onDeleteClick = onDeleteClick,
           onReportClick = onReportClick,
           onAuthorClick = openAuthor,
-          onBlockAuthorClick = onBlockAuthorClick
+          onBlockAuthorClick = onBlockAuthorClick,
+          onOwnPostAction = onOwnPostAction
         )
 
         val title = card.title
@@ -226,7 +229,8 @@ private fun FeedPostHeader(
   onDeleteClick: ((FeedCard) -> Unit)?,
   onReportClick: ((FeedCard) -> Unit)?,
   onAuthorClick: (() -> Unit)? = null,
-  onBlockAuthorClick: ((FeedCard) -> Unit)? = null
+  onBlockAuthorClick: ((FeedCard) -> Unit)? = null,
+  onOwnPostAction: ((FeedCard, FeedOwnPostAction) -> Unit)? = null
 ) {
   val context = LocalContext.current
   val author = card.author
@@ -271,7 +275,8 @@ private fun FeedPostHeader(
     }
 
     val isAuthor = card.viewer.isAuthor
-    if ((!isAuthor && (onNotInterestedClick != null || onReportClick != null)) || (isAuthor && (onEditClick != null || onDeleteClick != null))) {
+    val ownActions = if (isAuthor && onOwnPostAction != null) FeedOwnPostAction.available(card) else emptyList()
+    if ((!isAuthor && (onNotInterestedClick != null || onReportClick != null)) || (isAuthor && (onEditClick != null || onDeleteClick != null || ownActions.isNotEmpty()))) {
       Box {
         val moreLabel = stringResource(R.string.TellomiFeed__more)
         Icon(
@@ -287,12 +292,23 @@ private fun FeedPostHeader(
 
         DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {
           if (isAuthor) {
+            // 顺序照需求：编辑 / 置顶 / 隐藏点赞数 / 查看数据 / 删除
             if (onEditClick != null) {
               DropdownMenuItem(
                 text = { Text(stringResource(R.string.TellomiFeedMine__edit)) },
                 onClick = {
                   menuOpen = false
                   onEditClick(card)
+                }
+              )
+            }
+            for (action in ownActions) {
+              DropdownMenuItem(
+                text = { Text(stringResource(action.label)) },
+                modifier = Modifier.testTag(FeedPostCardTestTags.ownAction(action)),
+                onClick = {
+                  menuOpen = false
+                  onOwnPostAction?.invoke(card, action)
                 }
               )
             }
@@ -355,6 +371,9 @@ private fun buildSubtitle(card: FeedCard, showIpRegion: Boolean): String {
     }
     if (card.edited) {
       add(stringResource(R.string.TellomiFeed__edited))
+    }
+    if (card.pinned) {
+      add(stringResource(R.string.TellomiFeed__pinned))
     }
   }
   return parts.joinToString(separator = " · ")
@@ -444,7 +463,8 @@ private fun FeedActionRow(
         modifier = Modifier.size(20.dp)
       )
 
-      if (!card.stats.likeCountHidden && card.stats.likes > 0) {
+      // 隐藏了点赞数：别人拿到的是 0；作者自己照常看到数字
+      if ((!card.stats.likeCountHidden || card.viewer.isAuthor) && card.stats.likes > 0) {
         Text(
           text = card.stats.likes.toString(),
           style = MaterialTheme.typography.bodySmall,
@@ -491,6 +511,8 @@ private fun FeedActionRow(
 object FeedPostCardTestTags {
   const val SHARE = "feed_card_share"
   const val COPY_LINK = "feed_card_copy_link"
+
+  fun ownAction(action: FeedOwnPostAction) = "feed_card_own_${action.name.lowercase()}"
 }
 
 /**

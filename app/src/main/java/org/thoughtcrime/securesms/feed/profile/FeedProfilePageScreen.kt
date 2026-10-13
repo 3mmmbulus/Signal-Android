@@ -58,6 +58,8 @@ import org.signal.core.ui.compose.Scaffolds
 import org.signal.core.ui.compose.Snackbars
 import org.thoughtcrime.securesms.R
 import org.thoughtcrime.securesms.feed.FeedAvatar
+import org.thoughtcrime.securesms.feed.FeedInsightsDialog
+import org.thoughtcrime.securesms.feed.FeedOwnPostAction
 import org.thoughtcrime.securesms.feed.FeedPostCard
 import org.thoughtcrime.securesms.feed.net.FeedCard
 import org.thoughtcrime.securesms.feed.net.FeedProfilePage
@@ -92,7 +94,9 @@ fun FeedProfilePageScreen(
   onOpenPost: (FeedCard) -> Unit,
   onReportPost: (FeedCard) -> Unit,
   onNoticeShown: () -> Unit,
-  onProfileRequired: () -> Unit
+  onProfileRequired: () -> Unit,
+  onOwnPostAction: (FeedCard, FeedOwnPostAction) -> Unit = { _, _ -> },
+  onInsightsDismissed: () -> Unit = {}
 ) {
   val profile = state.profile
   val snackbarHostState = remember { SnackbarHostState() }
@@ -102,6 +106,7 @@ fun FeedProfilePageScreen(
   val blocked = stringResource(R.string.TellomiFeedPage__blocked_done)
   val unblocked = stringResource(R.string.TellomiFeedPage__unblocked_done)
   val failed = stringResource(R.string.TellomiFeed__action_failed)
+  val pinLimit = stringResource(R.string.TellomiFeed__pin_limit)
   val undo = stringResource(R.string.TellomiFeed__undo)
   LaunchedEffect(state.notice) {
     val notice = state.notice ?: return@LaunchedEffect
@@ -114,6 +119,7 @@ fun FeedProfilePageScreen(
       FeedProfilePageState.Notice.PROFILE_REQUIRED -> onProfileRequired()
       FeedProfilePageState.Notice.BLOCKED -> snackbarHostState.showSnackbar(blocked)
       FeedProfilePageState.Notice.UNBLOCKED -> snackbarHostState.showSnackbar(unblocked)
+      FeedProfilePageState.Notice.PIN_LIMIT -> snackbarHostState.showSnackbar(pinLimit)
       FeedProfilePageState.Notice.FAILED -> snackbarHostState.showSnackbar(failed)
     }
   }
@@ -162,10 +168,15 @@ fun FeedProfilePageScreen(
           onRetry = onRetry,
           onLikeClick = onLikeClick,
           onOpenPost = onOpenPost,
-          onReportPost = onReportPost
+          onReportPost = onReportPost,
+          onOwnPostAction = onOwnPostAction
         )
       }
     }
+  }
+
+  state.insights?.let { insights ->
+    FeedInsightsDialog(state = insights, onDismiss = onInsightsDismissed)
   }
 
   if (confirmUnfollow && profile != null) {
@@ -233,7 +244,8 @@ private fun ProfileContent(
   onRetry: () -> Unit,
   onLikeClick: (FeedCard) -> Unit,
   onOpenPost: (FeedCard) -> Unit,
-  onReportPost: (FeedCard) -> Unit
+  onReportPost: (FeedCard) -> Unit,
+  onOwnPostAction: (FeedCard, FeedOwnPostAction) -> Unit
 ) {
   val listState = rememberLazyListState()
   val nearEnd by remember {
@@ -298,7 +310,8 @@ private fun ProfileContent(
             onNotInterestedClick = null,
             mediaBaseUrl = state.mediaBaseUrl,
             onOpen = onOpenPost,
-            onReportClick = if (card.viewer.isAuthor) null else onReportPost
+            onReportClick = if (card.viewer.isAuthor) null else onReportPost,
+            onOwnPostAction = onOwnPostAction
           )
           HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
         }

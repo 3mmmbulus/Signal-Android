@@ -137,9 +137,16 @@ fun FeedListPane(
     viewModel.onBlockedNoticeShown()
   }
 
+  val pinLimitMessage = stringResource(R.string.TellomiFeed__pin_limit)
   LaunchedEffect(state.transientError) {
     val error = state.transientError ?: return@LaunchedEffect
-    snackbarHostState.showSnackbar(if (error == FeedState.TransientError.NETWORK) networkMessage else actionMessage)
+    snackbarHostState.showSnackbar(
+      when (error) {
+        FeedState.TransientError.NETWORK -> networkMessage
+        FeedState.TransientError.PIN_LIMIT -> pinLimitMessage
+        FeedState.TransientError.ACTION_FAILED -> actionMessage
+      }
+    )
     viewModel.onTransientErrorShown()
   }
 
@@ -227,6 +234,7 @@ fun FeedListPane(
       onOpenClick = { context.startActivity(FeedPostDetailActivity.intent(context, it)) },
       onAuthorClick = { context.startActivity(FeedProfilePageActivity.intent(context, it.profileId)) },
       onVote = viewModel::vote,
+      onOwnPostAction = viewModel::onOwnPostAction,
       onReportClick = { card ->
         reporting = card
         reportLauncher.launch(FeedReportTarget.content(card.id))
@@ -265,6 +273,10 @@ fun FeedListPane(
     )
   }
 
+  state.insights?.let { insights ->
+    FeedInsightsDialog(state = insights, onDismiss = viewModel::onInsightsDismissed)
+  }
+
   confirmDelete?.let { card ->
     Dialogs.SimpleAlertDialog(
       title = stringResource(R.string.TellomiFeedMine__delete_title),
@@ -299,6 +311,7 @@ private fun FeedPager(
   onReportClick: (FeedCard) -> Unit = {},
   onAuthorClick: (FeedAuthor) -> Unit = {},
   onVote: (FeedCard, List<Int>) -> Unit = { _, _ -> },
+  onOwnPostAction: (FeedCard, FeedOwnPostAction) -> Unit = { _, _ -> },
   onNotificationsClick: () -> Unit = {},
   onSearchClick: () -> Unit = {}
 ) {
@@ -369,7 +382,8 @@ private fun FeedPager(
         onOpenClick = onOpenClick,
         onReportClick = onReportClick,
         onAuthorClick = onAuthorClick,
-        onVote = onVote
+        onVote = onVote,
+        onOwnPostAction = onOwnPostAction
       )
     }
   }
@@ -399,7 +413,8 @@ private fun FeedTimeline(
   onOpenClick: (FeedCard) -> Unit = {},
   onReportClick: (FeedCard) -> Unit = {},
   onAuthorClick: (FeedAuthor) -> Unit = {},
-  onVote: (FeedCard, List<Int>) -> Unit = { _, _ -> }
+  onVote: (FeedCard, List<Int>) -> Unit = { _, _ -> },
+  onOwnPostAction: (FeedCard, FeedOwnPostAction) -> Unit = { _, _ -> }
 ) {
   val listState = rememberLazyListState()
 
@@ -479,6 +494,7 @@ private fun FeedTimeline(
             onReportClick = if (card.viewer.isAuthor) null else onReportClick,
             onAuthorClick = onAuthorClick,
             onVote = onVote,
+            onOwnPostAction = onOwnPostAction,
             onBlockAuthorClick = if (card.viewer.isAuthor) null else onBlockAuthorClick
           )
           HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))

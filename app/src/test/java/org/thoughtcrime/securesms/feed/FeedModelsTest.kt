@@ -98,6 +98,18 @@ class FeedModelsTest {
   }
 
   @Test
+  fun `pinned and hidden likes come from the outer card and stats`() {
+    val result = FeedJson.decodeFromString(
+      FeedCardResult.serializer(),
+      """{"id":"p","state":"ok","card":{"kind":"post"},"stats":{"likes":0,"likes_hidden":true,"comments":1,"reposts":0},"pinned":true}"""
+    )
+
+    val card = result.toCard()!!
+    assertThat(card.pinned).isEqualTo(true)
+    assertThat(card.stats.likeCountHidden).isEqualTo(true)
+  }
+
+  @Test
   fun `refresh puts new cards on top without duplicates`() {
     val merged = mergeRefresh(incoming = listOf(card("c"), card("a")), existing = listOf(card("a"), card("b")))
 
