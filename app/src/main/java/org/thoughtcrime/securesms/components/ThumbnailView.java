@@ -27,6 +27,7 @@ import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.annotation.Px;
 import androidx.annotation.UiThread;
+import androidx.annotation.VisibleForTesting;
 import androidx.appcompat.widget.AppCompatImageView;
 import com.google.android.material.color.MaterialColors;
 
@@ -99,6 +100,12 @@ public class ThumbnailView extends FrameLayout {
   private final TellomiLivePhotoPlayerView liveVideo;
   private final View                       liveBadge;
   private       AttachmentId               liveAttachmentId;
+  /** Played once while it has been showing (attached); cleared when it goes off screen, so it plays again next time. */
+  private       AttachmentId               livePlayedId;
+  private       boolean                    liveAutoplay = true;
+  /** How many times it has started playing by itself (tests read this). */
+  @VisibleForTesting
+  int liveAutoplays;
   private final View               playOverlay;
   private final View               captionIcon;
   private final AppCompatImageView errorImage;
@@ -841,9 +848,11 @@ public class ThumbnailView extends FrameLayout {
 
   /**
    * Tellomi (tellomi/tellomi#1263, spec R-2): a live photo has the live badge top-left and plays its moving half once,
-   * muted, the first time it shows in this run, then fades back to the still (Telegram: `ChatMessageInteractiveMediaNode`
-   * autoplays without sound when the bubble appears; `playbackCompleted` fades the video out over 0.3 s). Not while it is
-   * covered, and not before the still is here. A tap still opens the viewer.
+   * muted, every time it comes on screen, then fades back to the still (owner 2026-10-13: as Telegram —
+   * `ChatMessageInteractiveMediaNode` plays it without sound each time the bubble becomes visible, `playbackCompleted`
+   * fades the video out over 0.3 s; Telegram Android starts it with a non-looping autoplay whenever the cell is bound).
+   * Rebinding while it is showing doesn't play it again. Not while it is covered, and not before the still is here.
+   * A tap still opens the viewer.
    */
   private void updateLivePhoto(@NonNull Slide slide) {
     Attachment attachment = slide.asAttachment();
@@ -863,9 +872,11 @@ public class ThumbnailView extends FrameLayout {
 
     DatabaseAttachment databaseAttachment = (DatabaseAttachment) attachment;
     liveAttachmentId = databaseAttachment.attachmentId;
-    if (!TellomiLivePhoto.claimAutoplay(databaseAttachment.attachmentId)) {
+    if (!liveAutoplay || !isAttachedToWindow() || databaseAttachment.attachmentId.equals(livePlayedId)) {
       return;
     }
+    livePlayedId = databaseAttachment.attachmentId;
+    liveAutoplays++;
 
     Context context = getContext().getApplicationContext();
     SignalExecutors.BOUNDED_IO.execute(() -> {
@@ -882,6 +893,31 @@ public class ThumbnailView extends FrameLayout {
     liveVideo.stop(false);
     liveBadge.setVisibility(View.GONE);
     liveAttachmentId = null;
+    livePlayedId     = null;
+  }
+
+  /**
+   * Tellomi (spec R-2): live photos play by themselves in the chat; grids (the "Media, files and links" page) only show
+   * the badge, as Telegram's shared media does.
+   */
+  public void setLivePhotoAutoplay(boolean autoplay) {
+    liveAutoplay = autoplay;
+  }
+
+  @Override
+  protected void onAttachedToWindow() {
+    super.onAttachedToWindow();
+    // Back on screen (a recycled view can come back without being bound again): plays again
+    if (slide != null) {
+      updateLivePhoto(slide);
+    }
+  }
+
+  @Override
+  protected void onDetachedFromWindow() {
+    super.onDetachedFromWindow();
+    liveVideo.stop(false);
+    livePlayedId = null;
   }
 
   /** Tellomi (spec R-1): still covered here (tests and accessibility read this). */

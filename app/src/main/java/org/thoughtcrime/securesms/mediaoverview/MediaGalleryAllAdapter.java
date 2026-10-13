@@ -350,6 +350,8 @@ final class MediaGalleryAllAdapter extends StickyHeaderGridAdapter {
       super(itemView);
       this.thumbnailView = itemView.findViewById(R.id.image);
       this.imageFileSize = itemView.findViewById(R.id.image_file_size);
+      // Tellomi (spec R-2): live photos show their badge here but don't play (Telegram's shared media doesn't)
+      this.thumbnailView.setLivePhotoAutoplay(false);
     }
 
     @Override
@@ -643,6 +645,7 @@ final class MediaGalleryAllAdapter extends StickyHeaderGridAdapter {
     GalleryDetailViewHolder(@NonNull View itemView) {
       super(itemView);
       this.thumbnailView = itemView.findViewById(R.id.image);
+      this.thumbnailView.setLivePhotoAutoplay(false);
     }
 
     @Override

@@ -37,14 +37,6 @@ object TellomiLivePhoto {
   private const val MAX_VIDEO_BYTES = 30L * 1024 * 1024
 
   private val downloaded: MutableMap<AttachmentId, Uri> = ConcurrentHashMap()
-  private val autoplayed: MutableSet<AttachmentId> = ConcurrentHashMap.newKeySet()
-
-  /**
-   * 会话里第一次出现时自动静音放一遍（spec R-2）：这次运行里每张只放一次，返回 true 的那一次去放。
-   * Telegram iOS 是每次出现都放；spec 写的是「第一次出现时」。
-   */
-  @JvmStatic
-  fun claimAutoplay(attachmentId: AttachmentId): Boolean = autoplayed.add(attachmentId)
 
   @JvmStatic
   fun isLivePhoto(attachment: Attachment?): Boolean = attachment?.transformProperties?.tellomiLivePhotoVideo != null
