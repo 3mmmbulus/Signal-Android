@@ -14,12 +14,14 @@ import androidx.compose.ui.test.assert
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.assertIsNotEnabled
+import androidx.compose.ui.test.assertIsSelected
 import androidx.compose.ui.test.assertTextEquals
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performTextInput
 import androidx.compose.ui.unit.dp
 import androidx.core.net.toUri
 import androidx.test.core.app.ApplicationProvider
@@ -75,12 +77,41 @@ class AttachmentFilesGalleryScreenTest {
   }
 
   @Test
-  fun `Given the grid, when a tile is tapped, then it is toggled rather than opened`() {
+  fun `Given the grid, when a photo is tapped it opens the preview, and when its check is tapped it is toggled`() {
     setContent(AttachmentFilesGalleryState(items = MEDIA))
 
     composeTestRule.onNodeWithTag(TestTags.filesGalleryTile(MEDIA[1].uri.toString())).performClick()
+    composeTestRule.onNodeWithTag(TestTags.filesGalleryCheck(MEDIA[2].uri.toString()), useUnmergedTree = true).performClick()
 
-    assertThat(events).containsExactly(AttachmentFilesGalleryEvent.Toggle(MEDIA[1]))
+    assertThat(events).containsExactly(AttachmentFilesGalleryEvent.OpenPreview(1), AttachmentFilesGalleryEvent.Toggle(MEDIA[2]))
+  }
+
+  @Test
+  fun `Given the preview, when shown, then it has the position, the ticked check, the file details and the caption`() {
+    setContent(AttachmentFilesGalleryState(items = MEDIA, previewIndex = 1, selected = listOf(MEDIA[1]), caption = "合同扫描"))
+
+    composeTestRule.onNodeWithTag(TestTags.FILES_GALLERY_PREVIEW).assertIsDisplayed()
+    composeTestRule.onNodeWithText(context.getString(R.string.MediaEditScreen__d_of_d, 2, 3)).assertIsDisplayed()
+    composeTestRule.onNodeWithText("100×100 · ", substring = true).assertIsDisplayed()
+    composeTestRule.onNodeWithText("合同扫描").assertIsDisplayed()
+    composeTestRule.onNodeWithTag(TestTags.FILES_GALLERY_PREVIEW_CHECK).assertIsSelected()
+  }
+
+  @Test
+  fun `Given the preview, when its check, back and send are tapped and a caption is typed, then each is handed on`() {
+    setContent(AttachmentFilesGalleryState(items = MEDIA, previewIndex = 2))
+
+    composeTestRule.onNodeWithTag(TestTags.FILES_GALLERY_PREVIEW_CHECK).performClick()
+    composeTestRule.onNodeWithTag(TestTags.FILES_GALLERY_PREVIEW_CAPTION).performTextInput("说明")
+    composeTestRule.onNodeWithTag(TestTags.FILES_GALLERY_PREVIEW_SEND).performClick()
+    composeTestRule.onNodeWithTag(TestTags.FILES_GALLERY_PREVIEW_BACK).performClick()
+
+    assertThat(events).containsExactly(
+      AttachmentFilesGalleryEvent.Toggle(MEDIA[2]),
+      AttachmentFilesGalleryEvent.CaptionChanged("说明"),
+      AttachmentFilesGalleryEvent.SendFromPreview(MEDIA[2]),
+      AttachmentFilesGalleryEvent.ClosePreview
+    )
   }
 
   @Test

@@ -625,7 +625,7 @@ private fun SearchBar(
 }
 
 @Composable
-private fun CapsuleField(
+internal fun CapsuleField(
   value: String,
   onValueChange: (String) -> Unit,
   placeholder: String,

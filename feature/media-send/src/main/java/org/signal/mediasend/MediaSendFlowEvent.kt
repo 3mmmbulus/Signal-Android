@@ -118,10 +118,13 @@ internal sealed interface MediaSendFlowEvent {
   /** tellomi/tellomi#1121：「文件」页选好了要发的文件：离开流程，交给会话页去发。 */
   data class SendAttachmentFiles(val result: MediaSendFlowActivityContract.AttachmentFilesResult) : MediaSendFlowEvent
 
-  /** tellomi/tellomi#1263 F-3：「文件」页「从相册中选择」：打开整屏相册网格（文件模式）。 */
+  /**
+   * tellomi/tellomi#1263 F-3：「文件」页「从相册中选择」：关掉附件 Sheet，整屏推出相册网格（文件模式）——照 Telegram 两端
+   * （iOS `attachmentController.dismiss` 后 `presentFileGallery`，安卓 `parentAlert.dismiss` 后推 `PhotoPickerActivity`）。
+   */
   data object OpenFilesGallery : MediaSendFlowEvent
 
-  /** tellomi/tellomi#1263 F-3：相册网格里取消 / 返回：回到「文件」页。 */
+  /** tellomi/tellomi#1263 F-3：相册网格里取消 / 返回：Sheet 已经关了，直接回聊天。 */
   data object CloseFilesGallery : MediaSendFlowEvent
 
   //endregion

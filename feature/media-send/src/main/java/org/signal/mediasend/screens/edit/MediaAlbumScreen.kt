@@ -254,10 +254,10 @@ private fun AlbumEditShortcuts(
 
 /**
  * 查看器里的一页：单击切换选中（照 Telegram 安卓 `onSingleTapConfirmed` → 勾选），双击放大 / 还原，双指捏合缩放。
- * 没放大时单指拖动不消费，留给翻页（横）和下滑关闭（竖）。
+ * 没放大时单指拖动不消费，留给翻页（横）和下滑关闭（竖）。「文件」页相册网格的预览（#1263 F-3）也用它。
  */
 @Composable
-private fun AlbumPage(
+internal fun AlbumPage(
   media: Media,
   onSingleTap: () -> Unit,
   onZoomedChange: (Boolean) -> Unit

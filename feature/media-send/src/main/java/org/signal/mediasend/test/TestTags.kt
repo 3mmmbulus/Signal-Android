@@ -70,6 +70,12 @@ object TestTags {
   const val FILES_GALLERY_CANCEL = "files_gallery_cancel"
   const val FILES_GALLERY_SEND = "files_gallery_send"
   fun filesGalleryTile(uri: String): String = "files_gallery_tile_$uri"
+  fun filesGalleryCheck(uri: String): String = "files_gallery_check_$uri"
+  const val FILES_GALLERY_PREVIEW = "files_gallery_preview"
+  const val FILES_GALLERY_PREVIEW_BACK = "files_gallery_preview_back"
+  const val FILES_GALLERY_PREVIEW_CHECK = "files_gallery_preview_check"
+  const val FILES_GALLERY_PREVIEW_CAPTION = "files_gallery_preview_caption"
+  const val FILES_GALLERY_PREVIEW_SEND = "files_gallery_preview_send"
 
   /** Tag for the card of the media at [uri] in the selected-only preview. */
   fun mediaPickerPreviewCard(uri: String): String = "media_picker_preview_card_$uri"

@@ -24,7 +24,7 @@ import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
-import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.foundation.lazy.grid.itemsIndexed
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
@@ -69,16 +69,52 @@ import kotlin.time.Duration.Companion.milliseconds
 /**
  * Tellomi（tellomi/tellomi#1263 F-3、F-s8）：「文件」页「从相册中选择」——全屏相册网格（文件模式）。
  *
- * 左上返回、中间相册标题（点开换相册）；3 列正方形格子，右上选择圈（带序号）；点照片本身也是勾选（Telegram 两端是开预览，
- * 这里先不做预览）；底栏「取消」/「发送（N）」，一个都没选时发送置灰；勾的里有 HEIC 时发送前先问要不要转成 JPEG。
+ * 左上返回、中间相册标题（点开换相册）；3 列正方形格子，右上选择圈（带序号）；点照片本身打开预览（[AttachmentFilesGalleryPreview]，
+ * 照 Telegram）；底栏「取消」/「发送（N）」，一个都没选时发送置灰；勾的里有 HEIC 时发送前先问要不要转成 JPEG。
  */
 @Composable
 internal fun AttachmentFilesGalleryScreen(
   state: AttachmentFilesGalleryState,
   onEvent: (AttachmentFilesGalleryEvent) -> Unit
 ) {
-  BackHandler { onEvent(AttachmentFilesGalleryEvent.Cancel) }
+  BackHandler(enabled = state.previewIndex == null) { onEvent(AttachmentFilesGalleryEvent.Cancel) }
 
+  Box(modifier = Modifier.fillMaxSize()) {
+    GalleryGrid(state = state, onEvent = onEvent)
+
+    val items = state.items
+    val previewIndex = state.previewIndex
+    if (items != null && previewIndex != null) {
+      AttachmentFilesGalleryPreview(
+        items = items,
+        initialIndex = previewIndex,
+        selected = state.selected,
+        caption = state.caption,
+        onEvent = onEvent
+      )
+    }
+  }
+
+  if (state.isAskingAboutHeic) {
+    // 同「···」以文件发送（MediaPickerGrid）：默认「保留 HEIC」；点外面 = 这次不发。
+    Dialogs.SimpleAlertDialog(
+      title = "",
+      body = stringResource(R.string.MediaSelectScreen__convert_photos_to_jpeg),
+      confirm = stringResource(R.string.MediaSelectScreen__keep_heic),
+      dismiss = stringResource(R.string.MediaSelectScreen__convert_to_jpeg),
+      onConfirm = { onEvent(AttachmentFilesGalleryEvent.HeicChosen(convertToJpeg = false)) },
+      onDeny = { onEvent(AttachmentFilesGalleryEvent.HeicChosen(convertToJpeg = true)) },
+      // 两个按钮也会先调 onDismiss，所以「点外面」只接 onDismissRequest。
+      onDismissRequest = { onEvent(AttachmentFilesGalleryEvent.HeicDismissed) }
+    )
+  }
+}
+
+@Composable
+private fun GalleryGrid(
+  state: AttachmentFilesGalleryState,
+  onEvent: (AttachmentFilesGalleryEvent) -> Unit
+) {
   Scaffold(
     topBar = { GalleryTopBar(state = state, onEvent = onEvent) },
     bottomBar = { GalleryBottomBar(count = state.selected.size, onEvent = onEvent) },
@@ -105,29 +141,16 @@ internal fun AttachmentFilesGalleryScreen(
         contentPadding = PaddingValues(bottom = 2.dp),
         modifier = Modifier.fillMaxSize().padding(padding)
       ) {
-        items(items, key = { it.uri.toString() }) { media ->
+        itemsIndexed(items, key = { _, media -> media.uri.toString() }) { index, media ->
           GalleryTile(
             media = media,
             selectionIndex = state.selectionIndex(media),
+            onOpen = { onEvent(AttachmentFilesGalleryEvent.OpenPreview(index)) },
             onToggle = { onEvent(AttachmentFilesGalleryEvent.Toggle(media)) }
           )
         }
       }
     }
-  }
-
-  if (state.isAskingAboutHeic) {
-    // 同「···」以文件发送（MediaPickerGrid）：默认「保留 HEIC」；点外面 = 这次不发。
-    Dialogs.SimpleAlertDialog(
-      title = "",
-      body = stringResource(R.string.MediaSelectScreen__convert_photos_to_jpeg),
-      confirm = stringResource(R.string.MediaSelectScreen__keep_heic),
-      dismiss = stringResource(R.string.MediaSelectScreen__convert_to_jpeg),
-      onConfirm = { onEvent(AttachmentFilesGalleryEvent.HeicChosen(convertToJpeg = false)) },
-      onDeny = { onEvent(AttachmentFilesGalleryEvent.HeicChosen(convertToJpeg = true)) },
-      // 两个按钮也会先调 onDismiss，所以「点外面」只接 onDismissRequest。
-      onDismissRequest = { onEvent(AttachmentFilesGalleryEvent.HeicDismissed) }
-    )
   }
 }
 
@@ -223,6 +246,7 @@ private fun GalleryBottomBar(count: Int, onEvent: (AttachmentFilesGalleryEvent) 
 private fun GalleryTile(
   media: Media,
   selectionIndex: Int,
+  onOpen: () -> Unit,
   onToggle: () -> Unit
 ) {
   BoxWithConstraints(
@@ -230,7 +254,7 @@ private fun GalleryTile(
       .fillMaxWidth()
       .aspectRatio(1f)
       .background(color = MaterialTheme.colorScheme.surfaceVariant)
-      .clickable(onClick = onToggle, role = Role.Checkbox)
+      .clickable(onClick = onOpen, onClickLabel = stringResource(R.string.MediaSelectScreen__open_media), role = Role.Button)
       .testTag(TestTags.filesGalleryTile(media.uri.toString()))
   ) {
     if (LocalInspectionMode.current) {
@@ -264,7 +288,9 @@ private fun GalleryTile(
       onClick = onToggle,
       touchSize = PickerMetrics.tileCheckTouchSize,
       visualInset = PickerMetrics.tileCheckVisualInset,
-      modifier = Modifier.align(Alignment.TopEnd)
+      modifier = Modifier
+        .align(Alignment.TopEnd)
+        .testTag(TestTags.filesGalleryCheck(media.uri.toString()))
     )
   }
 }

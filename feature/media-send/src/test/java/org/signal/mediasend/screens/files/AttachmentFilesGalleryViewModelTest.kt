@@ -185,6 +185,61 @@ class AttachmentFilesGalleryViewModelTest {
   }
 
   @Test
+  fun `Given the preview with nothing ticked, when sent, then the photo being looked at goes with the caption`() = runTest {
+    val vm = loaded()
+    vm.onEvent(AttachmentFilesGalleryEvent.OpenPreview(2))
+    vm.onEvent(AttachmentFilesGalleryEvent.CaptionChanged("  合同  "))
+    advanceUntilIdle()
+    assertThat(vm.state.value.previewIndex).isEqualTo(2)
+
+    vm.onEvent(AttachmentFilesGalleryEvent.SendFromPreview(RECENTS[2]))
+    advanceUntilIdle()
+
+    assertThat(vm.state.value.previewIndex).isNull()
+    val result = emitted.filterIsInstance<MediaSendFlowEvent.SendAttachmentFiles>().single().result
+    assertThat(result.galleryUris).containsExactly(RECENTS[2].uri)
+    assertThat(result.caption).isEqualTo("合同")
+  }
+
+  @Test
+  fun `Given the preview with a selection, when sent, then the selection goes and not the photo being looked at`() = runTest {
+    val vm = loaded()
+    vm.onEvent(AttachmentFilesGalleryEvent.Toggle(RECENTS[0]))
+    vm.onEvent(AttachmentFilesGalleryEvent.OpenPreview(1))
+
+    vm.onEvent(AttachmentFilesGalleryEvent.SendFromPreview(RECENTS[1]))
+    advanceUntilIdle()
+
+    val result = emitted.filterIsInstance<MediaSendFlowEvent.SendAttachmentFiles>().single().result
+    assertThat(result.galleryUris).containsExactly(RECENTS[0].uri)
+    assertThat(result.caption).isNull()
+  }
+
+  @Test
+  fun `Given the preview, when closed or the index is out of range, then the grid stays`() = runTest {
+    val vm = loaded()
+    vm.onEvent(AttachmentFilesGalleryEvent.OpenPreview(RECENTS.size))
+    advanceUntilIdle()
+    assertThat(vm.state.value.previewIndex).isNull()
+
+    vm.onEvent(AttachmentFilesGalleryEvent.OpenPreview(0))
+    vm.onEvent(AttachmentFilesGalleryEvent.ClosePreview)
+    advanceUntilIdle()
+
+    assertThat(vm.state.value.previewIndex).isNull()
+    assertThat(emitted).isEmpty()
+  }
+
+  @Test
+  fun `Given file details, when formatted, then only what is known is shown`() {
+    // 大小前后有方向控制符（toUnitString 防 RTL 语言里数字和单位颠倒），比较时去掉。
+    fun details(media: Media, size: Long) = fileDetails(media, size).filterNot { it in '\u202A'..'\u202E' }
+    assertThat(details(RECENTS[0], size = 2_516_582)).isEqualTo("100×200 · 2.4 MB")
+    assertThat(details(RECENTS[0].copy(contentType = "video/mp4", duration = 42_000), size = 0)).isEqualTo("100×200 · 0:42")
+    assertThat(details(RECENTS[0].copy(width = 0, height = 0), size = 0)).isEqualTo("")
+  }
+
+  @Test
   fun `Given nothing is ticked, when send is asked for, then nothing happens`() = runTest {
     val vm = loaded()
 

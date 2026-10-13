@@ -10,8 +10,8 @@ import androidx.core.net.toUri
 import androidx.lifecycle.SavedStateHandle
 import androidx.test.core.app.ApplicationProvider
 import assertk.assertThat
+import assertk.assertions.containsExactly
 import assertk.assertions.isEmpty
-import assertk.assertions.isEqualTo
 import assertk.assertions.isFalse
 import assertk.assertions.isTrue
 import io.mockk.coEvery
@@ -24,8 +24,10 @@ import io.mockk.verifyOrder
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.TestScope
+import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.runTest
@@ -166,18 +168,19 @@ class MediaSendFlowViewModelSendAsFileTest {
   }
 
   @Test
-  fun `Given the files page, when select from gallery opens and is cancelled, then the gallery sits on top once and closing returns`() = runTest {
+  fun `Given the files page, when select from gallery opens, then the sheet is gone and cancelling leaves the flow`() = runTest {
     val viewModel = viewModel()
+    val commands = mutableListOf<MediaSendFlowHudCommand>()
+    val collecting = launch(UnconfinedTestDispatcher(testScheduler)) { viewModel.hudCommands.collect { commands += it } }
     advanceUntilIdle()
-    val before = viewModel.backStack.toList()
 
     send(viewModel, MediaSendFlowEvent.OpenFilesGallery)
-    send(viewModel, MediaSendFlowEvent.OpenFilesGallery)
-    assertThat(viewModel.backStack.toList()).isEqualTo(before + MediaSendRoute.FilesGallery)
+    assertThat(viewModel.backStack.toList()).containsExactly(MediaSendRoute.FilesGallery)
+    assertThat(commands).isEmpty()
 
     send(viewModel, MediaSendFlowEvent.CloseFilesGallery)
-    send(viewModel, MediaSendFlowEvent.CloseFilesGallery)
-    assertThat(viewModel.backStack.toList()).isEqualTo(before)
+    assertThat(commands).containsExactly(MediaSendFlowHudCommand.CloseScreen)
+    collecting.cancel()
   }
 
   private fun viewModel(): MediaSendFlowViewModel {

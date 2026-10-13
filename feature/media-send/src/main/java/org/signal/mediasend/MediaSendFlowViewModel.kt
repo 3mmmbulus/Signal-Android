@@ -303,8 +303,9 @@ class MediaSendFlowViewModel(
       is MediaSendFlowEvent.ShowToast -> internalToastEvents.trySend(event.toast)
       is MediaSendFlowEvent.OpenAttachmentPage -> internalState.update { it.copy(attachmentPage = event.page) }
       is MediaSendFlowEvent.SendAttachmentFiles -> sendHudCommand(MediaSendFlowHudCommand.SendAttachmentFiles(event.result))
-      MediaSendFlowEvent.OpenFilesGallery -> if (backStack.lastOrNull() != MediaSendRoute.FilesGallery) backStack.add(MediaSendRoute.FilesGallery)
-      MediaSendFlowEvent.CloseFilesGallery -> if (backStack.lastOrNull() == MediaSendRoute.FilesGallery) backStack.pop()
+      // Tellomi（#1263 F-3，owner 2026-10-13 照 Telegram）：先关掉附件 Sheet、整屏推出相册；取消 / 返回直接回聊天。
+      MediaSendFlowEvent.OpenFilesGallery -> backStack.resetTo(MediaSendRoute.FilesGallery)
+      MediaSendFlowEvent.CloseFilesGallery -> sendHudCommand(MediaSendFlowHudCommand.CloseScreen)
       MediaSendFlowEvent.NavigateToEdit -> goToEditLeavingAlbum()
       MediaSendFlowEvent.NavigateToCamera -> backStack.goToCamera()
       MediaSendFlowEvent.KeepShooting -> keepShooting()
