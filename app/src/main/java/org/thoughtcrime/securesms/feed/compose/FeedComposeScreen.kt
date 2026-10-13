@@ -110,6 +110,7 @@ fun FeedComposeScreen(
   onVisibilityChanged: (FeedVisibility) -> Unit,
   onPublish: () -> Unit,
   onFailureShown: () -> Unit,
+  onRestoredArticleShown: () -> Unit = {},
   /** 「部分可见 / 不给谁看」：打开选人页，选完由 [FeedComposeViewModel.onAudiencePicked] 换档。 */
   onPickAudience: (FeedVisibility) -> Unit = {},
   pollActions: FeedComposePollActions = FeedComposePollActions(),
@@ -143,6 +144,14 @@ fun FeedComposeScreen(
   }
 
   val windowClosedMessage = stringResource(R.string.TellomiFeedCompose__edit_window_closed)
+  val restoredMessage = stringResource(R.string.TellomiFeedCompose__article_restored)
+  LaunchedEffect(state.restoredArticle) {
+    if (state.restoredArticle) {
+      onRestoredArticleShown()
+      snackbarHostState.showSnackbar(restoredMessage)
+    }
+  }
+
   val quoteGoneMessage = stringResource(R.string.TellomiFeedCompose__quote_unavailable)
   LaunchedEffect(state.failed, state.editWindowClosed, state.quoteUnavailable) {
     if (state.failed || state.editWindowClosed || state.quoteUnavailable) {

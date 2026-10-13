@@ -112,6 +112,7 @@ class FeedComposeActivity : PassphraseRequiredActivity() {
           onVisibilityChanged = viewModel::onVisibilityChanged,
           onPublish = viewModel::publish,
           onFailureShown = viewModel::onFailureShown,
+          onRestoredArticleShown = viewModel::onRestoredArticleShown,
           onPickAudience = { visibility ->
             viewModel.pickingAudienceFor = visibility
             audienceLauncher.launch(state.draft.audience.map { it.recipientId }.toLongArray())

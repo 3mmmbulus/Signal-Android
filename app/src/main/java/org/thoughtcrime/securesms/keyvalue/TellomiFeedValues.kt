@@ -20,6 +20,7 @@ class TellomiFeedValues(store: KeyValueStore) : SignalStoreValues(store) {
     private const val FRIENDS_REPORTED = "tellomi_feed.friends_reported"
     private const val FRIENDS_CHECKED_AT = "tellomi_feed.friends_checked_at"
     private const val BLOCKED_KEYWORDS = "tellomi_feed.blocked_keywords"
+    private const val ARTICLE_DRAFT = "tellomi_feed.article_draft"
   }
 
   public override fun onFirstEverAppLaunch() = Unit
@@ -48,4 +49,7 @@ class TellomiFeedValues(store: KeyValueStore) : SignalStoreValues(store) {
 
   /** 「完全屏蔽」的关键词（JSON）。只在本机，不发给服务器（第三节第 12 条；引擎 `relations.go`）。见 `FeedBlockedKeywords`。 */
   var blockedKeywords: String? by stringValue(BLOCKED_KEYWORDS, null)
+
+  /** 没写完的长文（JSON：标题和正文），只在本机。见 `FeedArticleDrafts`。 */
+  var articleDraft: String? by stringValue(ARTICLE_DRAFT, null)
 }

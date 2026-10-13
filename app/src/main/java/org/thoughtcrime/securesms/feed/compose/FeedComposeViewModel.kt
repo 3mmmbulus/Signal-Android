@@ -14,6 +14,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.flow.updateAndGet
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import org.signal.core.util.logging.Log
@@ -33,7 +34,8 @@ class FeedComposeViewModel(
   private val editTarget: FeedEditTarget? = null,
   quoteTarget: FeedQuoteTarget? = null,
   private val source: FeedSource = FeedSources.current(),
-  private val ioDispatcher: CoroutineDispatcher = Dispatchers.IO
+  private val ioDispatcher: CoroutineDispatcher = Dispatchers.IO,
+  private val articleDrafts: FeedArticleDrafts = StoredFeedArticleDrafts
 ) : ViewModel() {
 
   companion object {
@@ -44,7 +46,15 @@ class FeedComposeViewModel(
   private val clientNonce = UUID.randomUUID().toString()
 
   private val internalState = MutableStateFlow(
-    if (editTarget == null) {
+    if (editTarget == null && quoteTarget == null) {
+      // 上次没写完的长文接着写（第 25 条）
+      val saved = articleDrafts.load()?.takeIf { it.title.isNotBlank() || it.text.isNotBlank() }
+      if (saved != null) {
+        FeedComposeState(draft = FeedDraft(kind = FeedDraftKind.ARTICLE, title = saved.title, text = saved.text), restoredArticle = true)
+      } else {
+        FeedComposeState()
+      }
+    } else if (editTarget == null) {
       FeedComposeState(draft = FeedDraft(quote = quoteTarget))
     } else {
       val draft = FeedDraft(kind = editTarget.draftKind, title = editTarget.title.orEmpty(), text = editTarget.text)
@@ -58,7 +68,9 @@ class FeedComposeViewModel(
       try {
         val config = withContext(ioDispatcher) { source.config() }
         internalState.update {
-          val draft = if (it.draft.isEmpty && it.editing == null) it.draft.copy(visibility = FeedVisibility.default(config.minorMode)) else it.draft
+          // 新的一条用默认档；恢复出来的长文如果是这个模式下不许的档（未成年人模式不能公开），也换成默认档
+          val useDefault = it.editing == null && (it.draft.isEmpty || it.draft.visibility !in FeedVisibility.allowed(config.minorMode))
+          val draft = if (useDefault) it.draft.copy(visibility = FeedVisibility.default(config.minorMode)) else it.draft
           it.copy(limits = config.limits, minorMode = config.minorMode, draft = draft)
         }
       } catch (e: Exception) {
@@ -154,6 +166,7 @@ class FeedComposeViewModel(
         val response = withContext(ioDispatcher) {
           if (target != null) source.editPost(target.id, current.draft) else source.publish(current.draft, clientNonce)
         }
+        if (target == null) articleDrafts.clear()
         internalState.update { it.copy(publishing = false, publishedState = response.state) }
       } catch (e: FeedApiException) {
         Log.w(TAG, "publish failed: ${e.status} ${e.code}")
@@ -182,6 +195,10 @@ class FeedComposeViewModel(
     internalState.update { it.copy(failed = false, editWindowClosed = false, quoteUnavailable = false) }
   }
 
+  fun onRestoredArticleShown() {
+    internalState.update { it.copy(restoredArticle = false) }
+  }
+
   /** 已经打开了建主页的页面。 */
   fun onProfileRequiredShown() {
     internalState.update { it.copy(profileRequired = false) }
@@ -192,7 +209,11 @@ class FeedComposeViewModel(
   }
 
   private fun updateDraft(transform: (FeedDraft) -> FeedDraft) {
-    internalState.update { it.copy(draft = transform(it.draft)) }
+    val updated = internalState.updateAndGet { it.copy(draft = transform(it.draft)) }
+    if (updated.autosavesArticle) {
+      val draft = updated.draft
+      if (draft.title.isBlank() && draft.text.isBlank()) articleDrafts.clear() else articleDrafts.save(FeedSavedArticle(draft.title, draft.text))
+    }
   }
 }
 
@@ -211,6 +232,8 @@ data class FeedComposeState(
   /** 编辑模式：在改哪一条，和打开时的样子（没改动就不让保存、关页面也不问）。 */
   val editing: FeedEditTarget? = null,
   val original: FeedDraft? = null,
+  /** 打开时恢复了上次没写完的长文，提示一句。 */
+  val restoredArticle: Boolean = false,
   /** 发出去之后服务端给的 `state`（`pending` / `published`）；非空表示可以关页面了。 */
   val publishedState: String? = null
 ) {
@@ -229,9 +252,16 @@ data class FeedComposeState(
   val isUnchanged: Boolean
     get() = original != null && original.title.trim() == draft.title.trim() && original.text.trim() == draft.text.trim()
 
-  /** 关页面要不要问「放弃吗」。 */
+  /**
+   * 新写的长文（不是编辑、不是引用）边写边存在本机（第 25 条）。
+   * 动态那一栏选了图或加了投票的不算：那些不存，关页面要问。
+   */
+  val autosavesArticle: Boolean
+    get() = editing == null && draft.quote == null && draft.kind == FeedDraftKind.ARTICLE && draft.images.isEmpty() && draft.poll == null
+
+  /** 关页面要不要问「放弃吗」。自动保存的长文不问。 */
   val hasUnsavedChanges: Boolean
-    get() = if (editing != null) !isUnchanged else !draft.isEmpty
+    get() = if (editing != null) !isUnchanged else !draft.isEmpty && !autosavesArticle
 
   val textLimit: Int
     get() = draft.textLimit(limits)

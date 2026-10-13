@@ -39,6 +39,7 @@ class FeedComposeViewModelTest {
       edits += contentId to draft
       return FeedCreatePostResponse(id = contentId, state = FeedCreatePostResponse.STATE_PENDING, version = 2)
     }
+    override suspend fun publish(draft: FeedDraft, clientNonce: String) = FeedCreatePostResponse(id = "new", state = FeedCreatePostResponse.STATE_PENDING)
   }
 
   private val target = FeedEditTarget(id = "p1", kind = "article", title = "标题", text = "正文", publishedAt = null)
@@ -55,7 +56,7 @@ class FeedComposeViewModelTest {
 
   @Test
   fun `edit starts from the post and needs a change`() {
-    val viewModel = FeedComposeViewModel(editTarget = target, source = FakeSource(), ioDispatcher = dispatcher)
+    val viewModel = FeedComposeViewModel(editTarget = target, source = FakeSource(), ioDispatcher = dispatcher, articleDrafts = InMemoryFeedArticleDrafts())
 
     val state = viewModel.state.value
     assertThat(state.draft.kind).isEqualTo(FeedDraftKind.ARTICLE)
@@ -70,7 +71,7 @@ class FeedComposeViewModelTest {
   @Test
   fun `edit ignores visibility rules, even in minor mode`() {
     val source = FakeSource()
-    val viewModel = FeedComposeViewModel(editTarget = target, source = source, ioDispatcher = dispatcher)
+    val viewModel = FeedComposeViewModel(editTarget = target, source = source, ioDispatcher = dispatcher, articleDrafts = InMemoryFeedArticleDrafts())
 
     viewModel.onTextChanged("新的正文")
     assertThat(viewModel.state.value.problem).isNull()
@@ -82,7 +83,7 @@ class FeedComposeViewModelTest {
 
   @Test
   fun `closed window is its own message, not a generic failure`() {
-    val viewModel = FeedComposeViewModel(editTarget = target, source = FakeSource(FeedApiException(409, "edit_window_closed")), ioDispatcher = dispatcher)
+    val viewModel = FeedComposeViewModel(editTarget = target, source = FakeSource(FeedApiException(409, "edit_window_closed")), ioDispatcher = dispatcher, articleDrafts = InMemoryFeedArticleDrafts())
 
     viewModel.onTextChanged("新的正文")
     viewModel.publish()
@@ -93,7 +94,7 @@ class FeedComposeViewModelTest {
 
   @Test
   fun `missing profile asks to set one up, not a generic failure`() {
-    val viewModel = FeedComposeViewModel(editTarget = target, source = FakeSource(FeedApiException(409, "profile_required")), ioDispatcher = dispatcher)
+    val viewModel = FeedComposeViewModel(editTarget = target, source = FakeSource(FeedApiException(409, "profile_required")), ioDispatcher = dispatcher, articleDrafts = InMemoryFeedArticleDrafts())
 
     viewModel.onTextChanged("新的正文")
     viewModel.publish()
@@ -119,7 +120,7 @@ class FeedComposeViewModelTest {
     val adult = object : FeedSource by EmptyFeedSource {
       override suspend fun config(): FeedConfig = FeedConfig(enabled = true, minorMode = false)
     }
-    val viewModel = FeedComposeViewModel(editTarget = null, source = adult, ioDispatcher = dispatcher)
+    val viewModel = FeedComposeViewModel(editTarget = null, source = adult, ioDispatcher = dispatcher, articleDrafts = InMemoryFeedArticleDrafts())
     viewModel.onTextChanged("hi")
 
     viewModel.onAudiencePicked(FeedVisibility.INCLUDE, emptyList())
@@ -137,14 +138,14 @@ class FeedComposeViewModelTest {
 
   @Test
   fun `minors cannot pick people`() {
-    val viewModel = FeedComposeViewModel(editTarget = null, source = FakeSource(), ioDispatcher = dispatcher)
+    val viewModel = FeedComposeViewModel(editTarget = null, source = FakeSource(), ioDispatcher = dispatcher, articleDrafts = InMemoryFeedArticleDrafts())
     viewModel.onAudiencePicked(FeedVisibility.EXCLUDE, listOf(FeedAudienceMember(1, "aci-1")))
     assertThat(viewModel.state.value.draft.visibility).isEqualTo(FeedVisibility.FRIENDS)
   }
 
   @Test
   fun `poll options can be added up to ten and removed down to two`() {
-    val viewModel = FeedComposeViewModel(source = FakeSource(), ioDispatcher = dispatcher)
+    val viewModel = FeedComposeViewModel(source = FakeSource(), ioDispatcher = dispatcher, articleDrafts = InMemoryFeedArticleDrafts())
 
     viewModel.onPollOptionAdded()
     assertThat(viewModel.state.value.draft.poll).isNull()
@@ -175,7 +176,7 @@ class FeedComposeViewModelTest {
 
   @Test
   fun `editing cannot add a poll`() {
-    val viewModel = FeedComposeViewModel(editTarget = target.copy(kind = "post", title = null), source = FakeSource(), ioDispatcher = dispatcher)
+    val viewModel = FeedComposeViewModel(editTarget = target.copy(kind = "post", title = null), source = FakeSource(), ioDispatcher = dispatcher, articleDrafts = InMemoryFeedArticleDrafts())
 
     viewModel.onPollAdded()
 
@@ -186,26 +187,68 @@ class FeedComposeViewModelTest {
   fun `reply options change a new post but not an edit`() {
     val settings = FeedReplySettings(policy = FeedReplyPolicy.FOLLOWING, moderation = true)
 
-    val viewModel = FeedComposeViewModel(source = FakeSource(), ioDispatcher = dispatcher)
+    val viewModel = FeedComposeViewModel(source = FakeSource(), ioDispatcher = dispatcher, articleDrafts = InMemoryFeedArticleDrafts())
     viewModel.onReplySettingsChanged(settings)
     assertThat(viewModel.state.value.draft.replies).isEqualTo(settings)
 
-    val editing = FeedComposeViewModel(editTarget = target, source = FakeSource(), ioDispatcher = dispatcher)
+    val editing = FeedComposeViewModel(editTarget = target, source = FakeSource(), ioDispatcher = dispatcher, articleDrafts = InMemoryFeedArticleDrafts())
     editing.onReplySettingsChanged(settings)
     assertThat(editing.state.value.draft.replies).isEqualTo(FeedReplySettings())
   }
 
   @Test
   fun `topics toggle, stop at three, and stay put while editing`() {
-    val viewModel = FeedComposeViewModel(source = FakeSource(), ioDispatcher = dispatcher)
+    val viewModel = FeedComposeViewModel(source = FakeSource(), ioDispatcher = dispatcher, articleDrafts = InMemoryFeedArticleDrafts())
     listOf("food", "travel", "photo", "music").forEach(viewModel::onTopicToggled)
     assertThat(viewModel.state.value.draft.topics).isEqualTo(listOf("food", "travel", "photo"))
     viewModel.onTopicToggled("travel")
     viewModel.onTopicToggled("music")
     assertThat(viewModel.state.value.draft.topics).isEqualTo(listOf("food", "photo", "music"))
 
-    val editing = FeedComposeViewModel(editTarget = target, source = FakeSource(), ioDispatcher = dispatcher)
+    val editing = FeedComposeViewModel(editTarget = target, source = FakeSource(), ioDispatcher = dispatcher, articleDrafts = InMemoryFeedArticleDrafts())
     editing.onTopicToggled("food")
     assertThat(editing.state.value.draft.topics).isEqualTo(emptyList())
+  }
+
+  @Test
+  fun `an unfinished article is kept, comes back, and goes once it is published`() {
+    val drafts = InMemoryFeedArticleDrafts()
+    val first = FeedComposeViewModel(source = FakeSource(), ioDispatcher = dispatcher, articleDrafts = drafts)
+    first.onKindChanged(FeedDraftKind.ARTICLE)
+    first.onTitleChanged("秋天的山")
+    first.onTextChanged("写到一半")
+    assertThat(drafts.load()).isEqualTo(FeedSavedArticle("秋天的山", "写到一半"))
+    // 自动存了，关页面不问
+    assertThat(first.state.value.hasUnsavedChanges).isFalse()
+
+    val second = FeedComposeViewModel(source = FakeSource(), ioDispatcher = dispatcher, articleDrafts = drafts)
+    assertThat(second.state.value.draft.kind).isEqualTo(FeedDraftKind.ARTICLE)
+    assertThat(second.state.value.draft.title).isEqualTo("秋天的山")
+    assertThat(second.state.value.restoredArticle).isTrue()
+
+    second.onTextChanged("写到一半，接着写完了")
+    second.publish()
+    assertThat(second.state.value.publishedState).isEqualTo(FeedCreatePostResponse.STATE_PENDING)
+    assertThat(drafts.load()).isNull()
+  }
+
+  @Test
+  fun `posts, edits and quotes are not autosaved`() {
+    val drafts = InMemoryFeedArticleDrafts()
+    val post = FeedComposeViewModel(source = FakeSource(), ioDispatcher = dispatcher, articleDrafts = drafts)
+    post.onTextChanged("一条动态")
+    assertThat(drafts.load()).isNull()
+    assertThat(post.state.value.hasUnsavedChanges).isTrue()
+
+    val editing = FeedComposeViewModel(editTarget = target, source = FakeSource(), ioDispatcher = dispatcher, articleDrafts = drafts)
+    editing.onTextChanged("改过的正文")
+    assertThat(drafts.load()).isNull()
+
+    // 清空了就不留
+    val article = FeedComposeViewModel(source = FakeSource(), ioDispatcher = dispatcher, articleDrafts = drafts)
+    article.onKindChanged(FeedDraftKind.ARTICLE)
+    article.onTitleChanged("标")
+    article.onTitleChanged("")
+    assertThat(drafts.load()).isNull()
   }
 }
