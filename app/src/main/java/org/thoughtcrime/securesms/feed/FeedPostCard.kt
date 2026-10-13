@@ -60,6 +60,7 @@ import org.thoughtcrime.securesms.feed.net.FeedCard
 import org.thoughtcrime.securesms.feed.net.FeedMedia
 import org.thoughtcrime.securesms.feed.net.FeedStats
 import org.thoughtcrime.securesms.feed.net.FeedTopic
+import org.thoughtcrime.securesms.feed.topic.FeedTopicActivity
 import org.thoughtcrime.securesms.util.DateUtils
 import java.time.Instant
 import java.util.Locale
@@ -108,7 +109,9 @@ fun FeedPostCard(
   /** 别人的帖子：「···」里的「不看 TA 的动态」（第三节第 26 条）；开放内容的外部作者没有。 */
   onMuteAuthorClick: ((FeedCard) -> Unit)? = null,
   /** 收藏 / 取消收藏（第三节第 27 条：存进「我的收藏」）；null 的地方不显示。 */
-  onSaveClick: ((FeedCard) -> Unit)? = null
+  onSaveClick: ((FeedCard) -> Unit)? = null,
+  /** 点 #话题；null = 开这个话题的话题页。 */
+  onTopicClick: ((FeedTopic) -> Unit)? = null
 ) {
   val author = card.author
   val openAuthor: (() -> Unit)? = if (author != null && author.isNative && onAuthorClick != null) {
@@ -176,8 +179,9 @@ fun FeedPostCard(
         }
 
         if (card.topics.isNotEmpty()) {
-          // 点话题弹出关注面板（第三节第 18 条）
-          var openTopic by remember { mutableStateOf<FeedTopic?>(null) }
+          // 点话题进话题页，那里能关注（第三节第 18 条）
+          val context = LocalContext.current
+          val openTopic: (FeedTopic) -> Unit = onTopicClick ?: { context.startActivity(FeedTopicActivity.intent(context, it.slug, it.label)) }
           FlowRow(horizontalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.padding(top = 4.dp, end = 12.dp)) {
             card.topics.forEach { topic ->
               Text(
@@ -185,12 +189,11 @@ fun FeedPostCard(
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.primary,
                 modifier = Modifier
-                  .clickable { openTopic = topic }
+                  .clickable { openTopic(topic) }
                   .testTag(FeedPostCardTestTags.topic(topic.slug))
               )
             }
           }
-          openTopic?.let { FeedTopicFollowSheet(topic = it, onDismiss = { openTopic = null }) }
         }
 
         if (card.aiGenerated) {

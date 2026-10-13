@@ -55,6 +55,7 @@ import org.thoughtcrime.securesms.feed.net.FeedServerKeyword
 import org.thoughtcrime.securesms.feed.net.FeedStats
 import org.thoughtcrime.securesms.feed.net.FeedTimelinePage
 import org.thoughtcrime.securesms.feed.net.FeedTopic
+import org.thoughtcrime.securesms.feed.net.FeedTopicPage
 import org.thoughtcrime.securesms.feed.net.FeedUnreadCounts
 import org.thoughtcrime.securesms.feed.net.FeedViewer
 import java.time.Instant
@@ -624,6 +625,11 @@ object SampleFeedSource : FeedSource {
   override suspend fun setFollowingTopic(slug: String, following: Boolean): Unit = synchronized(this) {
     followedTopicSlugs -= slug
     if (following) followedTopicSlugs += slug
+  }
+
+  override suspend fun topicPosts(slug: String, cursor: String?): FeedTopicPage = synchronized(this) {
+    val posts = (mine + recommend).filter { card -> card.id !in hidden && card.topics.any { it.slug == slug } }
+    FeedTopicPage(posts = posts, following = slug in followedTopicSlugs)
   }
 
   /** 「不看 TA」「不让 TA 看」：样例里只记名单，信息流不跟着变。 */

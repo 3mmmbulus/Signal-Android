@@ -17,12 +17,16 @@ import androidx.lifecycle.viewmodel.viewModelFactory
 import org.signal.core.ui.compose.theme.SignalTheme
 import org.thoughtcrime.securesms.PassphraseRequiredActivity
 import org.thoughtcrime.securesms.feed.profile.FeedProfilePageActivity
+import org.thoughtcrime.securesms.feed.topic.FeedTopicActivity
 import org.thoughtcrime.securesms.util.DynamicNoActionBarTheme
 
 /** 关注请求 / 屏蔽列表（[FeedPeopleMode]）。从「我的动态」右上角进。 */
 class FeedPeopleActivity : PassphraseRequiredActivity() {
 
   private val theme = DynamicNoActionBarTheme()
+
+  /** 从名单进了话题页：回来时重新拉，那边可能取消了关注。 */
+  private var openedTopic = false
 
   private val mode: FeedPeopleMode by lazy {
     FeedPeopleMode.entries.firstOrNull { it.name == intent.getStringExtra(EXTRA_MODE) } ?: FeedPeopleMode.FOLLOW_REQUESTS
@@ -50,7 +54,11 @@ class FeedPeopleActivity : PassphraseRequiredActivity() {
           onUnblock = viewModel::unblock,
           onOpenProfile = { startActivity(FeedProfilePageActivity.intent(this, it.id)) },
           onNoticeShown = viewModel::onNoticeShown,
-          onRemove = viewModel::remove
+          onRemove = viewModel::remove,
+          onOpenTopic = {
+            openedTopic = true
+            startActivity(FeedTopicActivity.intent(this, it))
+          }
         )
       }
     }
@@ -59,6 +67,10 @@ class FeedPeopleActivity : PassphraseRequiredActivity() {
   override fun onResume() {
     super.onResume()
     theme.onResume(this)
+    if (openedTopic) {
+      openedTopic = false
+      viewModel.refresh()
+    }
   }
 
   companion object {

@@ -995,6 +995,11 @@
             android:theme="@style/TextSecure.LightTheme" />
 
         <activity
+            android:name=".feed.topic.FeedTopicActivity"
+            android:exported="false"
+            android:theme="@style/TextSecure.LightTheme" />
+
+        <activity
             android:name=".feed.people.FeedPeopleActivity"
             android:exported="false"
             android:theme="@style/TextSecure.LightTheme" />

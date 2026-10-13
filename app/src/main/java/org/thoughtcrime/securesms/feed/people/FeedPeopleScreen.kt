@@ -66,7 +66,8 @@ fun FeedPeopleScreen(
   onUnblock: (FeedPeopleRow) -> Unit,
   onOpenProfile: (FeedPersonSummary) -> Unit,
   onNoticeShown: () -> Unit,
-  onRemove: (FeedPeopleRow) -> Unit = {}
+  onRemove: (FeedPeopleRow) -> Unit = {},
+  onOpenTopic: (String) -> Unit = {}
 ) {
   val snackbarHostState = remember { SnackbarHostState() }
   val approved = stringResource(R.string.TellomiFeedPeople__approved)
@@ -156,6 +157,7 @@ fun FeedPeopleScreen(
               onDecline = { onDecline(row) },
               onUnblock = { onUnblock(row) },
               onOpenProfile = onOpenProfile,
+              onOpenTopic = onOpenTopic,
               onRemove = { onRemove(row) }
             )
           }
@@ -173,6 +175,7 @@ private fun PersonRow(
   onDecline: () -> Unit,
   onUnblock: () -> Unit,
   onOpenProfile: (FeedPersonSummary) -> Unit,
+  onOpenTopic: (String) -> Unit,
   onRemove: () -> Unit
 ) {
   val person = row.person
@@ -181,7 +184,13 @@ private fun PersonRow(
     horizontalArrangement = Arrangement.spacedBy(12.dp),
     modifier = Modifier
       .fillMaxWidth()
-      .then(if (person != null) Modifier.clickable { onOpenProfile(person) } else Modifier)
+      .then(
+        when {
+          person != null -> Modifier.clickable { onOpenProfile(person) }
+          row.topic != null -> Modifier.clickable { onOpenTopic(row.topic) }
+          else -> Modifier
+        }
+      )
       .padding(horizontal = 24.dp, vertical = 12.dp)
   ) {
     if (row.topic == null) {

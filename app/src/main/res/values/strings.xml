@@ -6882,6 +6882,9 @@
     <string name="TellomiFeedTopicFollow__followed_title">Followed topics</string>
     <string name="TellomiFeedTopicFollow__followed_empty">No topics yet. Tap a #topic on a post to follow it.</string>
     <string name="TellomiFeedTopicFollow__followed_explain">New posts with these topics show in Following.</string>
+    <string name="TellomiFeedTopicPage__followed">Following this topic</string>
+    <string name="TellomiFeedTopicPage__empty">No posts with this topic yet.</string>
+    <string name="TellomiFeedTopicPage__gone">This topic isn\'t available</string>
     <plurals name="TellomiFeed__comments">
         <item quantity="one">%1$d comment</item>
         <item quantity="other">%1$d comments</item>

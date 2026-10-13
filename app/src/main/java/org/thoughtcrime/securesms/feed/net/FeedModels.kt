@@ -577,6 +577,21 @@ data class FeedHideLists(
   @SerialName("hide_from") val hideFrom: List<FeedPersonSummary> = emptyList()
 )
 
+/** `GET /v1/feed/topics/{slug}/posts`：话题页，带这个话题的帖子按时间倒序；[following] 是我有没有关注它。 */
+@Serializable
+data class FeedTopicPostsResponse(
+  val items: List<FeedItemRef> = emptyList(),
+  val cursor: String? = null,
+  val following: Boolean = false
+)
+
+/** 话题页的一页：卡片已经补好。 */
+data class FeedTopicPage(
+  val posts: List<FeedCard> = emptyList(),
+  val cursor: String? = null,
+  val following: Boolean = false
+)
+
 /** `GET /v1/feed/me/followed-topics`：我关注的话题，最近关注的在前。 */
 @Serializable
 data class FeedFollowedTopics(val topics: List<FeedFollowedTopic> = emptyList())

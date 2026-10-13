@@ -293,6 +293,16 @@ class FeedApi(
 
   suspend fun followedTopics(): FeedFollowedTopics = get(url("v1/feed/me/followed-topics"), FeedFollowedTopics.serializer())
 
+  /** 话题页：带 [slug] 的帖子，新的在前；屏蔽了这个话题是空页，slug 不合法 404。 */
+  suspend fun topicPosts(slug: String, cursor: String?): FeedTopicPostsResponse {
+    val url = url("v1/feed/topics").newBuilder()
+      .addPathSegment(slug)
+      .addPathSegment("posts")
+      .apply { if (cursor != null) addQueryParameter("cursor", cursor) }
+      .build()
+    return get(url, FeedTopicPostsResponse.serializer())
+  }
+
   suspend fun hideLists(): FeedHideLists = get(url("v1/feed/me/hide-lists"), FeedHideLists.serializer())
 
   /** 加进或移出 [list]（[HIDE_MUTE] / [HIDE_FROM]）→ 204，可以重复调。没有主页 409 `profile_required`；自己、互相屏蔽的人 404。 */

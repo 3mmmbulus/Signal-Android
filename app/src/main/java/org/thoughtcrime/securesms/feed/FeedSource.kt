@@ -52,6 +52,7 @@ import org.thoughtcrime.securesms.feed.net.FeedReportRequest
 import org.thoughtcrime.securesms.feed.net.FeedSearchPage
 import org.thoughtcrime.securesms.feed.net.FeedServerKeyword
 import org.thoughtcrime.securesms.feed.net.FeedTimelinePage
+import org.thoughtcrime.securesms.feed.net.FeedTopicPage
 import org.thoughtcrime.securesms.region.TellomiRegionProfile
 import org.thoughtcrime.securesms.region.TellomiRegions
 import java.io.IOException
@@ -193,6 +194,9 @@ interface FeedSource {
   /** 关注 / 取消关注一个话题：话题的新动态进「关注」栏（第三节第 18 条）。 */
   suspend fun setFollowingTopic(slug: String, following: Boolean)
 
+  /** 话题页的一页，带「我关注了没有」（第三节第 18 条）。 */
+  suspend fun topicPosts(slug: String, cursor: String?): FeedTopicPage
+
   /** 「不看 TA」（[FeedApi.HIDE_MUTE]）/「不让 TA 看」（[FeedApi.HIDE_FROM]）的加进、移出。 */
   suspend fun setHideList(list: String, profileId: String, on: Boolean)
 }
@@ -322,6 +326,10 @@ class RemoteFeedSource(
   override suspend fun setFollowingTopic(slug: String, following: Boolean) {
     api.follow(FeedApi.TARGET_TOPIC, slug, following)
   }
+  override suspend fun topicPosts(slug: String, cursor: String?): FeedTopicPage {
+    val response = api.topicPosts(slug, cursor)
+    return FeedTopicPage(posts = hydrate(response.items).map { it.card }, cursor = response.cursor, following = response.following)
+  }
   override suspend fun setHideList(list: String, profileId: String, on: Boolean) = api.setHideList(list, profileId, on)
 
   override suspend fun search(query: String, scope: String, cursor: String?): FeedSearchPage {
@@ -445,6 +453,7 @@ object EmptyFeedSource : FeedSource {
   override suspend fun hideLists(): FeedHideLists = throw IllegalStateException("feed is not available")
   override suspend fun followedTopics(): List<String> = emptyList()
   override suspend fun setFollowingTopic(slug: String, following: Boolean) = throw IllegalStateException("feed is not available")
+  override suspend fun topicPosts(slug: String, cursor: String?): FeedTopicPage = throw IllegalStateException("feed is not available")
   override suspend fun setHideList(list: String, profileId: String, on: Boolean) = throw IllegalStateException("feed is not available")
 }
 

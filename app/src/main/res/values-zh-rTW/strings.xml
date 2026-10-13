@@ -6665,6 +6665,9 @@
     <string name="TellomiFeedTopicFollow__followed_title">關注的話題</string>
     <string name="TellomiFeedTopicFollow__followed_empty">還沒有關注話題。點貼文上的 #話題 就能關注。</string>
     <string name="TellomiFeedTopicFollow__followed_explain">這些話題的新動態會出現在「關注」欄。</string>
+    <string name="TellomiFeedTopicPage__followed">已關注這個話題</string>
+    <string name="TellomiFeedTopicPage__empty">這個話題下還沒有動態</string>
+    <string name="TellomiFeedTopicPage__gone">沒有這個話題</string>
     <plurals name="TellomiFeed__comments">
         <item quantity="other">%1$d 則留言</item>
     </plurals>
