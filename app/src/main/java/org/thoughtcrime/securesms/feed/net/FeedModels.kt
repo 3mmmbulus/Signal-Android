@@ -286,3 +286,35 @@ data class FeedCreatePostResponse(
     const val STATE_PUBLISHED = "published"
   }
 }
+
+/**
+ * `GET /v1/feed/me/posts` 的一条（契约 7.3）：作者自己看的，带审核状态和未通过原因。
+ * [rejectionReasons] 只有作者看得到（第三节第 24 条）；引擎现在给的是规则代码（`lexicon:…`、`uncertain`），界面按代码转成文案。
+ */
+@Serializable
+data class FeedMyPost(
+  val id: String,
+  val kind: String = FeedCard.KIND_POST,
+  val state: String,
+  val version: Int = 1,
+  val title: String? = null,
+  val text: String? = null,
+  val visibility: String? = null,
+  @SerialName("created_at") val createdAt: String? = null,
+  @SerialName("edited_at") val editedAt: String? = null,
+  @SerialName("rejection_reasons") val rejectionReasons: List<String> = emptyList()
+) {
+  companion object {
+    const val STATE_PENDING = FeedCreatePostResponse.STATE_PENDING
+    const val STATE_PUBLISHED = FeedCreatePostResponse.STATE_PUBLISHED
+    const val STATE_REJECTED = "rejected"
+    const val STATE_WITHDRAWN = "withdrawn"
+  }
+}
+
+/** 每页 30 条，新的在前；[nextBefore] 是下一页的 `?before=`，没有就是最后一页。 */
+@Serializable
+data class FeedMyPostsPage(
+  val posts: List<FeedMyPost> = emptyList(),
+  @SerialName("next_before") val nextBefore: String? = null
+)

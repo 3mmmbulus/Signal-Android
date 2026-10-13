@@ -125,6 +125,20 @@ class FeedApi(
   }
 
   /** 发帖。大陆区返回 `pending`（先审后发，R-2.2）；没建过主页返回 409 `profile_required`。 */
+  /** 自己的帖子，带审核状态（契约 7.3）。[before] 是上一页的 `next_before`。 */
+  suspend fun myPosts(before: String?): FeedMyPostsPage {
+    val url = url("v1/feed/me/posts").newBuilder()
+      .apply { if (before != null) addQueryParameter("before", before) }
+      .build()
+    return get(url, FeedMyPostsPage.serializer())
+  }
+
+  /** 删自己的帖子（204）。别人的帖子引擎回 404。 */
+  suspend fun deletePost(contentId: String) {
+    val url = url("v1/feed/posts").newBuilder().addPathSegment(contentId).build()
+    sendNoContent(Request.Builder().url(url).delete())
+  }
+
   suspend fun createPost(request: FeedCreatePostRequest): FeedCreatePostResponse {
     val body = FeedJson.encodeToString(FeedCreatePostRequest.serializer(), request).toRequestBody(JSON)
     return send(Request.Builder().url(url("v1/feed/posts")).post(body), FeedCreatePostResponse.serializer())

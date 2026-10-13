@@ -233,4 +233,36 @@ class FeedApiTest {
     assertThat(request.body.readUtf8()).isEqualTo("""{"kind":"post","text":"hi","visibility":"friends","comments_closed":false}""")
     assertThat(response.state).isEqualTo(FeedCreatePostResponse.STATE_PENDING)
   }
+
+  @Test
+  fun `my posts pages with before and reads review state`() = runBlocking {
+    server.enqueue(
+      MockResponse().setBody(
+        """{"posts":[{"id":"p1","kind":"post","state":"rejected","version":1,"text":"x","visibility":"public",""" +
+          """"created_at":"2026-10-13T08:00:00Z","rejection_reasons":["lexicon:ad"]}],"next_before":"p1"}"""
+      )
+    )
+    server.enqueue(MockResponse().setBody("""{"posts":[]}"""))
+
+    val first = api.myPosts(before = null)
+    val second = api.myPosts(before = "p1")
+
+    assertThat(server.takeRequest().path).isEqualTo("/v1/feed/me/posts")
+    assertThat(server.takeRequest().path).isEqualTo("/v1/feed/me/posts?before=p1")
+    assertThat(first.posts.single().state).isEqualTo(FeedMyPost.STATE_REJECTED)
+    assertThat(first.posts.single().rejectionReasons).isEqualTo(listOf("lexicon:ad"))
+    assertThat(first.nextBefore).isEqualTo("p1")
+    assertThat(second.nextBefore).isEqualTo(null)
+  }
+
+  @Test
+  fun `delete post is a DELETE on the post`() = runBlocking {
+    server.enqueue(MockResponse().setResponseCode(204))
+
+    api.deletePost("p 1")
+
+    val request = server.takeRequest()
+    assertThat(request.method).isEqualTo("DELETE")
+    assertThat(request.path).isEqualTo("/v1/feed/posts/p%201")
+  }
 }

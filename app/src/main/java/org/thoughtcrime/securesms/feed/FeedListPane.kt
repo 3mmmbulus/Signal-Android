@@ -58,6 +58,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.res.vectorResource
@@ -78,6 +79,7 @@ import org.signal.core.ui.compose.DayNightPreviews
 import org.signal.core.ui.compose.Previews
 import org.thoughtcrime.securesms.R
 import org.thoughtcrime.securesms.feed.compose.FeedComposeActivity
+import org.thoughtcrime.securesms.feed.mine.FeedMyPostsActivity
 import org.thoughtcrime.securesms.feed.net.FeedCard
 import org.thoughtcrime.securesms.feed.net.FeedCreatePostResponse
 import org.signal.core.ui.R as CoreUiR
@@ -103,6 +105,7 @@ fun FeedListPane(
   viewModel: FeedViewModel = viewModel { FeedViewModel() }
 ) {
   val state by viewModel.state.collectAsStateWithLifecycle()
+  val context = LocalContext.current
   val snackbarHostState = remember { SnackbarHostState() }
   val undoLabel = stringResource(R.string.TellomiFeed__undo)
   val hiddenMessage = stringResource(R.string.TellomiFeed__hidden)
@@ -148,6 +151,7 @@ fun FeedListPane(
       onLikeClick = viewModel::toggleLike,
       onNotInterestedClick = viewModel::notInterested,
       onCardsVisible = viewModel::onCardsVisible,
+      onMyPostsClick = { context.startActivity(FeedMyPostsActivity.intent(context)) },
       modifier = Modifier.fillMaxSize()
     )
 
@@ -180,6 +184,7 @@ private fun FeedPager(
   onLikeClick: (FeedCard) -> Unit,
   onNotInterestedClick: (FeedCard) -> Unit,
   onCardsVisible: (FeedTab, Set<String>) -> Unit,
+  onMyPostsClick: () -> Unit,
   modifier: Modifier = Modifier
 ) {
   val tabs = state.tabs
@@ -190,7 +195,8 @@ private fun FeedPager(
     FeedTopBar(
       tabs = tabs,
       selectedIndex = pagerState.currentPage,
-      onTabClick = { index -> scope.launch { pagerState.animateScrollToPage(index) } }
+      onTabClick = { index -> scope.launch { pagerState.animateScrollToPage(index) } },
+      onMyPostsClick = onMyPostsClick
     )
 
     HorizontalPager(
@@ -330,23 +336,42 @@ private fun FeedErrorState(onRetry: () -> Unit) {
 private fun FeedTopBar(
   tabs: List<FeedTab>,
   selectedIndex: Int,
-  onTabClick: (Int) -> Unit
+  onTabClick: (Int) -> Unit,
+  onMyPostsClick: () -> Unit
 ) {
-  Row(
-    horizontalArrangement = Arrangement.Center,
-    verticalAlignment = Alignment.CenterVertically,
+  Box(
     modifier = Modifier
       .fillMaxWidth()
       .windowInsetsPadding(WindowInsets.statusBars)
       .height(TOP_BAR_HEIGHT)
   ) {
-    tabs.forEachIndexed { index, tab ->
-      FeedTopBarTab(
-        label = stringResource(tab.label),
-        selected = index == selectedIndex,
-        onClick = { onTabClick(index) }
-      )
+    Row(
+      horizontalArrangement = Arrangement.Center,
+      verticalAlignment = Alignment.CenterVertically,
+      modifier = Modifier.align(Alignment.Center)
+    ) {
+      tabs.forEachIndexed { index, tab ->
+        FeedTopBarTab(
+          label = stringResource(tab.label),
+          selected = index == selectedIndex,
+          onClick = { onTabClick(index) }
+        )
+      }
     }
+
+    // 「我的动态」：一级导航有「我」之前先放这里（第三节第 17 条）
+    Icon(
+      painter = painterResource(R.drawable.symbol_person_24),
+      contentDescription = stringResource(R.string.TellomiFeedMine__title),
+      tint = MaterialTheme.colorScheme.onSurfaceVariant,
+      modifier = Modifier
+        .align(Alignment.CenterEnd)
+        .padding(end = 4.dp)
+        .clip(CircleShape)
+        .clickable(onClick = onMyPostsClick)
+        .padding(10.dp)
+        .size(24.dp)
+    )
   }
 }
 
@@ -439,6 +464,7 @@ private fun FeedPagerEmptyPreview() {
       onLikeClick = {},
       onNotInterestedClick = {},
       onCardsVisible = { _, _ -> },
+      onMyPostsClick = {},
       modifier = Modifier.fillMaxSize()
     )
   }
@@ -448,6 +474,6 @@ private fun FeedPagerEmptyPreview() {
 @Composable
 private fun FeedTopBarPreview() {
   Previews.Preview {
-    FeedTopBar(tabs = FeedTab.entries, selectedIndex = 1, onTabClick = {})
+    FeedTopBar(tabs = FeedTab.entries, selectedIndex = 1, onTabClick = {}, onMyPostsClick = {})
   }
 }

@@ -934,6 +934,11 @@
             android:windowSoftInputMode="stateVisible|adjustResize" />
 
         <activity
+            android:name=".feed.mine.FeedMyPostsActivity"
+            android:exported="false"
+            android:theme="@style/TextSecure.LightTheme" />
+
+        <activity
             android:name=".nicknames.NicknameActivity"
             android:exported="false"
             android:theme="@style/TextSecure.LightTheme"

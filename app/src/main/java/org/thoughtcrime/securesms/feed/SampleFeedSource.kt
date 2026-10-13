@@ -15,6 +15,8 @@ import org.thoughtcrime.securesms.feed.net.FeedCreatePostResponse
 import org.thoughtcrime.securesms.feed.net.FeedEntry
 import org.thoughtcrime.securesms.feed.net.FeedEventPayload
 import org.thoughtcrime.securesms.feed.net.FeedMedia
+import org.thoughtcrime.securesms.feed.net.FeedMyPost
+import org.thoughtcrime.securesms.feed.net.FeedMyPostsPage
 import org.thoughtcrime.securesms.feed.net.FeedStats
 import org.thoughtcrime.securesms.feed.net.FeedTimelinePage
 import org.thoughtcrime.securesms.feed.net.FeedTopic
@@ -37,7 +39,20 @@ object SampleFeedSource : FeedSource {
 
   /** 自己在样例里发的，放在两栏最上面。 */
   private val mine = mutableListOf<FeedCard>()
+  private var nextMineId = 0
   private val published = mutableMapOf<String, FeedCreatePostResponse>()
+
+  /** 「我的动态」里另外两条只给作者看的：一条审核中、一条未通过，内部用户能看到这两种状态长什么样。 */
+  private val reviewSamples = mutableListOf(
+    FeedMyPost(id = "s-mine-pending", state = FeedMyPost.STATE_PENDING, text = "周末的市集有一家卖手工皂的，味道很好闻。", createdAt = "2026-10-13T08:00:00Z"),
+    FeedMyPost(
+      id = "s-mine-rejected",
+      state = FeedMyPost.STATE_REJECTED,
+      text = "加我领福利，名额有限。",
+      createdAt = "2026-10-12T08:00:00Z",
+      rejectionReasons = listOf("lexicon:ad")
+    )
+  )
 
   private val me = FeedAuthor(profileId = "s-me", displayName = "我", tellomiNumber = "1000000001")
 
@@ -127,7 +142,7 @@ object SampleFeedSource : FeedSource {
   override suspend fun publish(draft: FeedDraft, clientNonce: String): FeedCreatePostResponse = synchronized(this) {
     published[clientNonce]?.let { return it }
 
-    val id = "mine-${mine.size}"
+    val id = "mine-${nextMineId++}"
     val card = FeedCard(
       id = id,
       kind = draft.kind.apiName,
@@ -147,6 +162,18 @@ object SampleFeedSource : FeedSource {
     mine.add(0, card)
 
     FeedCreatePostResponse(id = id, state = FeedCreatePostResponse.STATE_PUBLISHED).also { published[clientNonce] = it }
+  }
+
+  override suspend fun myPosts(before: String?): FeedMyPostsPage = synchronized(this) {
+    val posts = mine.map { card ->
+      FeedMyPost(id = card.id, kind = card.kind, state = FeedMyPost.STATE_PUBLISHED, title = card.title, text = card.text, createdAt = card.publishedAt)
+    } + reviewSamples
+    FeedMyPostsPage(posts = if (before == null) posts else emptyList())
+  }
+
+  override suspend fun deletePost(contentId: String): Unit = synchronized(this) {
+    mine.removeAll { it.id == contentId }
+    reviewSamples.removeAll { it.id == contentId }
   }
 
   private fun sampleCard(index: Int): FeedCard {
