@@ -8,7 +8,6 @@ package org.thoughtcrime.securesms.feed.search
 import android.content.Context
 import android.content.Intent
 import android.os.Bundle
-import androidx.activity.compose.setContent
 import androidx.activity.viewModels
 import androidx.compose.runtime.getValue
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -16,6 +15,7 @@ import org.signal.core.ui.compose.theme.SignalTheme
 import org.thoughtcrime.securesms.PassphraseRequiredActivity
 import org.thoughtcrime.securesms.feed.detail.FeedPostDetailActivity
 import org.thoughtcrime.securesms.feed.profile.FeedProfilePageActivity
+import org.thoughtcrime.securesms.feed.setFeedContent
 import org.thoughtcrime.securesms.util.DynamicNoActionBarTheme
 
 /** 动态搜索。从动态页顶栏的放大镜进（在铃铛左边）。 */
@@ -29,7 +29,7 @@ class FeedSearchActivity : PassphraseRequiredActivity() {
   }
 
   override fun onCreate(savedInstanceState: Bundle?, ready: Boolean) {
-    setContent {
+    setFeedContent {
       val state by viewModel.state.collectAsStateWithLifecycle()
       SignalTheme {
         FeedSearchScreen(

@@ -8,7 +8,6 @@ package org.thoughtcrime.securesms.feed.topic
 import android.content.Context
 import android.content.Intent
 import android.os.Bundle
-import androidx.activity.compose.setContent
 import androidx.activity.viewModels
 import androidx.compose.runtime.getValue
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -20,6 +19,7 @@ import org.thoughtcrime.securesms.feed.detail.FeedPostDetailActivity
 import org.thoughtcrime.securesms.feed.feedTopicLabel
 import org.thoughtcrime.securesms.feed.report.FeedReportActivity
 import org.thoughtcrime.securesms.feed.report.FeedReportTarget
+import org.thoughtcrime.securesms.feed.setFeedContent
 import org.thoughtcrime.securesms.util.DynamicNoActionBarTheme
 
 /** 话题页。从卡片上的 #话题、「关注的话题」名单进来。 */
@@ -44,7 +44,7 @@ class FeedTopicActivity : PassphraseRequiredActivity() {
 
   override fun onCreate(savedInstanceState: Bundle?, ready: Boolean) {
     val givenLabel = intent.getStringExtra(EXTRA_LABEL)
-    setContent {
+    setFeedContent {
       val state by viewModel.state.collectAsStateWithLifecycle()
       SignalTheme {
         FeedTopicScreen(

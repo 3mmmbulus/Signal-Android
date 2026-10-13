@@ -9,7 +9,6 @@ import android.app.Activity
 import android.content.Context
 import android.content.Intent
 import android.os.Bundle
-import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContract
 import androidx.activity.viewModels
 import androidx.compose.runtime.LaunchedEffect
@@ -20,6 +19,7 @@ import androidx.lifecycle.viewmodel.viewModelFactory
 import org.signal.core.ui.compose.theme.SignalTheme
 import org.thoughtcrime.securesms.PassphraseRequiredActivity
 import org.thoughtcrime.securesms.feed.closepeople.FeedClosePeopleActivity
+import org.thoughtcrime.securesms.feed.setFeedContent
 import org.thoughtcrime.securesms.recipients.Recipient
 import org.thoughtcrime.securesms.util.DynamicNoActionBarTheme
 
@@ -41,7 +41,7 @@ class FeedProfileActivity : PassphraseRequiredActivity() {
   }
 
   override fun onCreate(savedInstanceState: Bundle?, ready: Boolean) {
-    setContent {
+    setFeedContent {
       val state by viewModel.state.collectAsStateWithLifecycle()
       LaunchedEffect(state.saved) {
         if (state.saved) {

@@ -8,7 +8,6 @@ package org.thoughtcrime.securesms.feed.notifications
 import android.content.Context
 import android.content.Intent
 import android.os.Bundle
-import androidx.activity.compose.setContent
 import androidx.activity.viewModels
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -22,6 +21,7 @@ import org.thoughtcrime.securesms.feed.net.FeedNotification
 import org.thoughtcrime.securesms.feed.people.FeedPeopleActivity
 import org.thoughtcrime.securesms.feed.people.FeedPeopleMode
 import org.thoughtcrime.securesms.feed.profile.FeedProfilePageActivity
+import org.thoughtcrime.securesms.feed.setFeedContent
 import org.thoughtcrime.securesms.util.DynamicNoActionBarTheme
 
 /** 动态通知。现在从动态页顶栏的铃铛进（附录 10「动态页顶部」：右边搜索 + 通知）。 */
@@ -35,7 +35,7 @@ class FeedNotificationsActivity : PassphraseRequiredActivity() {
   }
 
   override fun onCreate(savedInstanceState: Bundle?, ready: Boolean) {
-    setContent {
+    setFeedContent {
       val state by viewModel.state.collectAsStateWithLifecycle()
       LaunchedEffect(state.openCard) {
         val card = state.openCard ?: return@LaunchedEffect

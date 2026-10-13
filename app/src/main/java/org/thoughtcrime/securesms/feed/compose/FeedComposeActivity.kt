@@ -10,7 +10,6 @@ import android.content.Context
 import android.content.Intent
 import android.os.Bundle
 import android.widget.Toast
-import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContract
 import androidx.activity.viewModels
 import androidx.compose.runtime.LaunchedEffect
@@ -30,6 +29,7 @@ import org.thoughtcrime.securesms.PassphraseRequiredActivity
 import org.thoughtcrime.securesms.R
 import org.thoughtcrime.securesms.feed.net.FeedCreatePostResponse
 import org.thoughtcrime.securesms.feed.profile.FeedProfileActivity
+import org.thoughtcrime.securesms.feed.setFeedContent
 import org.thoughtcrime.securesms.recipients.Recipient
 import org.thoughtcrime.securesms.recipients.RecipientId
 import org.thoughtcrime.securesms.util.DynamicNoActionBarTheme
@@ -79,7 +79,7 @@ class FeedComposeActivity : PassphraseRequiredActivity() {
   }
 
   override fun onCreate(savedInstanceState: Bundle?, ready: Boolean) {
-    setContent {
+    setFeedContent {
       val state by viewModel.state.collectAsStateWithLifecycle()
 
       LaunchedEffect(state.publishedState) {

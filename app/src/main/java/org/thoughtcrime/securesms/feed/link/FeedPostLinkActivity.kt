@@ -6,7 +6,6 @@
 package org.thoughtcrime.securesms.feed.link
 
 import android.os.Bundle
-import androidx.activity.compose.setContent
 import androidx.activity.viewModels
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -39,6 +38,7 @@ import org.thoughtcrime.securesms.R
 import org.thoughtcrime.securesms.feed.FeedSources
 import org.thoughtcrime.securesms.feed.TellomiFeed
 import org.thoughtcrime.securesms.feed.detail.FeedPostDetailActivity
+import org.thoughtcrime.securesms.feed.setFeedContent
 import org.thoughtcrime.securesms.util.DynamicNoActionBarTheme
 import org.thoughtcrime.securesms.util.TellomiLinks
 import org.signal.core.ui.R as CoreUiR
@@ -67,7 +67,7 @@ class FeedPostLinkActivity : PassphraseRequiredActivity() {
   }
 
   override fun onCreate(savedInstanceState: Bundle?, ready: Boolean) {
-    setContent {
+    setFeedContent {
       val state by viewModel.state.collectAsStateWithLifecycle()
       LaunchedEffect(state) {
         val ready = state as? FeedPostLinkViewModel.State.Ready ?: return@LaunchedEffect

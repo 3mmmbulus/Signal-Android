@@ -6,6 +6,8 @@
 package org.thoughtcrime.securesms.feed
 
 import android.os.SystemClock
+import androidx.activity.ComponentActivity
+import androidx.activity.compose.setContent
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
@@ -13,6 +15,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -32,6 +35,7 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.repeatOnLifecycle
 import kotlinx.coroutines.delay
+import org.signal.core.ui.compose.theme.SignalTheme
 import org.thoughtcrime.securesms.R
 import org.thoughtcrime.securesms.keyvalue.SignalStore
 import java.time.LocalDate
@@ -162,5 +166,26 @@ fun FeedMinorLockScreen(lock: FeedMinorTime.Lock, modifier: Modifier = Modifier)
       textAlign = TextAlign.Center,
       modifier = Modifier.padding(top = 8.dp)
     )
+  }
+}
+
+/**
+ * 动态里单独打开的页面（详情、主页、话题、搜索、发布……）用它代替 `setContent`：未成年人模式到点了整页换成锁屏页，
+ * 用时也算进同一份。是不是未成年人模式用动态页上一次拿到的 `config`（[org.thoughtcrime.securesms.keyvalue.TellomiFeedValues.minorMode]）。
+ * 举报和推荐设置不套：举报和隐私设置任何时候都要能用。
+ */
+fun ComponentActivity.setFeedContent(content: @Composable () -> Unit) {
+  setContent {
+    val minorMode = remember { SignalStore.tellomiFeed.minorMode }
+    val lock = rememberFeedMinorLock(minorMode = minorMode)
+    if (lock == null) {
+      content()
+    } else {
+      SignalTheme {
+        Surface {
+          FeedMinorLockScreen(lock)
+        }
+      }
+    }
   }
 }

@@ -103,6 +103,7 @@ import org.thoughtcrime.securesms.feed.report.FeedReportActivity
 import org.thoughtcrime.securesms.feed.report.FeedReportTarget
 import org.thoughtcrime.securesms.feed.search.FeedSearchActivity
 import org.thoughtcrime.securesms.feed.settings.FeedRecommendationSettingsActivity
+import org.thoughtcrime.securesms.keyvalue.SignalStore
 import org.signal.core.ui.R as CoreUiR
 
 private val TOP_BAR_HEIGHT = 48.dp
@@ -236,6 +237,10 @@ fun FeedListPane(
   }
 
   // 未成年人模式：每天 40 分钟、22:00–6:00 不能用（第三节第 31 条）
+  LaunchedEffect(state.config) {
+    // 记下来给动态里单独打开的页面用（setFeedContent）
+    state.config?.let { SignalStore.tellomiFeed.minorMode = it.minorMode }
+  }
   val minorLock = rememberFeedMinorLock(minorMode = state.config?.minorMode == true)
   if (minorLock != null) {
     FeedMinorLockScreen(minorLock, modifier = modifier)

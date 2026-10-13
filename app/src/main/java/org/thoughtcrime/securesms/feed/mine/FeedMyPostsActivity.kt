@@ -8,7 +8,6 @@ package org.thoughtcrime.securesms.feed.mine
 import android.content.Context
 import android.content.Intent
 import android.os.Bundle
-import androidx.activity.compose.setContent
 import androidx.activity.viewModels
 import androidx.compose.runtime.getValue
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -18,6 +17,7 @@ import org.thoughtcrime.securesms.feed.compose.FeedComposeActivity
 import org.thoughtcrime.securesms.feed.people.FeedPeopleActivity
 import org.thoughtcrime.securesms.feed.people.FeedPeopleMode
 import org.thoughtcrime.securesms.feed.profile.FeedProfileActivity
+import org.thoughtcrime.securesms.feed.setFeedContent
 import org.thoughtcrime.securesms.feed.settings.FeedRecommendationSettingsActivity
 import org.thoughtcrime.securesms.util.DynamicNoActionBarTheme
 
@@ -40,7 +40,7 @@ class FeedMyPostsActivity : PassphraseRequiredActivity() {
   private val profileLauncher = registerForActivityResult(FeedProfileActivity.Contract()) { }
 
   override fun onCreate(savedInstanceState: Bundle?, ready: Boolean) {
-    setContent {
+    setFeedContent {
       val state by viewModel.state.collectAsStateWithLifecycle()
       SignalTheme {
         FeedMyPostsScreen(

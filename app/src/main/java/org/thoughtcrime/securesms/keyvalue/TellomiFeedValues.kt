@@ -23,6 +23,7 @@ class TellomiFeedValues(store: KeyValueStore) : SignalStoreValues(store) {
     private const val ARTICLE_DRAFT = "tellomi_feed.article_draft"
     private const val MINOR_USAGE_DAY = "tellomi_feed.minor_usage_day"
     private const val MINOR_USED_MILLIS = "tellomi_feed.minor_used_millis"
+    private const val MINOR_MODE = "tellomi_feed.minor_mode"
   }
 
   public override fun onFirstEverAppLaunch() = Unit
@@ -58,4 +59,7 @@ class TellomiFeedValues(store: KeyValueStore) : SignalStoreValues(store) {
   /** 未成年人模式：今天是哪天（ISO 日期）和今天在动态上用了多少毫秒。见 `FeedMinorUsage`。 */
   var minorUsageDay: String? by stringValue(MINOR_USAGE_DAY, null)
   var minorUsedMillis: Long by longValue(MINOR_USED_MILLIS, 0)
+
+  /** 引擎上一次 `config` 说的是不是未成年人模式：动态里单独打开的页面（详情、主页……）也按它锁时间。 */
+  var minorMode: Boolean by booleanValue(MINOR_MODE, false)
 }
