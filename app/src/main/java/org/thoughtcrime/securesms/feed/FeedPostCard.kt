@@ -55,6 +55,9 @@ import androidx.compose.ui.unit.dp
 import org.signal.core.ui.compose.Previews
 import org.signal.glide.compose.GlideImage
 import org.thoughtcrime.securesms.R
+import org.thoughtcrime.securesms.feed.compose.FeedComposeActivity
+import org.thoughtcrime.securesms.feed.compose.FeedQuoteTarget
+import org.thoughtcrime.securesms.feed.detail.FeedPostDetailActivity
 import org.thoughtcrime.securesms.feed.net.FeedAuthor
 import org.thoughtcrime.securesms.feed.net.FeedCard
 import org.thoughtcrime.securesms.feed.net.FeedMedia
@@ -174,6 +177,19 @@ fun FeedPostCard(
             poll = poll,
             state = card.pollState,
             onVote = onVote?.let { vote -> { options: List<Int> -> vote(card, options) } },
+            modifier = Modifier.padding(top = 8.dp, end = 12.dp)
+          )
+        }
+
+        card.quoted?.let { quoted ->
+          // 引用的那条（第三节第 26 条）；删了或看不到了就是灰字（第 41 条）
+          val context = LocalContext.current
+          val inner = quoted.card
+          FeedQuotedBox(
+            authorName = inner?.author?.displayName,
+            text = inner?.let { (it.title?.takeIf { t -> t.isNotBlank() } ?: it.text ?: it.summary).orEmpty() },
+            deleted = quoted.deleted,
+            onClick = inner?.let { { context.startActivity(FeedPostDetailActivity.intent(context, it)) } },
             modifier = Modifier.padding(top = 8.dp, end = 12.dp)
           )
         }
@@ -563,6 +579,7 @@ object FeedPostCardTestTags {
   const val SHARE = "feed_card_share"
   const val COPY_LINK = "feed_card_copy_link"
   const val SEND_TO_CHATS = "feed_card_send_to_chats"
+  const val QUOTE = "feed_card_quote"
   const val MUTE_AUTHOR = "feed_card_mute_author"
   const val SAVE = "feed_card_save"
 
@@ -572,7 +589,7 @@ object FeedPostCardTestTags {
 }
 
 /**
- * 「分享」：发到聊天、复制链接、分享到其他 App（第三节第 26 条；转发到动态、引用、分享到快拍还没做）。
+ * 「分享」：发到聊天、引用、复制链接、分享到其他 App（第三节第 26 条；转发到动态、分享到快拍还没做）。
  * 只有 [FeedCard.shareable] 才画：私密账号和非公开动态没有外链（第 29 条）。
  */
 @Composable
@@ -601,6 +618,16 @@ private fun FeedShareButton(card: FeedCard) {
         },
         modifier = Modifier.testTag(FeedPostCardTestTags.SEND_TO_CHATS)
       )
+      FeedQuoteTarget.of(card)?.let { target ->
+        DropdownMenuItem(
+          text = { Text(stringResource(R.string.TellomiFeed__quote)) },
+          onClick = {
+            open = false
+            context.startActivity(FeedComposeActivity.quoteIntent(context, target))
+          },
+          modifier = Modifier.testTag(FeedPostCardTestTags.QUOTE)
+        )
+      }
       DropdownMenuItem(
         text = { Text(stringResource(R.string.TellomiFeed__copy_link)) },
         onClick = {

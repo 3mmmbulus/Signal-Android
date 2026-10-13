@@ -46,6 +46,7 @@ import org.thoughtcrime.securesms.feed.net.FeedPreferencesUpdate
 import org.thoughtcrime.securesms.feed.net.FeedProfilePage
 import org.thoughtcrime.securesms.feed.net.FeedProfilePostsPage
 import org.thoughtcrime.securesms.feed.net.FeedProfileUpdate
+import org.thoughtcrime.securesms.feed.net.FeedQuotedCard
 import org.thoughtcrime.securesms.feed.net.FeedRecentTopic
 import org.thoughtcrime.securesms.feed.net.FeedRelation
 import org.thoughtcrime.securesms.feed.net.FeedReportRequest
@@ -200,7 +201,9 @@ object SampleFeedSource : FeedSource {
       media = draft.attachedImages.map { FeedMedia(key = it.toString()) },
       ipRegionLabel = ipLabels.first(),
       viewer = FeedViewer(isAuthor = true),
-      poll = draft.attachedPoll?.toApi(Instant.now())
+      poll = draft.attachedPoll?.toApi(Instant.now()),
+      quoteOf = draft.quote?.id,
+      quoted = draft.quote?.let { quote -> FeedQuotedCard(quote.id, (mine + recommend + following).firstOrNull { it.id == quote.id }) }
     )
     mine.add(0, card)
     card.poll?.let { pollStates[id] = FeedPollState(counts = List(it.options.size) { 0 }) }

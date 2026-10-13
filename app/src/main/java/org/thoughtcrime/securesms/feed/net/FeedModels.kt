@@ -116,7 +116,9 @@ data class FeedCardResult(
   /** 能不能给「复制链接 / 分享到其他 App」：公开动态、作者不是私密账号（第三节第 29 条）。没带就当不能。 */
   val shareable: Boolean = false,
   /** 作者置顶了（第三节第 26 条）；主页第一页排在最前。 */
-  val pinned: Boolean = false
+  val pinned: Boolean = false,
+  /** `card.quote_of` 那条，引擎直接带上（只一层）；老引擎不带，由来源另取。 */
+  val quoted: FeedQuotedResult? = null
 ) {
   /** `unavailable` 不区分原因。不认识的 state 一律按不可用处理。 */
   val isAvailable: Boolean
@@ -137,7 +139,8 @@ data class FeedCardResult(
       pollState = poll,
       held = held,
       shareable = shareable,
-      pinned = pinned
+      pinned = pinned,
+      quoted = quoted?.toQuoted()
     )
   }
 
@@ -184,7 +187,9 @@ data class FeedCard(
   /** 外层 `shareable`：给不给「复制链接 / 分享到其他 App」。 */
   @Transient val shareable: Boolean = false,
   /** 外层 `pinned`：作者置顶了。 */
-  @Transient val pinned: Boolean = false
+  @Transient val pinned: Boolean = false,
+  /** [quoteOf] 那条的卡片，由来源另取一次 Card API 填上；取不到时 [FeedQuotedCard.card] 是 null（第 41 条：显示「原动态已不可见」）。 */
+  @Transient val quoted: FeedQuotedCard? = null
 ) {
   /** P1 客户端只渲染这几种 `kind`；别的（快拍、视频等）不显示，不报错。 */
   val isRenderable: Boolean
@@ -201,6 +206,30 @@ data class FeedCard(
     const val DISPLAY_ARTICLE_CARD = "article_card"
 
     val RENDERABLE_KINDS = setOf(KIND_POST, KIND_ARTICLE, KIND_COMMENT)
+  }
+}
+
+/**
+ * 被引用的那条：[card] 为 null 是看不到了；[deleted] 是作者删了（第 41 条「原动态已被作者删除」），
+ * 别的原因（屏蔽、隐藏、不给你看）不分。
+ */
+data class FeedQuotedCard(val id: String, val card: FeedCard?, val deleted: Boolean = false)
+
+/** Card API 外层的 `quoted`：`ok` 带卡片，`deleted` / `unavailable` 只有 id。 */
+@Serializable
+data class FeedQuotedResult(
+  val id: String,
+  val state: String,
+  val card: FeedCard? = null,
+  val stats: FeedStats? = null
+) {
+  fun toQuoted(): FeedQuotedCard {
+    val base = card?.takeIf { state == FeedCardResult.STATE_OK }
+    return FeedQuotedCard(id = id, card = base?.copy(id = id, stats = stats ?: base.stats), deleted = state == STATE_DELETED)
+  }
+
+  companion object {
+    const val STATE_DELETED = "deleted"
   }
 }
 
@@ -323,7 +352,9 @@ data class FeedCreatePostRequest(
   /** 只有 `kind == "post"` 能带（引擎 `invalid_poll`）。 */
   val poll: FeedPoll? = null,
   /** 话题 slug，最多 3 个（引擎 `invalid_topics`）。 */
-  val topics: List<String>? = null
+  val topics: List<String>? = null,
+  /** 引用的那条（第三节第 26 条「引用」）。 */
+  @SerialName("quote_of") val quoteOf: String? = null
 )
 
 /** 发帖时的 `audience`：`{"audience_token": "<Signal-Server 签的 JWT>"}`，`kind` 要和 `visibility` 一致。 */

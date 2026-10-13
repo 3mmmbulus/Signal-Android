@@ -9,6 +9,7 @@ import android.app.Activity
 import android.content.Context
 import android.content.Intent
 import android.os.Bundle
+import android.widget.Toast
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContract
 import androidx.activity.viewModels
@@ -26,6 +27,8 @@ import kotlinx.coroutines.withContext
 import org.signal.core.ui.compose.theme.SignalTheme
 import org.signal.core.util.orNull
 import org.thoughtcrime.securesms.PassphraseRequiredActivity
+import org.thoughtcrime.securesms.R
+import org.thoughtcrime.securesms.feed.net.FeedCreatePostResponse
 import org.thoughtcrime.securesms.feed.profile.FeedProfileActivity
 import org.thoughtcrime.securesms.recipients.Recipient
 import org.thoughtcrime.securesms.recipients.RecipientId
@@ -42,7 +45,12 @@ class FeedComposeActivity : PassphraseRequiredActivity() {
   private val theme = DynamicNoActionBarTheme()
   private val viewModel: FeedComposeViewModel by viewModels {
     viewModelFactory {
-      initializer { FeedComposeViewModel(editTarget = IntentCompat.getParcelableExtra(intent, EXTRA_EDIT, FeedEditTarget::class.java)) }
+      initializer {
+        FeedComposeViewModel(
+          editTarget = IntentCompat.getParcelableExtra(intent, EXTRA_EDIT, FeedEditTarget::class.java),
+          quoteTarget = IntentCompat.getParcelableExtra(intent, EXTRA_QUOTE, FeedQuoteTarget::class.java)
+        )
+      }
     }
   }
 
@@ -77,6 +85,10 @@ class FeedComposeActivity : PassphraseRequiredActivity() {
       LaunchedEffect(state.publishedState) {
         val published = state.publishedState
         if (published != null) {
+          if (state.draft.quote != null) {
+            // 从卡片的「分享」进来，没有动态页接结果，自己提示一句
+            Toast.makeText(this@FeedComposeActivity, if (published == FeedCreatePostResponse.STATE_PUBLISHED) R.string.TellomiFeedCompose__published else R.string.TellomiFeedCompose__pending, Toast.LENGTH_SHORT).show()
+          }
           setResult(Activity.RESULT_OK, Intent().putExtra(EXTRA_STATE, published))
           finish()
         }
@@ -143,5 +155,12 @@ class FeedComposeActivity : PassphraseRequiredActivity() {
   companion object {
     private const val EXTRA_STATE = "feed_publish_state"
     private const val EXTRA_EDIT = "feed_edit_target"
+    private const val EXTRA_QUOTE = "feed_quote_target"
+
+    /** 引用 [target] 发一条（卡片「分享」→「引用」）。 */
+    @JvmStatic
+    fun quoteIntent(context: Context, target: FeedQuoteTarget): Intent {
+      return Intent(context, FeedComposeActivity::class.java).putExtra(EXTRA_QUOTE, target)
+    }
   }
 }

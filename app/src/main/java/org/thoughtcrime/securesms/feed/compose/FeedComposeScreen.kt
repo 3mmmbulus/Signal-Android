@@ -76,6 +76,7 @@ import org.signal.core.ui.compose.Previews
 import org.signal.core.ui.compose.SignalIcons
 import org.signal.glide.compose.GlideImage
 import org.thoughtcrime.securesms.R
+import org.thoughtcrime.securesms.feed.FeedQuotedBox
 import org.signal.core.ui.R as CoreUiR
 
 /** 字数剩这么多时开始显示计数（Threads 也是快到上限才显示）。 */
@@ -212,6 +213,10 @@ fun FeedComposeScreen(
 
           state.draft.attachedPoll?.let { poll ->
             FeedComposePollEditor(poll = poll, actions = pollActions, modifier = Modifier.padding(top = 12.dp))
+          }
+
+          state.draft.quote?.let { quote ->
+            FeedQuotedBox(authorName = quote.authorName, text = quote.snippet, modifier = Modifier.padding(top = 12.dp))
           }
 
           if (state.draft.topics.isNotEmpty()) {

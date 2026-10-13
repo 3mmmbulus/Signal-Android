@@ -27,9 +27,11 @@ import java.util.UUID
  * 发布页的状态。字数、图片张数的上限和未成年人模式都来自服务端 `config`（契约第三节），客户端不自己判断区域。
  *
  * [editTarget] 非空时是编辑已发的那条（第三节第 23 条）：只改正文和长文标题，类型、图片、可见范围不动。
+ * [quoteTarget] 非空时是引用那条发一条新的（第 26 条）。
  */
 class FeedComposeViewModel(
   private val editTarget: FeedEditTarget? = null,
+  quoteTarget: FeedQuoteTarget? = null,
   private val source: FeedSource = FeedSources.current(),
   private val ioDispatcher: CoroutineDispatcher = Dispatchers.IO
 ) : ViewModel() {
@@ -43,7 +45,7 @@ class FeedComposeViewModel(
 
   private val internalState = MutableStateFlow(
     if (editTarget == null) {
-      FeedComposeState()
+      FeedComposeState(draft = FeedDraft(quote = quoteTarget))
     } else {
       val draft = FeedDraft(kind = editTarget.draftKind, title = editTarget.title.orEmpty(), text = editTarget.text)
       FeedComposeState(draft = draft, editing = editTarget, original = draft)

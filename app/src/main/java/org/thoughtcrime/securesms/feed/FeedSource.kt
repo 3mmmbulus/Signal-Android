@@ -48,6 +48,7 @@ import org.thoughtcrime.securesms.feed.net.FeedPreferencesUpdate
 import org.thoughtcrime.securesms.feed.net.FeedProfilePage
 import org.thoughtcrime.securesms.feed.net.FeedProfilePostsPage
 import org.thoughtcrime.securesms.feed.net.FeedProfileUpdate
+import org.thoughtcrime.securesms.feed.net.FeedQuotedCard
 import org.thoughtcrime.securesms.feed.net.FeedReportRequest
 import org.thoughtcrime.securesms.feed.net.FeedSearchPage
 import org.thoughtcrime.securesms.feed.net.FeedServerKeyword
@@ -257,7 +258,7 @@ class RemoteFeedSource(
 
   override suspend fun editPost(contentId: String, draft: FeedDraft): FeedCreatePostResponse = api.editPost(contentId, draft.toEditRequest())
 
-  override suspend fun card(contentId: String): FeedCard? = api.cards(listOf(contentId)).cards.firstOrNull()?.toCard()
+  override suspend fun card(contentId: String): FeedCard? = api.cards(listOf(contentId)).cards.firstOrNull()?.toCard()?.let { attachQuotes(listOf(it)).first() }
 
   override suspend fun comments(postId: String, cursor: String?): FeedCommentsPage {
     val response = api.comments(postId, cursor)
@@ -366,10 +367,35 @@ class RemoteFeedSource(
   private suspend fun hydrate(items: List<FeedItemRef>): List<FeedEntry> {
     if (items.isEmpty()) return emptyList()
     val reasons = items.associate { it.id to it.reason }
-    return items.map { it.id }.distinct().chunked(FeedApi.MAX_CARD_IDS).flatMap { ids ->
+    val entries = items.map { it.id }.distinct().chunked(FeedApi.MAX_CARD_IDS).flatMap { ids ->
       api.cards(ids).cards.mapNotNull { result ->
         result.toCard()?.let { FeedEntry(id = result.id, reason = reasons[result.id], card = it) }
       }
+    }
+    val cards = attachQuotes(entries.map { it.card })
+    return entries.mapIndexed { i, entry -> entry.copy(card = cards[i]) }
+  }
+
+  /**
+   * 引擎没在卡片外层带 `quoted` 的（上线前的老引擎），再取一次被引用的那些（同一页里已有的不重取），取不到的记成不可见。
+   */
+  private suspend fun attachQuotes(cards: List<FeedCard>): List<FeedCard> {
+    val known = cards.associateBy { it.id }
+    val missing = cards.filter { it.quoted == null }.mapNotNull { it.quoteOf }.filter { it !in known }.distinct()
+    val fetched = if (missing.isEmpty()) {
+      emptyMap()
+    } else {
+      try {
+        missing.chunked(FeedApi.MAX_CARD_IDS).flatMap { ids -> api.cards(ids).cards }.associate { it.id to it.toCard() }
+      } catch (e: IOException) {
+        // 取不到被引用的不影响这一页；那几张卡不画引用框，下次刷新再取
+        return cards
+      }
+    }
+    return cards.map { card ->
+      if (card.quoted != null) return@map card
+      val id = card.quoteOf ?: return@map card
+      card.copy(quoted = FeedQuotedCard(id, known[id] ?: fetched[id]))
     }
   }
 }
@@ -389,7 +415,8 @@ internal fun FeedDraft.toRequest(now: Instant = Instant.now()): FeedCreatePostRe
     replyPolicy = replies.policy.takeIf { it != FeedReplyPolicy.EVERYONE }?.apiName,
     replyModeration = replies.moderation,
     poll = attachedPoll?.toApi(now),
-    topics = topics.takeIf { it.isNotEmpty() }
+    topics = topics.takeIf { it.isNotEmpty() },
+    quoteOf = quote?.id
   )
 }
 
