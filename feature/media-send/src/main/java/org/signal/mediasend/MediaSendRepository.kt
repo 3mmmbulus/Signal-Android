@@ -223,7 +223,14 @@ data class SendRequest(
   /**
    * Tellomi（tellomi/tellomi#1261 P-5「单独发送」）：一张一条消息、说明挂最后一条，而不是整组一条相册消息。
    */
-  val sendSeparately: Boolean = false
+  val sendSeparately: Boolean = false,
+  /**
+   * Tellomi（tellomi/tellomi#1263 P-5「以文件发送」，ADR-0068）：原图按文件发（不压缩、保留原文件名），一个一条、说明挂最后一条；
+   * 不用预上传的结果（那是压缩过的）。
+   */
+  val sendAsFile: Boolean = false,
+  /** Tellomi（#1263）：按文件发送时，已选里的 HEIC 先转成 JPEG（用户在提问里选了「转成 JPEG」）。 */
+  val convertHeicToJpeg: Boolean = false
 )
 
 /**

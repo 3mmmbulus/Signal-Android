@@ -281,7 +281,10 @@ class MediaSendFlowViewModel(
       is MediaSendFlowEvent.AddMessageRequested -> onAddMessageRequested(event.startWithEmojiKeyboard)
       is MediaSendFlowEvent.ScheduleSendRequested -> onScheduleSendClick(event.option)
       MediaSendFlowEvent.StickerRequested -> sendHudCommand(MediaSendFlowHudCommand.SelectSticker)
-      MediaSendFlowEvent.NextRequested -> onNextClick()
+      MediaSendFlowEvent.NextRequested -> {
+        clearSendNowOptions()
+        onNextClick()
+      }
 
       is MediaSendFlowEvent.NavigateToFiles -> backStack.goToFiles(event.mediaFolder)
       // Tellomi（#1261 P-1）：相机里的「相册」、编辑器里的「添加」都回到选图网格，不再先进相册列表。
@@ -294,7 +297,7 @@ class MediaSendFlowViewModel(
       is MediaSendFlowEvent.EditFromAlbum -> editFromAlbum(event.media, event.tool)
       MediaSendFlowEvent.CloseAlbumViewer -> closeAlbumViewer()
       is MediaSendFlowEvent.SwitchFolder -> backStack.switchFolder(event.mediaFolder)
-      is MediaSendFlowEvent.SendNow -> sendNow(event.quality, event.separately)
+      is MediaSendFlowEvent.SendNow -> sendNow(event.quality, event.separately, event.asFile, event.convertHeicToJpeg)
       is MediaSendFlowEvent.AttachmentDockEntrySelected -> sendHudCommand(MediaSendFlowHudCommand.AttachmentDockEntrySelected(event.id))
       is MediaSendFlowEvent.ShowToast -> internalToastEvents.trySend(event.toast)
       is MediaSendFlowEvent.OpenAttachmentPage -> internalState.update { it.copy(attachmentPage = event.page) }
@@ -540,16 +543,29 @@ class MediaSendFlowViewModel(
   /** Tellomi（#1261）：这次发送是否一张一条（「···」→「单独发送」），只管紧接着的这一次。 */
   private var sendSeparatelyOnce = false
 
+  /** Tellomi（#1263）：这次是否按文件发送（「···」→「以文件发送」），只管紧接着的这一次。 */
+  private var sendAsFileOnce: SendAsFileOnce? = null
+
+  private data class SendAsFileOnce(val convertHeicToJpeg: Boolean)
+
   /**
    * Tellomi（tellomi/tellomi#1261 P-5）：「···」里的立即发送。以高清 / 标准质量发送只改这一次的画质（D9：不写设置），
-   * 单独发送一张一条；之后和底栏的发送键走同一条路（要先选联系人的流程照旧先去选）。
+   * 单独发送一张一条，以文件发送（#1263）按文件发原图；之后和底栏的发送键走同一条路（要先选联系人的流程照旧先去选）。
+   * 安全码变了要先确认的，确认后 [performSend] 还按这一次的方式发。
    */
-  private fun sendNow(quality: SentMediaQuality?, separately: Boolean) {
+  private fun sendNow(quality: SentMediaQuality?, separately: Boolean, asFile: Boolean, convertHeicToJpeg: Boolean) {
     if (quality != null) {
       setSentMediaQuality(quality)
     }
     sendSeparatelyOnce = separately
+    sendAsFileOnce = if (asFile) SendAsFileOnce(convertHeicToJpeg) else null
     onNextClick()
+  }
+
+  /** 底栏的发送键、定时发送：照常整组发。「···」那一次如果停在了安全码确认上没发出去，不能被带到这里。 */
+  private fun clearSendNowOptions() {
+    sendSeparatelyOnce = false
+    sendAsFileOnce = null
   }
 
   /** The body of [addMedia], for callers that already hold the selection. */
@@ -1185,6 +1201,7 @@ class MediaSendFlowViewModel(
    */
   fun onScheduledSendConfirmed(scheduledTime: Long) {
     updateState { copy(scheduledTime = scheduledTime) }
+    clearSendNowOptions()
     onNextClick()
   }
 
@@ -1300,6 +1317,13 @@ class MediaSendFlowViewModel(
       }
     }
 
+    // Tellomi（#1263）：按文件发的是原图，预上传的是压缩过的、用不上——停掉、删掉，免得白传。
+    val asFile = sendAsFileOnce
+    if (asFile != null) {
+      preUploadController.cancelAllUploads()
+      preUploadController.deleteAbandonedAttachments()
+    }
+
     val request = SendRequest(
       selectedMedia = snapshot.selectedMedia,
       editorStateMap = snapshot.editorStateMap,
@@ -1311,10 +1335,12 @@ class MediaSendFlowViewModel(
       scheduledTime = snapshot.scheduledTime,
       sendType = snapshot.sendType,
       isStory = snapshot.isStory,
-      preUploadResults = awaitPreUploadResults(),
-      sendSeparately = sendSeparatelyOnce
+      preUploadResults = if (asFile != null) emptyList() else awaitPreUploadResults(),
+      sendSeparately = sendSeparatelyOnce,
+      sendAsFile = asFile != null,
+      convertHeicToJpeg = asFile?.convertHeicToJpeg == true
     )
-    sendSeparatelyOnce = false
+    clearSendNowOptions()
 
     val result = repository.send(request)
 

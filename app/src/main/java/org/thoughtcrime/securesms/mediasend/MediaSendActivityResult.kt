@@ -34,7 +34,12 @@ class MediaSendActivityResult(
   /**
    * Tellomi（tellomi/tellomi#1261 P-5「单独发送」）：会话页一张一条地发（说明挂最后一条），而不是整组一条相册消息。
    */
-  val sendSeparately: Boolean = false
+  val sendSeparately: Boolean = false,
+  /**
+   * Tellomi（tellomi/tellomi#1263 P-5「以文件发送」，ADR-0068）：[nonUploadedMedia] 是按文件发的原图（[TellomiMediaAsFiles]），
+   * 会话页一个一条地发（说明挂最后一条）。
+   */
+  val sendAsFile: Boolean = false
 ) : Parcelable {
 
   val isPushPreUpload: Boolean
@@ -56,7 +61,8 @@ class MediaSendActivityResult(
     bodyRanges = bodyRanges,
     storyType = storyType,
     scheduledTime = scheduledTime,
-    sendSeparately = sendSeparately
+    sendSeparately = sendSeparately,
+    sendAsFile = sendAsFile
   )
 
   companion object {

@@ -4840,8 +4840,8 @@ class ConversationFragment :
         return
       }
 
-      // Tellomi（tellomi/tellomi#1261 P-5「单独发送」）：一张一条，说明挂最后一条。
-      if (result.sendSeparately) {
+      // Tellomi（tellomi/tellomi#1261 P-5「单独发送」）：一张一条，说明挂最后一条。「以文件发送」（#1263）也是一个一条。
+      if (result.sendSeparately || result.sendAsFile) {
         sendMediaSeparately(result)
         return
       }
@@ -4874,6 +4874,11 @@ class ConversationFragment :
     private fun mediaSlides(media: List<Media>): List<Slide> {
       return media.mapNotNull {
         when {
+          // Tellomi（tellomi/tellomi#1263「以文件发送」，ADR-0068）：原图按文件发，对方画成文件行。
+          it.transformProperties?.tellomiAsFile == true -> {
+            DocumentSlide.tellomiAsFile(requireContext(), it.uri, it.contentType ?: MediaUtil.OCTET, it.size, it.width, it.height, it.fileName)
+          }
+
           MediaUtil.isVideoType(it.contentType) -> VideoSlide(requireContext(), it.uri, it.size, it.isVideoGif, it.width, it.height, it.caption, it.transformProperties)
 
           MediaUtil.isGif(it.contentType) -> GifSlide(requireContext(), it.uri, it.size, it.width, it.height, it.isBorderless, it.caption)
@@ -4915,11 +4920,25 @@ class ConversationFragment :
 
       val quote = if (result.isViewOnce) null else inputPanel.quote.orNull()
       val preUploadParts: List<MessageSender.PreUploadResult> = result.preUploadResults
-      val slideParts: List<Slide> = if (result.isPushPreUpload) emptyList() else mediaSlides(result.nonUploadedMedia)
+      val allSlides: List<Slide> = if (result.isPushPreUpload) emptyList() else mediaSlides(result.nonUploadedMedia)
+
+      // 按文件发的原图不压缩，可能超过文件上限（大视频）：超过的不发，发完剩下的再提示「文件太大」并写明上限（同「文件」页）。
+      val maxFileSize = PushMediaConstraints(null).documentMaxSize
+      val (slideParts, tooLarge) = if (result.sendAsFile) allSlides.partition { it.fileSize <= maxFileSize } else allSlides to emptyList()
+      if (tooLarge.isNotEmpty()) {
+        viewModel.deleteSlideData(tooLarge)
+        MaterialAlertDialogBuilder(requireContext())
+          .setMessage(getString(R.string.TellomiAttachmentFiles__too_large, tooLarge.first().fileName.orNull().orEmpty(), maxFileSize.bytes.toUnitString()))
+          .setPositiveButton(android.R.string.ok, null)
+          .show()
+      }
+
       val count = if (result.isPushPreUpload) preUploadParts.size else slideParts.size
       if (count == 0) {
-        Log.i(TAG, "Unable to send due to empty message")
-        toast(R.string.ConversationActivity_message_is_empty_exclamation)
+        if (tooLarge.isEmpty()) {
+          Log.i(TAG, "Unable to send due to empty message")
+          toast(R.string.ConversationActivity_message_is_empty_exclamation)
+        }
         return
       }
 

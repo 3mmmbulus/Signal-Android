@@ -86,6 +86,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import org.signal.core.models.media.Media
 import org.signal.core.models.media.MediaFolder
+import org.signal.core.ui.compose.Dialogs
 import org.signal.core.ui.compose.DropdownMenus
 import org.signal.core.ui.compose.Previews
 import org.signal.core.ui.compose.SignalIcons
@@ -96,6 +97,7 @@ import org.signal.glide.compose.GlideImage
 import org.signal.mediasend.MediaSendFlowActivityContract
 import org.signal.mediasend.R
 import org.signal.mediasend.SentMediaQuality
+import org.signal.mediasend.TellomiHeic
 import org.signal.mediasend.screens.edit.AddAMessageRow
 import org.signal.mediasend.screens.edit.MediaEditScreenEvents
 import org.signal.mediasend.test.TestTags
@@ -477,7 +479,7 @@ private fun PickerTopBar(
       exit = fadeOut(),
       modifier = Modifier.align(Alignment.CenterEnd)
     ) {
-      MoreMenuButton(items = menuItems, onEvent = onEvent)
+      MoreMenuButton(items = menuItems, selectedMedia = state.selectedMedia, onEvent = onEvent)
     }
   }
 }
@@ -585,8 +587,12 @@ private fun folderTitle(folder: MediaFolder): String {
   return if (folder.bucketId == Media.ALL_MEDIA_BUCKET_ID) stringResource(R.string.MediaSelectScreen__recents) else folder.title
 }
 
-/** P-5 的「···」里有哪几项：以高清 / 标准质量发送（已选里有照片）；单独发送（已选 ≥ 2、且是已知的单个会话）。 */
+/**
+ * P-5 的「···」里有哪几项，按这个顺序：以文件发送（#1263，已知的单个会话、没开一次性查看）；以高清 / 标准质量发送（已选里有照片）；
+ * 单独发送（已选 ≥ 2、且是已知的单个会话）。
+ */
 private enum class MoreMenuItem {
+  SEND_AS_FILE,
   SEND_HIGH_QUALITY,
   SEND_STANDARD_QUALITY,
   SEND_SEPARATELY
@@ -596,8 +602,12 @@ private enum class MoreMenuItem {
 private fun rememberMoreMenuItems(state: MediaSelectState.Files): List<MoreMenuItem> {
   val hasPhoto = state.selectedMedia.any { ContentTypeUtil.isImageType(it.contentType) && !ContentTypeUtil.isGif(it.contentType) }
   val options = state.sendOptions
-  return remember(hasPhoto, state.selectedMedia.size, options.sentMediaQuality, options.canSendSeparately, options.isViewOnceEnabled) {
+  return remember(hasPhoto, state.selectedMedia.size, options.sentMediaQuality, options.canSendSeparately, options.canSendAsFile, options.isViewOnceEnabled) {
     buildList {
+      // 一次性查看的只能是照片 / 视频本身，文件没有一次性查看（遮罩那一刀再加「开了遮罩就没有」，ADR-0068 §4.4）。
+      if (state.selectedMedia.isNotEmpty() && options.canSendAsFile && !options.isViewOnceEnabled) {
+        add(MoreMenuItem.SEND_AS_FILE)
+      }
       if (hasPhoto && !options.isViewOnceEnabled) {
         // D9：默认已经是「高」时这一项换成「以标准质量发送」。
         add(if (options.sentMediaQuality == SentMediaQuality.HIGH) MoreMenuItem.SEND_STANDARD_QUALITY else MoreMenuItem.SEND_HIGH_QUALITY)
@@ -612,9 +622,11 @@ private fun rememberMoreMenuItems(state: MediaSelectState.Files): List<MoreMenuI
 @Composable
 private fun MoreMenuButton(
   items: List<MoreMenuItem>,
+  selectedMedia: List<Media>,
   onEvent: (MediaSelectScreenEvents) -> Unit
 ) {
   var expanded by remember { mutableStateOf(false) }
+  var askToConvertHeic by remember { mutableStateOf(false) }
 
   Box {
     RoundIconButton(
@@ -626,6 +638,7 @@ private fun MoreMenuButton(
     DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
       items.forEach { item ->
         val (label, icon) = when (item) {
+          MoreMenuItem.SEND_AS_FILE -> sendAsFileLabel(selectedMedia.size) to SignalIcons.File
           MoreMenuItem.SEND_HIGH_QUALITY -> stringResource(R.string.MediaSelectScreen__send_in_high_quality) to SignalIcons.QualityHigh
           MoreMenuItem.SEND_STANDARD_QUALITY -> stringResource(R.string.MediaSelectScreen__send_in_standard_quality) to SignalIcons.QualityHighSlash
           MoreMenuItem.SEND_SEPARATELY -> stringResource(R.string.MediaSelectScreen__send_separately) to SignalIcons.Photo
@@ -635,17 +648,43 @@ private fun MoreMenuButton(
           leadingIcon = { Icon(imageVector = icon.imageVector, contentDescription = null) },
           onClick = {
             expanded = false
-            onEvent(
-              when (item) {
-                MoreMenuItem.SEND_HIGH_QUALITY -> MediaSelectScreenEvents.SendWithQuality(SentMediaQuality.HIGH)
-                MoreMenuItem.SEND_STANDARD_QUALITY -> MediaSelectScreenEvents.SendWithQuality(SentMediaQuality.STANDARD)
-                MoreMenuItem.SEND_SEPARATELY -> MediaSelectScreenEvents.SendSeparately
+            when (item) {
+              MoreMenuItem.SEND_AS_FILE -> if (TellomiHeic.canConvert(selectedMedia)) {
+                askToConvertHeic = true
+              } else {
+                onEvent(MediaSelectScreenEvents.SendAsFile(convertHeicToJpeg = false))
               }
-            )
+              MoreMenuItem.SEND_HIGH_QUALITY -> onEvent(MediaSelectScreenEvents.SendWithQuality(SentMediaQuality.HIGH))
+              MoreMenuItem.SEND_STANDARD_QUALITY -> onEvent(MediaSelectScreenEvents.SendWithQuality(SentMediaQuality.STANDARD))
+              MoreMenuItem.SEND_SEPARATELY -> onEvent(MediaSelectScreenEvents.SendSeparately)
+            }
           }
         )
       }
     }
+  }
+
+  if (askToConvertHeic) {
+    // P-5（#1263）：已选里有 HEIC 时先问（Tellomi Desktop 不认 HEIC）。默认「保留 HEIC」；点外面 = 这次不发。
+    Dialogs.SimpleAlertDialog(
+      title = "",
+      body = stringResource(R.string.MediaSelectScreen__convert_photos_to_jpeg),
+      confirm = stringResource(R.string.MediaSelectScreen__keep_heic),
+      dismiss = stringResource(R.string.MediaSelectScreen__convert_to_jpeg),
+      onConfirm = { onEvent(MediaSelectScreenEvents.SendAsFile(convertHeicToJpeg = false)) },
+      onDeny = { onEvent(MediaSelectScreenEvents.SendAsFile(convertHeicToJpeg = true)) },
+      onDismiss = { askToConvertHeic = false }
+    )
+  }
+}
+
+/** P-5：一个时「以文件发送」，多个时「以文件发送（N 个）」。 */
+@Composable
+private fun sendAsFileLabel(count: Int): String {
+  return if (count > 1) {
+    pluralStringResource(R.plurals.MediaSelectScreen__send_as_n_files, count, count)
+  } else {
+    stringResource(R.string.MediaSelectScreen__send_as_file)
   }
 }
 

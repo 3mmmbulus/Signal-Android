@@ -91,6 +91,14 @@
   <string name="MediaSelectScreen__send_in_high_quality">以高畫質傳送</string>
   <string name="MediaSelectScreen__send_in_standard_quality">以標準畫質傳送</string>
   <string name="MediaSelectScreen__send_separately">分開傳送</string>
+  <!-- Tellomi（tellomi/tellomi#1263 P-5）以文件发送；已选里有 HEIC 时先问要不要转成 JPEG -->
+  <string name="MediaSelectScreen__send_as_file">以檔案傳送</string>
+  <plurals name="MediaSelectScreen__send_as_n_files">
+    <item quantity="other">以檔案傳送（%d 個）</item>
+  </plurals>
+  <string name="MediaSelectScreen__convert_photos_to_jpeg">是否把照片轉成 JPEG？</string>
+  <string name="MediaSelectScreen__keep_heic">保留 HEIC</string>
+  <string name="MediaSelectScreen__convert_to_jpeg">轉成 JPEG</string>
   <string name="MediaSelectScreen__open_media">打開</string>
   <string name="MediaSelectScreen__select">選取</string>
   <string name="MediaSelectScreen__you_have_limited_access">你已限制 Tellomi 存取相片。</string>

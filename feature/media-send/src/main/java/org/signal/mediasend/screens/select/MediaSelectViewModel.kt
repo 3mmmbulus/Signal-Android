@@ -115,6 +115,7 @@ internal class MediaSelectViewModel(
       is MediaSelectScreenEvents.ScheduleSend -> parentEventEmitter(MediaSendFlowEvent.ScheduleSendRequested(event.option))
       is MediaSelectScreenEvents.SendWithQuality -> parentEventEmitter(MediaSendFlowEvent.SendNow(quality = event.quality))
       MediaSelectScreenEvents.SendSeparately -> parentEventEmitter(MediaSendFlowEvent.SendNow(separately = true))
+      is MediaSelectScreenEvents.SendAsFile -> parentEventEmitter(MediaSendFlowEvent.SendNow(asFile = true, convertHeicToJpeg = event.convertHeicToJpeg))
       MediaSelectScreenEvents.Close -> parentEventEmitter(MediaSendFlowEvent.CloseRequested)
       is MediaSelectScreenEvents.DockEntryClicked -> onDockEntryClicked(event.entry)
     }

@@ -76,6 +76,11 @@ sealed interface MediaSelectScreenEvents {
   /** P-5：「···」→ 单独发送。 */
   data object SendSeparately : MediaSelectScreenEvents
 
+  /**
+   * P-5（tellomi/tellomi#1263，ADR-0068）：「···」→ 以文件发送。已选里有 HEIC 时先问过了：[convertHeicToJpeg] 是「转成 JPEG」。
+   */
+  data class SendAsFile(val convertHeicToJpeg: Boolean) : MediaSelectScreenEvents
+
   /** P-1：左上角 ✕。 */
   data object Close : MediaSelectScreenEvents
 

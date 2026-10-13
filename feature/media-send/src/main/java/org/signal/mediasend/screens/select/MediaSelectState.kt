@@ -93,6 +93,7 @@ sealed interface MediaSelectState {
    * Tellomi（tellomi/tellomi#1261）：选图网格底栏与「···」要的发送参数，随父流程更新。
    *
    * @param canSendSeparately 「单独发送」只给已知的单个会话（拆成几条消息由会话页来发），故事、要先选联系人的流程都没有。
+   * @param canSendAsFile 「以文件发送」（tellomi/tellomi#1263）同上：也是会话页一个一条地发；故事不能按文件发（ADR-0068 §4.4）。
    */
   data class SendOptions(
     val message: CharSequence? = null,
@@ -102,22 +103,28 @@ sealed interface MediaSelectState {
     val isSending: Boolean = false,
     val isReply: Boolean = false,
     val canScheduleSend: Boolean = false,
-    val canSendSeparately: Boolean = false
+    val canSendSeparately: Boolean = false,
+    val canSendAsFile: Boolean = false
   ) {
     companion object {
-      fun from(parent: MediaSendFlowState): SendOptions = SendOptions(
-        message = parent.message,
-        sentMediaQuality = parent.sentMediaQuality,
-        isViewOnceAvailable = parent.isViewOnceAvailable,
-        isViewOnceEnabled = parent.isViewOnceEnabled,
-        isSending = parent.isSending,
-        isReply = parent.isReply,
-        canScheduleSend = !parent.isStory,
-        canSendSeparately = parent.recipientId != null &&
+      fun from(parent: MediaSendFlowState): SendOptions {
+        val sentByConversation = parent.recipientId != null &&
           !parent.isStory &&
           !parent.isContactSelectionRequired &&
           parent.mode == MediaSendFlowActivityContract.Mode.SingleRecipient
-      )
+
+        return SendOptions(
+          message = parent.message,
+          sentMediaQuality = parent.sentMediaQuality,
+          isViewOnceAvailable = parent.isViewOnceAvailable,
+          isViewOnceEnabled = parent.isViewOnceEnabled,
+          isSending = parent.isSending,
+          isReply = parent.isReply,
+          canScheduleSend = !parent.isStory,
+          canSendSeparately = sentByConversation,
+          canSendAsFile = sentByConversation
+        )
+      }
     }
   }
 }

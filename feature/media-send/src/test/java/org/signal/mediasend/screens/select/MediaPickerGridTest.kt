@@ -26,7 +26,9 @@ import androidx.test.core.app.ApplicationProvider
 import assertk.assertThat
 import assertk.assertions.contains
 import assertk.assertions.containsExactly
+import assertk.assertions.isEmpty
 import assertk.assertions.isFalse
+import assertk.assertions.isTrue
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -218,6 +220,77 @@ class MediaPickerGridTest {
     composeTestRule.onNodeWithText("Send Separately").assertDoesNotExist()
   }
 
+  // #1263（P-5，判据 7）：「···」第一项是「以文件发送」，多张时「以文件发送（N 个）」，点了立即发出；开了一次性查看就没有。
+  // 已选里有 HEIC 先问「是否把照片转成 JPEG？」（保留 HEIC / 转成 JPEG），点外面这次不发。
+
+  @Test
+  fun `Given two photos in a conversation, when the more menu is opened, then send as files comes first with the count`() {
+    setContent(selectedMedia = MEDIA.take(2), sendOptions = MediaSelectState.SendOptions(canSendSeparately = true, canSendAsFile = true))
+
+    composeTestRule.onNode(hasContentDescription("More options")).performClick()
+    val asFiles = composeTestRule.onNodeWithText("Send as 2 Files").assertIsDisplayed().fetchSemanticsNode().boundsInRoot.top
+    val highQuality = composeTestRule.onNodeWithText("Send in High Quality").fetchSemanticsNode().boundsInRoot.top
+    val separately = composeTestRule.onNodeWithText("Send Separately").fetchSemanticsNode().boundsInRoot.top
+    assertThat(asFiles < highQuality && highQuality < separately).isTrue()
+
+    composeTestRule.onNodeWithText("Send as 2 Files").performClick()
+
+    assertThat(sentAsFile()).containsExactly(MediaSelectScreenEvents.SendAsFile(convertHeicToJpeg = false))
+  }
+
+  @Test
+  fun `Given one photo in a conversation, when the more menu is opened, then it says send as file without a count`() {
+    setContent(selectedMedia = MEDIA.take(1), sendOptions = MediaSelectState.SendOptions(canSendAsFile = true))
+
+    composeTestRule.onNode(hasContentDescription("More options")).performClick()
+    composeTestRule.onNodeWithText("Send as File").performClick()
+
+    assertThat(sentAsFile()).containsExactly(MediaSelectScreenEvents.SendAsFile(convertHeicToJpeg = false))
+  }
+
+  @Test
+  fun `Given view once is on, when the more menu is opened, then there is no send as file`() {
+    setContent(selectedMedia = MEDIA.take(1), sendOptions = MediaSelectState.SendOptions(canSendAsFile = true, isViewOnceAvailable = true, isViewOnceEnabled = true))
+
+    composeTestRule.onNode(hasContentDescription("More options")).assertDoesNotExist()
+    composeTestRule.onNodeWithText("Send as File").assertDoesNotExist()
+  }
+
+  @Test
+  fun `Given a flow that is not a known conversation, when the more menu is opened, then there is no send as file`() {
+    setContent(selectedMedia = MEDIA.take(2), sendOptions = MediaSelectState.SendOptions(canSendAsFile = false))
+
+    composeTestRule.onNode(hasContentDescription("More options")).performClick()
+    composeTestRule.onNodeWithText("Send as 2 Files").assertDoesNotExist()
+    composeTestRule.onNodeWithText("Send in High Quality").assertIsDisplayed()
+  }
+
+  @Test
+  fun `Given a HEIC photo, when send as file is picked and HEIC is kept, then it is sent as it is`() {
+    setContent(selectedMedia = listOf(MEDIA[0], HEIC), sendOptions = MediaSelectState.SendOptions(canSendAsFile = true))
+
+    composeTestRule.onNode(hasContentDescription("More options")).performClick()
+    composeTestRule.onNodeWithText("Send as 2 Files").performClick()
+    composeTestRule.onNodeWithText("Convert the photos to JPEG?").assertIsDisplayed()
+    assertThat(sentAsFile()).isEmpty()
+
+    composeTestRule.onNodeWithText("Keep HEIC").performClick()
+
+    assertThat(sentAsFile()).containsExactly(MediaSelectScreenEvents.SendAsFile(convertHeicToJpeg = false))
+    composeTestRule.onNodeWithText("Convert the photos to JPEG?").assertDoesNotExist()
+  }
+
+  @Test
+  fun `Given a HEIC photo, when send as file is picked and converting is chosen, then it is sent as JPEG`() {
+    setContent(selectedMedia = listOf(HEIC), sendOptions = MediaSelectState.SendOptions(canSendAsFile = true))
+
+    composeTestRule.onNode(hasContentDescription("More options")).performClick()
+    composeTestRule.onNodeWithText("Send as File").performClick()
+    composeTestRule.onNodeWithText("Convert to JPEG").performClick()
+
+    assertThat(sentAsFile()).containsExactly(MediaSelectScreenEvents.SendAsFile(convertHeicToJpeg = true))
+  }
+
   // P-1：「最近 ⌄」里换相册。
 
   @Test
@@ -229,6 +302,9 @@ class MediaPickerGridTest {
 
     assertThat(events).contains(MediaSelectScreenEvents.SwitchFolder(CAMERA))
   }
+
+  /** 网格一出来会先发一个 Refresh，只看「以文件发送」。 */
+  private fun sentAsFile(): List<MediaSelectScreenEvents.SendAsFile> = events.filterIsInstance<MediaSelectScreenEvents.SendAsFile>()
 
   private fun setContent(
     selectedMedia: List<Media>,
@@ -291,5 +367,7 @@ class MediaPickerGridTest {
         fileName = null
       )
     }
+
+    private val HEIC: Media = MEDIA[1].copy(uri = "content://media/heic".toUri(), contentType = "image/heic")
   }
 }

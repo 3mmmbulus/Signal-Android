@@ -231,10 +231,13 @@ object MediaSendV3Repository : MediaSendRepository {
         mentions = MentionAnnotation.getMentionsFromAnnotations(request.message),
         bodyRanges = MessageStyler.getStyling(request.message),
         sendType = resolveSendType(request.sendType),
-        scheduledTime = request.scheduledTime
+        scheduledTime = request.scheduledTime,
+        sendAsFile = request.sendAsFile,
+        convertHeicToJpeg = request.convertHeicToJpeg
       ).blockingGet()
 
-      // Tellomi（tellomi/tellomi#1261 P-5）：「单独发送」由会话页一张一条地发（只有已知的单个会话才有这一项）。
+      // Tellomi（tellomi/tellomi#1261 P-5）：「单独发送」由会话页一张一条地发（只有已知的单个会话才有这一项）；
+      // 「以文件发送」（#1263）的结果自己带着 sendAsFile，会话页也是一个一条地发。
       if (result != null) SendResult.ReadyToSend(if (request.sendSeparately) result.withSendSeparately(true) else result) else SendResult.Success
     } catch (exception: Exception) {
       SendResult.Error(exception.message ?: "Failed to send media.")

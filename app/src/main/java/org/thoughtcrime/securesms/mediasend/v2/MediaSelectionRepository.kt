@@ -33,6 +33,7 @@ import org.thoughtcrime.securesms.mediasend.MediaSendActivityResult
 import org.thoughtcrime.securesms.mediasend.MediaTransform
 import org.thoughtcrime.securesms.mediasend.MediaUploadRepository
 import org.thoughtcrime.securesms.mediasend.SentMediaQualityTransform
+import org.thoughtcrime.securesms.mediasend.TellomiMediaAsFiles
 import org.thoughtcrime.securesms.mediasend.VideoTrimTransform
 import org.thoughtcrime.securesms.mms.GifSlide
 import org.thoughtcrime.securesms.mms.ImageSlide
@@ -88,7 +89,9 @@ class MediaSelectionRepository(context: Context) {
     mentions: List<Mention>,
     bodyRanges: BodyRangeList?,
     sendType: MessageSendType,
-    scheduledTime: Long = -1
+    scheduledTime: Long = -1,
+    sendAsFile: Boolean = false,
+    convertHeicToJpeg: Boolean = false
   ): Maybe<MediaSendActivityResult> {
     if (selectedMedia.isEmpty()) {
       throw IllegalStateException("No selected media!")
@@ -119,7 +122,25 @@ class MediaSelectionRepository(context: Context) {
         StoryType.NONE
       }
 
-      if (scheduledTime != -1L && storyType == StoryType.NONE) {
+      if (sendAsFile) {
+        // Tellomi（tellomi/tellomi#1263 P-5「以文件发送」）：原图按文件发，不用预上传（那是压缩过的），交给会话页一个一条地发。
+        // 只有已知的单个会话才有这一项（MediaSelectState.SendOptions.canSendAsFile）。
+        Log.i(TAG, "Sending as files. Skipping pre-upload.")
+        emitter.onSuccess(
+          MediaSendActivityResult(
+            recipientId = singleRecipient!!.id,
+            nonUploadedMedia = TellomiMediaAsFiles.prepare(context, selectedMedia, oldToNewMediaMap, convertHeicToJpeg),
+            body = trimmedBody,
+            messageSendType = sendType,
+            isViewOnce = false,
+            mentions = trimmedMentions,
+            bodyRanges = trimmedBodyRanges,
+            storyType = StoryType.NONE,
+            scheduledTime = scheduledTime,
+            sendAsFile = true
+          )
+        )
+      } else if (scheduledTime != -1L && storyType == StoryType.NONE) {
         Log.i(TAG, "Scheduled message. Skipping pre-upload.")
         if (contacts.isEmpty()) {
           emitter.onSuccess(
