@@ -6666,6 +6666,27 @@
     <string name="TellomiFeedMine__edit">編輯</string>
     <string name="TellomiFeedCompose__published">已發布</string>
     <string name="TellomiFeedCompose__pending">已送出，審核通過後其他人才能看到</string>
+    <string name="TellomiFeedDetail__title">動態</string>
+    <string name="TellomiFeedDetail__comment">留言</string>
+    <string name="TellomiFeedDetail__no_comments">還沒有留言</string>
+    <string name="TellomiFeedDetail__comments_off">留言已關閉</string>
+    <string name="TellomiFeedDetail__author">作者</string>
+    <string name="TellomiFeedDetail__reply">回覆</string>
+    <string name="TellomiFeedDetail__replying_to">回覆 %1$s</string>
+    <string name="TellomiFeedDetail__cancel_reply">取消回覆</string>
+    <string name="TellomiFeedDetail__hint">寫留言…</string>
+    <string name="TellomiFeedDetail__hint_reply">回覆 %1$s</string>
+    <string name="TellomiFeedDetail__send">傳送</string>
+    <string name="TellomiFeedDetail__gone">這則動態已無法查看</string>
+    <string name="TellomiFeedDetail__sent_pending">已送出，審核通過後顯示</string>
+    <string name="TellomiFeedDetail__sent">留言已發布</string>
+    <string name="TellomiFeedDetail__closed_notice">作者關閉了留言</string>
+    <string name="TellomiFeedDetail__reply_not_allowed">你無法回覆這則留言</string>
+    <string name="TellomiFeedDetail__profile_required">先設定公開主頁才能留言</string>
+    <string name="TellomiFeedDetail__parent_gone">這則留言已無法查看</string>
+    <plurals name="TellomiFeedDetail__more_replies">
+        <item quantity="other">展開 %1$d 則回覆</item>
+    </plurals>
     <string name="ConversationListTabs__99p">99+</string>
     <!-- Menu item on stories landing page -->
     <string name="StoriesLandingFragment__story_privacy">快拍隱私</string>

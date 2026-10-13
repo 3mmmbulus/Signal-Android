@@ -6884,6 +6884,28 @@
     <string name="TellomiFeedMine__edit">Edit</string>
     <string name="TellomiFeedCompose__published">Posted</string>
     <string name="TellomiFeedCompose__pending">Submitted. Others can see it once it\'s reviewed.</string>
+    <string name="TellomiFeedDetail__title">Post</string>
+    <string name="TellomiFeedDetail__comment">Comment</string>
+    <string name="TellomiFeedDetail__no_comments">No comments yet</string>
+    <string name="TellomiFeedDetail__comments_off">Comments are turned off</string>
+    <string name="TellomiFeedDetail__author">Author</string>
+    <string name="TellomiFeedDetail__reply">Reply</string>
+    <string name="TellomiFeedDetail__replying_to">Replying to %1$s</string>
+    <string name="TellomiFeedDetail__cancel_reply">Cancel reply</string>
+    <string name="TellomiFeedDetail__hint">Add a comment</string>
+    <string name="TellomiFeedDetail__hint_reply">Reply to %1$s</string>
+    <string name="TellomiFeedDetail__send">Send</string>
+    <string name="TellomiFeedDetail__gone">This post is no longer available</string>
+    <string name="TellomiFeedDetail__sent_pending">Sent. It\'ll show after review.</string>
+    <string name="TellomiFeedDetail__sent">Comment posted</string>
+    <string name="TellomiFeedDetail__closed_notice">The author turned off comments</string>
+    <string name="TellomiFeedDetail__reply_not_allowed">You can\'t reply to this comment</string>
+    <string name="TellomiFeedDetail__profile_required">Set up your public profile to comment</string>
+    <string name="TellomiFeedDetail__parent_gone">That comment is no longer available</string>
+    <plurals name="TellomiFeedDetail__more_replies">
+        <item quantity="one">View %1$d more reply</item>
+        <item quantity="other">View %1$d more replies</item>
+    </plurals>
     <string name="ConversationListTabs__99p">99+</string>
     <!-- Menu item on stories landing page -->
     <string name="StoriesLandingFragment__story_privacy">Story privacy</string>

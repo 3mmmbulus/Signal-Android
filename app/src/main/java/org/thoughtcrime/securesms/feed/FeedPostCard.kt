@@ -48,6 +48,7 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import org.signal.core.ui.compose.Previews
 import org.signal.glide.compose.GlideImage
@@ -73,23 +74,31 @@ private const val ARTICLE_PREVIEW_LINES = 4
  * 动态里的一条帖子（`kind = post`），照 Threads 的单栏排法（`dynamic-feed.md` 第三节第 2、3 条）：
  * 左边头像，右边名字、正文、图片、操作行。
  *
- * 这一刀：文字、话题、IP 属地、「已编辑」、AI 生成标记、点赞、「···」里的「不感兴趣」。
- * 图片先画占位（按原图比例的灰块，横向滑动），真图等内容引擎的图片地址接上；评论、转发、分享随后面的 PR 加，
- * 现在不画这几个按钮，免得点了没反应。
+ * 文字、话题、IP 属地、「已编辑」、AI 生成标记、图片、点赞、评论（点了进详情）、「···」。
+ * 转发、分享随后面的 PR 加，现在不画这两个按钮，免得点了没反应。
  */
 @Composable
 fun FeedPostCard(
   card: FeedCard,
   showIpRegion: Boolean,
   onLikeClick: (FeedCard) -> Unit,
-  onNotInterestedClick: (FeedCard) -> Unit,
+  onNotInterestedClick: ((FeedCard) -> Unit)?,
   modifier: Modifier = Modifier,
   mediaBaseUrl: String? = null,
   /** 自己的帖子：「···」里的编辑（null = 已过 15 分钟或不能改）和删除（第三节第 26 条）。 */
   onEditClick: ((FeedCard) -> Unit)? = null,
-  onDeleteClick: ((FeedCard) -> Unit)? = null
+  onDeleteClick: ((FeedCard) -> Unit)? = null,
+  /** 点卡片 / 评论按钮进详情；详情页里自己是 null。 */
+  onOpen: ((FeedCard) -> Unit)? = null,
+  /** 详情页：长文不截断。 */
+  expanded: Boolean = false
 ) {
-  Column(modifier = modifier.fillMaxWidth().padding(top = 12.dp, bottom = 4.dp)) {
+  Column(
+    modifier = modifier
+      .fillMaxWidth()
+      .then(if (onOpen != null) Modifier.clickable { onOpen(card) } else Modifier)
+      .padding(top = 12.dp, bottom = 4.dp)
+  ) {
     Row(modifier = Modifier.padding(start = 16.dp, end = 4.dp)) {
       FeedAvatar(author = card.author)
 
@@ -115,13 +124,13 @@ fun FeedPostCard(
         }
 
         // 长文在信息流里是卡片（第三节第 25 条）：只露开头几行，点开是阅读页（阅读页在后面的 PR）
-        val text = if (card.kind == FeedCard.KIND_ARTICLE) card.summary ?: card.text else card.text
+        val text = if (card.kind == FeedCard.KIND_ARTICLE && !expanded) card.summary ?: card.text else card.text ?: card.summary
         if (!text.isNullOrBlank()) {
           Text(
             text = text,
             style = MaterialTheme.typography.bodyLarge,
             color = MaterialTheme.colorScheme.onSurface,
-            maxLines = if (card.kind == FeedCard.KIND_ARTICLE) ARTICLE_PREVIEW_LINES else Int.MAX_VALUE,
+            maxLines = if (card.kind == FeedCard.KIND_ARTICLE && !expanded) ARTICLE_PREVIEW_LINES else Int.MAX_VALUE,
             overflow = TextOverflow.Ellipsis,
             modifier = Modifier.padding(end = 12.dp)
           )
@@ -155,18 +164,19 @@ fun FeedPostCard(
     FeedActionRow(
       card = card,
       onLikeClick = onLikeClick,
+      onCommentClick = onOpen,
       modifier = Modifier.padding(start = CONTENT_START - 12.dp, top = 2.dp)
     )
   }
 }
 
 @Composable
-private fun FeedAvatar(author: FeedAuthor?) {
+internal fun FeedAvatar(author: FeedAuthor?, size: Dp = AVATAR_SIZE) {
   val initial = author?.displayName?.trim()?.firstOrNull()?.toString().orEmpty()
   Box(
     contentAlignment = Alignment.Center,
     modifier = Modifier
-      .size(AVATAR_SIZE)
+      .size(size)
       .clip(CircleShape)
       .background(MaterialTheme.colorScheme.surfaceVariant)
   ) {
@@ -182,7 +192,7 @@ private fun FeedAvatar(author: FeedAuthor?) {
 private fun FeedPostHeader(
   card: FeedCard,
   showIpRegion: Boolean,
-  onNotInterestedClick: (FeedCard) -> Unit,
+  onNotInterestedClick: ((FeedCard) -> Unit)?,
   onEditClick: ((FeedCard) -> Unit)?,
   onDeleteClick: ((FeedCard) -> Unit)?
 ) {
@@ -227,7 +237,7 @@ private fun FeedPostHeader(
     }
 
     val isAuthor = card.viewer.isAuthor
-    if (!isAuthor || onEditClick != null || onDeleteClick != null) {
+    if ((!isAuthor && onNotInterestedClick != null) || (isAuthor && (onEditClick != null || onDeleteClick != null))) {
       Box {
         val moreLabel = stringResource(R.string.TellomiFeed__more)
         Icon(
@@ -261,7 +271,7 @@ private fun FeedPostHeader(
                 }
               )
             }
-          } else {
+          } else if (onNotInterestedClick != null) {
             DropdownMenuItem(
               text = { Text(stringResource(R.string.TellomiFeed__not_interested)) },
               onClick = {
@@ -357,6 +367,7 @@ internal fun FeedMedia.remoteUrlOrNull(mediaBaseUrl: String?): String? {
 private fun FeedActionRow(
   card: FeedCard,
   onLikeClick: (FeedCard) -> Unit,
+  onCommentClick: ((FeedCard) -> Unit)?,
   modifier: Modifier = Modifier
 ) {
   val liked = card.viewer.liked
@@ -389,20 +400,31 @@ private fun FeedActionRow(
       }
     }
 
-    if (card.stats.comments > 0) {
-      Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(horizontal = 12.dp)) {
+    // 信息流里评论按钮一直在（点了进详情）；详情页里只显示数
+    if (onCommentClick != null || card.stats.comments > 0) {
+      val commentLabel = stringResource(R.string.TellomiFeedDetail__comment)
+      Row(
+        verticalAlignment = Alignment.CenterVertically,
+        modifier = Modifier
+          .clip(RoundedCornerShape(50))
+          .then(if (onCommentClick != null) Modifier.clickable(onClickLabel = commentLabel) { onCommentClick(card) } else Modifier)
+          .heightIn(min = 40.dp)
+          .padding(horizontal = 12.dp)
+      ) {
         Icon(
           imageVector = ImageVector.vectorResource(R.drawable.symbol_chat_24),
           contentDescription = null,
           tint = MaterialTheme.colorScheme.onSurfaceVariant,
           modifier = Modifier.size(20.dp)
         )
-        Text(
-          text = pluralStringResource(R.plurals.TellomiFeed__comments, card.stats.comments, card.stats.comments),
-          style = MaterialTheme.typography.bodySmall,
-          color = MaterialTheme.colorScheme.onSurfaceVariant,
-          modifier = Modifier.padding(start = 4.dp)
-        )
+        if (card.stats.comments > 0) {
+          Text(
+            text = pluralStringResource(R.plurals.TellomiFeed__comments, card.stats.comments, card.stats.comments),
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.padding(start = 4.dp)
+          )
+        }
       }
     }
   }

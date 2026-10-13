@@ -151,6 +151,9 @@ data class FeedCard(
   @SerialName("ai_generated") val aiGenerated: Boolean = false,
   val stats: FeedStats = FeedStats(),
   val viewer: FeedViewer = FeedViewer(),
+  /** 评论才有：所属的帖子。 */
+  @SerialName("root_id") val rootId: String? = null,
+  /** 回复别的评论时才有：被回复的那条评论（直接评论帖子时没有）。 */
   @SerialName("parent_id") val parentId: String? = null,
   @Transient val pollState: FeedPollState? = null
 ) {
@@ -324,4 +327,31 @@ data class FeedMyPostsPage(
 data class FeedEditPostRequest(
   val text: String,
   val title: String? = null
+)
+
+/** `GET /v1/feed/posts/{id}/comments`：审核通过、你看得到的评论，按时间正序，每页 50 条；没有 [cursor] 就到底了。 */
+@Serializable
+data class FeedCommentsResponse(
+  val comments: List<FeedCardResult> = emptyList(),
+  val cursor: String? = null
+)
+
+/** `POST /v1/feed/posts/{id}/comments`：[parentId] 是被回复的评论，直接评论帖子时不带。 */
+@Serializable
+data class FeedCreateCommentRequest(
+  val text: String,
+  @SerialName("parent_id") val parentId: String? = null
+)
+
+/** 评论也先审后发（R-2.2）：`state` 一般是 `pending`。 */
+@Serializable
+data class FeedCreateCommentResponse(
+  val id: String,
+  val state: String
+)
+
+/** 界面用：一页评论（已经换成卡片）。 */
+data class FeedCommentsPage(
+  val comments: List<FeedCard> = emptyList(),
+  val cursor: String? = null
 )

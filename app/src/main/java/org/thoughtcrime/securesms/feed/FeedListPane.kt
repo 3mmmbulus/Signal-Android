@@ -83,6 +83,7 @@ import org.signal.core.ui.compose.Previews
 import org.thoughtcrime.securesms.R
 import org.thoughtcrime.securesms.feed.compose.FeedComposeActivity
 import org.thoughtcrime.securesms.feed.compose.FeedEditTarget
+import org.thoughtcrime.securesms.feed.detail.FeedPostDetailActivity
 import org.thoughtcrime.securesms.feed.mine.FeedMyPostsActivity
 import org.thoughtcrime.securesms.feed.net.FeedCard
 import org.thoughtcrime.securesms.feed.net.FeedCreatePostResponse
@@ -173,6 +174,7 @@ fun FeedListPane(
       onMyPostsClick = { context.startActivity(FeedMyPostsActivity.intent(context)) },
       onEditClick = { target -> editLauncher.launch(target) },
       onDeleteClick = { confirmDelete = it },
+      onOpenClick = { context.startActivity(FeedPostDetailActivity.intent(context, it)) },
       modifier = Modifier.fillMaxSize()
     )
 
@@ -220,7 +222,8 @@ private fun FeedPager(
   onMyPostsClick: () -> Unit,
   modifier: Modifier = Modifier,
   onEditClick: (FeedEditTarget) -> Unit = {},
-  onDeleteClick: (FeedCard) -> Unit = {}
+  onDeleteClick: (FeedCard) -> Unit = {},
+  onOpenClick: (FeedCard) -> Unit = {}
 ) {
   val tabs = state.tabs
   val pagerState = rememberPagerState(pageCount = { tabs.size })
@@ -257,7 +260,8 @@ private fun FeedPager(
         onLikeClick = onLikeClick,
         onNotInterestedClick = onNotInterestedClick,
         isCurrentPage = pagerState.currentPage == page,
-        onCardsVisible = { onCardsVisible(tab, it) }
+        onCardsVisible = { onCardsVisible(tab, it) },
+        onOpenClick = onOpenClick
       )
     }
   }
@@ -278,7 +282,8 @@ private fun FeedTimeline(
   onLikeClick: (FeedCard) -> Unit,
   onNotInterestedClick: (FeedCard) -> Unit,
   isCurrentPage: Boolean,
-  onCardsVisible: (Set<String>) -> Unit
+  onCardsVisible: (Set<String>) -> Unit,
+  onOpenClick: (FeedCard) -> Unit = {}
 ) {
   val listState = rememberLazyListState()
 
@@ -334,7 +339,8 @@ private fun FeedTimeline(
             modifier = Modifier.animateItem(),
             mediaBaseUrl = mediaBaseUrl,
             onEditClick = editTarget?.let { target -> { onEditClick(target) } },
-            onDeleteClick = if (card.viewer.isAuthor) onDeleteClick else null
+            onDeleteClick = if (card.viewer.isAuthor) onDeleteClick else null,
+            onOpen = onOpenClick
           )
           HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
         }

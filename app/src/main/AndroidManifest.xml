@@ -939,6 +939,12 @@
             android:theme="@style/TextSecure.LightTheme" />
 
         <activity
+            android:name=".feed.detail.FeedPostDetailActivity"
+            android:exported="false"
+            android:theme="@style/TextSecure.LightTheme"
+            android:windowSoftInputMode="adjustResize" />
+
+        <activity
             android:name=".nicknames.NicknameActivity"
             android:exported="false"
             android:theme="@style/TextSecure.LightTheme"

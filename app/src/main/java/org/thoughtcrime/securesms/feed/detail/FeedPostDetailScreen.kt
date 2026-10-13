@@ -1,0 +1,443 @@
+/*
+ * Copyright 2026 重庆半格智能科技有限公司
+ * SPDX-License-Identifier: AGPL-3.0-only
+ */
+
+package org.thoughtcrime.securesms.feed.detail
+
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.imePadding
+import androidx.compose.foundation.layout.navigationBarsPadding
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.Surface
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.derivedStateOf
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.res.pluralStringResource
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.res.vectorResource
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.buildAnnotatedString
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.withStyle
+import androidx.compose.ui.unit.dp
+import org.signal.core.ui.compose.Scaffolds
+import org.signal.core.ui.compose.Snackbars
+import org.thoughtcrime.securesms.R
+import org.thoughtcrime.securesms.feed.FeedAvatar
+import org.thoughtcrime.securesms.feed.FeedPostCard
+import org.thoughtcrime.securesms.feed.net.FeedCard
+import org.thoughtcrime.securesms.feed.parseInstantMillis
+import org.thoughtcrime.securesms.util.DateUtils
+import java.util.Locale
+import org.signal.core.ui.R as CoreUiR
+
+object FeedPostDetailTestTags {
+  const val COMPOSER = "feed_detail_composer"
+  const val SEND = "feed_detail_send"
+}
+
+/** 楼里先露几条回复，多的折起来（照 Threads）。 */
+internal const val VISIBLE_REPLIES = 3
+
+private const val LOAD_MORE_THRESHOLD = 4
+private val COMMENT_AVATAR = 28.dp
+private val REPLY_AVATAR = 22.dp
+private val REPLY_INDENT = 40.dp
+
+/**
+ * 帖子详情页：上面是整条帖子（长文不截断），下面是评论，最底下是评论框。
+ *
+ * 评论排成楼（第三节第 2 条：交互跟 Threads）：直接评论帖子的按时间正序，回复缩进挂在它下面，超过 [VISIBLE_REPLIES] 条折起来；
+ * 回的不是楼主那条时，正文前写「@被回复的人」。评论是 Tellomi 气泡，作者自己的评论用另一种底色（第 4 条；品牌青色定了再换）。
+ * 大陆区显示评论的 IP 属地（第 10 条）。回复的排序和谁能回复（Q-11、Q-12）还没定，先按时间、先都能回。
+ */
+@Composable
+fun FeedPostDetailScreen(
+  state: FeedPostDetailState,
+  onBack: () -> Unit,
+  onLikeClick: () -> Unit,
+  onRetryComments: () -> Unit,
+  onLoadMoreComments: () -> Unit,
+  onReplyClick: (FeedCard?) -> Unit,
+  onDraftChanged: (String) -> Unit,
+  onSend: () -> Unit,
+  onNoticeShown: () -> Unit
+) {
+  val snackbarHostState = remember { SnackbarHostState() }
+  val noticeText = state.notice?.let { stringResource(it.messageRes()) }
+  LaunchedEffect(state.notice) {
+    if (noticeText != null) {
+      snackbarHostState.showSnackbar(noticeText)
+      onNoticeShown()
+    }
+  }
+
+  Scaffolds.Settings(
+    title = stringResource(R.string.TellomiFeedDetail__title),
+    onNavigationClick = onBack,
+    navigationIcon = ImageVector.vectorResource(CoreUiR.drawable.symbol_arrow_start_24),
+    navigationContentDescription = stringResource(R.string.TellomiFeedMine__back),
+    snackbarHost = { Snackbars.Host(snackbarHostState) },
+    bottomBar = {
+      if (!state.postGone) {
+        CommentComposer(state = state, onDraftChanged = onDraftChanged, onSend = onSend, onCancelReply = { onReplyClick(null) })
+      }
+    }
+  ) { padding ->
+    if (state.postGone) {
+      Box(contentAlignment = Alignment.Center, modifier = Modifier.padding(padding).fillMaxSize()) {
+        Text(
+          text = stringResource(R.string.TellomiFeedDetail__gone),
+          style = MaterialTheme.typography.bodyLarge,
+          color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+      }
+      return@Settings
+    }
+
+    CommentList(
+      state = state,
+      onLikeClick = onLikeClick,
+      onRetryComments = onRetryComments,
+      onLoadMoreComments = onLoadMoreComments,
+      onReplyClick = onReplyClick,
+      modifier = Modifier.padding(padding).fillMaxSize()
+    )
+  }
+}
+
+@Composable
+private fun CommentList(
+  state: FeedPostDetailState,
+  onLikeClick: () -> Unit,
+  onRetryComments: () -> Unit,
+  onLoadMoreComments: () -> Unit,
+  onReplyClick: (FeedCard) -> Unit,
+  modifier: Modifier = Modifier
+) {
+  val listState = rememberLazyListState()
+  var expandedThreads by rememberSaveable { mutableStateOf(setOf<String>()) }
+  val postAuthorId = state.post.author?.profileId
+
+  val nearEnd by remember {
+    derivedStateOf {
+      val info = listState.layoutInfo
+      val last = info.visibleItemsInfo.lastOrNull()?.index ?: 0
+      info.totalItemsCount > 0 && last >= info.totalItemsCount - LOAD_MORE_THRESHOLD
+    }
+  }
+  LaunchedEffect(nearEnd, state.cursor) {
+    if (nearEnd && state.cursor != null) onLoadMoreComments()
+  }
+
+  LazyColumn(state = listState, modifier = modifier) {
+    item(key = "post") {
+      FeedPostCard(
+        card = state.post,
+        showIpRegion = state.showIpRegion,
+        onLikeClick = { onLikeClick() },
+        onNotInterestedClick = null,
+        mediaBaseUrl = state.mediaBaseUrl,
+        expanded = true
+      )
+      HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
+    }
+
+    item(key = "header") {
+      CommentsHeader(state = state, onRetry = onRetryComments)
+    }
+
+    state.threads.forEach { thread ->
+      item(key = thread.root.id) {
+        CommentBubble(
+          comment = thread.root,
+          replyToName = null,
+          isPostAuthor = thread.root.author?.profileId == postAuthorId,
+          showIpRegion = state.showIpRegion,
+          canReply = state.canComment,
+          onReplyClick = onReplyClick,
+          isReply = false
+        )
+      }
+
+      val expanded = thread.root.id in expandedThreads
+      val shown = if (expanded) thread.replies else thread.replies.take(VISIBLE_REPLIES)
+      shown.forEach { reply ->
+        item(key = reply.id) {
+          CommentBubble(
+            comment = reply,
+            replyToName = thread.replyTo[reply.id]?.author?.displayName,
+            isPostAuthor = reply.author?.profileId == postAuthorId,
+            showIpRegion = state.showIpRegion,
+            canReply = state.canComment,
+            onReplyClick = onReplyClick,
+            isReply = true
+          )
+        }
+      }
+
+      val hidden = thread.replies.size - shown.size
+      if (hidden > 0) {
+        item(key = "${thread.root.id}-more") {
+          Text(
+            text = pluralStringResource(R.plurals.TellomiFeedDetail__more_replies, hidden, hidden),
+            style = MaterialTheme.typography.labelMedium,
+            color = MaterialTheme.colorScheme.primary,
+            modifier = Modifier
+              .padding(start = 16.dp + COMMENT_AVATAR + REPLY_INDENT - 12.dp, bottom = 8.dp)
+              .clip(RoundedCornerShape(50))
+              .clickable { expandedThreads = expandedThreads + thread.root.id }
+              .padding(horizontal = 12.dp, vertical = 6.dp)
+          )
+        }
+      }
+    }
+
+    if (state.cursor != null && state.comments.isNotEmpty()) {
+      item(key = "loading-more") {
+        Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxWidth().padding(16.dp)) {
+          CircularProgressIndicator(modifier = Modifier.size(24.dp), strokeWidth = 2.dp)
+        }
+      }
+    }
+  }
+}
+
+@Composable
+private fun CommentsHeader(state: FeedPostDetailState, onRetry: () -> Unit) {
+  Row(
+    verticalAlignment = Alignment.CenterVertically,
+    modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 12.dp)
+  ) {
+    val count = maxOf(state.post.stats.comments, state.comments.size)
+    when {
+      state.comments.isEmpty() && (state.loading || !state.loadedOnce) -> CircularProgressIndicator(modifier = Modifier.size(20.dp), strokeWidth = 2.dp)
+      state.comments.isEmpty() && state.failed -> {
+        Text(
+          text = stringResource(R.string.TellomiFeed__load_failed),
+          style = MaterialTheme.typography.bodyMedium,
+          color = MaterialTheme.colorScheme.onSurfaceVariant,
+          modifier = Modifier.weight(1f)
+        )
+        TextButton(onClick = onRetry) { Text(stringResource(R.string.TellomiFeed__retry)) }
+      }
+      state.comments.isEmpty() -> Text(
+        text = stringResource(if (state.canComment) R.string.TellomiFeedDetail__no_comments else R.string.TellomiFeedDetail__comments_off),
+        style = MaterialTheme.typography.bodyMedium,
+        color = MaterialTheme.colorScheme.onSurfaceVariant
+      )
+      else -> Text(
+        text = pluralStringResource(R.plurals.TellomiFeed__comments, count, count),
+        style = MaterialTheme.typography.titleSmall,
+        color = MaterialTheme.colorScheme.onSurface
+      )
+    }
+  }
+}
+
+@Composable
+private fun CommentBubble(
+  comment: FeedCard,
+  replyToName: String?,
+  isPostAuthor: Boolean,
+  showIpRegion: Boolean,
+  canReply: Boolean,
+  onReplyClick: (FeedCard) -> Unit,
+  isReply: Boolean
+) {
+  val context = LocalContext.current
+  val start = if (isReply) 16.dp + COMMENT_AVATAR + 12.dp else 16.dp
+
+  Row(modifier = Modifier.fillMaxWidth().padding(start = start, end = 16.dp, bottom = 8.dp)) {
+    FeedAvatar(author = comment.author, size = if (isReply) REPLY_AVATAR else COMMENT_AVATAR)
+    Spacer(modifier = Modifier.width(8.dp))
+
+    Column(modifier = Modifier.weight(1f)) {
+      // 作者本人的评论换底色（第三节第 4 条「作者气泡青色」；品牌色定了之前先用主题的 primaryContainer）
+      val bubbleColor = if (isPostAuthor) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceVariant
+      val onBubble = if (isPostAuthor) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurfaceVariant
+      Column(
+        modifier = Modifier
+          .clip(RoundedCornerShape(16.dp))
+          .background(bubbleColor)
+          .padding(horizontal = 12.dp, vertical = 8.dp)
+      ) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+          Text(
+            text = comment.author?.displayName.orEmpty(),
+            style = MaterialTheme.typography.labelLarge,
+            fontWeight = FontWeight.SemiBold,
+            color = MaterialTheme.colorScheme.onSurface
+          )
+          if (isPostAuthor) {
+            Text(
+              text = "  " + stringResource(R.string.TellomiFeedDetail__author),
+              style = MaterialTheme.typography.labelSmall,
+              color = onBubble
+            )
+          }
+        }
+
+        val primary = MaterialTheme.colorScheme.primary
+        Text(
+          text = buildAnnotatedString {
+            if (replyToName != null) {
+              withStyle(SpanStyle(color = primary)) { append("@$replyToName ") }
+            }
+            append(comment.text.orEmpty())
+          },
+          style = MaterialTheme.typography.bodyMedium,
+          color = MaterialTheme.colorScheme.onSurface
+        )
+      }
+
+      Row(
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
+        modifier = Modifier.padding(start = 12.dp, top = 2.dp)
+      ) {
+        val meta = buildList {
+          comment.publishedAt?.let { parseInstantMillis(it) }?.let {
+            add(DateUtils.getBriefRelativeTimeSpanString(context, Locale.getDefault(), it).first)
+          }
+          val ip = comment.ipRegionLabel
+          if (showIpRegion && !ip.isNullOrBlank()) add(stringResource(R.string.TellomiFeed__ip_region, ip))
+        }.joinToString(separator = " · ")
+        if (meta.isNotEmpty()) {
+          Text(text = meta, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
+        if (canReply) {
+          Text(
+            text = stringResource(R.string.TellomiFeedDetail__reply),
+            style = MaterialTheme.typography.labelMedium,
+            fontWeight = FontWeight.SemiBold,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier
+              .clip(RoundedCornerShape(50))
+              .clickable { onReplyClick(comment) }
+              .padding(horizontal = 4.dp, vertical = 6.dp)
+          )
+        }
+      }
+    }
+  }
+}
+
+@Composable
+private fun CommentComposer(
+  state: FeedPostDetailState,
+  onDraftChanged: (String) -> Unit,
+  onSend: () -> Unit,
+  onCancelReply: () -> Unit
+) {
+  Surface(tonalElevation = 2.dp, modifier = Modifier.fillMaxWidth()) {
+    Column(modifier = Modifier.navigationBarsPadding().imePadding()) {
+      HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
+
+      if (!state.canComment) {
+        Text(
+          text = stringResource(R.string.TellomiFeedDetail__comments_off),
+          style = MaterialTheme.typography.bodyMedium,
+          color = MaterialTheme.colorScheme.onSurfaceVariant,
+          modifier = Modifier.fillMaxWidth().padding(16.dp)
+        )
+        return@Column
+      }
+
+      val target = state.replyTarget
+      if (target != null) {
+        Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(start = 16.dp, end = 4.dp, top = 4.dp)) {
+          Text(
+            text = stringResource(R.string.TellomiFeedDetail__replying_to, target.author?.displayName.orEmpty()),
+            style = MaterialTheme.typography.labelMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.weight(1f)
+          )
+          IconButton(onClick = onCancelReply) {
+            Icon(
+              imageVector = ImageVector.vectorResource(CoreUiR.drawable.symbol_x_24),
+              contentDescription = stringResource(R.string.TellomiFeedDetail__cancel_reply),
+              modifier = Modifier.size(18.dp)
+            )
+          }
+        }
+      }
+
+      Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(start = 12.dp, end = 4.dp, top = 6.dp, bottom = 6.dp)) {
+        OutlinedTextField(
+          value = state.draft,
+          onValueChange = onDraftChanged,
+          placeholder = {
+            Text(
+              if (target != null) {
+                stringResource(R.string.TellomiFeedDetail__hint_reply, target.author?.displayName.orEmpty())
+              } else {
+                stringResource(R.string.TellomiFeedDetail__hint)
+              }
+            )
+          },
+          maxLines = 4,
+          shape = RoundedCornerShape(20.dp),
+          modifier = Modifier.weight(1f).testTag(FeedPostDetailTestTags.COMPOSER)
+        )
+        IconButton(onClick = onSend, enabled = state.canSend, modifier = Modifier.testTag(FeedPostDetailTestTags.SEND)) {
+          if (state.sending) {
+            CircularProgressIndicator(modifier = Modifier.size(20.dp), strokeWidth = 2.dp)
+          } else {
+            Icon(
+              imageVector = ImageVector.vectorResource(R.drawable.symbol_send_fill_24),
+              contentDescription = stringResource(R.string.TellomiFeedDetail__send),
+              tint = if (state.canSend) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
+            )
+          }
+        }
+      }
+    }
+  }
+}
+
+private fun FeedPostDetailState.Notice.messageRes(): Int {
+  return when (this) {
+    FeedPostDetailState.Notice.PENDING -> R.string.TellomiFeedDetail__sent_pending
+    FeedPostDetailState.Notice.PUBLISHED -> R.string.TellomiFeedDetail__sent
+    FeedPostDetailState.Notice.CLOSED -> R.string.TellomiFeedDetail__closed_notice
+    FeedPostDetailState.Notice.REPLY_NOT_ALLOWED -> R.string.TellomiFeedDetail__reply_not_allowed
+    FeedPostDetailState.Notice.PROFILE_REQUIRED -> R.string.TellomiFeedDetail__profile_required
+    FeedPostDetailState.Notice.PARENT_GONE -> R.string.TellomiFeedDetail__parent_gone
+    FeedPostDetailState.Notice.FAILED -> R.string.TellomiFeed__action_failed
+  }
+}

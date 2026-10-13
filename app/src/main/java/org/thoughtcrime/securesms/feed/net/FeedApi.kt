@@ -140,6 +140,26 @@ class FeedApi(
     return send(Request.Builder().url(url).patch(body), FeedCreatePostResponse.serializer())
   }
 
+  /** 一条帖子下的评论（契约第五节）。 */
+  suspend fun comments(postId: String, cursor: String?): FeedCommentsResponse {
+    val url = url("v1/feed/posts").newBuilder()
+      .addPathSegment(postId)
+      .addPathSegment("comments")
+      .apply { if (cursor != null) addQueryParameter("cursor", cursor) }
+      .build()
+    return get(url, FeedCommentsResponse.serializer())
+  }
+
+  /**
+   * 发评论。403 `comments_closed` / `reply_not_allowed`，409 `profile_required`（要先建公开主页），
+   * 400 `invalid_parent`（被回复的评论不在了）。
+   */
+  suspend fun createComment(postId: String, request: FeedCreateCommentRequest): FeedCreateCommentResponse {
+    val url = url("v1/feed/posts").newBuilder().addPathSegment(postId).addPathSegment("comments").build()
+    val body = FeedJson.encodeToString(FeedCreateCommentRequest.serializer(), request).toRequestBody(JSON)
+    return send(Request.Builder().url(url).post(body), FeedCreateCommentResponse.serializer())
+  }
+
   /** 删自己的帖子（204）。别人的帖子引擎回 404。 */
   suspend fun deletePost(contentId: String) {
     val url = url("v1/feed/posts").newBuilder().addPathSegment(contentId).build()

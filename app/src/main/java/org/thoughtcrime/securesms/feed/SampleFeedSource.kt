@@ -10,6 +10,7 @@ import org.thoughtcrime.securesms.feed.compose.FeedDraft
 import org.thoughtcrime.securesms.feed.compose.FeedDraftKind
 import org.thoughtcrime.securesms.feed.net.FeedAuthor
 import org.thoughtcrime.securesms.feed.net.FeedCard
+import org.thoughtcrime.securesms.feed.net.FeedCommentsPage
 import org.thoughtcrime.securesms.feed.net.FeedConfig
 import org.thoughtcrime.securesms.feed.net.FeedCreatePostResponse
 import org.thoughtcrime.securesms.feed.net.FeedEntry
@@ -192,6 +193,71 @@ object SampleFeedSource : FeedSource {
   override suspend fun deletePost(contentId: String): Unit = synchronized(this) {
     mine.removeAll { it.id == contentId }
     reviewSamples.removeAll { it.id == contentId }
+  }
+
+  override suspend fun card(contentId: String): FeedCard? = synchronized(this) {
+    (mine + recommend).firstOrNull { it.id == contentId && it.id !in hidden }?.let { card ->
+      val isLiked = card.id in liked
+      card.copy(viewer = card.viewer.copy(liked = isLiked), stats = card.stats.copy(likes = card.stats.likes + if (isLiked) 1 else 0))
+    }
+  }
+
+  /** 每条帖子一组样例评论：几条直接评论，其中一条带两层回复，作者本人也回了一条。 */
+  override suspend fun comments(postId: String, cursor: String?): FeedCommentsPage = synchronized(this) {
+    FeedCommentsPage(comments = if (cursor == null) commentsFor(postId).toList() else emptyList())
+  }
+
+  /** 样例不审核：直接出现在列表里。 */
+  override suspend fun postComment(postId: String, text: String, parentId: String?): String = synchronized(this) {
+    val list = commentsFor(postId)
+    list += FeedCard(
+      id = "$postId-c${list.size}",
+      kind = FeedCard.KIND_COMMENT,
+      publishedAt = Instant.now().toString(),
+      author = me,
+      text = text.trim(),
+      rootId = postId,
+      parentId = parentId,
+      ipRegionLabel = ipLabels.first(),
+      viewer = FeedViewer(isAuthor = true)
+    )
+    FeedCreatePostResponse.STATE_PUBLISHED
+  }
+
+  private val comments = mutableMapOf<String, MutableList<FeedCard>>()
+
+  private val commentTexts = listOf(
+    "看着就舒服，周末也想去走走。",
+    "这个我也遇到过，后来发现是水放多了。",
+    "哈哈，同款心情。",
+    "请问是在哪里拍的？",
+    "收藏了，下次试试。"
+  )
+
+  private fun commentsFor(postId: String): MutableList<FeedCard> {
+    return comments.getOrPut(postId) {
+      val postAuthor = (mine + recommend).firstOrNull { it.id == postId }?.author ?: authors.first()
+      val start = Instant.now().minus(3, ChronoUnit.HOURS)
+      fun comment(n: Int, author: FeedAuthor, text: String, parent: String? = null) = FeedCard(
+        id = "$postId-c$n",
+        kind = FeedCard.KIND_COMMENT,
+        publishedAt = start.plus(n * 11L, ChronoUnit.MINUTES).toString(),
+        author = author,
+        text = text,
+        rootId = postId,
+        parentId = parent,
+        ipRegionLabel = ipLabels[n % ipLabels.size],
+        stats = FeedStats(likes = (n * 5) % 9)
+      )
+      mutableListOf(
+        comment(0, authors[1], commentTexts[0]),
+        comment(1, authors[2], commentTexts[3]),
+        comment(2, postAuthor, "在城西的山里，开车一个小时。", parent = "$postId-c1"),
+        comment(3, authors[3], commentTexts[1]),
+        comment(4, authors[2], "谢谢！", parent = "$postId-c2"),
+        comment(5, authors[4], commentTexts[2])
+      )
+    }
   }
 
   private fun sampleCard(index: Int): FeedCard {

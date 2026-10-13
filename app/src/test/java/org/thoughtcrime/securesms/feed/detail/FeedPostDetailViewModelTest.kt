@@ -1,0 +1,141 @@
+/*
+ * Copyright 2026 重庆半格智能科技有限公司
+ * SPDX-License-Identifier: AGPL-3.0-only
+ */
+
+package org.thoughtcrime.securesms.feed.detail
+
+import assertk.assertThat
+import assertk.assertions.containsExactly
+import assertk.assertions.isEqualTo
+import assertk.assertions.isFalse
+import assertk.assertions.isNull
+import assertk.assertions.isTrue
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.test.UnconfinedTestDispatcher
+import kotlinx.coroutines.test.resetMain
+import kotlinx.coroutines.test.setMain
+import org.junit.After
+import org.junit.Before
+import org.junit.Test
+import org.thoughtcrime.securesms.feed.EmptyFeedSource
+import org.thoughtcrime.securesms.feed.FeedSource
+import org.thoughtcrime.securesms.feed.net.FeedApiException
+import org.thoughtcrime.securesms.feed.net.FeedCard
+import org.thoughtcrime.securesms.feed.net.FeedCommentsPage
+import org.thoughtcrime.securesms.feed.net.FeedCreatePostResponse
+
+@OptIn(ExperimentalCoroutinesApi::class)
+class FeedPostDetailViewModelTest {
+
+  private val dispatcher = UnconfinedTestDispatcher()
+  private val post = FeedCard(id = "p", kind = FeedCard.KIND_POST, text = "old")
+
+  private fun comment(id: String, parent: String? = null) = FeedCard(id = id, kind = FeedCard.KIND_COMMENT, text = id, rootId = "p", parentId = parent)
+
+  private class FakeSource(
+    var fresh: FeedCard?,
+    val pages: Map<String?, FeedCommentsPage>,
+    var postResult: () -> String = { FeedCreatePostResponse.STATE_PENDING }
+  ) : FeedSource by EmptyFeedSource {
+    val posted = mutableListOf<Pair<String, String?>>()
+    override suspend fun card(contentId: String): FeedCard? = fresh
+    override suspend fun comments(postId: String, cursor: String?): FeedCommentsPage = pages[cursor] ?: FeedCommentsPage()
+    override suspend fun postComment(postId: String, text: String, parentId: String?): String {
+      val result = postResult()
+      posted += text to parentId
+      return result
+    }
+  }
+
+  @Before
+  fun setUp() {
+    Dispatchers.setMain(dispatcher)
+  }
+
+  @After
+  fun tearDown() {
+    Dispatchers.resetMain()
+  }
+
+  @Test
+  fun `refreshes the card and pages the comments`() {
+    val source = FakeSource(
+      fresh = post.copy(text = "new"),
+      pages = mapOf(
+        null to FeedCommentsPage(comments = listOf(comment("a"), comment("b")), cursor = "n"),
+        "n" to FeedCommentsPage(comments = listOf(comment("b"), comment("a1", "a")))
+      )
+    )
+    val viewModel = FeedPostDetailViewModel(post, source, dispatcher)
+
+    viewModel.loadMoreComments()
+
+    val state = viewModel.state.value
+    assertThat(state.post.text).isEqualTo("new")
+    assertThat(state.comments.map { it.id }).containsExactly("a", "b", "a1")
+    assertThat(state.threads.map { it.root.id }).containsExactly("a", "b")
+    assertThat(state.cursor).isNull()
+  }
+
+  @Test
+  fun `a post that is gone says so`() {
+    val viewModel = FeedPostDetailViewModel(post, FakeSource(fresh = null, pages = emptyMap()), dispatcher)
+
+    assertThat(viewModel.state.value.postGone).isTrue()
+  }
+
+  @Test
+  fun `sending a reply clears the box and says it is in review`() {
+    val source = FakeSource(fresh = post, pages = mapOf(null to FeedCommentsPage(comments = listOf(comment("a")))))
+    val viewModel = FeedPostDetailViewModel(post, source, dispatcher)
+
+    viewModel.replyTo(comment("a"))
+    viewModel.onDraftChanged("  thanks  ")
+    viewModel.send()
+
+    assertThat(source.posted).containsExactly("thanks" to "a")
+    val state = viewModel.state.value
+    assertThat(state.draft).isEqualTo("")
+    assertThat(state.replyTarget).isNull()
+    assertThat(state.notice).isEqualTo(FeedPostDetailState.Notice.PENDING)
+  }
+
+  @Test
+  fun `closed comments turn the box off and keep the draft`() {
+    val source = FakeSource(fresh = post, pages = emptyMap(), postResult = { throw FeedApiException(403, "comments_closed") })
+    val viewModel = FeedPostDetailViewModel(post, source, dispatcher)
+
+    viewModel.onDraftChanged("hello")
+    viewModel.send()
+
+    val state = viewModel.state.value
+    assertThat(state.canComment).isFalse()
+    assertThat(state.draft).isEqualTo("hello")
+    assertThat(state.notice).isEqualTo(FeedPostDetailState.Notice.CLOSED)
+  }
+
+  @Test
+  fun `a missing profile is reported, not a generic failure`() {
+    val source = FakeSource(fresh = post, pages = emptyMap(), postResult = { throw FeedApiException(409, "profile_required") })
+    val viewModel = FeedPostDetailViewModel(post, source, dispatcher)
+
+    viewModel.onDraftChanged("hello")
+    viewModel.send()
+
+    assertThat(viewModel.state.value.notice).isEqualTo(FeedPostDetailState.Notice.PROFILE_REQUIRED)
+    assertThat(viewModel.state.value.canComment).isTrue()
+  }
+
+  @Test
+  fun `blank drafts are not sent`() {
+    val source = FakeSource(fresh = post, pages = emptyMap())
+    val viewModel = FeedPostDetailViewModel(post, source, dispatcher)
+
+    viewModel.onDraftChanged("   ")
+    viewModel.send()
+
+    assertThat(source.posted.isEmpty()).isTrue()
+  }
+}

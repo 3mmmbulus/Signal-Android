@@ -287,4 +287,47 @@ class FeedApiTest {
       .isInstanceOf(FeedApiException::class)
       .prop(FeedApiException::code).isEqualTo("edit_window_closed")
   }
+
+  @Test
+  fun `comments page with cursor and keeps root and parent ids`() = runBlocking {
+    server.enqueue(
+      MockResponse().setBody(
+        """{"comments":[{"id":"c1","state":"ok","version":1,"card":{"kind":"comment","text":"hi","root_id":"p1"}},{"id":"c2","state":"ok","version":1,"card":{"kind":"comment","text":"yo","root_id":"p1","parent_id":"c1"}}],"cursor":"n2"}"""
+      )
+    )
+
+    val response = api.comments("p1", cursor = "n1")
+
+    val request = server.takeRequest()
+    assertThat(request.method).isEqualTo("GET")
+    assertThat(request.requestUrl!!.encodedPath).isEqualTo("/v1/feed/posts/p1/comments")
+    assertThat(request.requestUrl!!.queryParameter("cursor")).isEqualTo("n1")
+    val cards = response.comments.mapNotNull { it.toCard() }
+    assertThat(cards.map { it.id }).containsExactly("c1", "c2")
+    assertThat(cards[1].rootId).isEqualTo("p1")
+    assertThat(cards[1].parentId).isEqualTo("c1")
+    assertThat(response.cursor).isEqualTo("n2")
+  }
+
+  @Test
+  fun `create comment posts text and parent`() = runBlocking {
+    server.enqueue(MockResponse().setResponseCode(201).setBody("""{"id":"c9","state":"pending"}"""))
+
+    val response = api.createComment("p1", FeedCreateCommentRequest(text = "nice", parentId = "c1"))
+
+    val request = server.takeRequest()
+    assertThat(request.method).isEqualTo("POST")
+    assertThat(request.path).isEqualTo("/v1/feed/posts/p1/comments")
+    assertThat(request.body.readUtf8()).isEqualTo("""{"text":"nice","parent_id":"c1"}""")
+    assertThat(response.state).isEqualTo("pending")
+  }
+
+  @Test
+  fun `closed comments are a 403 with its code`() {
+    server.enqueue(MockResponse().setResponseCode(403).setBody("""{"error":"comments_closed"}"""))
+
+    assertFailure { runBlocking { api.createComment("p1", FeedCreateCommentRequest(text = "nice")) } }
+      .isInstanceOf(FeedApiException::class)
+      .prop(FeedApiException::code).isEqualTo("comments_closed")
+  }
 }

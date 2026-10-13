@@ -12,7 +12,10 @@ import org.thoughtcrime.securesms.feed.compose.FeedDraftKind
 import org.thoughtcrime.securesms.feed.net.CachingFeedTokenSource
 import org.thoughtcrime.securesms.feed.net.FeedApi
 import org.thoughtcrime.securesms.feed.net.FeedAuthApi
+import org.thoughtcrime.securesms.feed.net.FeedCard
+import org.thoughtcrime.securesms.feed.net.FeedCommentsPage
 import org.thoughtcrime.securesms.feed.net.FeedConfig
+import org.thoughtcrime.securesms.feed.net.FeedCreateCommentRequest
 import org.thoughtcrime.securesms.feed.net.FeedCreatePostRequest
 import org.thoughtcrime.securesms.feed.net.FeedCreatePostResponse
 import org.thoughtcrime.securesms.feed.net.FeedEditPostRequest
@@ -50,6 +53,14 @@ interface FeedSource {
 
   /** 改正文 / 长文标题（发布后 15 分钟内）。 */
   suspend fun editPost(contentId: String, draft: FeedDraft): FeedCreatePostResponse
+
+  /** 一条帖子，打开详情时用来校验（契约：打开详情时再调一次 Card API）；不可见时是 null。 */
+  suspend fun card(contentId: String): FeedCard?
+
+  suspend fun comments(postId: String, cursor: String?): FeedCommentsPage
+
+  /** 发评论，返回服务端给的 `state`（一般是 `pending`）。 */
+  suspend fun postComment(postId: String, text: String, parentId: String?): String
 }
 
 /**
@@ -86,6 +97,17 @@ class RemoteFeedSource(private val api: FeedApi) : FeedSource {
   override suspend fun deletePost(contentId: String) = api.deletePost(contentId)
 
   override suspend fun editPost(contentId: String, draft: FeedDraft): FeedCreatePostResponse = api.editPost(contentId, draft.toEditRequest())
+
+  override suspend fun card(contentId: String): FeedCard? = api.cards(listOf(contentId)).cards.firstOrNull()?.toCard()
+
+  override suspend fun comments(postId: String, cursor: String?): FeedCommentsPage {
+    val response = api.comments(postId, cursor)
+    return FeedCommentsPage(comments = response.comments.mapNotNull { it.toCard() }, cursor = response.cursor)
+  }
+
+  override suspend fun postComment(postId: String, text: String, parentId: String?): String {
+    return api.createComment(postId, FeedCreateCommentRequest(text = text.trim(), parentId = parentId)).state
+  }
 
   override suspend fun reportEvents(events: List<FeedEventPayload>) = api.events(events)
 
@@ -141,6 +163,9 @@ object EmptyFeedSource : FeedSource {
   override suspend fun myPosts(before: String?): FeedMyPostsPage = FeedMyPostsPage()
   override suspend fun deletePost(contentId: String) = Unit
   override suspend fun editPost(contentId: String, draft: FeedDraft): FeedCreatePostResponse = throw IllegalStateException("feed is not available")
+  override suspend fun card(contentId: String): FeedCard? = null
+  override suspend fun comments(postId: String, cursor: String?): FeedCommentsPage = FeedCommentsPage()
+  override suspend fun postComment(postId: String, text: String, parentId: String?): String = throw IllegalStateException("feed is not available")
 }
 
 object FeedSources {
