@@ -945,6 +945,38 @@
             android:exported="false"
             android:theme="@style/TextSecure.LightTheme" />
 
+        <!-- Tellomi M11：动态外链 tell.cc/m#<content id>（内容引擎 docs/api.md「动态的外链」）。
+             用 path 不用 pathPrefix：pathPrefix="/m" 会把 tell.cc/mike 这种用户名链接也吃进来。 -->
+        <activity
+            android:name=".feed.link.FeedPostLinkActivity"
+            android:exported="true"
+            android:theme="@style/TextSecure.LightTheme">
+            <intent-filter android:autoVerify="true">
+                <action android:name="android.intent.action.VIEW" />
+
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+
+                <data
+                    android:host="tell.cc"
+                    android:scheme="https" />
+                <data android:path="/m" />
+                <data android:path="/m/" />
+            </intent-filter>
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+
+                <data
+                    android:host="tell.cc"
+                    android:scheme="tellomi" />
+                <data android:path="/m" />
+                <data android:path="/m/" />
+            </intent-filter>
+        </activity>
+
         <activity
             android:name=".feed.detail.FeedPostDetailActivity"
             android:exported="false"

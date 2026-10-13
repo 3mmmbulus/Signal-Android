@@ -40,6 +40,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.res.vectorResource
@@ -479,6 +480,56 @@ private fun FeedActionRow(
           )
         }
       }
+    }
+
+    if (card.shareable) {
+      FeedShareButton(card)
+    }
+  }
+}
+
+object FeedPostCardTestTags {
+  const val SHARE = "feed_card_share"
+  const val COPY_LINK = "feed_card_copy_link"
+}
+
+/**
+ * 「分享」：复制链接、分享到其他 App（第三节第 26 条的后两项；发到聊天、转发、引用、快拍还没做）。
+ * 只有 [FeedCard.shareable] 才画：私密账号和非公开动态没有外链（第 29 条）。
+ */
+@Composable
+private fun FeedShareButton(card: FeedCard) {
+  val context = LocalContext.current
+  var open by remember { mutableStateOf(false) }
+  val shareLabel = stringResource(R.string.TellomiFeed__share)
+  Box {
+    Icon(
+      imageVector = ImageVector.vectorResource(CoreUiR.drawable.symbol_share_android_24),
+      contentDescription = shareLabel,
+      tint = MaterialTheme.colorScheme.onSurfaceVariant,
+      modifier = Modifier
+        .clip(CircleShape)
+        .clickable { open = true }
+        .testTag(FeedPostCardTestTags.SHARE)
+        .padding(10.dp)
+        .size(20.dp)
+    )
+    DropdownMenu(expanded = open, onDismissRequest = { open = false }) {
+      DropdownMenuItem(
+        text = { Text(stringResource(R.string.TellomiFeed__copy_link)) },
+        onClick = {
+          open = false
+          FeedShare.copyLink(context, card)
+        },
+        modifier = Modifier.testTag(FeedPostCardTestTags.COPY_LINK)
+      )
+      DropdownMenuItem(
+        text = { Text(stringResource(R.string.TellomiFeed__share_other_apps)) },
+        onClick = {
+          open = false
+          FeedShare.shareToApps(context, card)
+        }
+      )
     }
   }
 }

@@ -46,6 +46,7 @@ object TellomiLinks {
    * | `/s` | 贴纸包：`#pack_id=…&pack_key=…` | 已用 |
    * | `/call` | 通话链接：`#key=…` | 已用（通话本身是阶段三） |
    * | `/i` | **邀请下载**（邀请朋友装 Tellomi） | **预留，未实现** |
+   * | `/m` | 动态：`#<content id>`（小写 UUID，内容引擎 docs/api.md「动态的外链」） | 已用 |
    * | `/` | 不用 —— R2 自定义域对根路径只会 404（2026-09-22 上线时踩到） |
    *
    * 秘密一律放 `#` 后面，不进服务器日志 —— 沿用 Signal 的形状，别改。
@@ -62,6 +63,7 @@ object TellomiLinks {
   const val PATH_GROUP = "/g"
   const val PATH_STICKER = "/s"
   const val PATH_CALL = "/call"
+  const val PATH_POST = "/m"
 
   /** 预留：邀请朋友下载。还没有处理逻辑，所以 manifest 里**故意没有**对应的 intent-filter
    *  —— 声明了却不处理的话，用户点链接会打开 App 然后什么也不发生，比直接落网页更糟。 */
@@ -172,4 +174,21 @@ object TellomiLinks {
   // tell.cc 一个域名承载 /u /g /s /call 四种用途，只判 host 会把联系人链接
   // 也放进群邀请的解析里（然后 Base64 解不动，报「群链接无效」，与真实原因无关）。
   // 各调用点自己连路径一起判，见 GroupInviteLinkUrl.getGroupUrl。
+
+  /** 一条动态的外链：`https://tell.cc/m#<content id>`。只给公开动态、作者不是私密账号时用（`dynamic-feed.md` 第三节第 29 条）。 */
+  @JvmStatic
+  fun postLink(contentId: String): String = "https://$HOST$PATH_POST#${contentId.lowercase()}"
+
+  /**
+   * 动态外链里的 content id（小写），不是就返回 null。两种都认：`https://tell.cc/m#<id>` 和 App 内的 `tellomi://tell.cc/m#<id>`；
+   * `/m` 后面多一个 `/` 也认（落地页和手打都可能有）。id 必须是 UUID，不认的一律 null，不去问引擎。
+   */
+  @JvmStatic
+  fun parsePostId(link: String?): String? {
+    if (link == null) return null
+    return POST_LINK_REGEX.find(link.trim())?.groups?.get(2)?.value?.lowercase()
+  }
+
+  private val POST_LINK_REGEX =
+    """^(https://|tellomi://)tell\.cc/m/?#([0-9A-Fa-f]{8}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{12})$""".toRegex(RegexOption.IGNORE_CASE)
 }

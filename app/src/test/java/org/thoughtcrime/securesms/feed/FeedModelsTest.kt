@@ -89,6 +89,15 @@ class FeedModelsTest {
   }
 
   @Test
+  fun `shareable sits outside the card and is off when missing`() {
+    val shared = FeedJson.decodeFromString(FeedCardResult.serializer(), """{"id":"p","state":"ok","card":{"kind":"post","text":"hi"},"shareable":true}""")
+    val plain = FeedJson.decodeFromString(FeedCardResult.serializer(), """{"id":"p","state":"ok","card":{"kind":"post","text":"hi"}}""")
+
+    assertThat(shared.toCard()!!.shareable).isEqualTo(true)
+    assertThat(plain.toCard()!!.shareable).isEqualTo(false)
+  }
+
+  @Test
   fun `refresh puts new cards on top without duplicates`() {
     val merged = mergeRefresh(incoming = listOf(card("c"), card("a")), existing = listOf(card("a"), card("b")))
 

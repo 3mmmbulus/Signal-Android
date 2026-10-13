@@ -112,7 +112,9 @@ data class FeedCardResult(
   val me: FeedMine? = null,
   val poll: FeedPollState? = null,
   /** 等帖子作者批准的回复（第 40 条），只有写的人和帖子作者看得到。 */
-  val held: Boolean = false
+  val held: Boolean = false,
+  /** 能不能给「复制链接 / 分享到其他 App」：公开动态、作者不是私密账号（第三节第 29 条）。没带就当不能。 */
+  val shareable: Boolean = false
 ) {
   /** `unavailable` 不区分原因。不认识的 state 一律按不可用处理。 */
   val isAvailable: Boolean
@@ -127,7 +129,8 @@ data class FeedCardResult(
       stats = stats ?: base.stats,
       viewer = base.viewer.copy(liked = me?.liked ?: base.viewer.liked, saved = me?.saved ?: base.viewer.saved),
       pollState = poll,
-      held = held
+      held = held,
+      shareable = shareable
     )
   }
 
@@ -170,7 +173,9 @@ data class FeedCard(
   @SerialName("parent_id") val parentId: String? = null,
   @Transient val pollState: FeedPollState? = null,
   /** 外层 `held`：这条回复还在等帖子作者批准。 */
-  @Transient val held: Boolean = false
+  @Transient val held: Boolean = false,
+  /** 外层 `shareable`：给不给「复制链接 / 分享到其他 App」。 */
+  @Transient val shareable: Boolean = false
 ) {
   /** P1 客户端只渲染这几种 `kind`；别的（快拍、视频等）不显示，不报错。 */
   val isRenderable: Boolean

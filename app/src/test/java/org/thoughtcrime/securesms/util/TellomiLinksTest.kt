@@ -59,4 +59,19 @@ class TellomiLinksTest {
     assertThat(TellomiLinks.parsePlainUsernameFromLink("https://example.com/kaixin")).isNull()
     assertThat(TellomiLinks.parsePlainUsernameFromLink(null)).isNull()
   }
+
+  @Test
+  fun postLinksRoundTripAndOnlyTakeAUuid() {
+    val id = "0f8e2c1a-3b4d-4e5f-8a9b-0c1d2e3f4a5b"
+    assertThat(TellomiLinks.postLink(id.uppercase())).isEqualTo("https://tell.cc/m#$id")
+    assertThat(TellomiLinks.parsePostId(TellomiLinks.postLink(id))).isEqualTo(id)
+    assertThat(TellomiLinks.parsePostId("tellomi://tell.cc/m#$id")).isEqualTo(id)
+    assertThat(TellomiLinks.parsePostId("https://tell.cc/m/#${id.uppercase()}")).isEqualTo(id)
+
+    assertThat(TellomiLinks.parsePostId("https://tell.cc/m#not-a-uuid")).isNull()
+    assertThat(TellomiLinks.parsePostId("https://tell.cc/mike#$id")).isNull()
+    assertThat(TellomiLinks.parsePostId("https://example.com/m#$id")).isNull()
+    assertThat(TellomiLinks.parsePostId("https://tell.cc/m#$id/extra")).isNull()
+    assertThat(TellomiLinks.parsePostId(null)).isNull()
+  }
 }

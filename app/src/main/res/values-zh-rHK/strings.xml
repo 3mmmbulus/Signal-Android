@@ -6613,6 +6613,11 @@
     <string name="TellomiFeed__action_failed">操作失敗，請再試</string>
     <string name="TellomiFeed__load_failed">載入失敗</string>
     <string name="TellomiFeed__retry">重試</string>
+    <!-- Tellomi M11：卡片「分享」（dynamic-feed.md 第三节第 26、29 条） -->
+    <string name="TellomiFeed__share">分享</string>
+    <string name="TellomiFeed__copy_link">複製連結</string>
+    <string name="TellomiFeed__share_other_apps">分享到其他 App</string>
+    <string name="TellomiFeed__link_copied">連結已複製</string>
     <plurals name="TellomiFeed__comments">
         <item quantity="other">%1$d 則留言</item>
     </plurals>
