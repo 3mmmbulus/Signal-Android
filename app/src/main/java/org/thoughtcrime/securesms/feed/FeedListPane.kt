@@ -235,6 +235,13 @@ fun FeedListPane(
     }
   }
 
+  // 未成年人模式：每天 40 分钟、22:00–6:00 不能用（第三节第 31 条）
+  val minorLock = rememberFeedMinorLock(minorMode = state.config?.minorMode == true)
+  if (minorLock != null) {
+    FeedMinorLockScreen(minorLock, modifier = modifier)
+    return
+  }
+
   Box(modifier = modifier) {
     FeedPager(
       chrome = chrome,

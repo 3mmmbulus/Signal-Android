@@ -6744,6 +6744,10 @@
     <string name="TellomiFeedCompose__edit_window_closed">發布已超過 15 分鐘，無法再修改</string>
     <string name="TellomiFeedCompose__quote_unavailable">引用的動態已不可見，已移除引用，內文可以直接發布</string>
     <string name="TellomiFeedCompose__article_restored">已恢復上次未寫完的長文</string>
+    <string name="TellomiFeedMinor__night_title">22:00–6:00 動態暫停</string>
+    <string name="TellomiFeedMinor__night_body">未成年人模式下，晚上 10 點到早上 6 點無法使用動態。聊天不受影響。</string>
+    <string name="TellomiFeedMinor__daily_title">今天的動態時間已用完</string>
+    <string name="TellomiFeedMinor__daily_body">未成年人模式下，動態每天最多使用 40 分鐘，明天再來。聊天不受影響。</string>
     <string name="TellomiFeedCompose__edit_saved">已儲存</string>
     <string name="TellomiFeedCompose__edit_saved_pending">已儲存，審核通過後其他人會看到新版本</string>
     <string name="TellomiFeedMine__edit">編輯</string>

@@ -6963,6 +6963,10 @@
     <string name="TellomiFeedCompose__edit_window_closed">It\'s been more than 15 minutes since you posted, so this can\'t be edited.</string>
     <string name="TellomiFeedCompose__quote_unavailable">The post you\'re quoting is no longer available, so the quote was removed. You can still post your text.</string>
     <string name="TellomiFeedCompose__article_restored">Picked up your unfinished article where you left off</string>
+    <string name="TellomiFeedMinor__night_title">Feed is paused from 10 PM to 6 AM</string>
+    <string name="TellomiFeedMinor__night_body">In minor mode, Feed can\'t be used between 10 PM and 6 AM. Chats still work.</string>
+    <string name="TellomiFeedMinor__daily_title">You\'ve used today\'s Feed time</string>
+    <string name="TellomiFeedMinor__daily_body">In minor mode, Feed can be used for up to 40 minutes a day. Come back tomorrow. Chats still work.</string>
     <string name="TellomiFeedCompose__edit_saved">Saved</string>
     <string name="TellomiFeedCompose__edit_saved_pending">Saved. Others will see the new version once it\'s reviewed.</string>
     <string name="TellomiFeedMine__edit">Edit</string>

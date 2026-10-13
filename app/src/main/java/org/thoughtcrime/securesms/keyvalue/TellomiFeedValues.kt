@@ -21,6 +21,8 @@ class TellomiFeedValues(store: KeyValueStore) : SignalStoreValues(store) {
     private const val FRIENDS_CHECKED_AT = "tellomi_feed.friends_checked_at"
     private const val BLOCKED_KEYWORDS = "tellomi_feed.blocked_keywords"
     private const val ARTICLE_DRAFT = "tellomi_feed.article_draft"
+    private const val MINOR_USAGE_DAY = "tellomi_feed.minor_usage_day"
+    private const val MINOR_USED_MILLIS = "tellomi_feed.minor_used_millis"
   }
 
   public override fun onFirstEverAppLaunch() = Unit
@@ -52,4 +54,8 @@ class TellomiFeedValues(store: KeyValueStore) : SignalStoreValues(store) {
 
   /** 没写完的长文（JSON：标题和正文），只在本机。见 `FeedArticleDrafts`。 */
   var articleDraft: String? by stringValue(ARTICLE_DRAFT, null)
+
+  /** 未成年人模式：今天是哪天（ISO 日期）和今天在动态上用了多少毫秒。见 `FeedMinorUsage`。 */
+  var minorUsageDay: String? by stringValue(MINOR_USAGE_DAY, null)
+  var minorUsedMillis: Long by longValue(MINOR_USED_MILLIS, 0)
 }
