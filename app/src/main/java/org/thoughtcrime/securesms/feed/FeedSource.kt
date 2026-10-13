@@ -341,7 +341,8 @@ internal fun FeedDraft.toRequest(now: Instant = Instant.now()): FeedCreatePostRe
     // 「所有人」不发，用引擎默认
     replyPolicy = replies.policy.takeIf { it != FeedReplyPolicy.EVERYONE }?.apiName,
     replyModeration = replies.moderation,
-    poll = attachedPoll?.toApi(now)
+    poll = attachedPoll?.toApi(now),
+    topics = topics.takeIf { it.isNotEmpty() }
   )
 }
 

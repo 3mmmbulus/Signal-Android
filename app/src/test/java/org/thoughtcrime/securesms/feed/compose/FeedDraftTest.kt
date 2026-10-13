@@ -157,4 +157,12 @@ class FeedDraftTest {
     assertThat(FeedJson.encodeToString(FeedCreatePostRequest.serializer(), request))
       .isEqualTo("""{"kind":"post","text":"hi","visibility":"only_me","comments_closed":true,"reply_policy":"friends","reply_moderation":true}""")
   }
+
+  @Test
+  fun `topics go into the request only when chosen`() {
+    val request = FeedDraft(text = "hi", visibility = FeedVisibility.ONLY_ME, topics = listOf("food", "travel")).toRequest()
+    assertThat(FeedJson.encodeToString(FeedCreatePostRequest.serializer(), request))
+      .isEqualTo("""{"kind":"post","text":"hi","visibility":"only_me","comments_closed":false,"topics":["food","travel"]}""")
+    assertThat(FeedDraft(text = "hi").toRequest().topics).isEqualTo(null)
+  }
 }

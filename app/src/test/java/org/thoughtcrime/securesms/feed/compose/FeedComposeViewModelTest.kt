@@ -194,4 +194,18 @@ class FeedComposeViewModelTest {
     editing.onReplySettingsChanged(settings)
     assertThat(editing.state.value.draft.replies).isEqualTo(FeedReplySettings())
   }
+
+  @Test
+  fun `topics toggle, stop at three, and stay put while editing`() {
+    val viewModel = FeedComposeViewModel(source = FakeSource(), ioDispatcher = dispatcher)
+    listOf("food", "travel", "photo", "music").forEach(viewModel::onTopicToggled)
+    assertThat(viewModel.state.value.draft.topics).isEqualTo(listOf("food", "travel", "photo"))
+    viewModel.onTopicToggled("travel")
+    viewModel.onTopicToggled("music")
+    assertThat(viewModel.state.value.draft.topics).isEqualTo(listOf("food", "photo", "music"))
+
+    val editing = FeedComposeViewModel(editTarget = target, source = FakeSource(), ioDispatcher = dispatcher)
+    editing.onTopicToggled("food")
+    assertThat(editing.state.value.draft.topics).isEqualTo(emptyList())
+  }
 }

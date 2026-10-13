@@ -48,6 +48,7 @@ class FeedComposeScreenTest {
   private var picking: FeedVisibility? = null
   private val pollEvents = mutableListOf<String>()
   private var replies: FeedReplySettings? = null
+  private val topicEvents = mutableListOf<String>()
 
   private fun show(state: FeedComposeState) {
     composeTestRule.setContent {
@@ -71,7 +72,8 @@ class FeedComposeScreenTest {
             onOptionRemoved = { pollEvents += "option-$it" },
             onMultiChanged = { pollEvents += "multi=$it" }
           ),
-          onReplySettingsChanged = { replies = it }
+          onReplySettingsChanged = { replies = it },
+          onTopicToggled = { topicEvents += it }
         )
       }
     }
@@ -250,4 +252,30 @@ class FeedComposeScreenTest {
   }
 
   private fun publishButton() = composeTestRule.onNodeWithTag(FeedComposeTestTags.PUBLISH)
+
+  @Test
+  fun `topic button opens the picker and chosen topics show under the text`() {
+    show(FeedComposeState(draft = FeedDraft(text = "周末烤了一炉酸面包。", topics = listOf("baking", "food"))))
+
+    composeTestRule.onNodeWithText("#Baking & desserts").assertExists()
+    screenshot("compose_topics")
+    composeTestRule.onNodeWithTag(FeedComposeTestTags.REMOVE_TOPIC + "food").performClick()
+    composeTestRule.onNodeWithTag(FeedComposeTestTags.TOPICS).performClick()
+    composeTestRule.onNodeWithText("2 of 3 chosen").assertExists()
+    composeTestRule.onNodeWithTag(FeedComposeTestTags.TOPIC + "travel").performClick()
+    assertThat(topicEvents).isEqualTo(listOf("food", "travel"))
+  }
+
+  @Test
+  fun `a full picker greys out the rest`() {
+    composeTestRule.setContent {
+      SignalTheme {
+        FeedTopicPicker(selected = listOf("food", "travel", "photo"), onToggle = { topicEvents += it })
+      }
+    }
+    composeTestRule.onNodeWithTag(FeedComposeTestTags.TOPIC + "music").assertIsNotEnabled()
+    composeTestRule.onNodeWithTag(FeedComposeTestTags.TOPIC + "food").assertIsEnabled().performClick()
+    assertThat(topicEvents).isEqualTo(listOf("food"))
+    screenshot("compose_topic_picker")
+  }
 }

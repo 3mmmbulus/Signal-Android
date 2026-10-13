@@ -7151,6 +7151,9 @@
     <string name="TellomiFeedCompose__poll_three_days">3 days</string>
     <string name="TellomiFeedCompose__poll_seven_days">7 days</string>
     <string name="TellomiFeedCompose__replies_title">Reply options</string>
+    <string name="TellomiFeedCompose__topics_title">Topics</string>
+    <string name="TellomiFeedCompose__topics_limit">%1$d of %2$d chosen</string>
+    <string name="TellomiFeedCompose__topics_remove">Remove %1$s</string>
     <string name="TellomiFeedCompose__replies_everyone">Anyone</string>
     <string name="TellomiFeedCompose__replies_friends">Friends</string>
     <string name="TellomiFeedCompose__replies_following">People you follow</string>

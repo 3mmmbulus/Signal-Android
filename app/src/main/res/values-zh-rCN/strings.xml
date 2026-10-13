@@ -6924,6 +6924,9 @@
     <string name="TellomiFeedCompose__poll_three_days">3 天</string>
     <string name="TellomiFeedCompose__poll_seven_days">7 天</string>
     <string name="TellomiFeedCompose__replies_title">回复选项</string>
+    <string name="TellomiFeedCompose__topics_title">话题</string>
+    <string name="TellomiFeedCompose__topics_limit">已选 %1$d / %2$d 个</string>
+    <string name="TellomiFeedCompose__topics_remove">移除 %1$s</string>
     <string name="TellomiFeedCompose__replies_everyone">所有人</string>
     <string name="TellomiFeedCompose__replies_friends">好友</string>
     <string name="TellomiFeedCompose__replies_following">我关注的人</string>

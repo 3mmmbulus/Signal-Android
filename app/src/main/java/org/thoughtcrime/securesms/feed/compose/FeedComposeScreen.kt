@@ -87,12 +87,15 @@ internal object FeedComposeTestTags {
   const val PUBLISH = "feed_compose_publish"
   const val ADD_POLL = "feed_compose_add_poll"
   const val REPLIES = "feed_compose_replies"
+  const val TOPICS = "feed_compose_topics"
+  const val TOPIC = "feed_compose_topic_"
+  const val REMOVE_TOPIC = "feed_compose_remove_topic_"
 }
 
 /**
  * 发布页：顶部「动态 / 长文」，正文，图片，底部可见范围和字数。
  *
- * 投票在正文下面编辑（[FeedComposePollEditor]），回复选项在底部（[FeedReplySettingsSheet]）。话题在后面的 PR 加（第三节第 22 条）；没做的入口不画。
+ * 投票在正文下面编辑（[FeedComposePollEditor]），回复选项在底部（[FeedReplySettingsSheet]），话题从底部「#」选（[FeedTopicSheet]，第三节第 22 条）。
  */
 @Composable
 fun FeedComposeScreen(
@@ -109,11 +112,13 @@ fun FeedComposeScreen(
   /** 「部分可见 / 不给谁看」：打开选人页，选完由 [FeedComposeViewModel.onAudiencePicked] 换档。 */
   onPickAudience: (FeedVisibility) -> Unit = {},
   pollActions: FeedComposePollActions = FeedComposePollActions(),
-  onReplySettingsChanged: (FeedReplySettings) -> Unit = {}
+  onReplySettingsChanged: (FeedReplySettings) -> Unit = {},
+  onTopicToggled: (String) -> Unit = {}
 ) {
   var showDiscardDialog by rememberSaveable { mutableStateOf(false) }
   var showVisibilitySheet by rememberSaveable { mutableStateOf(false) }
   var showReplySheet by rememberSaveable { mutableStateOf(false) }
+  var showTopicSheet by rememberSaveable { mutableStateOf(false) }
   val snackbarHostState = remember { SnackbarHostState() }
   val failedMessage = stringResource(R.string.TellomiFeedCompose__publish_failed)
 
@@ -208,6 +213,14 @@ fun FeedComposeScreen(
           state.draft.attachedPoll?.let { poll ->
             FeedComposePollEditor(poll = poll, actions = pollActions, modifier = Modifier.padding(top = 12.dp))
           }
+
+          if (state.draft.topics.isNotEmpty()) {
+            FeedComposeTopics(
+              topics = state.draft.topics,
+              onRemove = if (state.editing == null) onTopicToggled else null,
+              modifier = Modifier.padding(top = 12.dp)
+            )
+          }
         }
 
         HorizontalDivider()
@@ -217,6 +230,7 @@ fun FeedComposeScreen(
           onAddImages = openPicker,
           onAddPoll = pollActions.onAdd,
           onRepliesClick = { showReplySheet = true },
+          onTopicsClick = { showTopicSheet = true },
           onVisibilityClick = { showVisibilitySheet = true }
         )
       }
@@ -234,6 +248,14 @@ fun FeedComposeScreen(
       onConfirm = onClose,
       onDismiss = { showDiscardDialog = false },
       confirmColor = MaterialTheme.colorScheme.error
+    )
+  }
+
+  if (showTopicSheet) {
+    FeedTopicSheet(
+      selected = state.draft.topics,
+      onToggle = onTopicToggled,
+      onDismiss = { showTopicSheet = false }
     )
   }
 
@@ -429,6 +451,7 @@ private fun FeedComposeBottomBar(
   onAddImages: () -> Unit,
   onAddPoll: () -> Unit,
   onRepliesClick: () -> Unit,
+  onTopicsClick: () -> Unit,
   onVisibilityClick: () -> Unit
 ) {
   Row(
@@ -454,6 +477,13 @@ private fun FeedComposeBottomBar(
     }
 
     if (state.editing == null) {
+      IconButton(onClick = onTopicsClick, modifier = Modifier.testTag(FeedComposeTestTags.TOPICS)) {
+        Icon(
+          painter = painterResource(R.drawable.symbol_number_24),
+          contentDescription = stringResource(R.string.TellomiFeedCompose__topics_title),
+          tint = if (state.draft.topics.isEmpty()) LocalContentColor.current else MaterialTheme.colorScheme.primary
+        )
+      }
       IconButton(onClick = onRepliesClick, modifier = Modifier.testTag(FeedComposeTestTags.REPLIES)) {
         Icon(
           painter = painterResource(R.drawable.symbol_reply_24),

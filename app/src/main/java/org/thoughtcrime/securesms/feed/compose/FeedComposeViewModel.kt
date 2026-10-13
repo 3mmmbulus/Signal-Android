@@ -104,6 +104,18 @@ class FeedComposeViewModel(
     if (internalState.value.editing == null) updateDraft { it.copy(replies = settings) }
   }
 
+  /** 选上或取消一个话题；满 3 个时再选不进去。编辑时不能改（引擎编辑只收正文和标题）。 */
+  fun onTopicToggled(slug: String) {
+    if (internalState.value.editing != null) return
+    updateDraft { draft ->
+      when {
+        slug in draft.topics -> draft.copy(topics = draft.topics - slug)
+        draft.topics.size >= FeedDraft.MAX_TOPICS -> draft
+        else -> draft.copy(topics = draft.topics + slug)
+      }
+    }
+  }
+
   /** 加投票（编辑时不能加：引擎编辑只收正文和标题）。 */
   fun onPollAdded() {
     if (internalState.value.canAddPoll) updateDraft { it.copy(poll = FeedDraftPoll()) }

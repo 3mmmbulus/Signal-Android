@@ -115,7 +115,8 @@ class FeedComposeActivity : PassphraseRequiredActivity() {
               onDurationChanged = viewModel::onPollDurationChanged
             )
           },
-          onReplySettingsChanged = viewModel::onReplySettingsChanged
+          onReplySettingsChanged = viewModel::onReplySettingsChanged,
+          onTopicToggled = viewModel::onTopicToggled
         )
       }
     }

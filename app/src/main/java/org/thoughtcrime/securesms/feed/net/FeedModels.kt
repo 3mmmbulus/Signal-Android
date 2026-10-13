@@ -306,7 +306,9 @@ data class FeedCreatePostRequest(
   @SerialName("media_keys") val mediaKeys: List<String>? = null,
   val audience: FeedAudienceToken? = null,
   /** 只有 `kind == "post"` 能带（引擎 `invalid_poll`）。 */
-  val poll: FeedPoll? = null
+  val poll: FeedPoll? = null,
+  /** 话题 slug，最多 3 个（引擎 `invalid_topics`）。 */
+  val topics: List<String>? = null
 )
 
 /** 发帖时的 `audience`：`{"audience_token": "<Signal-Server 签的 JWT>"}`，`kind` 要和 `visibility` 一致。 */

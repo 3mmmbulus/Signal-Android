@@ -62,7 +62,9 @@ data class FeedDraft(
   /** 投票（第三节第 22 条），只有动态能带；切到长文时留着、切回来还在。 */
   val poll: FeedDraftPoll? = null,
   /** 回复选项（第三节第 40 条），动态和长文都有。 */
-  val replies: FeedReplySettings = FeedReplySettings()
+  val replies: FeedReplySettings = FeedReplySettings(),
+  /** 话题（第三节第 22 条）：最多 [MAX_TOPICS] 个 slug，名字见 `FeedTopicNames`。 */
+  val topics: List<String> = emptyList()
 ) {
   val isEmpty: Boolean
     get() = title.isBlank() && text.isBlank() && images.isEmpty() && poll == null
@@ -104,6 +106,9 @@ data class FeedDraft(
   companion object {
     /** 名单最多 500 人（Signal-Server `MAX_AUDIENCE_MEMBERS`、引擎 `MaxAudienceMembers`）。 */
     const val MAX_AUDIENCE = 500
+
+    /** 一条最多带 3 个话题（引擎 `MaxPostTopics`）。 */
+    const val MAX_TOPICS = 3
   }
 
   enum class Problem {
