@@ -100,6 +100,28 @@ class FeedComposeViewModel(
     updateDraft { it.copy(visibility = visibility, audience = members) }
   }
 
+  /** 加投票（编辑时不能加：引擎编辑只收正文和标题）。 */
+  fun onPollAdded() {
+    if (internalState.value.canAddPoll) updateDraft { it.copy(poll = FeedDraftPoll()) }
+  }
+
+  fun onPollRemoved() = updateDraft { it.copy(poll = null) }
+
+  fun onPollOptionChanged(index: Int, text: String) = updatePoll { poll ->
+    if (index !in poll.options.indices) poll else poll.copy(options = poll.options.toMutableList().also { it[index] = FeedDraftPoll.clip(text) })
+  }
+
+  fun onPollOptionAdded() = updatePoll { if (it.canAddOption) it.copy(options = it.options + "") else it }
+
+  /** 至少留两个格子。 */
+  fun onPollOptionRemoved(index: Int) = updatePoll { poll ->
+    if (poll.options.size <= FeedDraftPoll.MIN_OPTIONS || index !in poll.options.indices) poll else poll.copy(options = poll.options.filterIndexed { i, _ -> i != index })
+  }
+
+  fun onPollMultiChanged(multi: Boolean) = updatePoll { it.copy(multi = multi) }
+
+  fun onPollDurationChanged(duration: FeedPollDuration) = updatePoll { it.copy(duration = duration) }
+
   fun publish() {
     val current = internalState.value
     if (current.publishing || current.problem != null) {
@@ -133,6 +155,10 @@ class FeedComposeViewModel(
   /** 已经打开了建主页的页面。 */
   fun onProfileRequiredShown() {
     internalState.update { it.copy(profileRequired = false) }
+  }
+
+  private fun updatePoll(transform: (FeedDraftPoll) -> FeedDraftPoll) = updateDraft { draft ->
+    draft.poll?.let { draft.copy(poll = transform(it)) } ?: draft
   }
 
   private fun updateDraft(transform: (FeedDraft) -> FeedDraft) {
@@ -180,4 +206,7 @@ data class FeedComposeState(
 
   val canAddImages: Boolean
     get() = editing == null && draft.kind == FeedDraftKind.POST && draft.images.size < limits.postImages
+
+  val canAddPoll: Boolean
+    get() = editing == null && draft.kind == FeedDraftKind.POST && draft.poll == null
 }

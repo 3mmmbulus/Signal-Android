@@ -46,6 +46,7 @@ class FeedComposeScreenTest {
   private var published = 0
   private var visibility: FeedVisibility? = null
   private var picking: FeedVisibility? = null
+  private val pollEvents = mutableListOf<String>()
 
   private fun show(state: FeedComposeState) {
     composeTestRule.setContent {
@@ -61,7 +62,14 @@ class FeedComposeScreenTest {
           onVisibilityChanged = { visibility = it },
           onPublish = { published++ },
           onFailureShown = {},
-          onPickAudience = { picking = it }
+          onPickAudience = { picking = it },
+          pollActions = FeedComposePollActions(
+            onAdd = { pollEvents += "add" },
+            onRemove = { pollEvents += "remove" },
+            onOptionAdded = { pollEvents += "option+" },
+            onOptionRemoved = { pollEvents += "option-$it" },
+            onMultiChanged = { pollEvents += "multi=$it" }
+          )
         )
       }
     }
@@ -168,6 +176,38 @@ class FeedComposeScreenTest {
     publishButton().assertIsEnabled().performClick()
     assertThat(published).isEqualTo(1)
     screenshot("compose_edit")
+  }
+
+  @Test
+  fun `poll button adds a poll and the editor shows its controls`() {
+    show(FeedComposeState(draft = FeedDraft(text = "周末去哪儿？")))
+    composeTestRule.onNodeWithTag(FeedComposeTestTags.ADD_POLL).performClick()
+    assertThat(pollEvents).isEqualTo(listOf("add"))
+  }
+
+  @Test
+  fun `poll editor`() {
+    val poll = FeedDraftPoll(options = listOf("Hiking", "The park", ""), multi = true)
+    show(FeedComposeState(draft = FeedDraft(text = "Where to this weekend?", poll = poll)))
+
+    composeTestRule.onNodeWithText("Option 3").assertExists()
+    composeTestRule.onNodeWithText("3 days").assertExists()
+    composeTestRule.onNodeWithTag(FeedComposeTestTags.ADD_POLL).assertIsNotEnabled()
+    publishButton().assertIsEnabled()
+    screenshot("compose_poll")
+
+    composeTestRule.onNodeWithTag(FeedComposePollTestTags.REMOVE_OPTION + 2).performClick()
+    composeTestRule.onNodeWithTag(FeedComposePollTestTags.ADD_OPTION).performClick()
+    composeTestRule.onNodeWithTag(FeedComposePollTestTags.MULTI).performClick()
+    composeTestRule.onNodeWithTag(FeedComposePollTestTags.REMOVE).performClick()
+    assertThat(pollEvents).isEqualTo(listOf("option-2", "option+", "multi=false", "remove"))
+  }
+
+  @Test
+  fun `a poll with one option cannot be published`() {
+    show(FeedComposeState(draft = FeedDraft(text = "a", poll = FeedDraftPoll(options = listOf("only", "")))))
+    publishButton().assertIsNotEnabled()
+    composeTestRule.onNodeWithTag(FeedComposePollTestTags.REMOVE_OPTION + 0).assertDoesNotExist()
   }
 
   private fun publishButton() = composeTestRule.onNodeWithTag(FeedComposeTestTags.PUBLISH)

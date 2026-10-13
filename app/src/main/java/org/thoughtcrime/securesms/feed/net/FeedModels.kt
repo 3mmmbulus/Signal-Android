@@ -292,7 +292,9 @@ data class FeedCreatePostRequest(
   @SerialName("client_nonce") val clientNonce: String? = null,
   /** 上传完成的图片 key，按显示顺序。 */
   @SerialName("media_keys") val mediaKeys: List<String>? = null,
-  val audience: FeedAudienceToken? = null
+  val audience: FeedAudienceToken? = null,
+  /** 只有 `kind == "post"` 能带（引擎 `invalid_poll`）。 */
+  val poll: FeedPoll? = null
 )
 
 /** 发帖时的 `audience`：`{"audience_token": "<Signal-Server 签的 JWT>"}`，`kind` 要和 `visibility` 一致。 */

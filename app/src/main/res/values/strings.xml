@@ -7139,6 +7139,17 @@
         <item quantity="one">%1$d minute left</item>
         <item quantity="other">%1$d minutes left</item>
     </plurals>
+    <string name="TellomiFeedCompose__poll">Poll</string>
+    <string name="TellomiFeedCompose__poll_add">Add a poll</string>
+    <string name="TellomiFeedCompose__poll_remove">Remove poll</string>
+    <string name="TellomiFeedCompose__poll_option_hint">Option %1$d</string>
+    <string name="TellomiFeedCompose__poll_remove_option">Remove option</string>
+    <string name="TellomiFeedCompose__poll_add_option">Add option</string>
+    <string name="TellomiFeedCompose__poll_multi">Allow multiple answers</string>
+    <string name="TellomiFeedCompose__poll_duration">Poll length</string>
+    <string name="TellomiFeedCompose__poll_one_day">1 day</string>
+    <string name="TellomiFeedCompose__poll_three_days">3 days</string>
+    <string name="TellomiFeedCompose__poll_seven_days">7 days</string>
     <string name="ConversationListTabs__99p">99+</string>
     <!-- Menu item on stories landing page -->
     <string name="StoriesLandingFragment__story_privacy">Story privacy</string>

@@ -14,6 +14,7 @@ import androidx.activity.result.contract.ActivityResultContract
 import androidx.activity.viewModels
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.core.content.IntentCompat
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.lifecycleScope
@@ -102,6 +103,17 @@ class FeedComposeActivity : PassphraseRequiredActivity() {
           onPickAudience = { visibility ->
             viewModel.pickingAudienceFor = visibility
             audienceLauncher.launch(state.draft.audience.map { it.recipientId }.toLongArray())
+          },
+          pollActions = remember(viewModel) {
+            FeedComposePollActions(
+              onAdd = viewModel::onPollAdded,
+              onRemove = viewModel::onPollRemoved,
+              onOptionChanged = viewModel::onPollOptionChanged,
+              onOptionAdded = viewModel::onPollOptionAdded,
+              onOptionRemoved = viewModel::onPollOptionRemoved,
+              onMultiChanged = viewModel::onPollMultiChanged,
+              onDurationChanged = viewModel::onPollDurationChanged
+            )
           }
         )
       }

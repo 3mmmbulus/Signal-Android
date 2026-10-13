@@ -6912,6 +6912,17 @@
     <plurals name="TellomiFeedPoll__minutes_left">
         <item quantity="other">仲有 %1$d 分鐘</item>
     </plurals>
+    <string name="TellomiFeedCompose__poll">投票</string>
+    <string name="TellomiFeedCompose__poll_add">加投票</string>
+    <string name="TellomiFeedCompose__poll_remove">移除投票</string>
+    <string name="TellomiFeedCompose__poll_option_hint">選項 %1$d</string>
+    <string name="TellomiFeedCompose__poll_remove_option">刪除選項</string>
+    <string name="TellomiFeedCompose__poll_add_option">加選項</string>
+    <string name="TellomiFeedCompose__poll_multi">容許多選</string>
+    <string name="TellomiFeedCompose__poll_duration">投票時長</string>
+    <string name="TellomiFeedCompose__poll_one_day">1 日</string>
+    <string name="TellomiFeedCompose__poll_three_days">3 日</string>
+    <string name="TellomiFeedCompose__poll_seven_days">7 日</string>
     <string name="ConversationListTabs__99p">99+</string>
     <!-- Menu item on stories landing page -->
     <string name="StoriesLandingFragment__story_privacy">快拍隱私</string>

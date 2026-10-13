@@ -46,6 +46,7 @@ import org.thoughtcrime.securesms.feed.net.FeedTimelinePage
 import org.thoughtcrime.securesms.region.TellomiRegionProfile
 import org.thoughtcrime.securesms.region.TellomiRegions
 import java.io.IOException
+import java.time.Instant
 
 /**
  * 动态页取数据的地方。界面只认这个接口，不管背后是内容引擎还是本机样例。
@@ -304,14 +305,15 @@ internal fun FeedDraft.toEditRequest(): FeedEditPostRequest {
   return FeedEditPostRequest(text = text.trim(), title = title.trim().takeIf { kind == FeedDraftKind.ARTICLE })
 }
 
-internal fun FeedDraft.toRequest(): FeedCreatePostRequest {
+internal fun FeedDraft.toRequest(now: Instant = Instant.now()): FeedCreatePostRequest {
   return FeedCreatePostRequest(
     kind = kind.apiName,
     title = title.trim().takeIf { kind == FeedDraftKind.ARTICLE && it.isNotEmpty() },
     text = text.trim(),
     visibility = visibility.apiName,
     // 评论权限在后面的 PR 加（第三节第 40 条）
-    commentsClosed = false
+    commentsClosed = false,
+    poll = attachedPoll?.toApi(now)
   )
 }
 

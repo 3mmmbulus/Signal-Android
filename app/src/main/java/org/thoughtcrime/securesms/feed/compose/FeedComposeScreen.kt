@@ -84,12 +84,13 @@ private val THUMBNAIL_SIZE = 96.dp
 
 internal object FeedComposeTestTags {
   const val PUBLISH = "feed_compose_publish"
+  const val ADD_POLL = "feed_compose_add_poll"
 }
 
 /**
  * 发布页：顶部「动态 / 长文」，正文，图片，底部可见范围和字数。
  *
- * 话题、投票、评论权限在后面的 PR 加（第三节第 22、40 条）；没做的入口不画。
+ * 投票在正文下面编辑（[FeedComposePollEditor]）。话题、评论权限在后面的 PR 加（第三节第 22、40 条）；没做的入口不画。
  */
 @Composable
 fun FeedComposeScreen(
@@ -104,7 +105,8 @@ fun FeedComposeScreen(
   onPublish: () -> Unit,
   onFailureShown: () -> Unit,
   /** 「部分可见 / 不给谁看」：打开选人页，选完由 [FeedComposeViewModel.onAudiencePicked] 换档。 */
-  onPickAudience: (FeedVisibility) -> Unit = {}
+  onPickAudience: (FeedVisibility) -> Unit = {},
+  pollActions: FeedComposePollActions = FeedComposePollActions()
 ) {
   var showDiscardDialog by rememberSaveable { mutableStateOf(false) }
   var showVisibilitySheet by rememberSaveable { mutableStateOf(false) }
@@ -198,6 +200,10 @@ fun FeedComposeScreen(
               modifier = Modifier.padding(top = 12.dp)
             )
           }
+
+          state.draft.attachedPoll?.let { poll ->
+            FeedComposePollEditor(poll = poll, actions = pollActions, modifier = Modifier.padding(top = 12.dp))
+          }
         }
 
         HorizontalDivider()
@@ -205,6 +211,7 @@ fun FeedComposeScreen(
         FeedComposeBottomBar(
           state = state,
           onAddImages = openPicker,
+          onAddPoll = pollActions.onAdd,
           onVisibilityClick = { showVisibilitySheet = true }
         )
       }
@@ -407,6 +414,7 @@ private fun FeedComposeImages(
 private fun FeedComposeBottomBar(
   state: FeedComposeState,
   onAddImages: () -> Unit,
+  onAddPoll: () -> Unit,
   onVisibilityClick: () -> Unit
 ) {
   Row(
@@ -421,6 +429,12 @@ private fun FeedComposeBottomBar(
         Icon(
           painter = painterResource(CoreUiR.drawable.symbol_photo_24),
           contentDescription = stringResource(R.string.TellomiFeedCompose__add_images)
+        )
+      }
+      IconButton(onClick = onAddPoll, enabled = state.canAddPoll, modifier = Modifier.testTag(FeedComposeTestTags.ADD_POLL)) {
+        Icon(
+          painter = painterResource(R.drawable.symbol_poll_24),
+          contentDescription = stringResource(R.string.TellomiFeedCompose__poll_add)
         )
       }
     }

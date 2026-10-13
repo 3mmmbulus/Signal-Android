@@ -20,6 +20,7 @@ import org.thoughtcrime.securesms.feed.net.FeedCreatePostRequest
 import org.thoughtcrime.securesms.feed.net.FeedJson
 import org.thoughtcrime.securesms.feed.net.FeedLimits
 import org.thoughtcrime.securesms.feed.toRequest
+import java.time.Instant
 
 class FeedDraftTest {
 
@@ -115,5 +116,36 @@ class FeedDraftTest {
     assertThat(FeedDraft(text = "a", visibility = FeedVisibility.EXCLUDE, audience = tooMany).problem(limits, minorMode = false)).isEqualTo(FeedDraft.Problem.AUDIENCE_TOO_LARGE)
     // 别的档位不看名单
     assertThat(FeedDraft(text = "a", visibility = FeedVisibility.PUBLIC, audience = tooMany).problem(limits, minorMode = false)).isNull()
+  }
+
+  @Test
+  fun `a poll needs two filled options of at most 40 characters`() {
+    val poll = FeedDraftPoll(options = listOf("爬山", " "))
+    assertThat(FeedDraft(text = "去哪？", poll = poll).problem(limits, minorMode = false)).isEqualTo(FeedDraft.Problem.INVALID_POLL)
+    assertThat(FeedDraft(text = "去哪？", poll = poll.copy(options = listOf("爬山", " ", "公园"))).problem(limits, minorMode = false)).isNull()
+    assertThat(FeedDraft(text = "去哪？", poll = poll.copy(options = listOf("爬山", "字".repeat(41)))).problem(limits, minorMode = false)).isEqualTo(FeedDraft.Problem.INVALID_POLL)
+  }
+
+  @Test
+  fun `a poll alone is enough for a post, an article ignores it`() {
+    val poll = FeedDraftPoll(options = listOf("a", "b"))
+    assertThat(FeedDraft(poll = poll).problem(limits, minorMode = false)).isNull()
+    assertThat(FeedDraft(kind = FeedDraftKind.ARTICLE, title = "t", text = "x", poll = poll.copy(options = emptyList())).problem(limits, minorMode = false)).isNull()
+    assertThat(FeedDraft(kind = FeedDraftKind.ARTICLE, title = "t", text = "x", poll = poll).toRequest().poll).isNull()
+  }
+
+  @Test
+  fun `poll request drops blank options and closes after the chosen length`() {
+    val draft = FeedDraft(text = "早饭？", poll = FeedDraftPoll(options = listOf(" 包子 ", "", "面"), multi = true, duration = FeedPollDuration.THREE_DAYS))
+    val request = draft.toRequest(now = Instant.parse("2026-10-13T08:00:00Z"))
+
+    assertThat(FeedJson.encodeToString(FeedCreatePostRequest.serializer(), request))
+      .isEqualTo("""{"kind":"post","text":"早饭？","visibility":"public","comments_closed":false,"poll":{"options":["包子","面"],"closes_at":"2026-10-16T08:00:00Z","multi":true}}""")
+  }
+
+  @Test
+  fun `options are clipped at 40 code points`() {
+    assertThat(FeedDraftPoll.clip("字".repeat(45))).isEqualTo("字".repeat(40))
+    assertThat(FeedDraftPoll.clip("😀".repeat(41)).codePointCount(0, 80)).isEqualTo(40)
   }
 }

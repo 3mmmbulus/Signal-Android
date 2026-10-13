@@ -141,4 +141,44 @@ class FeedComposeViewModelTest {
     viewModel.onAudiencePicked(FeedVisibility.EXCLUDE, listOf(FeedAudienceMember(1, "aci-1")))
     assertThat(viewModel.state.value.draft.visibility).isEqualTo(FeedVisibility.FRIENDS)
   }
+
+  @Test
+  fun `poll options can be added up to ten and removed down to two`() {
+    val viewModel = FeedComposeViewModel(source = FakeSource(), ioDispatcher = dispatcher)
+
+    viewModel.onPollOptionAdded()
+    assertThat(viewModel.state.value.draft.poll).isNull()
+
+    viewModel.onPollAdded()
+    viewModel.onPollOptionChanged(0, "爬山")
+    viewModel.onPollOptionChanged(1, "公园")
+    repeat(10) { viewModel.onPollOptionAdded() }
+    assertThat(viewModel.state.value.draft.poll!!.options.size).isEqualTo(FeedDraftPoll.MAX_OPTIONS)
+
+    repeat(10) { viewModel.onPollOptionRemoved(2) }
+    assertThat(viewModel.state.value.draft.poll!!.options).containsExactly("爬山", "公园")
+    viewModel.onPollOptionRemoved(0)
+    assertThat(viewModel.state.value.draft.poll!!.options).containsExactly("爬山", "公园")
+
+    viewModel.onPollMultiChanged(true)
+    viewModel.onPollDurationChanged(FeedPollDuration.SEVEN_DAYS)
+    val poll = viewModel.state.value.draft.poll!!
+    assertThat(poll.multi).isTrue()
+    assertThat(poll.duration).isEqualTo(FeedPollDuration.SEVEN_DAYS)
+    assertThat(viewModel.state.value.canAddPoll).isFalse()
+    assertThat(viewModel.state.value.problem).isNull()
+
+    viewModel.onPollRemoved()
+    assertThat(viewModel.state.value.draft.poll).isNull()
+    assertThat(viewModel.state.value.problem).isEqualTo(FeedDraft.Problem.EMPTY)
+  }
+
+  @Test
+  fun `editing cannot add a poll`() {
+    val viewModel = FeedComposeViewModel(editTarget = target.copy(kind = "post", title = null), source = FakeSource(), ioDispatcher = dispatcher)
+
+    viewModel.onPollAdded()
+
+    assertThat(viewModel.state.value.draft.poll).isNull()
+  }
 }

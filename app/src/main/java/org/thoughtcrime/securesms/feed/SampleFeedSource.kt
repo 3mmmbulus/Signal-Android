@@ -185,9 +185,11 @@ object SampleFeedSource : FeedSource {
       text = draft.text.trim(),
       media = draft.attachedImages.map { FeedMedia(key = it.toString()) },
       ipRegionLabel = ipLabels.first(),
-      viewer = FeedViewer(isAuthor = true)
+      viewer = FeedViewer(isAuthor = true),
+      poll = draft.attachedPoll?.toApi(Instant.now())
     )
     mine.add(0, card)
+    card.poll?.let { pollStates[id] = FeedPollState(counts = List(it.options.size) { 0 }) }
 
     FeedCreatePostResponse(id = id, state = FeedCreatePostResponse.STATE_PUBLISHED).also { published[clientNonce] = it }
   }
