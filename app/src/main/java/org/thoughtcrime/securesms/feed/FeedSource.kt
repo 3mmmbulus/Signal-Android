@@ -5,6 +5,9 @@
 
 package org.thoughtcrime.securesms.feed
 
+import android.net.Uri
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import okhttp3.HttpUrl.Companion.toHttpUrlOrNull
 import org.thoughtcrime.securesms.dependencies.AppDependencies
 import org.thoughtcrime.securesms.feed.compose.FeedDraft
@@ -21,6 +24,7 @@ import org.thoughtcrime.securesms.feed.net.FeedCreatePostResponse
 import org.thoughtcrime.securesms.feed.net.FeedEditPostRequest
 import org.thoughtcrime.securesms.feed.net.FeedEntry
 import org.thoughtcrime.securesms.feed.net.FeedEventPayload
+import org.thoughtcrime.securesms.feed.net.FeedImageUploader
 import org.thoughtcrime.securesms.feed.net.FeedItemRef
 import org.thoughtcrime.securesms.feed.net.FeedMyPostsPage
 import org.thoughtcrime.securesms.feed.net.FeedMyProfile
@@ -77,7 +81,16 @@ interface FeedSource {
  * 内容引擎。列表只给 id，这里再用 Card API 换成卡片（一次一页，最多 [FeedApi.MAX_CARD_IDS] 个），
  * 不可用的卡片（删了、被屏蔽、没权限看，引擎不说是哪种）直接跳过。
  */
-class RemoteFeedSource(private val api: FeedApi) : FeedSource {
+class RemoteFeedSource(
+  private val api: FeedApi,
+  /** 读出要上传的图片字节（重编码成 JPEG）；测试里换掉。 */
+  private val readImage: (Uri) -> ByteArray = { FeedImageUploader.prepare(AppDependencies.application, it) }
+) : FeedSource {
+
+  private val uploader = FeedImageUploader(api)
+
+  /** 已经传好的图：同一条草稿重试时不再传一遍（引擎的 key 没用在帖子上之前一直能用，一天后清掉）。 */
+  private val uploaded = mutableMapOf<Pair<String, Uri>, String>()
 
   override suspend fun isVisible(): Boolean = api.status().visible
 
@@ -128,9 +141,18 @@ class RemoteFeedSource(private val api: FeedApi) : FeedSource {
   override suspend fun saveProfile(update: FeedProfileUpdate): FeedMyProfile = api.saveProfile(update)
 
   override suspend fun publish(draft: FeedDraft, clientNonce: String): FeedCreatePostResponse {
-    // 引擎发帖接口还不收图片和 client_nonce（已请补）；在那之前带图的帖子不发
-    check(draft.attachedImages.isEmpty()) { "media upload is not wired yet" }
-    return api.createPost(draft.toRequest())
+    val keys = draft.attachedImages.map { uri -> uploadOnce(clientNonce, uri) }
+    val response = api.createPost(draft.toRequest().copy(clientNonce = clientNonce, mediaKeys = keys.ifEmpty { null }))
+    synchronized(uploaded) { uploaded.keys.removeAll { it.first == clientNonce } }
+    return response
+  }
+
+  private suspend fun uploadOnce(clientNonce: String, uri: Uri): String {
+    synchronized(uploaded) { uploaded[clientNonce to uri] }?.let { return it }
+    val bytes = withContext(Dispatchers.IO) { readImage(uri) }
+    val key = uploader.upload(bytes)
+    synchronized(uploaded) { uploaded[clientNonce to uri] = key }
+    return key
   }
 
   private companion object {

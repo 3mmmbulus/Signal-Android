@@ -274,7 +274,11 @@ data class FeedCreatePostRequest(
   val title: String? = null,
   val text: String,
   val visibility: String,
-  @SerialName("comments_closed") val commentsClosed: Boolean
+  @SerialName("comments_closed") val commentsClosed: Boolean,
+  /** 每条草稿一个 UUID；同一个再发，引擎回第一次那条，不会多出一条。 */
+  @SerialName("client_nonce") val clientNonce: String? = null,
+  /** 上传完成的图片 key，按显示顺序。 */
+  @SerialName("media_keys") val mediaKeys: List<String>? = null
 )
 
 @Serializable
@@ -398,3 +402,7 @@ data class FeedProfileUpdate(
 /** `POST /v1/feed/posts/{id}/appeal`。 */
 @Serializable
 data class FeedAppealRequest(val text: String)
+
+/** `POST /v1/feed/media/uploads` 的回包：[key] 发帖时放进 `media_keys`。 */
+@Serializable
+data class FeedUploadStart(val id: String, val key: String)

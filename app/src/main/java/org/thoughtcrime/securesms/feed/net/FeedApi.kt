@@ -182,6 +182,35 @@ class FeedApi(
     sendNoContent(Request.Builder().url(url).post(body))
   }
 
+  /**
+   * 图片上传（tus 1.0）第一步：报总长度，拿上传 id 和最终的 media key。
+   * 413 `too_large`（超过 20 MB）、429 `too_many_uploads`（同时没传完的超过 20 个）。
+   */
+  suspend fun startUpload(length: Long): FeedUploadStart {
+    val builder = Request.Builder().url(url(UPLOADS_PATH))
+      .header("Tus-Resumable", TUS_VERSION)
+      .header("Upload-Length", length.toString())
+      .post(EMPTY_BODY)
+    return send(builder, FeedUploadStart.serializer())
+  }
+
+  /** 从 [offset] 接着传一块，返回服务端的新偏移。偏移对不上是 409 `offset_mismatch`；最后一块不是图片是 415。 */
+  suspend fun uploadChunk(id: String, offset: Long, chunk: ByteArray): Long {
+    val url = url(UPLOADS_PATH).newBuilder().addPathSegment(id).build()
+    val builder = Request.Builder().url(url)
+      .header("Tus-Resumable", TUS_VERSION)
+      .header("Upload-Offset", offset.toString())
+      .patch(chunk.toRequestBody(TUS_CHUNK))
+    return execute(builder) { it.header("Upload-Offset")?.toLongOrNull() ?: (offset + chunk.size) }
+  }
+
+  /** 断线后问服务端收到了多少。 */
+  suspend fun uploadOffset(id: String): Long {
+    val url = url(UPLOADS_PATH).newBuilder().addPathSegment(id).build()
+    val builder = Request.Builder().url(url).header("Tus-Resumable", TUS_VERSION).head()
+    return execute(builder) { it.header("Upload-Offset")?.toLongOrNull() ?: 0L }
+  }
+
   /** 删自己的帖子（204）。别人的帖子引擎回 404。 */
   suspend fun deletePost(contentId: String) {
     val url = url("v1/feed/posts").newBuilder().addPathSegment(contentId).build()
@@ -255,6 +284,9 @@ class FeedApi(
     const val REACTION_LIKE = "like"
     const val REACTION_SAVE = "save"
 
+    private const val UPLOADS_PATH = "v1/feed/media/uploads"
+    private const val TUS_VERSION = "1.0.0"
+    private val TUS_CHUNK = "application/offset+octet-stream".toMediaType()
     private val JSON = "application/json; charset=utf-8".toMediaType()
     private val EMPTY_BODY: RequestBody = ByteArray(0).toRequestBody(null)
   }

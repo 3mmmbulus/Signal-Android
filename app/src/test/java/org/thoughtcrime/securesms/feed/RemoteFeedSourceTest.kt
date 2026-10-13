@@ -5,12 +5,15 @@
 
 package org.thoughtcrime.securesms.feed
 
+import android.net.Uri
+import assertk.assertFailure
 import assertk.assertThat
 import assertk.assertions.containsExactly
 import assertk.assertions.isEqualTo
 import assertk.assertions.isFalse
 import assertk.assertions.isNull
 import assertk.assertions.isTrue
+import io.mockk.mockk
 import kotlinx.coroutines.runBlocking
 import okhttp3.OkHttpClient
 import okhttp3.mockwebserver.MockResponse
@@ -18,6 +21,7 @@ import okhttp3.mockwebserver.MockWebServer
 import org.junit.After
 import org.junit.Before
 import org.junit.Test
+import org.thoughtcrime.securesms.feed.compose.FeedDraft
 import org.thoughtcrime.securesms.feed.net.FeedApi
 import org.thoughtcrime.securesms.feed.net.FeedTokenSource
 
@@ -103,5 +107,37 @@ class RemoteFeedSourceTest {
     server.enqueue(MockResponse().setBody("""{"enabled":false,"region":"global","tabs":["recommend","following"]}"""))
 
     assertThat(source.config().enabled).isFalse()
+  }
+
+  @Test
+  fun `publish uploads images, sends their keys with the nonce, and a retry does not upload again`() = runBlocking {
+    val api = FeedApi(
+      baseUrl = server.url("/"),
+      client = OkHttpClient(),
+      tokens = object : FeedTokenSource {
+        override suspend fun token(forceRefresh: Boolean) = "t"
+      }
+    )
+    val withImages = RemoteFeedSource(api, readImage = { byteArrayOf(1, 2, 3) })
+    val first = mockk<Uri>()
+    val second = mockk<Uri>()
+    val draft = FeedDraft(text = "hi", images = listOf(first, second))
+
+    server.enqueue(MockResponse().setResponseCode(201).setBody("""{"id":"u1","key":"m/a"}"""))
+    server.enqueue(MockResponse().setResponseCode(204).setHeader("Upload-Offset", "3"))
+    server.enqueue(MockResponse().setResponseCode(201).setBody("""{"id":"u2","key":"m/b"}"""))
+    server.enqueue(MockResponse().setResponseCode(204).setHeader("Upload-Offset", "3"))
+    server.enqueue(MockResponse().setResponseCode(503))
+    server.enqueue(MockResponse().setResponseCode(201).setBody("""{"id":"p1","state":"pending","version":1}"""))
+
+    assertFailure { runBlocking { withImages.publish(draft, clientNonce = "n1") } }
+    val response = withImages.publish(draft, clientNonce = "n1")
+
+    assertThat(response.id).isEqualTo("p1")
+    val requests = List(6) { server.takeRequest() }
+    assertThat(requests.map { it.method }).containsExactly("POST", "PATCH", "POST", "PATCH", "POST", "POST")
+    val body = requests.last().body.readUtf8()
+    assertThat(body.contains(""""client_nonce":"n1"""")).isTrue()
+    assertThat(body.contains(""""media_keys":["m/a","m/b"]""")).isTrue()
   }
 }
