@@ -33,6 +33,8 @@ import org.thoughtcrime.securesms.feed.net.FeedProfilePostsPage
 import org.thoughtcrime.securesms.feed.net.FeedProfileUpdate
 import org.thoughtcrime.securesms.feed.net.FeedRelation
 import org.thoughtcrime.securesms.feed.net.FeedReportRequest
+import org.thoughtcrime.securesms.feed.net.FeedSearchPage
+import org.thoughtcrime.securesms.feed.net.FeedSearchUser
 import org.thoughtcrime.securesms.feed.net.FeedStats
 import org.thoughtcrime.securesms.feed.net.FeedTimelinePage
 import org.thoughtcrime.securesms.feed.net.FeedTopic
@@ -403,6 +405,25 @@ object SampleFeedSource : FeedSource {
 
   override suspend fun deleteNotification(id: String): Unit = synchronized(this) {
     notifications.removeAll { it.id == id }
+  }
+
+  override suspend fun search(query: String, scope: String, cursor: String?): FeedSearchPage = synchronized(this) {
+    val q = query.trim()
+    if (q.isEmpty() || cursor != null) return FeedSearchPage()
+    // 和引擎一样：只搜设了 ID 的人，ID 前缀或名字包含
+    val users = if (scope == FeedApi.SEARCH_POSTS) {
+      emptyList()
+    } else {
+      authors.filter { a -> a.handle != null && a.profileId !in blocked && (a.handle.startsWith(q, ignoreCase = true) || a.displayName.contains(q, ignoreCase = true)) }
+        .map { FeedSearchUser(id = it.profileId, handle = it.handle, displayName = it.displayName) }
+        .take(if (scope == FeedApi.SEARCH_ALL) 5 else 20)
+    }
+    val posts = if (scope == FeedApi.SEARCH_USERS) {
+      emptyList()
+    } else {
+      (mine + recommend).filter { it.id !in hidden && ((it.text?.contains(q, ignoreCase = true) == true) || (it.title?.contains(q, ignoreCase = true) == true)) }.take(10)
+    }
+    FeedSearchPage(users = users, posts = posts)
   }
 
   override suspend fun muteNotifications(contentId: String, likesOnly: Boolean): Unit = synchronized(this) {

@@ -6841,6 +6841,23 @@
     <string name="TellomiFeedNotifications__muted">這則動態不會再通知你</string>
     <string name="TellomiFeedNotifications__muted_likes">這則動態的讚不會再通知你</string>
     <string name="TellomiFeedNotifications__post_gone">這則動態已經看不到了</string>
+    <string name="TellomiFeedSearch__title">搜尋</string>
+    <string name="TellomiFeedSearch__hint">搜尋用戶和動態</string>
+    <string name="TellomiFeedSearch__cancel">取消</string>
+    <string name="TellomiFeedSearch__clear">清除輸入</string>
+    <string name="TellomiFeedSearch__scope_all">全部</string>
+    <string name="TellomiFeedSearch__scope_users">用戶</string>
+    <string name="TellomiFeedSearch__scope_posts">動態</string>
+    <string name="TellomiFeedSearch__recent_people">最近看過的人</string>
+    <string name="TellomiFeedSearch__recent_searches">最近搜尋</string>
+    <string name="TellomiFeedSearch__clear_all">清除</string>
+    <string name="TellomiFeedSearch__remove">刪除 %1$s</string>
+    <string name="TellomiFeedSearch__empty_hint">可以搜尋 ID、名字，或動態裡的文字。搜尋紀錄只存在這支手機上。</string>
+    <string name="TellomiFeedSearch__people">用戶</string>
+    <string name="TellomiFeedSearch__posts">動態</string>
+    <string name="TellomiFeedSearch__see_all">查看全部</string>
+    <string name="TellomiFeedSearch__no_results">找不到「%1$s」相關的結果</string>
+    <string name="TellomiFeedSearch__failed">暫時無法搜尋，請稍後再試</string>
     <string name="ConversationListTabs__99p">99+</string>
     <!-- Menu item on stories landing page -->
     <string name="StoriesLandingFragment__story_privacy">快拍隱私</string>

@@ -300,6 +300,16 @@ class FeedApi(
     sendNoContent(Request.Builder().url(url).put(body))
   }
 
+  /** 搜人和帖子（[scope] 是 `SEARCH_*`）。帖子一页 10 条，带 [cursor] 翻页。 */
+  suspend fun search(query: String, scope: String, cursor: String?): FeedSearchResponse {
+    val url = url("v1/feed/search").newBuilder()
+      .addQueryParameter("q", query)
+      .addQueryParameter("scope", scope)
+      .apply { if (cursor != null) addQueryParameter("cursor", cursor) }
+      .build()
+    return get(url, FeedSearchResponse.serializer())
+  }
+
   /** 删自己的帖子（204）。别人的帖子引擎回 404。 */
   suspend fun deletePost(contentId: String) {
     val url = url("v1/feed/posts").newBuilder().addPathSegment(contentId).build()
@@ -371,6 +381,11 @@ class FeedApi(
     const val NOTIFICATIONS_FOLLOWS = "follows"
     const val NOTIFICATIONS_SYSTEM = "system"
     const val NOTIFICATIONS_PAGE = 30
+
+    const val SEARCH_ALL = "all"
+    const val SEARCH_USERS = "users"
+    const val SEARCH_POSTS = "posts"
+    const val SEARCH_MAX_QUERY = 50
 
     const val MAX_CARD_IDS = 100
     const val PROFILE_PAGE = 20

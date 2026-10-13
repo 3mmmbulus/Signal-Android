@@ -533,4 +533,23 @@ class FeedApiTest {
     assertThat(mute.path).isEqualTo("/v1/feed/me/notification-mutes/c1")
     assertThat(mute.body.readUtf8()).isEqualTo("""{"likes_only":true}""")
   }
+
+  @Test
+  fun `search sends query and scope and reads people and post ids`() = runBlocking {
+    server.enqueue(
+      MockResponse().setBody(
+        """{"users":[{"id":"p1","handle":"shanfeng","display_name":"Shanfeng","avatar_key":null,"badge":null}],"items":[{"id":"c1","reason":"search"}],"cursor":"n2"}"""
+      )
+    )
+
+    val response = api.search("云 & rain", FeedApi.SEARCH_ALL, cursor = "n1")
+
+    assertThat(response.users.single().handle).isEqualTo("shanfeng")
+    assertThat(response.items.single().id).isEqualTo("c1")
+    assertThat(response.cursor).isEqualTo("n2")
+    val request = server.takeRequest()
+    assertThat(request.requestUrl?.queryParameter("q")).isEqualTo("云 & rain")
+    assertThat(request.requestUrl?.queryParameter("scope")).isEqualTo("all")
+    assertThat(request.requestUrl?.queryParameter("cursor")).isEqualTo("n1")
+  }
 }

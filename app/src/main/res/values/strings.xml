@@ -7063,6 +7063,23 @@
     <string name="TellomiFeedNotifications__muted">You won\'t get notifications for this post</string>
     <string name="TellomiFeedNotifications__muted_likes">You won\'t get like notifications for this post</string>
     <string name="TellomiFeedNotifications__post_gone">This post isn\'t available anymore</string>
+    <string name="TellomiFeedSearch__title">Search</string>
+    <string name="TellomiFeedSearch__hint">Search people and posts</string>
+    <string name="TellomiFeedSearch__cancel">Cancel</string>
+    <string name="TellomiFeedSearch__clear">Clear search</string>
+    <string name="TellomiFeedSearch__scope_all">All</string>
+    <string name="TellomiFeedSearch__scope_users">People</string>
+    <string name="TellomiFeedSearch__scope_posts">Posts</string>
+    <string name="TellomiFeedSearch__recent_people">Recently viewed</string>
+    <string name="TellomiFeedSearch__recent_searches">Recent searches</string>
+    <string name="TellomiFeedSearch__clear_all">Clear</string>
+    <string name="TellomiFeedSearch__remove">Remove %1$s</string>
+    <string name="TellomiFeedSearch__empty_hint">Search by ID or name, or by words in a post. Your search history stays on this phone.</string>
+    <string name="TellomiFeedSearch__people">People</string>
+    <string name="TellomiFeedSearch__posts">Posts</string>
+    <string name="TellomiFeedSearch__see_all">See all</string>
+    <string name="TellomiFeedSearch__no_results">No results for “%1$s”</string>
+    <string name="TellomiFeedSearch__failed">Couldn\'t search right now</string>
     <string name="ConversationListTabs__99p">99+</string>
     <!-- Menu item on stories landing page -->
     <string name="StoriesLandingFragment__story_privacy">Story privacy</string>

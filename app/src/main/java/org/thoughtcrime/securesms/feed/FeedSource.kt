@@ -35,6 +35,7 @@ import org.thoughtcrime.securesms.feed.net.FeedProfilePage
 import org.thoughtcrime.securesms.feed.net.FeedProfilePostsPage
 import org.thoughtcrime.securesms.feed.net.FeedProfileUpdate
 import org.thoughtcrime.securesms.feed.net.FeedReportRequest
+import org.thoughtcrime.securesms.feed.net.FeedSearchPage
 import org.thoughtcrime.securesms.feed.net.FeedTimelinePage
 import org.thoughtcrime.securesms.region.TellomiRegionProfile
 import org.thoughtcrime.securesms.region.TellomiRegions
@@ -119,6 +120,9 @@ interface FeedSource {
 
   /** 一条帖子不再通知（全部 / 只关赞）。 */
   suspend fun muteNotifications(contentId: String, likesOnly: Boolean)
+
+  /** 搜人和帖子（第三节第 34 条），[scope] 是 `FeedApi.SEARCH_*`。 */
+  suspend fun search(query: String, scope: String, cursor: String?): FeedSearchPage
 }
 
 /**
@@ -218,6 +222,11 @@ class RemoteFeedSource(
 
   override suspend fun muteNotifications(contentId: String, likesOnly: Boolean) = api.muteNotifications(contentId, likesOnly)
 
+  override suspend fun search(query: String, scope: String, cursor: String?): FeedSearchPage {
+    val response = api.search(query, scope, cursor)
+    return FeedSearchPage(users = response.users, posts = hydrate(response.items).map { it.card }, cursor = response.cursor)
+  }
+
   override suspend fun publish(draft: FeedDraft, clientNonce: String): FeedCreatePostResponse {
     val keys = draft.attachedImages.map { uri -> uploadOnce(clientNonce, uri) }
     val response = api.createPost(draft.toRequest().copy(clientNonce = clientNonce, mediaKeys = keys.ifEmpty { null }))
@@ -299,6 +308,7 @@ object EmptyFeedSource : FeedSource {
   override suspend fun markNotificationsRead(tab: String) = Unit
   override suspend fun deleteNotification(id: String) = throw IllegalStateException("feed is not available")
   override suspend fun muteNotifications(contentId: String, likesOnly: Boolean) = throw IllegalStateException("feed is not available")
+  override suspend fun search(query: String, scope: String, cursor: String?): FeedSearchPage = FeedSearchPage()
 }
 
 object FeedSources {

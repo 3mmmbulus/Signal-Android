@@ -599,3 +599,29 @@ data class FeedNotificationsReadRequest(
 data class FeedNotificationMuteRequest(
   @SerialName("likes_only") val likesOnly: Boolean
 )
+
+/** `GET /v1/feed/search`：人只在 `all`（5 个）/ `users`（20 个）里有，不翻页；帖子给 id，再走 /cards。 */
+@Serializable
+data class FeedSearchResponse(
+  val users: List<FeedSearchUser> = emptyList(),
+  val items: List<FeedItemRef> = emptyList(),
+  val cursor: String? = null
+)
+
+@Serializable
+data class FeedSearchUser(
+  val id: String,
+  val handle: String? = null,
+  @SerialName("display_name") val displayName: String,
+  @SerialName("avatar_key") val avatarKey: String? = null,
+  val badge: String? = null
+) {
+  fun asPerson(): FeedPersonSummary = FeedPersonSummary(id = id, handle = handle, displayName = displayName, avatarKey = avatarKey)
+}
+
+/** 界面用的一页搜索结果：帖子已经换成卡片。 */
+data class FeedSearchPage(
+  val users: List<FeedSearchUser> = emptyList(),
+  val posts: List<FeedCard> = emptyList(),
+  val cursor: String? = null
+)

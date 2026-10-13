@@ -93,6 +93,7 @@ import org.thoughtcrime.securesms.feed.notifications.FeedNotificationsActivity
 import org.thoughtcrime.securesms.feed.profile.FeedProfilePageActivity
 import org.thoughtcrime.securesms.feed.report.FeedReportActivity
 import org.thoughtcrime.securesms.feed.report.FeedReportTarget
+import org.thoughtcrime.securesms.feed.search.FeedSearchActivity
 import org.signal.core.ui.R as CoreUiR
 
 private val TOP_BAR_HEIGHT = 48.dp
@@ -198,6 +199,7 @@ fun FeedListPane(
       onCardsVisible = viewModel::onCardsVisible,
       onMyPostsClick = { context.startActivity(FeedMyPostsActivity.intent(context)) },
       onNotificationsClick = { context.startActivity(FeedNotificationsActivity.intent(context)) },
+      onSearchClick = { context.startActivity(FeedSearchActivity.intent(context)) },
       onEditClick = { target -> editLauncher.launch(target) },
       onDeleteClick = { confirmDelete = it },
       onOpenClick = { context.startActivity(FeedPostDetailActivity.intent(context, it)) },
@@ -257,7 +259,8 @@ private fun FeedPager(
   onOpenClick: (FeedCard) -> Unit = {},
   onReportClick: (FeedCard) -> Unit = {},
   onAuthorClick: (FeedAuthor) -> Unit = {},
-  onNotificationsClick: () -> Unit = {}
+  onNotificationsClick: () -> Unit = {},
+  onSearchClick: () -> Unit = {}
 ) {
   val tabs = state.tabs
   val pagerState = rememberPagerState(pageCount = { tabs.size })
@@ -269,7 +272,8 @@ private fun FeedPager(
       selectedIndex = pagerState.currentPage,
       onTabClick = { index -> scope.launch { pagerState.animateScrollToPage(index) } },
       onMyPostsClick = onMyPostsClick,
-      onNotificationsClick = onNotificationsClick
+      onNotificationsClick = onNotificationsClick,
+      onSearchClick = onSearchClick
     )
 
     HorizontalPager(
@@ -434,7 +438,8 @@ private fun FeedTopBar(
   selectedIndex: Int,
   onTabClick: (Int) -> Unit,
   onMyPostsClick: () -> Unit,
-  onNotificationsClick: () -> Unit = {}
+  onNotificationsClick: () -> Unit = {},
+  onSearchClick: () -> Unit = {}
 ) {
   Box(
     modifier = Modifier
@@ -462,7 +467,18 @@ private fun FeedTopBar(
         .align(Alignment.CenterEnd)
         .padding(end = 4.dp)
     ) {
-      // 通知（附录 10「动态页顶部」：右边搜索 + 通知，搜索做好后放在铃铛左边）
+      // 附录 10「动态页顶部」：右边搜索 + 通知，搜索在铃铛左边
+      Icon(
+        imageVector = ImageVector.vectorResource(CoreUiR.drawable.symbol_search_24),
+        contentDescription = stringResource(R.string.TellomiFeedSearch__title),
+        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+        modifier = Modifier
+          .clip(CircleShape)
+          .clickable(onClick = onSearchClick)
+          .padding(10.dp)
+          .size(24.dp)
+      )
+
       Icon(
         painter = painterResource(R.drawable.symbol_bell_24),
         contentDescription = stringResource(R.string.TellomiFeedNotifications__title),

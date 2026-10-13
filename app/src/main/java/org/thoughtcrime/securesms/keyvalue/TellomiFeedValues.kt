@@ -15,6 +15,8 @@ class TellomiFeedValues(store: KeyValueStore) : SignalStoreValues(store) {
     private const val ENGINE_VISIBLE = "tellomi_feed.engine_visible"
     private const val ENGINE_CHECKED_AT = "tellomi_feed.engine_checked_at"
     private const val USE_SAMPLE_DATA = "tellomi_feed.use_sample_data"
+    private const val SEARCH_QUERIES = "tellomi_feed.search_queries"
+    private const val SEARCH_PEOPLE = "tellomi_feed.search_people"
   }
 
   public override fun onFirstEverAppLaunch() = Unit
@@ -28,4 +30,10 @@ class TellomiFeedValues(store: KeyValueStore) : SignalStoreValues(store) {
 
   /** 内部用户强制打开动态标签时，用本机样例（true）还是连内容引擎（false）。 */
   var useSampleData: Boolean by booleanValue(USE_SAMPLE_DATA, true)
+
+  /** 最近搜索（JSON 字符串数组，新的在前）。只在本机（第三节第 34 条：搜索历史只存在手机上）。 */
+  var searchQueries: String? by stringValue(SEARCH_QUERIES, null)
+
+  /** 搜索里最近点开过的人（JSON），同样只在本机。 */
+  var searchPeople: String? by stringValue(SEARCH_PEOPLE, null)
 }
