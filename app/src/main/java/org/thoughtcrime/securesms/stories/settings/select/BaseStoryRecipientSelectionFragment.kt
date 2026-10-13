@@ -43,6 +43,9 @@ abstract class BaseStoryRecipientSelectionFragment : Fragment(R.layout.stories_b
   abstract val distributionListId: DistributionListId?
   protected open val checkboxResource: Int = R.drawable.contact_selection_checkbox
 
+  /** Tellomi：不对应分组（[distributionListId] 为 null）时，打开就勾上的人（动态「部分可见」改名单）。 */
+  protected open val startingSelection: Set<RecipientId> = emptySet()
+
   private lateinit var toolbar: Toolbar
   private lateinit var searchField: EditText
 
@@ -83,6 +86,10 @@ abstract class BaseStoryRecipientSelectionFragment : Fragment(R.layout.stories_b
 
     if (childFragmentManager.findFragmentById(R.id.fragment_container) == null) {
       initializeContactSelectionFragment()
+    }
+
+    if (savedInstanceState == null && distributionListId == null && startingSelection.isNotEmpty()) {
+      viewModel.setStartingSelection(startingSelection)
     }
 
     viewModel.state.observe(viewLifecycleOwner) {

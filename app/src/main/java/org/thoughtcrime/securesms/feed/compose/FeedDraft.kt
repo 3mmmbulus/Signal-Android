@@ -19,8 +19,8 @@ enum class FeedDraftKind(val apiName: String, @StringRes val label: Int) {
 /**
  * 帖子可见范围五档（第三节第 39 条；契约 7.2 `visibility`）。
  *
- * 「部分可见」「不给谁看」要选人（[needsAudience]），选人复用快拍「选定的人」组件，在后面的 PR 接上；
- * 在那之前这两档显示但不能选，不让用户发出一条没有名单的帖子。
+ * 「部分可见」「不给谁看」要选人（[needsAudience]），选人复用快拍「选定的人」组件（[FeedAudiencePickerActivity]）；
+ * 没选人不能发。
  */
 enum class FeedVisibility(
   val apiName: String,
@@ -53,7 +53,9 @@ data class FeedDraft(
   val title: String = "",
   val text: String = "",
   val images: List<Uri> = emptyList(),
-  val visibility: FeedVisibility = FeedVisibility.PUBLIC
+  val visibility: FeedVisibility = FeedVisibility.PUBLIC,
+  /** 「部分可见 / 不给谁看」选的人；别的档位不发出去，切回来还在。 */
+  val audience: List<FeedAudienceMember> = emptyList()
 ) {
   val isEmpty: Boolean
     get() = title.isBlank() && text.isBlank() && images.isEmpty()
@@ -81,9 +83,15 @@ data class FeedDraft(
       textLength() > textLimit(limits) -> Problem.TOO_LONG
       attachedImages.size > limits.postImages -> Problem.TOO_MANY_IMAGES
       visibility !in FeedVisibility.allowed(minorMode) -> Problem.VISIBILITY_NOT_ALLOWED
-      visibility.needsAudience -> Problem.MISSING_AUDIENCE
+      visibility.needsAudience && audience.isEmpty() -> Problem.MISSING_AUDIENCE
+      visibility.needsAudience && audience.size > MAX_AUDIENCE -> Problem.AUDIENCE_TOO_LARGE
       else -> null
     }
+  }
+
+  companion object {
+    /** 名单最多 500 人（Signal-Server `MAX_AUDIENCE_MEMBERS`、引擎 `MaxAudienceMembers`）。 */
+    const val MAX_AUDIENCE = 500
   }
 
   enum class Problem {
@@ -93,8 +101,12 @@ data class FeedDraft(
     TOO_MANY_IMAGES,
     VISIBILITY_NOT_ALLOWED,
     MISSING_AUDIENCE,
+    AUDIENCE_TOO_LARGE,
 
     /** 编辑时和原来一样，没什么可保存的（只由 [FeedComposeState.problem] 给出）。 */
     UNCHANGED
   }
 }
+
+/** 名单里的一个人：本机的 recipient id（再打开选人页时预先勾上）和 ACI（找 Signal-Server 签名单用）。 */
+data class FeedAudienceMember(val recipientId: Long, val aci: String)

@@ -60,9 +60,11 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
@@ -100,7 +102,9 @@ fun FeedComposeScreen(
   onImageRemoved: (Uri) -> Unit,
   onVisibilityChanged: (FeedVisibility) -> Unit,
   onPublish: () -> Unit,
-  onFailureShown: () -> Unit
+  onFailureShown: () -> Unit,
+  /** 「部分可见 / 不给谁看」：打开选人页，选完由 [FeedComposeViewModel.onAudiencePicked] 换档。 */
+  onPickAudience: (FeedVisibility) -> Unit = {}
 ) {
   var showDiscardDialog by rememberSaveable { mutableStateOf(false) }
   var showVisibilitySheet by rememberSaveable { mutableStateOf(false) }
@@ -225,8 +229,9 @@ fun FeedComposeScreen(
     FeedVisibilitySheet(
       selected = state.draft.visibility,
       minorMode = state.minorMode,
+      audienceSize = state.draft.audience.size,
       onSelect = {
-        onVisibilityChanged(it)
+        if (it.needsAudience) onPickAudience(it) else onVisibilityChanged(it)
         showVisibilitySheet = false
       },
       onDismiss = { showVisibilitySheet = false }
@@ -424,7 +429,16 @@ private fun FeedComposeBottomBar(
       TextButton(onClick = onVisibilityClick) {
         Icon(imageVector = SignalIcons.Visible.imageVector, contentDescription = null, modifier = Modifier.size(18.dp))
         Spacer(modifier = Modifier.width(6.dp))
-        Text(text = stringResource(state.draft.visibility.label))
+        val visibility = state.draft.visibility
+        val label = stringResource(visibility.label)
+        Text(
+          text = if (visibility.needsAudience) {
+            pluralStringResource(R.plurals.TellomiFeedCompose__visibility_with_count, state.draft.audience.size, label, state.draft.audience.size)
+          } else {
+            label
+          },
+          color = if (state.problem == FeedDraft.Problem.AUDIENCE_TOO_LARGE) MaterialTheme.colorScheme.error else Color.Unspecified
+        )
       }
     } else {
       Spacer(modifier = Modifier.height(48.dp))
@@ -449,6 +463,7 @@ private fun FeedComposeBottomBar(
 private fun FeedVisibilitySheet(
   selected: FeedVisibility,
   minorMode: Boolean,
+  audienceSize: Int,
   onSelect: (FeedVisibility) -> Unit,
   onDismiss: () -> Unit
 ) {
@@ -462,27 +477,26 @@ private fun FeedVisibilitySheet(
 
       val allowed = FeedVisibility.allowed(minorMode)
       allowed.forEach { visibility ->
-        // 选人组件还没接上，这两档先不能选（不会发出一条没有名单的帖子）
-        val enabled = !visibility.needsAudience
+        val tooLarge = visibility == selected && visibility.needsAudience && audienceSize > FeedDraft.MAX_AUDIENCE
         Row(
           verticalAlignment = Alignment.CenterVertically,
           modifier = Modifier
             .fillMaxWidth()
-            .clickable(enabled = enabled, role = Role.RadioButton) { onSelect(visibility) }
+            .clickable(role = Role.RadioButton) { onSelect(visibility) }
             .padding(horizontal = 16.dp, vertical = 4.dp)
         ) {
-          RadioButton(selected = visibility == selected, onClick = null, enabled = enabled)
+          RadioButton(selected = visibility == selected, onClick = null)
           Spacer(modifier = Modifier.width(12.dp))
           Column(modifier = Modifier.padding(vertical = 8.dp)) {
             Text(
               text = stringResource(visibility.label),
               style = MaterialTheme.typography.bodyLarge,
-              color = if (enabled) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurfaceVariant
+              color = MaterialTheme.colorScheme.onSurface
             )
             Text(
-              text = stringResource(if (enabled) visibility.description else R.string.TellomiFeedCompose__visibility_coming_soon),
+              text = if (tooLarge) stringResource(R.string.TellomiFeedCompose__audience_too_large, FeedDraft.MAX_AUDIENCE) else stringResource(visibility.description),
               style = MaterialTheme.typography.bodyMedium,
-              color = MaterialTheme.colorScheme.onSurfaceVariant
+              color = if (tooLarge) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant
             )
           }
         }

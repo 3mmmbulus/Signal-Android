@@ -270,8 +270,7 @@ data class FeedErrorBody(val error: String? = null, val message: String? = null)
 
 /**
  * `POST /v1/feed/posts`。引擎按 `DisallowUnknownFields` 解析，多一个字段就 400，所以这里只放引擎认的字段；
- * `client_nonce`（重试去重）和 `media_keys`（图片）已请引擎补，补上之前带图的帖子发不了。
- * `audience`（部分可见 / 不给谁看的假名名单）等选人组件接上再加。
+ * `audience` 只在「部分可见 / 不给谁看」时带：Signal-Server 签的名单（客户端不接触别人的假名）。
  */
 @Serializable
 data class FeedCreatePostRequest(
@@ -283,8 +282,13 @@ data class FeedCreatePostRequest(
   /** 每条草稿一个 UUID；同一个再发，引擎回第一次那条，不会多出一条。 */
   @SerialName("client_nonce") val clientNonce: String? = null,
   /** 上传完成的图片 key，按显示顺序。 */
-  @SerialName("media_keys") val mediaKeys: List<String>? = null
+  @SerialName("media_keys") val mediaKeys: List<String>? = null,
+  val audience: FeedAudienceToken? = null
 )
+
+/** 发帖时的 `audience`：`{"audience_token": "<Signal-Server 签的 JWT>"}`，`kind` 要和 `visibility` 一致。 */
+@Serializable
+data class FeedAudienceToken(@SerialName("audience_token") val audienceToken: String)
 
 @Serializable
 data class FeedCreatePostResponse(

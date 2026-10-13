@@ -6635,7 +6635,10 @@
     <string name="TellomiFeedCompose__visibility_exclude_description">选中的人看不到</string>
     <string name="TellomiFeedCompose__visibility_only_me">仅自己</string>
     <string name="TellomiFeedCompose__visibility_only_me_description">只有你能看</string>
-    <string name="TellomiFeedCompose__visibility_coming_soon">选人功能还没上线</string>
+    <plurals name="TellomiFeedCompose__visibility_with_count">
+        <item quantity="other">%1$s · %2$d 人</item>
+    </plurals>
+    <string name="TellomiFeedCompose__audience_too_large">最多选 %1$d 人</string>
     <string name="TellomiFeedCompose__visibility_minor_mode">未成年人模式下只能发给好友或仅自己可见。</string>
     <string name="TellomiFeedCompose__discard_title">放弃这条动态？</string>
     <string name="TellomiFeedCompose__discard_body">写的内容不会保留。</string>

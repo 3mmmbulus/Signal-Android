@@ -113,4 +113,32 @@ class FeedComposeViewModelTest {
     assertThat(card.isWithinWindow(published.plusSeconds(901).toEpochMilli(), 900)).isFalse()
     assertThat(target.isWithinWindow(0, 900)).isTrue()
   }
+
+  @Test
+  fun `picking people switches to include, an empty pick keeps the old choice`() {
+    val adult = object : FeedSource by EmptyFeedSource {
+      override suspend fun config(): FeedConfig = FeedConfig(enabled = true, minorMode = false)
+    }
+    val viewModel = FeedComposeViewModel(editTarget = null, source = adult, ioDispatcher = dispatcher)
+    viewModel.onTextChanged("hi")
+
+    viewModel.onAudiencePicked(FeedVisibility.INCLUDE, emptyList())
+    assertThat(viewModel.state.value.draft.visibility).isEqualTo(FeedVisibility.PUBLIC)
+
+    viewModel.onVisibilityChanged(FeedVisibility.INCLUDE)
+    assertThat(viewModel.state.value.draft.visibility).isEqualTo(FeedVisibility.PUBLIC)
+
+    val people = listOf(FeedAudienceMember(1, "aci-1"), FeedAudienceMember(2, "aci-2"))
+    viewModel.onAudiencePicked(FeedVisibility.INCLUDE, people)
+    assertThat(viewModel.state.value.draft.visibility).isEqualTo(FeedVisibility.INCLUDE)
+    assertThat(viewModel.state.value.draft.audience).isEqualTo(people)
+    assertThat(viewModel.state.value.problem).isEqualTo(null)
+  }
+
+  @Test
+  fun `minors cannot pick people`() {
+    val viewModel = FeedComposeViewModel(editTarget = null, source = FakeSource(), ioDispatcher = dispatcher)
+    viewModel.onAudiencePicked(FeedVisibility.EXCLUDE, listOf(FeedAudienceMember(1, "aci-1")))
+    assertThat(viewModel.state.value.draft.visibility).isEqualTo(FeedVisibility.FRIENDS)
+  }
 }

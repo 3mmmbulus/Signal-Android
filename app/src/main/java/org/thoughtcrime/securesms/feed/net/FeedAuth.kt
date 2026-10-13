@@ -42,6 +42,14 @@ data class FeedFriendAssertionRequest(@SerialName("peer_aci") val peerAci: Strin
 @Serializable
 data class FeedFriendAssertionResponse(val assertion: String)
 
+/** `POST /v1/tellomi/feed/audience-lists`：`include` 或 `exclude`，最多 500 个 ACI（重复的和自己会被去掉）。 */
+@Serializable
+data class FeedAudienceListRequest(val kind: String, @SerialName("peer_acis") val peerAcis: List<String>)
+
+/** 签好的名单（10 分钟有效），发帖时放进 `audience`。 */
+@Serializable
+data class FeedAudienceListResponse(@SerialName("audience_token") val audienceToken: String)
+
 /**
  * 向 Signal-Server 要动态用的签名（tellomi/Signal-Server `TellomiFeedController`）：走已登录的 WebSocket，
  * 和别的 `/v1/` 接口一样的账号鉴权。引擎只认这里签的东西，客户端从头到尾不接触别人的假名。
@@ -64,9 +72,16 @@ class FeedAuthApi(private val authWebSocket: SignalWebSocket.AuthenticatedWebSoc
     return NetworkResult.fromWebSocketRequest(signalWebSocket = authWebSocket, request = request, deserializer = FeedFriendAssertionResponse.serializer())
   }
 
+  /** 「部分可见 / 不给谁看」的名单。 */
+  fun audienceList(kind: String, peerAcis: List<String>): NetworkResult<FeedAudienceListResponse> {
+    val request = WebSocketRequestMessage.post(AUDIENCE_LISTS_PATH, FeedAudienceListRequest(kind, peerAcis), FeedAudienceListRequest.serializer())
+    return NetworkResult.fromWebSocketRequest(signalWebSocket = authWebSocket, request = request, deserializer = FeedAudienceListResponse.serializer())
+  }
+
   companion object {
     const val PATH = "/v1/tellomi/feed/auth"
     const val FRIEND_ASSERTIONS_PATH = "/v1/tellomi/feed/friend-assertions"
+    const val AUDIENCE_LISTS_PATH = "/v1/tellomi/feed/audience-lists"
   }
 }
 

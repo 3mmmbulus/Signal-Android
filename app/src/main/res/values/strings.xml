@@ -6853,7 +6853,11 @@
     <string name="TellomiFeedCompose__visibility_exclude_description">Everyone except the people you pick</string>
     <string name="TellomiFeedCompose__visibility_only_me">Only me</string>
     <string name="TellomiFeedCompose__visibility_only_me_description">Only you can see it</string>
-    <string name="TellomiFeedCompose__visibility_coming_soon">Picking people isn\'t available yet</string>
+    <plurals name="TellomiFeedCompose__visibility_with_count">
+        <item quantity="one">%1$s · %2$d person</item>
+        <item quantity="other">%1$s · %2$d people</item>
+    </plurals>
+    <string name="TellomiFeedCompose__audience_too_large">Pick up to %1$d people</string>
     <string name="TellomiFeedCompose__visibility_minor_mode">In minor mode, posts can only be seen by friends or yourself.</string>
     <string name="TellomiFeedCompose__discard_title">Discard this post?</string>
     <string name="TellomiFeedCompose__discard_body">What you\'ve written will be lost.</string>

@@ -89,6 +89,17 @@ class FeedComposeViewModel(
     }
   }
 
+  /** 正在给哪一档选人（选人页开着时转屏，回来还知道是哪一档）。 */
+  var pickingAudienceFor: FeedVisibility? = null
+
+  /** 选人页回来：选了人才换到这一档；一个没选（或者取消）就保持原来的档位。 */
+  fun onAudiencePicked(visibility: FeedVisibility, members: List<FeedAudienceMember>) {
+    if (!visibility.needsAudience || visibility !in FeedVisibility.allowed(internalState.value.minorMode) || members.isEmpty()) {
+      return
+    }
+    updateDraft { it.copy(visibility = visibility, audience = members) }
+  }
+
   fun publish() {
     val current = internalState.value
     if (current.publishing || current.problem != null) {
@@ -151,7 +162,7 @@ data class FeedComposeState(
       val problem = draft.problem(limits, minorMode)
       return when {
         editing == null -> problem
-        problem == FeedDraft.Problem.VISIBILITY_NOT_ALLOWED || problem == FeedDraft.Problem.MISSING_AUDIENCE -> if (isUnchanged) FeedDraft.Problem.UNCHANGED else null
+        problem == FeedDraft.Problem.VISIBILITY_NOT_ALLOWED || problem == FeedDraft.Problem.MISSING_AUDIENCE || problem == FeedDraft.Problem.AUDIENCE_TOO_LARGE -> if (isUnchanged) FeedDraft.Problem.UNCHANGED else null
         problem == null && isUnchanged -> FeedDraft.Problem.UNCHANGED
         else -> problem
       }

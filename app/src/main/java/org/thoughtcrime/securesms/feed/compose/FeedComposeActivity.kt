@@ -16,11 +16,18 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.core.content.IntentCompat
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import org.signal.core.ui.compose.theme.SignalTheme
+import org.signal.core.util.orNull
 import org.thoughtcrime.securesms.PassphraseRequiredActivity
 import org.thoughtcrime.securesms.feed.profile.FeedProfileActivity
+import org.thoughtcrime.securesms.recipients.Recipient
+import org.thoughtcrime.securesms.recipients.RecipientId
 import org.thoughtcrime.securesms.util.DynamicNoActionBarTheme
 
 /**
@@ -41,6 +48,21 @@ class FeedComposeActivity : PassphraseRequiredActivity() {
   /** 建好公开主页回来就接着发。 */
   private val profileLauncher = registerForActivityResult(FeedProfileActivity.Contract()) { saved ->
     if (saved) viewModel.publish()
+  }
+
+  /** 选人页回来的名单：换成 ACI（没有 ACI 的人签不了名单，去掉）再交给 ViewModel。 */
+  private val audienceLauncher = registerForActivityResult(FeedAudiencePickerActivity.Contract()) { ids ->
+    val visibility = viewModel.pickingAudienceFor ?: return@registerForActivityResult
+    viewModel.pickingAudienceFor = null
+    if (ids == null) return@registerForActivityResult
+    lifecycleScope.launch {
+      val members = withContext(Dispatchers.IO) {
+        Recipient.resolvedList(ids.map { RecipientId.from(it) }).mapNotNull { recipient ->
+          recipient.aci.orNull()?.let { FeedAudienceMember(recipient.id.toLong(), it.rawUuid.toString()) }
+        }
+      }
+      viewModel.onAudiencePicked(visibility, members)
+    }
   }
 
   override fun onPreCreate() {
@@ -76,7 +98,11 @@ class FeedComposeActivity : PassphraseRequiredActivity() {
           onImageRemoved = viewModel::onImageRemoved,
           onVisibilityChanged = viewModel::onVisibilityChanged,
           onPublish = viewModel::publish,
-          onFailureShown = viewModel::onFailureShown
+          onFailureShown = viewModel::onFailureShown,
+          onPickAudience = { visibility ->
+            viewModel.pickingAudienceFor = visibility
+            audienceLauncher.launch(state.draft.audience.map { it.recipientId }.toLongArray())
+          }
         )
       }
     }

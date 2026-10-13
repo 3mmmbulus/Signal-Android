@@ -45,6 +45,7 @@ class FeedComposeScreenTest {
 
   private var published = 0
   private var visibility: FeedVisibility? = null
+  private var picking: FeedVisibility? = null
 
   private fun show(state: FeedComposeState) {
     composeTestRule.setContent {
@@ -59,7 +60,8 @@ class FeedComposeScreenTest {
           onImageRemoved = {},
           onVisibilityChanged = { visibility = it },
           onPublish = { published++ },
-          onFailureShown = {}
+          onFailureShown = {},
+          onPickAudience = { picking = it }
         )
       }
     }
@@ -109,7 +111,7 @@ class FeedComposeScreenTest {
   }
 
   @Test
-  fun `visibility sheet lists five choices and picking people is not offered yet`() {
+  fun `visibility sheet lists five choices and the people choices open the picker`() {
     show(FeedComposeState(draft = FeedDraft(text = "a")))
 
     composeTestRule.onNodeWithText("Public").performClick()
@@ -119,10 +121,20 @@ class FeedComposeScreenTest {
     screenshot("compose_visibility")
 
     composeTestRule.onNodeWithText("Only some friends").performClick()
+    assertThat(picking).isEqualTo(FeedVisibility.INCLUDE)
     assertThat(visibility).isEqualTo(null)
 
+    composeTestRule.onNodeWithText("Public").performClick()
     composeTestRule.onNodeWithText("Only me").performClick()
     assertThat(visibility).isEqualTo(FeedVisibility.ONLY_ME)
+  }
+
+  @Test
+  fun `picked people show as a count`() {
+    val people = (1..3).map { FeedAudienceMember(it.toLong(), "aci-$it") }
+    show(FeedComposeState(draft = FeedDraft(text = "a", visibility = FeedVisibility.EXCLUDE, audience = people)))
+    composeTestRule.onNodeWithText("Hide from · 3 people").assertExists()
+    publishButton().assertIsEnabled()
   }
 
   @Test

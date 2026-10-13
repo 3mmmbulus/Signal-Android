@@ -934,6 +934,13 @@
             android:windowSoftInputMode="stateVisible|adjustResize" />
 
         <activity
+            android:name=".feed.compose.FeedAudiencePickerActivity"
+            android:configChanges="touchscreen|keyboard|keyboardHidden|orientation|screenLayout|screenSize"
+            android:exported="false"
+            android:theme="@style/Signal.DayNight.NoActionBar"
+            android:windowSoftInputMode="stateAlwaysHidden|adjustResize" />
+
+        <activity
             android:name=".feed.mine.FeedMyPostsActivity"
             android:exported="false"
             android:theme="@style/TextSecure.LightTheme" />

@@ -106,4 +106,14 @@ class FeedDraftTest {
     assertThat(top.id).isEqualTo(first.id)
     assertThat(top.text).isEqualTo("第一次发")
   }
+
+  @Test
+  fun `include and exclude need between one and 500 people`() {
+    val one = listOf(FeedAudienceMember(1, "aci-1"))
+    assertThat(FeedDraft(text = "a", visibility = FeedVisibility.INCLUDE, audience = one).problem(limits, minorMode = false)).isNull()
+    val tooMany = (1..FeedDraft.MAX_AUDIENCE + 1).map { FeedAudienceMember(it.toLong(), "aci-$it") }
+    assertThat(FeedDraft(text = "a", visibility = FeedVisibility.EXCLUDE, audience = tooMany).problem(limits, minorMode = false)).isEqualTo(FeedDraft.Problem.AUDIENCE_TOO_LARGE)
+    // 别的档位不看名单
+    assertThat(FeedDraft(text = "a", visibility = FeedVisibility.PUBLIC, audience = tooMany).problem(limits, minorMode = false)).isNull()
+  }
 }

@@ -21,7 +21,9 @@ import okhttp3.mockwebserver.MockWebServer
 import org.junit.After
 import org.junit.Before
 import org.junit.Test
+import org.thoughtcrime.securesms.feed.compose.FeedAudienceMember
 import org.thoughtcrime.securesms.feed.compose.FeedDraft
+import org.thoughtcrime.securesms.feed.compose.FeedVisibility
 import org.thoughtcrime.securesms.feed.net.FeedApi
 import org.thoughtcrime.securesms.feed.net.FeedTokenSource
 
@@ -139,5 +141,32 @@ class RemoteFeedSourceTest {
     val body = requests.last().body.readUtf8()
     assertThat(body.contains(""""client_nonce":"n1"""")).isTrue()
     assertThat(body.contains(""""media_keys":["m/a","m/b"]""")).isTrue()
+  }
+
+  @Test
+  fun `include posts carry a freshly signed audience token`() = runBlocking {
+    val api = FeedApi(
+      baseUrl = server.url("/"),
+      client = OkHttpClient(),
+      tokens = object : FeedTokenSource {
+        override suspend fun token(forceRefresh: Boolean) = "t"
+      }
+    )
+    val signed = mutableListOf<Pair<String, List<String>>>()
+    val withAudience = RemoteFeedSource(api, signAudience = { kind, acis -> signed += kind to acis; "jwt-${signed.size}" })
+    val draft = FeedDraft(
+      text = "hi",
+      visibility = FeedVisibility.INCLUDE,
+      audience = listOf(FeedAudienceMember(1, "a"), FeedAudienceMember(2, "b"), FeedAudienceMember(3, "a"))
+    )
+    server.enqueue(MockResponse().setResponseCode(201).setBody("""{"id":"p1","state":"pending","version":1}"""))
+    server.enqueue(MockResponse().setResponseCode(201).setBody("""{"id":"p2","state":"pending","version":1}"""))
+
+    withAudience.publish(draft, clientNonce = "n1")
+    withAudience.publish(draft.copy(visibility = FeedVisibility.FRIENDS), clientNonce = "n2")
+
+    assertThat(signed).containsExactly("include" to listOf("a", "b"))
+    assertThat(server.takeRequest().body.readUtf8().contains(""""audience":{"audience_token":"jwt-1"}""")).isTrue()
+    assertThat(server.takeRequest().body.readUtf8().contains("audience")).isFalse()
   }
 }

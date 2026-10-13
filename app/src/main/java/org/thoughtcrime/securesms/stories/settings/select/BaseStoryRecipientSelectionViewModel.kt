@@ -65,6 +65,11 @@ class BaseStoryRecipientSelectionViewModel(
     }
   }
 
+  /** Tellomi：不对应分组时，由调用方给出打开时就勾上的人。 */
+  fun setStartingSelection(recipients: Set<RecipientId>) {
+    store.update { it.copy(selection = recipients, isStartingSelection = true) }
+  }
+
   fun onStartingSelectionAdded() {
     store.update { it.copy(isStartingSelection = false) }
   }

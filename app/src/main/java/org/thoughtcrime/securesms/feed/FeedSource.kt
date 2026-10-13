@@ -9,11 +9,14 @@ import android.net.Uri
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import okhttp3.HttpUrl.Companion.toHttpUrlOrNull
+import org.signal.network.NetworkResult
 import org.thoughtcrime.securesms.dependencies.AppDependencies
 import org.thoughtcrime.securesms.feed.compose.FeedDraft
 import org.thoughtcrime.securesms.feed.compose.FeedDraftKind
 import org.thoughtcrime.securesms.feed.net.CachingFeedTokenSource
 import org.thoughtcrime.securesms.feed.net.FeedApi
+import org.thoughtcrime.securesms.feed.net.FeedApiException
+import org.thoughtcrime.securesms.feed.net.FeedAudienceToken
 import org.thoughtcrime.securesms.feed.net.FeedAuthApi
 import org.thoughtcrime.securesms.feed.net.FeedBlockEntry
 import org.thoughtcrime.securesms.feed.net.FeedCard
@@ -39,6 +42,7 @@ import org.thoughtcrime.securesms.feed.net.FeedSearchPage
 import org.thoughtcrime.securesms.feed.net.FeedTimelinePage
 import org.thoughtcrime.securesms.region.TellomiRegionProfile
 import org.thoughtcrime.securesms.region.TellomiRegions
+import java.io.IOException
 
 /**
  * 动态页取数据的地方。界面只认这个接口，不管背后是内容引擎还是本机样例。
@@ -135,7 +139,9 @@ interface FeedSource {
 class RemoteFeedSource(
   private val api: FeedApi,
   /** 读出要上传的图片字节（重编码成 JPEG）；测试里换掉。 */
-  private val readImage: (Uri) -> ByteArray = { FeedImageUploader.prepare(AppDependencies.application, it) }
+  private val readImage: (Uri) -> ByteArray = { FeedImageUploader.prepare(AppDependencies.application, it) },
+  /** 「部分可见 / 不给谁看」的名单找 Signal-Server 签（`kind`、ACI 列表 → `audience_token`）。 */
+  private val signAudience: suspend (kind: String, peerAcis: List<String>) -> String = { _, _ -> throw IllegalStateException("audience lists are not available") }
 ) : FeedSource {
 
   private val uploader = FeedImageUploader(api)
@@ -234,7 +240,13 @@ class RemoteFeedSource(
 
   override suspend fun publish(draft: FeedDraft, clientNonce: String): FeedCreatePostResponse {
     val keys = draft.attachedImages.map { uri -> uploadOnce(clientNonce, uri) }
-    val response = api.createPost(draft.toRequest().copy(clientNonce = clientNonce, mediaKeys = keys.ifEmpty { null }))
+    // 名单 10 分钟有效：每次发（包括重试）都现签一张，图片传完再签
+    val audience = if (draft.visibility.needsAudience) {
+      FeedAudienceToken(signAudience(draft.visibility.apiName, draft.audience.map { it.aci }.distinct()))
+    } else {
+      null
+    }
+    val response = api.createPost(draft.toRequest().copy(clientNonce = clientNonce, mediaKeys = keys.ifEmpty { null }, audience = audience))
     synchronized(uploaded) { uploaded.keys.removeAll { it.first == clientNonce } }
     return response
   }
@@ -346,8 +358,22 @@ object FeedSources {
     remote?.takeIf { it.first == key }?.let { return it.second }
 
     val tokens = CachingFeedTokenSource.fromSignalServer(FeedAuthApi(AppDependencies.authWebSocket))
-    val source = RemoteFeedSource(FeedApi(baseUrl, AppDependencies.okHttpClient, tokens))
+    val source = RemoteFeedSource(
+      api = FeedApi(baseUrl, AppDependencies.okHttpClient, tokens),
+      signAudience = { kind, acis -> signAudienceList(kind, acis) }
+    )
     remote = key to source
     return source
+  }
+
+  private suspend fun signAudienceList(kind: String, peerAcis: List<String>): String {
+    return withContext(Dispatchers.IO) {
+      when (val result = FeedAuthApi(AppDependencies.authWebSocket).audienceList(kind, peerAcis)) {
+        is NetworkResult.Success -> result.result.audienceToken
+        is NetworkResult.StatusCodeError -> throw FeedApiException(result.code, code = "invalid_audience")
+        is NetworkResult.NetworkError -> throw result.exception
+        is NetworkResult.ApplicationError -> throw IOException("audience list failed", result.throwable)
+      }
+    }
   }
 }
