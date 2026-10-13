@@ -32,7 +32,10 @@ import org.robolectric.annotation.Config
 import org.robolectric.annotation.GraphicsMode
 import org.signal.core.ui.CoreUiDependenciesRule
 import org.signal.core.ui.compose.theme.SignalTheme
+import org.thoughtcrime.securesms.feed.net.FeedAuthor
 import org.thoughtcrime.securesms.feed.net.FeedCard
+import org.thoughtcrime.securesms.feed.net.FeedEntry
+import org.thoughtcrime.securesms.feed.net.FeedTimelinePage
 import java.io.File
 
 /** 「不感兴趣」原地换成反馈卡（第三节第 11 条）。设了 `FEED_SCREENSHOT_DIR` 时截图。 */
@@ -54,6 +57,11 @@ class FeedNotInterestedTest {
     val calls = mutableListOf<String>()
     override suspend fun notInterested(contentId: String) {
       calls += "hide $contentId"
+    }
+    var page = FeedTimelinePage()
+    override suspend fun timeline(tab: FeedTab, cursor: String?): FeedTimelinePage = page
+    override suspend fun setBlocked(profileId: String, blocked: Boolean) {
+      calls += "block $profileId $blocked"
     }
     override suspend fun undoNotInterested(contentId: String) {
       if (failUndo) error("offline")
@@ -114,5 +122,25 @@ class FeedNotInterestedTest {
     composeTestRule.onNodeWithTag(FeedNotInterestedCardTestTags.PREFERENCES).performClick()
     composeTestRule.onNodeWithTag(FeedNotInterestedCardTestTags.UNCOMFORTABLE).performClick()
     assertThat(events).isEqualTo(listOf("undo", "prefs", "report"))
+  }
+
+  @Test
+  fun `blocking an author drops their cards and says so`() {
+    val a = FeedAuthor(profileId = "a", displayName = "A")
+    val b = FeedAuthor(profileId = "b", displayName = "B")
+    val cards = listOf(
+      FeedCard(id = "1", kind = FeedCard.KIND_POST, text = "x", author = a),
+      FeedCard(id = "2", kind = FeedCard.KIND_POST, text = "y", author = b),
+      FeedCard(id = "3", kind = FeedCard.KIND_POST, text = "z", author = a)
+    )
+    val source = FakeSource().apply { page = FeedTimelinePage(entries = cards.map { FeedEntry(it.id, card = it) }) }
+    val viewModel = FeedViewModel(source, dispatcher, blockedKeywords = InMemoryFeedBlockedKeywords())
+    viewModel.refresh(FeedTab.RECOMMEND)
+
+    viewModel.blockAuthor(cards[0])
+
+    assertThat(viewModel.state.value.tab(FeedTab.RECOMMEND).cards.map { it.id }).isEqualTo(listOf("2"))
+    assertThat(source.calls).isEqualTo(listOf("block a true"))
+    assertThat(viewModel.state.value.blockedNotice).isEqualTo(true)
   }
 }

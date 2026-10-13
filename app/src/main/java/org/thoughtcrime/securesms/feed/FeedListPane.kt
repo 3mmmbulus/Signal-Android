@@ -130,6 +130,13 @@ fun FeedListPane(
   val networkMessage = stringResource(R.string.TellomiFeed__network_error)
   val actionMessage = stringResource(R.string.TellomiFeed__action_failed)
 
+  val blockedMessage = stringResource(R.string.TellomiFeedPage__blocked_done)
+  LaunchedEffect(state.blockedNotice) {
+    if (!state.blockedNotice) return@LaunchedEffect
+    snackbarHostState.showSnackbar(blockedMessage)
+    viewModel.onBlockedNoticeShown()
+  }
+
   LaunchedEffect(state.transientError) {
     val error = state.transientError ?: return@LaunchedEffect
     snackbarHostState.showSnackbar(if (error == FeedState.TransientError.NETWORK) networkMessage else actionMessage)
@@ -161,6 +168,7 @@ fun FeedListPane(
   }
 
   var confirmDelete by remember { mutableStateOf<FeedCard?>(null) }
+  var confirmBlock by remember { mutableStateOf<FeedCard?>(null) }
 
   // 举报页里选了「只是不想看到」就按不感兴趣处理（第三节第 32 条先分流）
   var reporting by remember { mutableStateOf<FeedCard?>(null) }
@@ -208,6 +216,7 @@ fun FeedListPane(
       onLikeClick = viewModel::toggleLike,
       onNotInterestedClick = viewModel::notInterested,
       onUndoNotInterested = viewModel::undoNotInterested,
+      onBlockAuthorClick = { confirmBlock = it },
       onManagePreferences = { context.startActivity(FeedRecommendationSettingsActivity.intent(context)) },
       onCardsVisible = viewModel::onCardsVisible,
       onMyPostsClick = { context.startActivity(FeedMyPostsActivity.intent(context)) },
@@ -244,6 +253,18 @@ fun FeedListPane(
     SnackbarHost(hostState = snackbarHostState, modifier = Modifier.align(Alignment.BottomCenter))
   }
 
+  confirmBlock?.let { card ->
+    Dialogs.SimpleAlertDialog(
+      title = stringResource(R.string.TellomiFeedPage__block_title, card.author?.displayName.orEmpty()),
+      body = stringResource(R.string.TellomiFeedPage__block_body),
+      confirm = stringResource(R.string.TellomiFeedPage__block),
+      dismiss = stringResource(android.R.string.cancel),
+      confirmColor = MaterialTheme.colorScheme.error,
+      onConfirm = { viewModel.blockAuthor(card) },
+      onDismiss = { confirmBlock = null }
+    )
+  }
+
   confirmDelete?.let { card ->
     Dialogs.SimpleAlertDialog(
       title = stringResource(R.string.TellomiFeedMine__delete_title),
@@ -269,6 +290,7 @@ private fun FeedPager(
   onCardsVisible: (FeedTab, Set<String>) -> Unit,
   onUndoNotInterested: (FeedCard) -> Unit = {},
   onManagePreferences: () -> Unit = {},
+  onBlockAuthorClick: (FeedCard) -> Unit = {},
   onMyPostsClick: () -> Unit,
   modifier: Modifier = Modifier,
   onEditClick: (FeedEditTarget) -> Unit = {},
@@ -340,6 +362,7 @@ private fun FeedPager(
         hidden = state.hidden,
         onUndoNotInterested = onUndoNotInterested,
         onManagePreferences = onManagePreferences,
+        onBlockAuthorClick = onBlockAuthorClick,
         isCurrentPage = pagerState.currentPage == page,
         onNearTopChanged = chrome::onNearTopChanged,
         onCardsVisible = { onCardsVisible(tab, it) },
@@ -369,6 +392,7 @@ private fun FeedTimeline(
   hidden: Set<String>,
   onUndoNotInterested: (FeedCard) -> Unit,
   onManagePreferences: () -> Unit,
+  onBlockAuthorClick: (FeedCard) -> Unit,
   isCurrentPage: Boolean,
   onCardsVisible: (Set<String>) -> Unit,
   onNearTopChanged: (Boolean) -> Unit = {},
@@ -454,7 +478,8 @@ private fun FeedTimeline(
             onOpen = onOpenClick,
             onReportClick = if (card.viewer.isAuthor) null else onReportClick,
             onAuthorClick = onAuthorClick,
-            onVote = onVote
+            onVote = onVote,
+            onBlockAuthorClick = if (card.viewer.isAuthor) null else onBlockAuthorClick
           )
           HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
         }

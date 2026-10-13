@@ -97,7 +97,9 @@ fun FeedPostCard(
   /** 点头像或名字进主页；开放内容的外部作者没有主页。 */
   onAuthorClick: ((FeedAuthor) -> Unit)? = null,
   /** 投票（选项下标）；null 的地方只看不投，点卡片进详情投。 */
-  onVote: ((FeedCard, List<Int>) -> Unit)? = null
+  onVote: ((FeedCard, List<Int>) -> Unit)? = null,
+  /** 别人的帖子：「···」里的屏蔽作者（第三节第 26 条）；开放内容的外部作者也能屏蔽。 */
+  onBlockAuthorClick: ((FeedCard) -> Unit)? = null
 ) {
   val author = card.author
   val openAuthor: (() -> Unit)? = if (author != null && author.isNative && onAuthorClick != null) {
@@ -125,7 +127,8 @@ fun FeedPostCard(
           onEditClick = onEditClick,
           onDeleteClick = onDeleteClick,
           onReportClick = onReportClick,
-          onAuthorClick = openAuthor
+          onAuthorClick = openAuthor,
+          onBlockAuthorClick = onBlockAuthorClick
         )
 
         val title = card.title
@@ -221,7 +224,8 @@ private fun FeedPostHeader(
   onEditClick: ((FeedCard) -> Unit)?,
   onDeleteClick: ((FeedCard) -> Unit)?,
   onReportClick: ((FeedCard) -> Unit)?,
-  onAuthorClick: (() -> Unit)? = null
+  onAuthorClick: (() -> Unit)? = null,
+  onBlockAuthorClick: ((FeedCard) -> Unit)? = null
 ) {
   val context = LocalContext.current
   val author = card.author
@@ -307,6 +311,15 @@ private fun FeedPostHeader(
                 onClick = {
                   menuOpen = false
                   onNotInterestedClick(card)
+                }
+              )
+            }
+            if (onBlockAuthorClick != null && author != null) {
+              DropdownMenuItem(
+                text = { Text(stringResource(R.string.TellomiFeedPage__block)) },
+                onClick = {
+                  menuOpen = false
+                  onBlockAuthorClick(card)
                 }
               )
             }

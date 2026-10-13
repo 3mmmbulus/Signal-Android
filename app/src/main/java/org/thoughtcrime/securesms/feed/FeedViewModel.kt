@@ -185,6 +185,31 @@ class FeedViewModel(
     }
   }
 
+  /**
+   * 在「···」里屏蔽作者（第三节第 26 条；动态屏蔽和聊天屏蔽分开，第 44 条）：这位作者的卡片从两栏拿掉，
+   * 引擎同时删掉双方的关注。界面上已经确认过。失败时提示并重新取。
+   */
+  fun blockAuthor(card: FeedCard) {
+    val author = card.author ?: return
+    internalState.update { state ->
+      state.copy(tabStates = state.tabStates.mapValues { (_, tabState) -> tabState.copy(cards = tabState.cards.filterNot { it.author?.profileId == author.profileId }) })
+    }
+    viewModelScope.launch {
+      try {
+        withContext(ioDispatcher) { source.setBlocked(author.profileId, true) }
+        internalState.update { it.copy(blockedNotice = true) }
+      } catch (e: Exception) {
+        Log.w(TAG, "block failed", e)
+        internalState.update { it.copy(transientError = FeedState.TransientError.ACTION_FAILED) }
+        FeedTab.entries.forEach { refresh(it) }
+      }
+    }
+  }
+
+  fun onBlockedNoticeShown() {
+    internalState.update { it.copy(blockedNotice = false) }
+  }
+
   /** 反馈卡上的「撤销」：卡片原样回来。 */
   fun undoNotInterested(card: FeedCard) {
     if (card.id !in internalState.value.hidden) return
@@ -315,6 +340,8 @@ data class FeedState(
   val tabStates: Map<FeedTab, FeedTabState> = emptyMap(),
   /** 点了「不感兴趣」、正显示成反馈卡的。 */
   val hidden: Set<String> = emptySet(),
+  /** 刚屏蔽了一位作者，提示「已屏蔽」。 */
+  val blockedNotice: Boolean = false,
   val transientError: TransientError? = null,
   val publishNotice: String? = null,
   /** 刚保存的编辑，服务端给的 `state`。 */

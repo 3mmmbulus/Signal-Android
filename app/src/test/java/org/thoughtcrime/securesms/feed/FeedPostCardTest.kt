@@ -12,9 +12,13 @@ import androidx.compose.material3.HorizontalDivider
 import androidx.compose.ui.graphics.asAndroidBitmap
 import androidx.compose.ui.test.captureToImage
 import androidx.compose.ui.test.junit4.createComposeRule
+import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.onRoot
+import androidx.compose.ui.test.performClick
 import androidx.test.core.app.ApplicationProvider
+import assertk.assertThat
+import assertk.assertions.isEqualTo
 import kotlinx.coroutines.runBlocking
 import org.junit.Rule
 import org.junit.Test
@@ -24,6 +28,7 @@ import org.robolectric.annotation.Config
 import org.robolectric.annotation.GraphicsMode
 import org.signal.core.ui.CoreUiDependenciesRule
 import org.signal.core.ui.compose.theme.SignalTheme
+import org.thoughtcrime.securesms.feed.net.FeedAuthor
 import org.thoughtcrime.securesms.feed.net.FeedCard
 import java.io.File
 
@@ -70,5 +75,19 @@ class FeedPostCardTest {
     val bitmap = composeTestRule.onRoot().captureToImage().asAndroidBitmap()
     File(dir).mkdirs()
     File(dir, "feed_cards.png").outputStream().use { bitmap.compress(Bitmap.CompressFormat.PNG, 100, it) }
+  }
+
+  @Test
+  fun `someone else's post offers block in the menu`() {
+    val card = FeedCard(id = "c1", kind = FeedCard.KIND_POST, text = "x", author = FeedAuthor(profileId = "p1", displayName = "Anan"))
+    var blocked: FeedCard? = null
+    composeTestRule.setContent {
+      SignalTheme {
+        FeedPostCard(card = card, showIpRegion = false, onLikeClick = {}, onNotInterestedClick = {}, onBlockAuthorClick = { blocked = it })
+      }
+    }
+    composeTestRule.onNodeWithContentDescription("More").performClick()
+    composeTestRule.onNodeWithText("Block").performClick()
+    assertThat(blocked).isEqualTo(card)
   }
 }
