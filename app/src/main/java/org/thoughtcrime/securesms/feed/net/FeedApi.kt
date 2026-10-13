@@ -285,6 +285,8 @@ class FeedApi(
   /** 我在动态里屏蔽的作者、来源、话题。 */
   suspend fun blocks(): FeedBlocksResponse = get(url("v1/feed/me/blocks"), FeedBlocksResponse.serializer())
 
+  suspend fun followedTopics(): FeedFollowedTopics = get(url("v1/feed/me/followed-topics"), FeedFollowedTopics.serializer())
+
   suspend fun hideLists(): FeedHideLists = get(url("v1/feed/me/hide-lists"), FeedHideLists.serializer())
 
   /** 加进或移出 [list]（[HIDE_MUTE] / [HIDE_FROM]）→ 204，可以重复调。没有主页 409 `profile_required`；自己、互相屏蔽的人 404。 */

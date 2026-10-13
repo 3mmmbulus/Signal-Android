@@ -599,6 +599,16 @@ object SampleFeedSource : FeedSource {
     FeedPostInsights(opens = 12 + likes * 7, likes = likes, comments = commentsFor(card.id).size, reposts = card.stats.reposts, saves = likes / 2)
   }
 
+  /** 关注的话题：样例里只记名单，「关注」栏不跟着变。 */
+  private val followedTopicSlugs = mutableListOf<String>()
+
+  override suspend fun followedTopics(): List<String> = synchronized(this) { followedTopicSlugs.asReversed().toList() }
+
+  override suspend fun setFollowingTopic(slug: String, following: Boolean): Unit = synchronized(this) {
+    followedTopicSlugs -= slug
+    if (following) followedTopicSlugs += slug
+  }
+
   /** 「不看 TA」「不让 TA 看」：样例里只记名单，信息流不跟着变。 */
   private val hideListMembers = mapOf(FeedApi.HIDE_MUTE to mutableListOf<String>(), FeedApi.HIDE_FROM to mutableListOf())
 

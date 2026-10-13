@@ -178,6 +178,12 @@ interface FeedSource {
 
   suspend fun hideLists(): FeedHideLists
 
+  /** 我关注的话题（slug），最近关注的在前。 */
+  suspend fun followedTopics(): List<String>
+
+  /** 关注 / 取消关注一个话题：话题的新动态进「关注」栏（第三节第 18 条）。 */
+  suspend fun setFollowingTopic(slug: String, following: Boolean)
+
   /** 「不看 TA」（[FeedApi.HIDE_MUTE]）/「不让 TA 看」（[FeedApi.HIDE_FROM]）的加进、移出。 */
   suspend fun setHideList(list: String, profileId: String, on: Boolean)
 }
@@ -301,6 +307,10 @@ class RemoteFeedSource(
   override suspend fun updatePostSettings(contentId: String, update: FeedPostSettingsUpdate) = api.updatePostSettings(contentId, update)
   override suspend fun postInsights(contentId: String): FeedPostInsights = api.postInsights(contentId)
   override suspend fun hideLists(): FeedHideLists = api.hideLists()
+  override suspend fun followedTopics(): List<String> = api.followedTopics().topics.map { it.slug }
+  override suspend fun setFollowingTopic(slug: String, following: Boolean) {
+    api.follow(FeedApi.TARGET_TOPIC, slug, following)
+  }
   override suspend fun setHideList(list: String, profileId: String, on: Boolean) = api.setHideList(list, profileId, on)
 
   override suspend fun search(query: String, scope: String, cursor: String?): FeedSearchPage {
@@ -420,6 +430,8 @@ object EmptyFeedSource : FeedSource {
   override suspend fun updatePostSettings(contentId: String, update: FeedPostSettingsUpdate) = throw IllegalStateException("feed is not available")
   override suspend fun postInsights(contentId: String): FeedPostInsights = throw IllegalStateException("feed is not available")
   override suspend fun hideLists(): FeedHideLists = throw IllegalStateException("feed is not available")
+  override suspend fun followedTopics(): List<String> = emptyList()
+  override suspend fun setFollowingTopic(slug: String, following: Boolean) = throw IllegalStateException("feed is not available")
   override suspend fun setHideList(list: String, profileId: String, on: Boolean) = throw IllegalStateException("feed is not available")
 }
 

@@ -6863,6 +6863,15 @@
     <string name="TellomiFeedPeople__hidden_from_empty">No one here. You can add people from ··· on their profile.</string>
     <string name="TellomiFeedPeople__remove">Remove</string>
     <string name="TellomiFeedPeople__removed">Removed</string>
+    <string name="TellomiFeedTopicFollow__follow">Follow topic</string>
+    <string name="TellomiFeedTopicFollow__following">Following</string>
+    <string name="TellomiFeedTopicFollow__unfollow">Unfollow</string>
+    <string name="TellomiFeedTopicFollow__unfollowed">Unfollowed</string>
+    <string name="TellomiFeedTopicFollow__follow_explain">New posts with this topic will show in Following.</string>
+    <string name="TellomiFeedTopicFollow__load_failed">Couldn\'t load. Try again.</string>
+    <string name="TellomiFeedTopicFollow__followed_title">Followed topics</string>
+    <string name="TellomiFeedTopicFollow__followed_empty">No topics yet. Tap a #topic on a post to follow it.</string>
+    <string name="TellomiFeedTopicFollow__followed_explain">New posts with these topics show in Following.</string>
     <plurals name="TellomiFeed__comments">
         <item quantity="one">%1$d comment</item>
         <item quantity="other">%1$d comments</item>

@@ -577,6 +577,13 @@ data class FeedHideLists(
   @SerialName("hide_from") val hideFrom: List<FeedPersonSummary> = emptyList()
 )
 
+/** `GET /v1/feed/me/followed-topics`：我关注的话题，最近关注的在前。 */
+@Serializable
+data class FeedFollowedTopics(val topics: List<FeedFollowedTopic> = emptyList())
+
+@Serializable
+data class FeedFollowedTopic(val slug: String, @SerialName("followed_at") val followedAt: String? = null)
+
 /** `GET /v1/feed/me/follow-requests`：别人想关注我的私密账号。 */
 @Serializable
 data class FeedFollowRequestsResponse(

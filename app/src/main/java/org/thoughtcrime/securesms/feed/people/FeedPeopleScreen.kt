@@ -38,6 +38,7 @@ import org.signal.core.ui.compose.Scaffolds
 import org.signal.core.ui.compose.Snackbars
 import org.thoughtcrime.securesms.R
 import org.thoughtcrime.securesms.feed.FeedAvatar
+import org.thoughtcrime.securesms.feed.feedTopicLabel
 import org.thoughtcrime.securesms.feed.net.FeedApi
 import org.thoughtcrime.securesms.feed.net.FeedAuthor
 import org.thoughtcrime.securesms.feed.net.FeedPersonSummary
@@ -73,6 +74,7 @@ fun FeedPeopleScreen(
   val unblocked = stringResource(R.string.TellomiFeedPage__unblocked_done)
   val failed = stringResource(R.string.TellomiFeed__action_failed)
   val removed = stringResource(R.string.TellomiFeedPeople__removed)
+  val unfollowed = stringResource(R.string.TellomiFeedTopicFollow__unfollowed)
   LaunchedEffect(state.notice) {
     val notice = state.notice ?: return@LaunchedEffect
     onNoticeShown()
@@ -82,6 +84,7 @@ fun FeedPeopleScreen(
         FeedPeopleState.Notice.DECLINED -> declined
         FeedPeopleState.Notice.UNBLOCKED -> unblocked
         FeedPeopleState.Notice.REMOVED -> removed
+        FeedPeopleState.Notice.UNFOLLOWED -> unfollowed
         FeedPeopleState.Notice.FAILED -> failed
       }
     )
@@ -94,6 +97,7 @@ fun FeedPeopleScreen(
         FeedPeopleMode.BLOCKED -> R.string.TellomiFeedPeople__blocked_title
         FeedPeopleMode.MUTED -> R.string.TellomiFeedPeople__muted_title
         FeedPeopleMode.HIDDEN_FROM -> R.string.TellomiFeedPeople__hidden_from_title
+        FeedPeopleMode.FOLLOWED_TOPICS -> R.string.TellomiFeedTopicFollow__followed_title
       }
     ),
     onNavigationClick = onBack,
@@ -118,6 +122,7 @@ fun FeedPeopleScreen(
               FeedPeopleMode.BLOCKED -> R.string.TellomiFeedPeople__blocked_empty
               FeedPeopleMode.MUTED -> R.string.TellomiFeedPeople__muted_empty
               FeedPeopleMode.HIDDEN_FROM -> R.string.TellomiFeedPeople__hidden_from_empty
+              FeedPeopleMode.FOLLOWED_TOPICS -> R.string.TellomiFeedTopicFollow__followed_empty
             }
           ),
           style = MaterialTheme.typography.bodyLarge,
@@ -131,6 +136,7 @@ fun FeedPeopleScreen(
             FeedPeopleMode.BLOCKED -> R.string.TellomiFeedPeople__blocked_explain
             FeedPeopleMode.MUTED -> R.string.TellomiFeedPeople__muted_explain
             FeedPeopleMode.HIDDEN_FROM -> R.string.TellomiFeedPeople__hidden_from_explain
+            FeedPeopleMode.FOLLOWED_TOPICS -> R.string.TellomiFeedTopicFollow__followed_explain
           }
           if (explain != null) {
             item(key = "explain") {
@@ -178,10 +184,12 @@ private fun PersonRow(
       .then(if (person != null) Modifier.clickable { onOpenProfile(person) } else Modifier)
       .padding(horizontal = 24.dp, vertical = 12.dp)
   ) {
-    FeedAvatar(author = person?.let { FeedAuthor(profileId = it.id, displayName = it.displayName, handle = it.handle, avatarKey = it.avatarKey) }, size = 44.dp)
+    if (row.topic == null) {
+      FeedAvatar(author = person?.let { FeedAuthor(profileId = it.id, displayName = it.displayName, handle = it.handle, avatarKey = it.avatarKey) }, size = 44.dp)
+    }
     Column(modifier = Modifier.weight(1f)) {
       Text(
-        text = person?.displayName ?: blockLabel(row),
+        text = person?.displayName ?: row.topic?.let { "#${feedTopicLabel(it)}" } ?: blockLabel(row),
         style = MaterialTheme.typography.bodyLarge,
         maxLines = 1,
         overflow = TextOverflow.Ellipsis
@@ -211,6 +219,9 @@ private fun PersonRow(
       }
       FeedPeopleMode.MUTED, FeedPeopleMode.HIDDEN_FROM -> OutlinedButton(onClick = onRemove, modifier = Modifier.testTag(FeedPeopleTestTags.REMOVE)) {
         Text(stringResource(R.string.TellomiFeedPeople__remove))
+      }
+      FeedPeopleMode.FOLLOWED_TOPICS -> OutlinedButton(onClick = onRemove, modifier = Modifier.testTag(FeedPeopleTestTags.REMOVE)) {
+        Text(stringResource(R.string.TellomiFeedTopicFollow__unfollow))
       }
     }
   }

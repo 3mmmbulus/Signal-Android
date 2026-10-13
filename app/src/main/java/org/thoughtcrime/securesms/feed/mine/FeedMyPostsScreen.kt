@@ -92,6 +92,7 @@ fun FeedMyPostsScreen(
   onProfileClick: () -> Unit = {},
   onFollowRequestsClick: () -> Unit = {},
   onBlockedClick: () -> Unit = {},
+  onFollowedTopicsClick: () -> Unit = {},
   onSettingsClick: () -> Unit = {},
   onAppeal: (FeedMyPost, String) -> Unit = { _, _ -> },
   onAppealNoticeShown: () -> Unit = {},
@@ -133,7 +134,7 @@ fun FeedMyPostsScreen(
     actions = {
       // 公开主页的名字和简介（主页页面做好后挪过去）
       TextButton(onClick = onProfileClick) { Text(stringResource(R.string.TellomiFeedProfile__title)) }
-      PeopleMenu(onFollowRequestsClick = onFollowRequestsClick, onBlockedClick = onBlockedClick, onSettingsClick = onSettingsClick)
+      PeopleMenu(onFollowRequestsClick = onFollowRequestsClick, onBlockedClick = onBlockedClick, onFollowedTopicsClick = onFollowedTopicsClick, onSettingsClick = onSettingsClick)
     }
   ) { padding ->
     PullToRefreshBox(
@@ -432,9 +433,9 @@ internal fun rejectionReasonLabel(code: String): Int {
   }
 }
 
-/** 「关注请求」「屏蔽列表」（第三节第 29、44 条）。一级导航改成「我」之后挪进设置。 */
+/** 「关注请求」「屏蔽列表」「关注的话题」（第三节第 29、44、18 条）。一级导航改成「我」之后挪进设置。 */
 @Composable
-private fun PeopleMenu(onFollowRequestsClick: () -> Unit, onBlockedClick: () -> Unit, onSettingsClick: () -> Unit) {
+private fun PeopleMenu(onFollowRequestsClick: () -> Unit, onBlockedClick: () -> Unit, onFollowedTopicsClick: () -> Unit, onSettingsClick: () -> Unit) {
   var open by remember { mutableStateOf(false) }
   Box {
     IconButton(onClick = { open = true }, modifier = Modifier.testTag(FeedMyPostsTestTags.PEOPLE)) {
@@ -456,6 +457,13 @@ private fun PeopleMenu(onFollowRequestsClick: () -> Unit, onBlockedClick: () -> 
         onClick = {
           open = false
           onBlockedClick()
+        }
+      )
+      DropdownMenuItem(
+        text = { Text(stringResource(R.string.TellomiFeedTopicFollow__followed_title)) },
+        onClick = {
+          open = false
+          onFollowedTopicsClick()
         }
       )
       DropdownMenuItem(

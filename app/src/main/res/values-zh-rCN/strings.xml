@@ -6646,6 +6646,15 @@
     <string name="TellomiFeedPeople__hidden_from_empty">名单是空的。在别人主页的「···」里可以加。</string>
     <string name="TellomiFeedPeople__remove">移出</string>
     <string name="TellomiFeedPeople__removed">已移出</string>
+    <string name="TellomiFeedTopicFollow__follow">关注话题</string>
+    <string name="TellomiFeedTopicFollow__following">已关注</string>
+    <string name="TellomiFeedTopicFollow__unfollow">取消关注</string>
+    <string name="TellomiFeedTopicFollow__unfollowed">已取消关注</string>
+    <string name="TellomiFeedTopicFollow__follow_explain">关注后，这个话题的新动态会出现在「关注」栏。</string>
+    <string name="TellomiFeedTopicFollow__load_failed">加载失败，请重试。</string>
+    <string name="TellomiFeedTopicFollow__followed_title">关注的话题</string>
+    <string name="TellomiFeedTopicFollow__followed_empty">还没有关注话题。点帖子上的 #话题 就能关注。</string>
+    <string name="TellomiFeedTopicFollow__followed_explain">这些话题的新动态会出现在「关注」栏。</string>
     <plurals name="TellomiFeed__comments">
         <item quantity="other">%1$d 条评论</item>
     </plurals>

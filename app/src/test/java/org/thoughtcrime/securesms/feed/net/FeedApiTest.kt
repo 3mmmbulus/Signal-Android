@@ -712,4 +712,19 @@ class FeedApiTest {
     assertThat(delete.method).isEqualTo("DELETE")
     assertThat(delete.path).isEqualTo("/v1/feed/me/hide-lists/mute/p1")
   }
+
+  @Test
+  fun `followed topics are slugs, follow a topic is PUT on follow topic`() = runBlocking {
+    server.enqueue(MockResponse().setBody("""{"topics":[{"slug":"hiking","followed_at":"2026-10-13T08:00:00Z"},{"slug":"food"}]}"""))
+    server.enqueue(MockResponse().setBody("""{"state":"approved"}"""))
+
+    val topics = api.followedTopics()
+    api.follow(FeedApi.TARGET_TOPIC, "hiking", on = true)
+
+    assertThat(topics.topics.map { it.slug }).containsExactly("hiking", "food")
+    assertThat(server.takeRequest().path).isEqualTo("/v1/feed/me/followed-topics")
+    val put = server.takeRequest()
+    assertThat(put.method).isEqualTo("PUT")
+    assertThat(put.path).isEqualTo("/v1/feed/follow/topic/hiking")
+  }
 }

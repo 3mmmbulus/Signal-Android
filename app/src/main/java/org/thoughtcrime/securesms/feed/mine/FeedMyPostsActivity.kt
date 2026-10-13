@@ -55,6 +55,7 @@ class FeedMyPostsActivity : PassphraseRequiredActivity() {
           onProfileClick = { profileLauncher.launch(Unit) },
           onFollowRequestsClick = { startActivity(FeedPeopleActivity.intent(this, FeedPeopleMode.FOLLOW_REQUESTS)) },
           onBlockedClick = { startActivity(FeedPeopleActivity.intent(this, FeedPeopleMode.BLOCKED)) },
+          onFollowedTopicsClick = { startActivity(FeedPeopleActivity.intent(this, FeedPeopleMode.FOLLOWED_TOPICS)) },
           onSettingsClick = { startActivity(FeedRecommendationSettingsActivity.intent(this)) },
           onAppeal = viewModel::appeal,
           onAppealNoticeShown = viewModel::onAppealNoticeShown

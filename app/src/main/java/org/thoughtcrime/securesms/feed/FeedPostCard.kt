@@ -11,6 +11,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.aspectRatio
@@ -58,6 +59,7 @@ import org.thoughtcrime.securesms.feed.net.FeedAuthor
 import org.thoughtcrime.securesms.feed.net.FeedCard
 import org.thoughtcrime.securesms.feed.net.FeedMedia
 import org.thoughtcrime.securesms.feed.net.FeedStats
+import org.thoughtcrime.securesms.feed.net.FeedTopic
 import org.thoughtcrime.securesms.util.DateUtils
 import java.time.Instant
 import java.util.Locale
@@ -172,12 +174,21 @@ fun FeedPostCard(
         }
 
         if (card.topics.isNotEmpty()) {
-          Text(
-            text = card.topics.joinToString(separator = "  ") { "#${it.label}" },
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.primary,
-            modifier = Modifier.padding(top = 4.dp, end = 12.dp)
-          )
+          // 点话题弹出关注面板（第三节第 18 条）
+          var openTopic by remember { mutableStateOf<FeedTopic?>(null) }
+          FlowRow(horizontalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.padding(top = 4.dp, end = 12.dp)) {
+            card.topics.forEach { topic ->
+              Text(
+                text = "#${topic.label}",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.primary,
+                modifier = Modifier
+                  .clickable { openTopic = topic }
+                  .testTag(FeedPostCardTestTags.topic(topic.slug))
+              )
+            }
+          }
+          openTopic?.let { FeedTopicFollowSheet(topic = it, onDismiss = { openTopic = null }) }
         }
 
         if (card.aiGenerated) {
@@ -528,6 +539,8 @@ object FeedPostCardTestTags {
   const val MUTE_AUTHOR = "feed_card_mute_author"
 
   fun ownAction(action: FeedOwnPostAction) = "feed_card_own_${action.name.lowercase()}"
+
+  fun topic(slug: String) = "feed_card_topic_$slug"
 }
 
 /**

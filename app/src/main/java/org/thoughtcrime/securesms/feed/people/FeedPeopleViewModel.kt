@@ -59,6 +59,7 @@ class FeedPeopleViewModel(
             FeedPeopleMode.BLOCKED -> source.blocks().map { FeedPeopleRow(key = "${it.type}/${it.id}", person = it.profile, block = it) }
             FeedPeopleMode.MUTED -> source.hideLists().mute.map { FeedPeopleRow(key = it.id, person = it) }
             FeedPeopleMode.HIDDEN_FROM -> source.hideLists().hideFrom.map { FeedPeopleRow(key = it.id, person = it) }
+            FeedPeopleMode.FOLLOWED_TOPICS -> source.followedTopics().map { FeedPeopleRow(key = "topic/$it", topic = it) }
           }
         }
         internalState.update { it.copy(loading = false, rows = rows) }
@@ -83,8 +84,12 @@ class FeedPeopleViewModel(
     act(row, FeedPeopleState.Notice.UNBLOCKED) { source.unblock(entry) }
   }
 
-  /** 从「不看 TA」或「不让 TA 看」名单里移出。 */
+  /** 从「不看 TA」或「不让 TA 看」名单里移出；关注的话题是取消关注。 */
   fun remove(row: FeedPeopleRow) {
+    row.topic?.let { slug ->
+      act(row, FeedPeopleState.Notice.UNFOLLOWED) { source.setFollowingTopic(slug, following = false) }
+      return
+    }
     val person = row.person ?: return
     val list = mode.hideList ?: return
     act(row, FeedPeopleState.Notice.REMOVED) { source.setHideList(list, person.id, on = false) }
@@ -138,14 +143,18 @@ enum class FeedPeopleMode(
   MUTED(FeedApi.HIDE_MUTE),
 
   /** 「不让 TA 看我的动态」。 */
-  HIDDEN_FROM(FeedApi.HIDE_FROM)
+  HIDDEN_FROM(FeedApi.HIDE_FROM),
+
+  /** 我关注的话题（第三节第 18 条）。 */
+  FOLLOWED_TOPICS
 }
 
-/** 名单里的一行。屏蔽来源 / 话题时没有 [person]，只有 [block]。 */
+/** 名单里的一行。屏蔽来源 / 话题时没有 [person]，只有 [block]；关注的话题只有 [topic]（slug）。 */
 data class FeedPeopleRow(
   val key: String,
   val person: FeedPersonSummary? = null,
-  val block: FeedBlockEntry? = null
+  val block: FeedBlockEntry? = null,
+  val topic: String? = null
 )
 
 data class FeedPeopleState(
@@ -159,6 +168,7 @@ data class FeedPeopleState(
     DECLINED,
     UNBLOCKED,
     REMOVED,
+    UNFOLLOWED,
     FAILED
   }
 }
