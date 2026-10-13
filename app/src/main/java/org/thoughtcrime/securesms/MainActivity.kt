@@ -22,6 +22,10 @@ import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.ActivityResultLauncher
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.background
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Box
@@ -135,6 +139,7 @@ import org.thoughtcrime.securesms.conversationlist.RestoreCompleteBottomSheetDia
 import org.thoughtcrime.securesms.conversationlist.model.ConversationFilter
 import org.thoughtcrime.securesms.conversationlist.model.UnreadPaymentsLiveData
 import org.thoughtcrime.securesms.devicetransfer.olddevice.OldDeviceExitActivity
+import org.thoughtcrime.securesms.feed.FeedChromeState
 import org.thoughtcrime.securesms.feed.FeedEntryCheck
 import org.thoughtcrime.securesms.feed.TellomiFeed
 import org.thoughtcrime.securesms.feed.friends.FeedFriends
@@ -641,10 +646,18 @@ class MainActivity :
               .clip(contentLayoutData.navigationBarShape)
               .background(color = SignalTheme.colors.colorSurface2)
           ) {
-            MainNavigationBar(
-              state = mainNavigationState,
-              onDestinationSelected = mainNavigationCallback
-            )
+            // Tellomi（M11 动态，第三节第 46 条）：动态页往下滚时底栏和动态页顶栏同帧收起；系统导航条那一条留着
+            val feedChrome = FeedChromeState.shared
+            AnimatedVisibility(
+              visible = mainToolbarState.destination != MainListRoute.Feed || feedChrome?.visible != false,
+              enter = expandVertically(animationSpec = tween(FeedChromeState.SHOW_MILLIS), expandFrom = Alignment.Top),
+              exit = shrinkVertically(animationSpec = tween(FeedChromeState.HIDE_MILLIS), shrinkTowards = Alignment.Top)
+            ) {
+              MainNavigationBar(
+                state = mainNavigationState,
+                onDestinationSelected = mainNavigationCallback
+              )
+            }
 
             if (!isSplitPane) {
               Spacer(Modifier.windowInsetsPadding(WindowInsets.navigationBarsCompat))

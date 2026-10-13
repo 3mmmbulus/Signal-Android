@@ -6,7 +6,11 @@
 package org.thoughtcrime.securesms.feed
 
 import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
@@ -59,8 +63,13 @@ import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
+import androidx.compose.ui.input.nestedscroll.NestedScrollSource
+import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.res.vectorResource
@@ -188,8 +197,21 @@ fun FeedListPane(
   LifecycleEventEffect(Lifecycle.Event.ON_STOP) { viewModel.onFeedHidden() }
   DisposableEffect(viewModel) { onDispose { viewModel.onFeedHidden() } }
 
+  val density = LocalDensity.current
+  val chrome = remember(density) {
+    with(density) { FeedChromeState(FeedChromeState.HIDE_AFTER.toPx(), FeedChromeState.SHOW_AFTER.toPx()) }
+  }
+  DisposableEffect(chrome) {
+    FeedChromeState.shared = chrome
+    onDispose {
+      chrome.reset()
+      if (FeedChromeState.shared === chrome) FeedChromeState.shared = null
+    }
+  }
+
   Box(modifier = modifier) {
     FeedPager(
+      chrome = chrome,
       state = state,
       onTabShown = viewModel::onTabShown,
       onRefresh = viewModel::refresh,
@@ -247,6 +269,7 @@ fun FeedListPane(
 @Composable
 private fun FeedPager(
   state: FeedState,
+  chrome: FeedChromeState,
   onTabShown: (FeedTab) -> Unit,
   onRefresh: (FeedTab) -> Unit,
   onLoadMore: (FeedTab) -> Unit,
@@ -268,15 +291,35 @@ private fun FeedPager(
   val pagerState = rememberPagerState(pageCount = { tabs.size })
   val scope = rememberCoroutineScope()
 
-  Column(modifier = modifier) {
-    FeedTopBar(
-      tabs = tabs,
-      selectedIndex = pagerState.currentPage,
-      onTabClick = { index -> scope.launch { pagerState.animateScrollToPage(index) } },
-      onMyPostsClick = onMyPostsClick,
-      onNotificationsClick = onNotificationsClick,
-      onSearchClick = onSearchClick
-    )
+  // 换栏时顶栏和底栏都回来
+  LaunchedEffect(pagerState.currentPage) { chrome.reset() }
+
+  // 手指拖动和惯性滚动都算；consumed.y < 0 是内容往上走，也就是往更早的内容滚
+  val scrollConnection = remember(chrome) {
+    object : NestedScrollConnection {
+      override fun onPostScroll(consumed: Offset, available: Offset, source: NestedScrollSource): Offset {
+        chrome.onScroll(-consumed.y)
+        return Offset.Zero
+      }
+    }
+  }
+
+  // 状态栏那一条在外面留，顶栏收起时不跟着没（顶栏自己的 statusBars 内边距因此为 0）
+  Column(modifier = modifier.windowInsetsPadding(WindowInsets.statusBars)) {
+    AnimatedVisibility(
+      visible = chrome.visible,
+      enter = expandVertically(animationSpec = tween(FeedChromeState.SHOW_MILLIS), expandFrom = Alignment.Top),
+      exit = shrinkVertically(animationSpec = tween(FeedChromeState.HIDE_MILLIS), shrinkTowards = Alignment.Top)
+    ) {
+      FeedTopBar(
+        tabs = tabs,
+        selectedIndex = pagerState.currentPage,
+        onTabClick = { index -> scope.launch { pagerState.animateScrollToPage(index) } },
+        onMyPostsClick = onMyPostsClick,
+        onNotificationsClick = onNotificationsClick,
+        onSearchClick = onSearchClick
+      )
+    }
 
     HorizontalPager(
       state = pagerState,
@@ -284,6 +327,7 @@ private fun FeedPager(
       modifier = Modifier
         .fillMaxWidth()
         .weight(1f)
+        .nestedScroll(scrollConnection)
     ) { page ->
       val tab = tabs[page]
       LaunchedEffect(tab) { onTabShown(tab) }
@@ -301,6 +345,7 @@ private fun FeedPager(
         onLikeClick = onLikeClick,
         onNotInterestedClick = onNotInterestedClick,
         isCurrentPage = pagerState.currentPage == page,
+        onNearTopChanged = chrome::onNearTopChanged,
         onCardsVisible = { onCardsVisible(tab, it) },
         onOpenClick = onOpenClick,
         onReportClick = onReportClick,
@@ -327,6 +372,7 @@ private fun FeedTimeline(
   onNotInterestedClick: (FeedCard) -> Unit,
   isCurrentPage: Boolean,
   onCardsVisible: (Set<String>) -> Unit,
+  onNearTopChanged: (Boolean) -> Unit = {},
   onOpenClick: (FeedCard) -> Unit = {},
   onReportClick: (FeedCard) -> Unit = {},
   onAuthorClick: (FeedAuthor) -> Unit = {},
@@ -347,6 +393,15 @@ private fun FeedTimeline(
           .mapNotNullTo(HashSet()) { (it.key as? String)?.takeIf { key -> key in cardIds } }
       }
     }.distinctUntilChanged().collect { onCardsVisible(it) }
+  }
+
+  // 离顶 64 dp 内顶栏和底栏一律显示（第三节第 46 条）；只报当前这一栏
+  val topPx = with(LocalDensity.current) { FeedChromeState.ALWAYS_SHOW_WITHIN.toPx() }
+  LaunchedEffect(listState, isCurrentPage, topPx) {
+    if (!isCurrentPage) return@LaunchedEffect
+    snapshotFlow { listState.firstVisibleItemIndex == 0 && listState.firstVisibleItemScrollOffset <= topPx }
+      .distinctUntilChanged()
+      .collect { onNearTopChanged(it) }
   }
 
   val nearEnd by remember {
@@ -592,6 +647,7 @@ private fun FeedEmptyState(tab: FeedTab) {
 private fun FeedPagerEmptyPreview() {
   Previews.Preview {
     FeedPager(
+      chrome = remember { FeedChromeState(0f, 0f) },
       state = FeedState(tabStates = mapOf(FeedTab.RECOMMEND to FeedTabState(loadedOnce = true))),
       onTabShown = {},
       onRefresh = {},
