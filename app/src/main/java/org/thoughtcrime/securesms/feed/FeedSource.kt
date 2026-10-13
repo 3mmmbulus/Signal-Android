@@ -30,6 +30,7 @@ import org.thoughtcrime.securesms.feed.net.FeedImageUploader
 import org.thoughtcrime.securesms.feed.net.FeedItemRef
 import org.thoughtcrime.securesms.feed.net.FeedMyPostsPage
 import org.thoughtcrime.securesms.feed.net.FeedMyProfile
+import org.thoughtcrime.securesms.feed.net.FeedNotificationsResponse
 import org.thoughtcrime.securesms.feed.net.FeedProfilePage
 import org.thoughtcrime.securesms.feed.net.FeedProfilePostsPage
 import org.thoughtcrime.securesms.feed.net.FeedProfileUpdate
@@ -108,6 +109,16 @@ interface FeedSource {
 
   /** 从屏蔽列表里取消一项。 */
   suspend fun unblock(entry: FeedBlockEntry)
+
+  /** 一栏通知（`FeedApi.NOTIFICATIONS_*`），带三栏的未读数。 */
+  suspend fun notifications(tab: String, before: String?): FeedNotificationsResponse
+
+  suspend fun markNotificationsRead(tab: String)
+
+  suspend fun deleteNotification(id: String)
+
+  /** 一条帖子不再通知（全部 / 只关赞）。 */
+  suspend fun muteNotifications(contentId: String, likesOnly: Boolean)
 }
 
 /**
@@ -199,6 +210,14 @@ class RemoteFeedSource(
 
   override suspend fun unblock(entry: FeedBlockEntry) = api.block(entry.type, entry.id, on = false)
 
+  override suspend fun notifications(tab: String, before: String?): FeedNotificationsResponse = api.notifications(tab, before)
+
+  override suspend fun markNotificationsRead(tab: String) = api.markNotificationsRead(tab)
+
+  override suspend fun deleteNotification(id: String) = api.deleteNotification(id)
+
+  override suspend fun muteNotifications(contentId: String, likesOnly: Boolean) = api.muteNotifications(contentId, likesOnly)
+
   override suspend fun publish(draft: FeedDraft, clientNonce: String): FeedCreatePostResponse {
     val keys = draft.attachedImages.map { uri -> uploadOnce(clientNonce, uri) }
     val response = api.createPost(draft.toRequest().copy(clientNonce = clientNonce, mediaKeys = keys.ifEmpty { null }))
@@ -276,6 +295,10 @@ object EmptyFeedSource : FeedSource {
   override suspend fun answerFollowRequest(profileId: String, approve: Boolean) = throw IllegalStateException("feed is not available")
   override suspend fun blocks(): List<FeedBlockEntry> = emptyList()
   override suspend fun unblock(entry: FeedBlockEntry) = throw IllegalStateException("feed is not available")
+  override suspend fun notifications(tab: String, before: String?): FeedNotificationsResponse = FeedNotificationsResponse()
+  override suspend fun markNotificationsRead(tab: String) = Unit
+  override suspend fun deleteNotification(id: String) = throw IllegalStateException("feed is not available")
+  override suspend fun muteNotifications(contentId: String, likesOnly: Boolean) = throw IllegalStateException("feed is not available")
 }
 
 object FeedSources {

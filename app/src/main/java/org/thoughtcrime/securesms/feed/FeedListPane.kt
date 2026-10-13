@@ -89,6 +89,7 @@ import org.thoughtcrime.securesms.feed.net.FeedAuthor
 import org.thoughtcrime.securesms.feed.net.FeedCard
 import org.thoughtcrime.securesms.feed.net.FeedCreatePostResponse
 import org.thoughtcrime.securesms.feed.net.FeedLimits
+import org.thoughtcrime.securesms.feed.notifications.FeedNotificationsActivity
 import org.thoughtcrime.securesms.feed.profile.FeedProfilePageActivity
 import org.thoughtcrime.securesms.feed.report.FeedReportActivity
 import org.thoughtcrime.securesms.feed.report.FeedReportTarget
@@ -196,6 +197,7 @@ fun FeedListPane(
       onNotInterestedClick = viewModel::notInterested,
       onCardsVisible = viewModel::onCardsVisible,
       onMyPostsClick = { context.startActivity(FeedMyPostsActivity.intent(context)) },
+      onNotificationsClick = { context.startActivity(FeedNotificationsActivity.intent(context)) },
       onEditClick = { target -> editLauncher.launch(target) },
       onDeleteClick = { confirmDelete = it },
       onOpenClick = { context.startActivity(FeedPostDetailActivity.intent(context, it)) },
@@ -254,7 +256,8 @@ private fun FeedPager(
   onDeleteClick: (FeedCard) -> Unit = {},
   onOpenClick: (FeedCard) -> Unit = {},
   onReportClick: (FeedCard) -> Unit = {},
-  onAuthorClick: (FeedAuthor) -> Unit = {}
+  onAuthorClick: (FeedAuthor) -> Unit = {},
+  onNotificationsClick: () -> Unit = {}
 ) {
   val tabs = state.tabs
   val pagerState = rememberPagerState(pageCount = { tabs.size })
@@ -265,7 +268,8 @@ private fun FeedPager(
       tabs = tabs,
       selectedIndex = pagerState.currentPage,
       onTabClick = { index -> scope.launch { pagerState.animateScrollToPage(index) } },
-      onMyPostsClick = onMyPostsClick
+      onMyPostsClick = onMyPostsClick,
+      onNotificationsClick = onNotificationsClick
     )
 
     HorizontalPager(
@@ -429,7 +433,8 @@ private fun FeedTopBar(
   tabs: List<FeedTab>,
   selectedIndex: Int,
   onTabClick: (Int) -> Unit,
-  onMyPostsClick: () -> Unit
+  onMyPostsClick: () -> Unit,
+  onNotificationsClick: () -> Unit = {}
 ) {
   Box(
     modifier = Modifier
@@ -451,19 +456,36 @@ private fun FeedTopBar(
       }
     }
 
-    // 「我的动态」：一级导航有「我」之前先放这里（第三节第 17 条）
-    Icon(
-      painter = painterResource(R.drawable.symbol_person_24),
-      contentDescription = stringResource(R.string.TellomiFeedMine__title),
-      tint = MaterialTheme.colorScheme.onSurfaceVariant,
+    Row(
+      verticalAlignment = Alignment.CenterVertically,
       modifier = Modifier
         .align(Alignment.CenterEnd)
         .padding(end = 4.dp)
-        .clip(CircleShape)
-        .clickable(onClick = onMyPostsClick)
-        .padding(10.dp)
-        .size(24.dp)
-    )
+    ) {
+      // 通知（附录 10「动态页顶部」：右边搜索 + 通知，搜索做好后放在铃铛左边）
+      Icon(
+        painter = painterResource(R.drawable.symbol_bell_24),
+        contentDescription = stringResource(R.string.TellomiFeedNotifications__title),
+        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+        modifier = Modifier
+          .clip(CircleShape)
+          .clickable(onClick = onNotificationsClick)
+          .padding(10.dp)
+          .size(24.dp)
+      )
+
+      // 「我的动态」：一级导航有「我」之前先放这里（第三节第 17 条）
+      Icon(
+        painter = painterResource(R.drawable.symbol_person_24),
+        contentDescription = stringResource(R.string.TellomiFeedMine__title),
+        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+        modifier = Modifier
+          .clip(CircleShape)
+          .clickable(onClick = onMyPostsClick)
+          .padding(10.dp)
+          .size(24.dp)
+      )
+    }
   }
 }
 

@@ -501,4 +501,36 @@ class FeedApiTest {
     assertThat(answer.body.readUtf8()).isEqualTo("""{"approve":false}""")
     assertThat(server.takeRequest().path).isEqualTo("/v1/feed/me/blocks")
   }
+
+  @Test
+  fun `notifications page, read, delete and mute paths`() = runBlocking {
+    server.enqueue(
+      MockResponse().setBody(
+        """{"notifications":[{"id":"n1","kind":"reply","actor_id":"p1","content_id":"c1","subject_id":"m2","detail":{"parent_id":"m1","held":true},"created_at":"2026-10-13T10:00:00Z","read":false},{"id":"n2","kind":"system","detail":{"type":"rejected"},"created_at":"2026-10-12T10:00:00Z","read":true}],"unread":{"interactions":1,"follows":0,"system":2}}"""
+      )
+    )
+    server.enqueue(MockResponse().setResponseCode(204))
+    server.enqueue(MockResponse().setResponseCode(204))
+    server.enqueue(MockResponse().setResponseCode(204))
+
+    val page = api.notifications("interactions", before = "2026-10-14T00:00:00Z")
+    assertThat(page.notifications.map { it.kind }).containsExactly("reply", "system")
+    assertThat(page.notifications[1].actorId).isNull()
+    assertThat(page.unread.system).isEqualTo(2)
+    api.markNotificationsRead("interactions")
+    api.deleteNotification("n1")
+    api.muteNotifications("c1", likesOnly = true)
+
+    assertThat(server.takeRequest().path).isEqualTo("/v1/feed/me/notifications?tab=interactions&before=2026-10-14T00%3A00%3A00Z")
+    val read = server.takeRequest()
+    assertThat(read.path).isEqualTo("/v1/feed/me/notifications/read")
+    assertThat(read.body.readUtf8()).isEqualTo("""{"tab":"interactions"}""")
+    val delete = server.takeRequest()
+    assertThat(delete.method).isEqualTo("DELETE")
+    assertThat(delete.path).isEqualTo("/v1/feed/me/notifications/n1")
+    val mute = server.takeRequest()
+    assertThat(mute.method).isEqualTo("PUT")
+    assertThat(mute.path).isEqualTo("/v1/feed/me/notification-mutes/c1")
+    assertThat(mute.body.readUtf8()).isEqualTo("""{"likes_only":true}""")
+  }
 }

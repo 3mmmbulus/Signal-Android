@@ -961,6 +961,11 @@
             android:theme="@style/TextSecure.LightTheme" />
 
         <activity
+            android:name=".feed.notifications.FeedNotificationsActivity"
+            android:exported="false"
+            android:theme="@style/TextSecure.LightTheme" />
+
+        <activity
             android:name=".feed.report.FeedReportActivity"
             android:exported="false"
             android:theme="@style/TextSecure.LightTheme"

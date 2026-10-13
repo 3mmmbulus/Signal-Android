@@ -6,6 +6,8 @@
 package org.thoughtcrime.securesms.feed
 
 import android.net.Uri
+import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.JsonPrimitive
 import org.signal.core.util.logging.Log
 import org.thoughtcrime.securesms.feed.compose.FeedDraft
 import org.thoughtcrime.securesms.feed.compose.FeedDraftKind
@@ -23,6 +25,8 @@ import org.thoughtcrime.securesms.feed.net.FeedMedia
 import org.thoughtcrime.securesms.feed.net.FeedMyPost
 import org.thoughtcrime.securesms.feed.net.FeedMyPostsPage
 import org.thoughtcrime.securesms.feed.net.FeedMyProfile
+import org.thoughtcrime.securesms.feed.net.FeedNotification
+import org.thoughtcrime.securesms.feed.net.FeedNotificationsResponse
 import org.thoughtcrime.securesms.feed.net.FeedPersonSummary
 import org.thoughtcrime.securesms.feed.net.FeedProfilePage
 import org.thoughtcrime.securesms.feed.net.FeedProfilePostsPage
@@ -32,6 +36,7 @@ import org.thoughtcrime.securesms.feed.net.FeedReportRequest
 import org.thoughtcrime.securesms.feed.net.FeedStats
 import org.thoughtcrime.securesms.feed.net.FeedTimelinePage
 import org.thoughtcrime.securesms.feed.net.FeedTopic
+import org.thoughtcrime.securesms.feed.net.FeedUnreadCounts
 import org.thoughtcrime.securesms.feed.net.FeedViewer
 import java.time.Instant
 import java.time.temporal.ChronoUnit
@@ -346,6 +351,62 @@ object SampleFeedSource : FeedSource {
 
   override suspend fun unblock(entry: FeedBlockEntry): Unit = synchronized(this) {
     blocked -= entry.id
+  }
+
+  private val notifications: MutableList<FeedNotification> by lazy {
+    val now = Instant.now()
+    fun at(minutesAgo: Long) = now.minus(minutesAgo, ChronoUnit.MINUTES).toString()
+    fun detail(vararg pairs: Pair<String, Any>) = JsonObject(pairs.associate { (k, v) -> k to if (v is Boolean) JsonPrimitive(v) else JsonPrimitive(v.toString()) })
+    mutableListOf(
+      FeedNotification(id = "n-1", kind = FeedNotification.KIND_LIKE, actorId = "s-1", contentId = "sample-0", createdAt = at(5)),
+      FeedNotification(id = "n-2", kind = FeedNotification.KIND_LIKE, actorId = "s-3", contentId = "sample-0", createdAt = at(40)),
+      FeedNotification(id = "n-3", kind = FeedNotification.KIND_LIKE, actorId = "s-5", contentId = "sample-0", createdAt = at(90), read = true),
+      FeedNotification(id = "n-4", kind = FeedNotification.KIND_COMMENT, actorId = "s-2", contentId = "sample-0", subjectId = "sample-0-c0", createdAt = at(120)),
+      FeedNotification(
+        id = "n-5",
+        kind = FeedNotification.KIND_REPLY,
+        actorId = "s-4",
+        contentId = "sample-0",
+        subjectId = "sample-0-c9",
+        detail = detail("parent_id" to "sample-0-c0", "held" to true),
+        createdAt = at(60 * 30),
+        read = true
+      ),
+      FeedNotification(id = "n-6", kind = FeedNotification.KIND_FOLLOW, actorId = "s-1", createdAt = at(30)),
+      FeedNotification(id = "n-7", kind = FeedNotification.KIND_FOLLOW_REQUEST, actorId = "s-2", createdAt = at(60 * 50)),
+      FeedNotification(id = "n-8", kind = FeedNotification.KIND_SYSTEM, contentId = "s-mine-rejected", detail = detail("type" to FeedNotification.SYSTEM_REJECTED), createdAt = at(60 * 24 * 9))
+    )
+  }
+
+  private fun tabOf(kind: String): String = when (kind) {
+    FeedNotification.KIND_FOLLOW, FeedNotification.KIND_FOLLOW_REQUEST -> FeedApi.NOTIFICATIONS_FOLLOWS
+    FeedNotification.KIND_SYSTEM -> FeedApi.NOTIFICATIONS_SYSTEM
+    else -> FeedApi.NOTIFICATIONS_INTERACTIONS
+  }
+
+  override suspend fun notifications(tab: String, before: String?): FeedNotificationsResponse = synchronized(this) {
+    val visible = notifications.filter { it.actorId !in blocked }
+    fun unread(t: String) = visible.count { tabOf(it.kind) == t && !it.read }
+    FeedNotificationsResponse(
+      notifications = if (before == null) visible.filter { tabOf(it.kind) == tab } else emptyList(),
+      unread = FeedUnreadCounts(
+        interactions = unread(FeedApi.NOTIFICATIONS_INTERACTIONS),
+        follows = unread(FeedApi.NOTIFICATIONS_FOLLOWS),
+        system = unread(FeedApi.NOTIFICATIONS_SYSTEM)
+      )
+    )
+  }
+
+  override suspend fun markNotificationsRead(tab: String): Unit = synchronized(this) {
+    notifications.replaceAll { if (tabOf(it.kind) == tab) it.copy(read = true) else it }
+  }
+
+  override suspend fun deleteNotification(id: String): Unit = synchronized(this) {
+    notifications.removeAll { it.id == id }
+  }
+
+  override suspend fun muteNotifications(contentId: String, likesOnly: Boolean): Unit = synchronized(this) {
+    notifications.removeAll { it.contentId == contentId && (!likesOnly || it.kind == FeedNotification.KIND_LIKE) }
   }
 
   private val commentTexts = listOf(

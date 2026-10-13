@@ -272,6 +272,34 @@ class FeedApi(
   /** 我在动态里屏蔽的作者、来源、话题。 */
   suspend fun blocks(): FeedBlocksResponse = get(url("v1/feed/me/blocks"), FeedBlocksResponse.serializer())
 
+  /** 一栏通知，新的在前；[before] 是上一页最后一条的 `created_at`。 */
+  suspend fun notifications(tab: String, before: String?): FeedNotificationsResponse {
+    val url = url("v1/feed/me/notifications").newBuilder()
+      .addQueryParameter("tab", tab)
+      .apply { if (before != null) addQueryParameter("before", before) }
+      .build()
+    return get(url, FeedNotificationsResponse.serializer())
+  }
+
+  /** 整栏标为已读（204）。 */
+  suspend fun markNotificationsRead(tab: String) {
+    val body = FeedJson.encodeToString(FeedNotificationsReadRequest.serializer(), FeedNotificationsReadRequest(tab)).toRequestBody(JSON)
+    sendNoContent(Request.Builder().url(url("v1/feed/me/notifications/read")).post(body))
+  }
+
+  /** 删一条通知（204）。 */
+  suspend fun deleteNotification(id: String) {
+    val url = url("v1/feed/me/notifications").newBuilder().addPathSegment(id).build()
+    sendNoContent(Request.Builder().url(url).delete())
+  }
+
+  /** 这条帖子不再通知：全部，或者只关赞（204）。 */
+  suspend fun muteNotifications(contentId: String, likesOnly: Boolean) {
+    val url = url("v1/feed/me/notification-mutes").newBuilder().addPathSegment(contentId).build()
+    val body = FeedJson.encodeToString(FeedNotificationMuteRequest.serializer(), FeedNotificationMuteRequest(likesOnly)).toRequestBody(JSON)
+    sendNoContent(Request.Builder().url(url).put(body))
+  }
+
   /** 删自己的帖子（204）。别人的帖子引擎回 404。 */
   suspend fun deletePost(contentId: String) {
     val url = url("v1/feed/posts").newBuilder().addPathSegment(contentId).build()
@@ -338,6 +366,11 @@ class FeedApi(
   companion object {
     const val TAB_RECOMMEND = "recommend"
     const val TAB_FOLLOWING = "following"
+
+    const val NOTIFICATIONS_INTERACTIONS = "interactions"
+    const val NOTIFICATIONS_FOLLOWS = "follows"
+    const val NOTIFICATIONS_SYSTEM = "system"
+    const val NOTIFICATIONS_PAGE = 30
 
     const val MAX_CARD_IDS = 100
     const val PROFILE_PAGE = 20

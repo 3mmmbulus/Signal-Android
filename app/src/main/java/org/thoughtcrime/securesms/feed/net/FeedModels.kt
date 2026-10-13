@@ -543,3 +543,59 @@ data class FeedBlockEntry(
 data class FeedFollowRequestDecision(
   val approve: Boolean
 )
+
+/**
+ * `GET /v1/feed/me/notifications?tab=`：一页 30 条，新的在前。引擎只给 [FeedNotification.actorId]；
+ * 带了 [FeedNotification.actor] 就直接用，没带客户端自己查主页。
+ */
+@Serializable
+data class FeedNotificationsResponse(
+  val notifications: List<FeedNotification> = emptyList(),
+  val unread: FeedUnreadCounts = FeedUnreadCounts()
+)
+
+@Serializable
+data class FeedUnreadCounts(
+  val interactions: Int = 0,
+  val follows: Int = 0,
+  val system: Int = 0
+)
+
+@Serializable
+data class FeedNotification(
+  val id: String,
+  val kind: String,
+  @SerialName("actor_id") val actorId: String? = null,
+  @SerialName("content_id") val contentId: String? = null,
+  @SerialName("subject_id") val subjectId: String? = null,
+  val detail: JsonElement? = null,
+  @SerialName("created_at") val createdAt: String,
+  val read: Boolean = false,
+  val actor: FeedPersonSummary? = null
+) {
+  companion object {
+    const val KIND_LIKE = "like"
+    const val KIND_COMMENT = "comment"
+    const val KIND_REPLY = "reply"
+    const val KIND_FOLLOW = "follow"
+    const val KIND_FOLLOW_REQUEST = "follow_request"
+    const val KIND_SYSTEM = "system"
+
+    const val SYSTEM_REJECTED = "rejected"
+    const val SYSTEM_EDIT_REJECTED = "edit_rejected"
+    const val SYSTEM_TAKEN_DOWN = "taken_down"
+    const val SYSTEM_APPEAL_UPHELD = "appeal_upheld"
+    const val SYSTEM_APPEAL_OVERTURNED = "appeal_overturned"
+    const val SYSTEM_CLOSE_PERSON_REQUEST = "close_person_request"
+  }
+}
+
+@Serializable
+data class FeedNotificationsReadRequest(
+  val tab: String
+)
+
+@Serializable
+data class FeedNotificationMuteRequest(
+  @SerialName("likes_only") val likesOnly: Boolean
+)
