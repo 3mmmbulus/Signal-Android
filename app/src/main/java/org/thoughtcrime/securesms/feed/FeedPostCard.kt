@@ -95,7 +95,9 @@ fun FeedPostCard(
   /** 别人的帖子：「···」里的举报（第三节第 32 条）。 */
   onReportClick: ((FeedCard) -> Unit)? = null,
   /** 点头像或名字进主页；开放内容的外部作者没有主页。 */
-  onAuthorClick: ((FeedAuthor) -> Unit)? = null
+  onAuthorClick: ((FeedAuthor) -> Unit)? = null,
+  /** 投票（选项下标）；null 的地方只看不投，点卡片进详情投。 */
+  onVote: ((FeedCard, List<Int>) -> Unit)? = null
 ) {
   val author = card.author
   val openAuthor: (() -> Unit)? = if (author != null && author.isNative && onAuthorClick != null) {
@@ -146,6 +148,16 @@ fun FeedPostCard(
             maxLines = if (card.kind == FeedCard.KIND_ARTICLE && !expanded) ARTICLE_PREVIEW_LINES else Int.MAX_VALUE,
             overflow = TextOverflow.Ellipsis,
             modifier = Modifier.padding(end = 12.dp)
+          )
+        }
+
+        val poll = card.poll
+        if (poll != null && poll.options.isNotEmpty()) {
+          FeedPollView(
+            poll = poll,
+            state = card.pollState,
+            onVote = onVote?.let { vote -> { options: List<Int> -> vote(card, options) } },
+            modifier = Modifier.padding(top = 8.dp, end = 12.dp)
           )
         }
 

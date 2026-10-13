@@ -21,6 +21,7 @@ import kotlinx.coroutines.withContext
 import org.signal.core.util.logging.Log
 import org.thoughtcrime.securesms.feed.net.FeedCard
 import org.thoughtcrime.securesms.feed.net.FeedConfig
+import org.thoughtcrime.securesms.feed.net.FeedPollState
 import java.time.Instant
 
 /**
@@ -145,6 +146,24 @@ class FeedViewModel(
         Log.w(TAG, "like failed", e)
         updateCard(card.id) { it.withLiked(!nowLiked) }
         internalState.update { it.copy(transientError = FeedState.TransientError.ACTION_FAILED) }
+      }
+    }
+  }
+
+  private val voting = mutableSetOf<String>()
+
+  /** 投票不能撤回，所以不先改界面：等服务端回了票数再换上。 */
+  fun vote(card: FeedCard, options: List<Int>) {
+    if (options.isEmpty() || !voting.add(card.id)) return
+    viewModelScope.launch {
+      try {
+        val state = withContext(ioDispatcher) { source.vote(card.id, options) }
+        updateCard(card.id) { it.withPollState(state) }
+      } catch (e: Exception) {
+        Log.w(TAG, "vote failed", e)
+        internalState.update { it.copy(transientError = FeedState.TransientError.ACTION_FAILED) }
+      } finally {
+        voting -= card.id
       }
     }
   }
@@ -283,6 +302,9 @@ internal fun FeedCard.withLiked(liked: Boolean): FeedCard {
   val likes = (stats.likes + if (liked) 1 else -1).coerceAtLeast(0)
   return copy(viewer = viewer.copy(liked = liked), stats = stats.copy(likes = likes))
 }
+
+/** 投完票：换成服务端给的票数和我的选择。 */
+internal fun FeedCard.withPollState(state: FeedPollState): FeedCard = copy(pollState = state)
 
 data class FeedState(
   val config: FeedConfig? = null,

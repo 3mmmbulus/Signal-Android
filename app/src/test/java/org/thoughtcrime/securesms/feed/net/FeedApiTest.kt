@@ -599,4 +599,18 @@ class FeedApiTest {
     assertThat(answer.path).isEqualTo("/v1/feed/me/close-people/requests/r1")
     assertThat(answer.body.readUtf8()).isEqualTo("""{"accept":false}""")
   }
+
+  @Test
+  fun `vote puts the chosen options and reads counts back`() = runBlocking {
+    server.enqueue(MockResponse().setBody("""{"counts":[3,1],"voted":[0]}"""))
+
+    val state = api.vote("p 1", listOf(0))
+
+    assertThat(state.counts).isEqualTo(listOf(3, 1))
+    assertThat(state.hasVoted).isEqualTo(true)
+    val put = server.takeRequest()
+    assertThat(put.method).isEqualTo("PUT")
+    assertThat(put.path).isEqualTo("/v1/feed/posts/p%201/vote")
+    assertThat(put.body.readUtf8()).isEqualTo("""{"options":[0]}""")
+  }
 }

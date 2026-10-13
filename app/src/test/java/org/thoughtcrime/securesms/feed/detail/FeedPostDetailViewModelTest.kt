@@ -25,6 +25,8 @@ import org.thoughtcrime.securesms.feed.net.FeedApiException
 import org.thoughtcrime.securesms.feed.net.FeedCard
 import org.thoughtcrime.securesms.feed.net.FeedCommentsPage
 import org.thoughtcrime.securesms.feed.net.FeedCreatePostResponse
+import org.thoughtcrime.securesms.feed.net.FeedPoll
+import org.thoughtcrime.securesms.feed.net.FeedPollState
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class FeedPostDetailViewModelTest {
@@ -37,8 +39,14 @@ class FeedPostDetailViewModelTest {
   private class FakeSource(
     var fresh: FeedCard?,
     val pages: Map<String?, FeedCommentsPage>,
-    var postResult: () -> String = { FeedCreatePostResponse.STATE_PENDING }
+    var postResult: () -> String = { FeedCreatePostResponse.STATE_PENDING },
+    var voteResult: () -> FeedPollState = { FeedPollState(counts = listOf(1, 0), voted = listOf(0)) }
   ) : FeedSource by EmptyFeedSource {
+    val votes = mutableListOf<List<Int>>()
+    override suspend fun vote(contentId: String, options: List<Int>): FeedPollState {
+      votes += options
+      return voteResult()
+    }
     val posted = mutableListOf<Pair<String, String?>>()
     override suspend fun card(contentId: String): FeedCard? = fresh
     override suspend fun comments(postId: String, cursor: String?): FeedCommentsPage = pages[cursor] ?: FeedCommentsPage()
@@ -137,5 +145,30 @@ class FeedPostDetailViewModelTest {
     viewModel.send()
 
     assertThat(source.posted.isEmpty()).isTrue()
+  }
+
+  @Test
+  fun `voting shows the counts the engine returns`() {
+    val poll = post.copy(poll = FeedPoll(options = listOf("a", "b")))
+    val source = FakeSource(fresh = poll, pages = emptyMap())
+    val viewModel = FeedPostDetailViewModel(poll, source, dispatcher)
+
+    viewModel.vote(listOf(0))
+
+    assertThat(source.votes).containsExactly(listOf(0))
+    assertThat(viewModel.state.value.post.pollState).isEqualTo(FeedPollState(counts = listOf(1, 0), voted = listOf(0)))
+    assertThat(viewModel.state.value.notice).isNull()
+  }
+
+  @Test
+  fun `a refused vote says it failed and leaves the poll as it was`() {
+    val poll = post.copy(poll = FeedPoll(options = listOf("a", "b")))
+    val source = FakeSource(fresh = poll, pages = emptyMap(), voteResult = { throw FeedApiException(409, code = "already_voted") })
+    val viewModel = FeedPostDetailViewModel(poll, source, dispatcher)
+
+    viewModel.vote(listOf(1))
+
+    assertThat(viewModel.state.value.post.pollState).isNull()
+    assertThat(viewModel.state.value.notice).isEqualTo(FeedPostDetailState.Notice.FAILED)
   }
 }

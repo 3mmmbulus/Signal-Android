@@ -32,6 +32,8 @@ import org.thoughtcrime.securesms.feed.net.FeedNotification
 import org.thoughtcrime.securesms.feed.net.FeedNotificationSettings
 import org.thoughtcrime.securesms.feed.net.FeedNotificationsResponse
 import org.thoughtcrime.securesms.feed.net.FeedPersonSummary
+import org.thoughtcrime.securesms.feed.net.FeedPoll
+import org.thoughtcrime.securesms.feed.net.FeedPollState
 import org.thoughtcrime.securesms.feed.net.FeedProfilePage
 import org.thoughtcrime.securesms.feed.net.FeedProfilePostsPage
 import org.thoughtcrime.securesms.feed.net.FeedProfileUpdate
@@ -138,7 +140,7 @@ object SampleFeedSource : FeedSource {
     val page = all.subList(start, end).map { card ->
       val isLiked = card.id in liked
       val likes = card.stats.likes + if (isLiked) 1 else 0
-      FeedEntry(id = card.id, card = card.copy(viewer = card.viewer.copy(liked = isLiked), stats = card.stats.copy(likes = likes)))
+      FeedEntry(id = card.id, card = withPoll(card.copy(viewer = card.viewer.copy(liked = isLiked), stats = card.stats.copy(likes = likes))))
     }
 
     return FeedTimelinePage(
@@ -238,8 +240,31 @@ object SampleFeedSource : FeedSource {
   override suspend fun card(contentId: String): FeedCard? = synchronized(this) {
     (mine + recommend).firstOrNull { it.id == contentId && it.id !in hidden }?.let { card ->
       val isLiked = card.id in liked
-      card.copy(viewer = card.viewer.copy(liked = isLiked), stats = card.stats.copy(likes = card.stats.likes + if (isLiked) 1 else 0))
+      withPoll(card.copy(viewer = card.viewer.copy(liked = isLiked), stats = card.stats.copy(likes = card.stats.likes + if (isLiked) 1 else 0)))
     }
+  }
+
+  /** 样例投票的票数（起始几票），投过之后记我的选择。 */
+  private val pollStates = mutableMapOf<String, FeedPollState>()
+
+  private fun withPoll(card: FeedCard): FeedCard {
+    val poll = card.poll ?: return card
+    val state = synchronized(this) {
+      pollStates.getOrPut(card.id) { FeedPollState(counts = poll.options.indices.map { (it * 5 + 3) % 11 }) }
+    }
+    return card.copy(pollState = state)
+  }
+
+  override suspend fun vote(contentId: String, options: List<Int>): FeedPollState = synchronized(this) {
+    val card = (mine + recommend + following).firstOrNull { it.id == contentId } ?: throw FeedApiException(404, code = "not_found")
+    val poll = card.poll ?: throw FeedApiException(404, code = "not_found")
+    val current = withPoll(card).pollState ?: FeedPollState()
+    if (current.hasVoted) throw FeedApiException(409, code = "already_voted")
+    val choices = options.distinct().sorted()
+    if (choices.isEmpty() || (!poll.multi && choices.size > 1) || choices.any { it !in poll.options.indices }) throw FeedApiException(400, code = "invalid_options")
+    val updated = FeedPollState(counts = current.counts.mapIndexed { i, c -> if (i in choices) c + 1 else c }, voted = choices)
+    pollStates[contentId] = updated
+    updated
   }
 
   /** 每条帖子一组样例评论：几条直接评论，其中一条带两层回复，作者本人也回了一条。 */
@@ -531,7 +556,19 @@ object SampleFeedSource : FeedSource {
       topics = listOf(topics[index % topics.size]),
       ipRegionLabel = ipLabels[index % ipLabels.size],
       stats = FeedStats(likes = (index * 7) % 50, comments = (index * 3) % 12, reposts = index % 4),
-      viewer = FeedViewer()
-    )
+      viewer = FeedViewer(),
+      poll = samplePoll(index)
+    ).let { if (it.poll != null) it.copy(text = pollQuestions[index % pollQuestions.size], media = emptyList(), displayMode = FeedCard.DISPLAY_TEXT) else it }
+  }
+
+  private val pollQuestions = listOf("周末想去哪儿走走？", "早饭你一般吃什么？可以多选。")
+
+  /** 第 2、7 条带投票：一条单选、一天后截止；一条多选、已经截止。 */
+  private fun samplePoll(index: Int): FeedPoll? {
+    return when (index) {
+      2 -> FeedPoll(options = listOf("爬山", "逛公园", "在家睡觉"), closesAt = Instant.now().plus(1, ChronoUnit.DAYS).toString())
+      7 -> FeedPoll(options = listOf("包子", "面", "粥", "不吃"), closesAt = Instant.now().minus(1, ChronoUnit.HOURS).toString(), multi = true)
+      else -> null
+    }
   }
 }

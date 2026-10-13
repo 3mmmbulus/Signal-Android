@@ -23,6 +23,7 @@ import org.thoughtcrime.securesms.feed.net.FeedApiException
 import org.thoughtcrime.securesms.feed.net.FeedCard
 import org.thoughtcrime.securesms.feed.net.FeedCreatePostResponse
 import org.thoughtcrime.securesms.feed.withLiked
+import org.thoughtcrime.securesms.feed.withPollState
 
 /**
  * 帖子详情：整条帖子 + 评论（`dynamic-feed.md` 第三节第 2、4、10 条；契约第五节）。
@@ -107,6 +108,26 @@ class FeedPostDetailViewModel(
       } catch (e: Exception) {
         Log.w(TAG, "like failed", e)
         internalState.update { it.copy(post = it.post.withLiked(!nowLiked), notice = FeedPostDetailState.Notice.FAILED) }
+      }
+    }
+  }
+
+  private var voting = false
+
+  /** 投票：等服务端回了票数再换上（投了不能改）。 */
+  fun vote(options: List<Int>) {
+    if (options.isEmpty() || voting) return
+    voting = true
+    val postId = internalState.value.post.id
+    viewModelScope.launch {
+      try {
+        val state = withContext(ioDispatcher) { source.vote(postId, options) }
+        internalState.update { it.copy(post = it.post.withPollState(state)) }
+      } catch (e: Exception) {
+        Log.w(TAG, "vote failed", e)
+        internalState.update { it.copy(notice = FeedPostDetailState.Notice.FAILED) }
+      } finally {
+        voting = false
       }
     }
   }

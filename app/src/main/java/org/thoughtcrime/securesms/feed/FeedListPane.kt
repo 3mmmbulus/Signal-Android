@@ -204,6 +204,7 @@ fun FeedListPane(
       onDeleteClick = { confirmDelete = it },
       onOpenClick = { context.startActivity(FeedPostDetailActivity.intent(context, it)) },
       onAuthorClick = { context.startActivity(FeedProfilePageActivity.intent(context, it.profileId)) },
+      onVote = viewModel::vote,
       onReportClick = { card ->
         reporting = card
         reportLauncher.launch(FeedReportTarget.content(card.id))
@@ -259,6 +260,7 @@ private fun FeedPager(
   onOpenClick: (FeedCard) -> Unit = {},
   onReportClick: (FeedCard) -> Unit = {},
   onAuthorClick: (FeedAuthor) -> Unit = {},
+  onVote: (FeedCard, List<Int>) -> Unit = { _, _ -> },
   onNotificationsClick: () -> Unit = {},
   onSearchClick: () -> Unit = {}
 ) {
@@ -302,7 +304,8 @@ private fun FeedPager(
         onCardsVisible = { onCardsVisible(tab, it) },
         onOpenClick = onOpenClick,
         onReportClick = onReportClick,
-        onAuthorClick = onAuthorClick
+        onAuthorClick = onAuthorClick,
+        onVote = onVote
       )
     }
   }
@@ -326,7 +329,8 @@ private fun FeedTimeline(
   onCardsVisible: (Set<String>) -> Unit,
   onOpenClick: (FeedCard) -> Unit = {},
   onReportClick: (FeedCard) -> Unit = {},
-  onAuthorClick: (FeedAuthor) -> Unit = {}
+  onAuthorClick: (FeedAuthor) -> Unit = {},
+  onVote: (FeedCard, List<Int>) -> Unit = { _, _ -> }
 ) {
   val listState = rememberLazyListState()
 
@@ -385,7 +389,8 @@ private fun FeedTimeline(
             onDeleteClick = if (card.viewer.isAuthor) onDeleteClick else null,
             onOpen = onOpenClick,
             onReportClick = if (card.viewer.isAuthor) null else onReportClick,
-            onAuthorClick = onAuthorClick
+            onAuthorClick = onAuthorClick,
+            onVote = onVote
           )
           HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
         }

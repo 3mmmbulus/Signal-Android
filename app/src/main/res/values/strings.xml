@@ -7119,6 +7119,26 @@
     <string name="TellomiFeedClosePeople__request_accepted">Showing you on their profile</string>
     <string name="TellomiFeedClosePeople__accept">Agree</string>
     <string name="TellomiFeedClosePeople__withdraw">Withdraw</string>
+    <string name="TellomiFeedPoll__your_choice">Your choice</string>
+    <string name="TellomiFeedPoll__vote">Vote</string>
+    <string name="TellomiFeedPoll__multi">Multiple choice</string>
+    <string name="TellomiFeedPoll__closed">Final results</string>
+    <plurals name="TellomiFeedPoll__votes">
+        <item quantity="one">%1$d vote</item>
+        <item quantity="other">%1$d votes</item>
+    </plurals>
+    <plurals name="TellomiFeedPoll__days_left">
+        <item quantity="one">%1$d day left</item>
+        <item quantity="other">%1$d days left</item>
+    </plurals>
+    <plurals name="TellomiFeedPoll__hours_left">
+        <item quantity="one">%1$d hour left</item>
+        <item quantity="other">%1$d hours left</item>
+    </plurals>
+    <plurals name="TellomiFeedPoll__minutes_left">
+        <item quantity="one">%1$d minute left</item>
+        <item quantity="other">%1$d minutes left</item>
+    </plurals>
     <string name="ConversationListTabs__99p">99+</string>
     <!-- Menu item on stories landing page -->
     <string name="StoriesLandingFragment__story_privacy">Story privacy</string>

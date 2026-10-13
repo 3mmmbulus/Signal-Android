@@ -6896,6 +6896,22 @@
     <string name="TellomiFeedClosePeople__request_accepted">已在对方主页上展示</string>
     <string name="TellomiFeedClosePeople__accept">同意</string>
     <string name="TellomiFeedClosePeople__withdraw">撤回</string>
+    <string name="TellomiFeedPoll__your_choice">你的选择</string>
+    <string name="TellomiFeedPoll__vote">投票</string>
+    <string name="TellomiFeedPoll__multi">可多选</string>
+    <string name="TellomiFeedPoll__closed">已结束</string>
+    <plurals name="TellomiFeedPoll__votes">
+        <item quantity="other">%1$d 票</item>
+    </plurals>
+    <plurals name="TellomiFeedPoll__days_left">
+        <item quantity="other">还剩 %1$d 天</item>
+    </plurals>
+    <plurals name="TellomiFeedPoll__hours_left">
+        <item quantity="other">还剩 %1$d 小时</item>
+    </plurals>
+    <plurals name="TellomiFeedPoll__minutes_left">
+        <item quantity="other">还剩 %1$d 分钟</item>
+    </plurals>
     <string name="ConversationListTabs__99p">99+</string>
     <!-- Menu item on stories landing page -->
     <string name="StoriesLandingFragment__story_privacy">快拍隐私</string>

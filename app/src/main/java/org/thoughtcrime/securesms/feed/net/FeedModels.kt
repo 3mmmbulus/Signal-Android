@@ -223,7 +223,14 @@ data class FeedPoll(
 data class FeedPollState(
   val counts: List<Int> = emptyList(),
   val voted: List<Int> = emptyList()
-)
+) {
+  val hasVoted: Boolean
+    get() = voted.isNotEmpty()
+}
+
+/** `PUT /v1/feed/posts/{id}/vote`：选项下标，单选只能一个；每人一次，投了不能改。 */
+@Serializable
+data class FeedVoteRequest(val options: List<Int>)
 
 @Serializable
 data class FeedStats(

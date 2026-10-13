@@ -36,6 +36,7 @@ import org.thoughtcrime.securesms.feed.net.FeedMyPostsPage
 import org.thoughtcrime.securesms.feed.net.FeedMyProfile
 import org.thoughtcrime.securesms.feed.net.FeedNotificationSettings
 import org.thoughtcrime.securesms.feed.net.FeedNotificationsResponse
+import org.thoughtcrime.securesms.feed.net.FeedPollState
 import org.thoughtcrime.securesms.feed.net.FeedProfilePage
 import org.thoughtcrime.securesms.feed.net.FeedProfilePostsPage
 import org.thoughtcrime.securesms.feed.net.FeedProfileUpdate
@@ -132,6 +133,9 @@ interface FeedSource {
 
   /** 把 Signal-Server 签的好友声明交给引擎（[org.thoughtcrime.securesms.feed.friends.FeedFriendSync]）；返回两边是否都报了。 */
   suspend fun reportFriend(assertion: String): Boolean
+
+  /** 投票，返回新的票数和我的选择。 */
+  suspend fun vote(contentId: String, options: List<Int>): FeedPollState
 
   suspend fun closePeople(): FeedClosePeopleResponse
 
@@ -246,6 +250,7 @@ class RemoteFeedSource(
   override suspend fun muteNotifications(contentId: String, likesOnly: Boolean) = api.muteNotifications(contentId, likesOnly)
 
   override suspend fun reportFriend(assertion: String): Boolean = api.reportFriend(assertion).confirmed
+  override suspend fun vote(contentId: String, options: List<Int>): FeedPollState = api.vote(contentId, options)
   override suspend fun closePeople(): FeedClosePeopleResponse = api.closePeople()
   override suspend fun addClosePerson(profileId: String): String = api.addClosePerson(profileId).state
   override suspend fun removeClosePerson(profileId: String) = api.removeClosePerson(profileId)
@@ -347,6 +352,7 @@ object EmptyFeedSource : FeedSource {
   override suspend fun muteNotifications(contentId: String, likesOnly: Boolean) = throw IllegalStateException("feed is not available")
   override suspend fun search(query: String, scope: String, cursor: String?): FeedSearchPage = FeedSearchPage()
   override suspend fun reportFriend(assertion: String): Boolean = throw IllegalStateException("feed is not available")
+  override suspend fun vote(contentId: String, options: List<Int>): FeedPollState = throw IllegalStateException("feed is not available")
   override suspend fun closePeople(): FeedClosePeopleResponse = throw IllegalStateException("feed is not available")
   override suspend fun addClosePerson(profileId: String): String = throw IllegalStateException("feed is not available")
   override suspend fun removeClosePerson(profileId: String) = throw IllegalStateException("feed is not available")

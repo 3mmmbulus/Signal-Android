@@ -99,7 +99,8 @@ fun FeedPostDetailScreen(
   onSend: () -> Unit,
   onNoticeShown: () -> Unit,
   onProfileRequired: () -> Unit = {},
-  onAuthorClick: (FeedAuthor) -> Unit = {}
+  onAuthorClick: (FeedAuthor) -> Unit = {},
+  onVote: (List<Int>) -> Unit = {}
 ) {
   val snackbarHostState = remember { SnackbarHostState() }
   val noticeText = state.notice?.let { stringResource(it.messageRes()) }
@@ -144,6 +145,7 @@ fun FeedPostDetailScreen(
       onLoadMoreComments = onLoadMoreComments,
       onReplyClick = onReplyClick,
       onAuthorClick = onAuthorClick,
+      onVote = onVote,
       modifier = Modifier.padding(padding).fillMaxSize()
     )
   }
@@ -157,6 +159,7 @@ private fun CommentList(
   onLoadMoreComments: () -> Unit,
   onReplyClick: (FeedCard) -> Unit,
   onAuthorClick: (FeedAuthor) -> Unit,
+  onVote: (List<Int>) -> Unit,
   modifier: Modifier = Modifier
 ) {
   val listState = rememberLazyListState()
@@ -183,7 +186,8 @@ private fun CommentList(
         onNotInterestedClick = null,
         mediaBaseUrl = state.mediaBaseUrl,
         expanded = true,
-        onAuthorClick = onAuthorClick
+        onAuthorClick = onAuthorClick,
+        onVote = { _, options -> onVote(options) }
       )
       HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
     }

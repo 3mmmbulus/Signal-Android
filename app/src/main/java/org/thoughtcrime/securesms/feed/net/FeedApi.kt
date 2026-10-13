@@ -300,6 +300,13 @@ class FeedApi(
     sendNoContent(Request.Builder().url(url).put(body))
   }
 
+  /** 投票（每人一次，不能改）。过了截止 409 `poll_closed`，投过 409 `already_voted`。 */
+  suspend fun vote(contentId: String, options: List<Int>): FeedPollState {
+    val url = url("v1/feed/posts").newBuilder().addPathSegment(contentId).addPathSegment("vote").build()
+    val body = FeedJson.encodeToString(FeedVoteRequest.serializer(), FeedVoteRequest(options)).toRequestBody(JSON)
+    return send(Request.Builder().url(url).put(body), FeedPollState.serializer())
+  }
+
   /** 关心的人：我设的和设了我的。 */
   suspend fun closePeople(): FeedClosePeopleResponse {
     return get(url("v1/feed/me/close-people"), FeedClosePeopleResponse.serializer())
