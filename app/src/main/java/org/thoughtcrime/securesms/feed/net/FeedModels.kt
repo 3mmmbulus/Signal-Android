@@ -38,7 +38,9 @@ data class FeedConfig(
   companion object {
     /** 大陆算法备案之前：编辑精选 + 时间顺序（`dynamic-feed.md` R-1.5）。 */
     const val RECOMMEND_MODE_EDITORIAL = "editorial_chronological"
-    const val RECOMMEND_MODE_RANKED = "ranked"
+
+    /** 打分排序（ADR §10.4 / §10.5）；只有这时显示个性化开关（第三节第 47 条）。 */
+    const val RECOMMEND_MODE_SCORED = "scored"
   }
 }
 
@@ -175,7 +177,7 @@ data class FeedAuthor(
   @SerialName("id") val profileId: String,
   @SerialName("display_name") val displayName: String,
   val handle: String? = null,
-  /** 引擎的卡片还没带（已请补）；没设 handle 的人显示「Tellomi 号：xxxx」（第三节第 8 条）。 */
+  /** 只在没设 handle 时给；界面显示「Tellomi 号：xxxx」（第三节第 8 条）。 */
   @SerialName("tellomi_number") val tellomiNumber: String? = null,
   @SerialName("avatar_key") val avatarKey: String? = null,
   /** 开放内容的作者（`native = false`）给的是外部头像地址。 */

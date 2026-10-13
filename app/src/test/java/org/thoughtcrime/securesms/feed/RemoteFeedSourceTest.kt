@@ -10,6 +10,7 @@ import assertk.assertions.containsExactly
 import assertk.assertions.isEqualTo
 import assertk.assertions.isFalse
 import assertk.assertions.isNull
+import assertk.assertions.isTrue
 import kotlinx.coroutines.runBlocking
 import okhttp3.OkHttpClient
 import okhttp3.mockwebserver.MockResponse
@@ -78,8 +79,28 @@ class RemoteFeedSourceTest {
   }
 
   @Test
-  fun `config follows status`() = runBlocking {
-    server.enqueue(MockResponse().setBody("""{"visible":false}"""))
+  fun `config comes from the engine`() = runBlocking {
+    server.enqueue(
+      MockResponse().setBody(
+        """{"enabled":true,"region":"cn","tabs":["recommend","following"],"recommend_mode":"editorial_chronological",""" +
+          """"personalization_toggle_visible":false,"hot_enabled":false,"ip_region_visible":true,"media_base_url":"https://m.example/",""" +
+          """"card_ttl_seconds":600,"limits":{"post_text_chars":500,"post_images":10,"article_chars":10000,"edit_window_seconds":900},"minor_mode":true}"""
+      )
+    )
+
+    val config = source.config()
+
+    assertThat(server.takeRequest().path).isEqualTo("/v1/feed/config")
+    assertThat(config.enabled).isTrue()
+    assertThat(config.ipRegionVisible).isTrue()
+    assertThat(config.minorMode).isTrue()
+    assertThat(config.mediaBaseUrl).isEqualTo("https://m.example/")
+    assertThat(FeedTab.fromApiNames(config.tabs)).isEqualTo(FeedTab.entries.toList())
+  }
+
+  @Test
+  fun `hidden config turns the feed off`() = runBlocking {
+    server.enqueue(MockResponse().setBody("""{"enabled":false,"region":"global","tabs":["recommend","following"]}"""))
 
     assertThat(source.config().enabled).isFalse()
   }

@@ -64,7 +64,7 @@ class FeedModelsTest {
     assertThat(config.recommendMode).isEqualTo(FeedConfig.RECOMMEND_MODE_EDITORIAL)
     assertThat(config.limits.postTextChars).isEqualTo(500)
     assertThat(FeedState(config = config).isEditorialRecommend).isTrue()
-    assertThat(FeedState(config = config.copy(recommendMode = FeedConfig.RECOMMEND_MODE_RANKED)).isEditorialRecommend).isFalse()
+    assertThat(FeedState(config = config.copy(recommendMode = FeedConfig.RECOMMEND_MODE_SCORED)).isEditorialRecommend).isFalse()
   }
 
   @Test

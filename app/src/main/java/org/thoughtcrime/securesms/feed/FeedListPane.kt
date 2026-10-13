@@ -207,6 +207,7 @@ private fun FeedPager(
         tab = tab,
         tabState = state.tab(tab),
         showIpRegion = state.config?.ipRegionVisible == true,
+        mediaBaseUrl = state.config?.mediaBaseUrl,
         onRefresh = { onRefresh(tab) },
         onLoadMore = { onLoadMore(tab) },
         onLikeClick = onLikeClick,
@@ -224,6 +225,7 @@ private fun FeedTimeline(
   tab: FeedTab,
   tabState: FeedTabState,
   showIpRegion: Boolean,
+  mediaBaseUrl: String?,
   onRefresh: () -> Unit,
   onLoadMore: () -> Unit,
   onLikeClick: (FeedCard) -> Unit,
@@ -276,7 +278,8 @@ private fun FeedTimeline(
             showIpRegion = showIpRegion,
             onLikeClick = onLikeClick,
             onNotInterestedClick = onNotInterestedClick,
-            modifier = Modifier.animateItem()
+            modifier = Modifier.animateItem(),
+            mediaBaseUrl = mediaBaseUrl
           )
           HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
         }

@@ -269,7 +269,7 @@ data class FeedState(
 
   /** 大陆备案前推荐页只有编辑精选 + 时间顺序（R-1.5），界面上不说「为你推荐」。 */
   val isEditorialRecommend: Boolean
-    get() = config?.recommendMode != FeedConfig.RECOMMEND_MODE_RANKED
+    get() = config?.recommendMode != FeedConfig.RECOMMEND_MODE_SCORED
 
   enum class TransientError { NETWORK, ACTION_FAILED }
 }

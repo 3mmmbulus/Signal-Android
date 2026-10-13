@@ -83,7 +83,8 @@ fun FeedPostCard(
   showIpRegion: Boolean,
   onLikeClick: (FeedCard) -> Unit,
   onNotInterestedClick: (FeedCard) -> Unit,
-  modifier: Modifier = Modifier
+  modifier: Modifier = Modifier,
+  mediaBaseUrl: String? = null
 ) {
   Column(modifier = modifier.fillMaxWidth().padding(top = 12.dp, bottom = 4.dp)) {
     Row(modifier = Modifier.padding(start = 16.dp, end = 4.dp)) {
@@ -139,7 +140,7 @@ fun FeedPostCard(
     }
 
     if (card.media.isNotEmpty()) {
-      FeedMediaRow(media = card.media, modifier = Modifier.padding(top = 8.dp))
+      FeedMediaRow(media = card.media, mediaBaseUrl = mediaBaseUrl, modifier = Modifier.padding(top = 8.dp))
     }
 
     FeedActionRow(
@@ -267,11 +268,11 @@ private fun buildSubtitle(card: FeedCard, showIpRegion: Boolean): String {
  * 只有一张时按原图比例占满宽度（比例限制在 3:4 到 16:9 之间）。
  */
 @Composable
-private fun FeedMediaRow(media: List<FeedMedia>, modifier: Modifier = Modifier) {
+private fun FeedMediaRow(media: List<FeedMedia>, mediaBaseUrl: String?, modifier: Modifier = Modifier) {
   if (media.size == 1) {
     val item = media.first()
     Box(modifier = modifier.padding(start = CONTENT_START, end = 16.dp)) {
-      FeedMediaPlaceholder(item = item, modifier = Modifier.fillMaxWidth().aspectRatio(clampedRatio(item)))
+      FeedMediaPlaceholder(item = item, mediaBaseUrl = mediaBaseUrl, modifier = Modifier.fillMaxWidth().aspectRatio(clampedRatio(item)))
     }
     return
   }
@@ -282,13 +283,13 @@ private fun FeedMediaRow(media: List<FeedMedia>, modifier: Modifier = Modifier) 
     modifier = modifier.fillMaxWidth()
   ) {
     itemsIndexed(media) { _, item ->
-      FeedMediaPlaceholder(item = item, modifier = Modifier.height(220.dp).aspectRatio(clampedRatio(item)))
+      FeedMediaPlaceholder(item = item, mediaBaseUrl = mediaBaseUrl, modifier = Modifier.height(220.dp).aspectRatio(clampedRatio(item)))
     }
   }
 }
 
 @Composable
-private fun FeedMediaPlaceholder(item: FeedMedia, modifier: Modifier = Modifier) {
+private fun FeedMediaPlaceholder(item: FeedMedia, mediaBaseUrl: String?, modifier: Modifier = Modifier) {
   val description = item.alt.ifBlank { stringResource(R.string.TellomiFeed__image) }
   Box(
     modifier = modifier
@@ -296,10 +297,10 @@ private fun FeedMediaPlaceholder(item: FeedMedia, modifier: Modifier = Modifier)
       .background(MaterialTheme.colorScheme.surfaceVariant)
       .semantics { contentDescription = description }
   ) {
-    // 内容引擎的媒体地址（config.media_base_url）接上之前，只有本机样例里自己刚发的图有本地 Uri 可以显示
-    val localUri = item.localUriOrNull()
-    if (localUri != null) {
-      GlideImage(model = localUri, modifier = Modifier.matchParentSize())
+    // 本机样例里自己刚发的图是本地 Uri；内容引擎的图是 config.media_base_url + key（经 Glide 的 OkHttp，走内容代理）
+    val model: Any? = item.localUriOrNull() ?: item.remoteUrlOrNull(mediaBaseUrl)
+    if (model != null) {
+      GlideImage(model = model, modifier = Modifier.matchParentSize())
     }
   }
 }
@@ -307,6 +308,16 @@ private fun FeedMediaPlaceholder(item: FeedMedia, modifier: Modifier = Modifier)
 /** 样例来源把本机图片的 content Uri 当 key 用；内容引擎给的 key 不会是这个形式。 */
 internal fun FeedMedia.localUriOrNull(): Uri? {
   return if (key.startsWith("content://") || key.startsWith("file://")) Uri.parse(key) else null
+}
+
+/**
+ * 引擎的媒体 key 拼到 `media_base_url`（契约 3.2，引擎保证以 `/` 结尾）后面。只认 https 的基址；
+ * key 像完整地址、以 `/` 开头或带 `..` 的不拼，免得一张卡片把图片请求带到别的主机或路径上。
+ */
+internal fun FeedMedia.remoteUrlOrNull(mediaBaseUrl: String?): String? {
+  if (mediaBaseUrl == null || !mediaBaseUrl.startsWith("https://") || !mediaBaseUrl.endsWith("/")) return null
+  if (key.isBlank() || key.contains("://") || key.startsWith("/") || key.split('/').any { it == ".." }) return null
+  return mediaBaseUrl + key
 }
 
 @Composable

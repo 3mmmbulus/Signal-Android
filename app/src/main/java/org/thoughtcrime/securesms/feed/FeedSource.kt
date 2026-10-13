@@ -45,9 +45,8 @@ interface FeedSource {
  */
 class RemoteFeedSource(private val api: FeedApi) : FeedSource {
 
-  /** 引擎还没有配置接口：能看就用客户端默认值（两栏、编辑精选、默认上限）。 */
   override suspend fun config(): FeedConfig {
-    return FeedConfig(enabled = api.status().visible, tabs = FeedTab.entries.map { it.apiName })
+    return api.config()
   }
 
   override suspend fun timeline(tab: FeedTab, cursor: String?): FeedTimelinePage {

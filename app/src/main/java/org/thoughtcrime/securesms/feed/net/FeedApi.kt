@@ -60,6 +60,14 @@ class FeedApi(
   private val tokens: FeedTokenSource
 ) {
 
+  /**
+   * 客户端要显示什么（契约 3.2）：栏目、推荐模式、个性化开关、IP 属地、上限、未成年模式。
+   * 地区差异全由引擎定，客户端不自己判断。和 [status] 一样，对任何有效凭证都是 200，`enabled = false` 时隐藏入口。
+   */
+  suspend fun config(): FeedConfig {
+    return get(url("v1/feed/config"), FeedConfig.serializer())
+  }
+
   /** 能不能看动态：不在内测名单或者紧急开关关了是 false。 */
   suspend fun status(): FeedStatus {
     return get(url("v1/feed/status"), FeedStatus.serializer())
