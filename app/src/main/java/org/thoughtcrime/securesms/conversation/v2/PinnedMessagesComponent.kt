@@ -19,6 +19,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -142,13 +143,34 @@ fun PinnedMessagesBanner(
             message.slideDeck.firstSlide?.uri != null &&
             !message.slideDeck.firstSlide!!.isVideoGif
           ) {
-            GlideImage(
-              model = DecryptableUri(message.slideDeck.firstSlide!!.uri!!),
-              modifier = Modifier
-                .padding(end = 8.dp)
-                .size(32.dp)
-                .clip(RoundedCornerShape(10.dp))
-            )
+            val firstSlide = message.slideDeck.firstSlide!!
+            if (firstSlide.asAttachment().transformProperties?.tellomiSpoiler == true) {
+              // Tellomi (tellomi/tellomi#1263, spec R-1): like a quote, the pinned bar never shows a covered image / video,
+              // uncovered here or not (Telegram: the pinned panel's thumbnail is blurred for spoilers). Its blur hash
+              // gives nothing away; without one, a plain tile.
+              Box(
+                modifier = Modifier
+                  .padding(end = 8.dp)
+                  .size(32.dp)
+                  .clip(RoundedCornerShape(10.dp))
+                  .background(Color(0xFF3B3B3B))
+              ) {
+                firstSlide.placeholderBlur?.let { blurHash ->
+                  GlideImage(
+                    model = blurHash,
+                    modifier = Modifier.fillMaxSize()
+                  )
+                }
+              }
+            } else {
+              GlideImage(
+                model = DecryptableUri(firstSlide.uri!!),
+                modifier = Modifier
+                  .padding(end = 8.dp)
+                  .size(32.dp)
+                  .clip(RoundedCornerShape(10.dp))
+              )
+            }
           }
 
           Column(
