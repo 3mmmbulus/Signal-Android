@@ -6,6 +6,7 @@
 package org.signal.uicomponents.recentmediarail
 
 import android.net.Uri
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -26,6 +27,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.LayoutCoordinates
 import androidx.compose.ui.layout.boundsInWindow
@@ -42,6 +44,7 @@ import org.signal.core.ui.compose.Previews
 import org.signal.glide.compose.GlideImage
 import org.signal.glide.compose.GlideImageScaleType
 import org.signal.glide.decryptableuri.DecryptableUri
+import kotlin.random.Random
 import org.signal.core.ui.R as CoreUiR
 
 private val ITEM_SIZE = 80.dp
@@ -94,12 +97,16 @@ private fun RecentMediaRailItem(
       .onGloballyPositioned { coordinates = it }
       .clickable { onClick(coordinates?.boundsInWindow()?.roundToIntRect() ?: IntRect.Zero) }
   ) {
-    GlideImage(
-      model = remember(media) { media.thumbnailUri?.let { DecryptableUri(it, media.thumbnailTimeUs) } },
-      imageSize = DpSize(ITEM_SIZE, ITEM_SIZE),
-      scaleType = GlideImageScaleType.CENTER_CROP,
-      modifier = Modifier.fillMaxSize()
-    )
+    if (media.isCovered) {
+      CoveredTile(modifier = Modifier.fillMaxSize())
+    } else {
+      GlideImage(
+        model = remember(media) { media.thumbnailUri?.let { DecryptableUri(it, media.thumbnailTimeUs) } },
+        imageSize = DpSize(ITEM_SIZE, ITEM_SIZE),
+        scaleType = GlideImageScaleType.CENTER_CROP,
+        modifier = Modifier.fillMaxSize()
+      )
+    }
 
     Box(
       modifier = Modifier
@@ -108,6 +115,27 @@ private fun RecentMediaRailItem(
     )
   }
 }
+
+/**
+ * Tellomi (tellomi/tellomi#1263, spec R-1): a covered image / video never shows its thumbnail here -- a dark tile with a
+ * scatter of white dots, the still version of the cover drawn in the chat.
+ */
+@Composable
+private fun CoveredTile(modifier: Modifier = Modifier) {
+  Canvas(modifier = modifier.background(COVERED_BACKGROUND)) {
+    val random = Random(7)
+    repeat(COVERED_DOTS) {
+      drawCircle(
+        color = Color.White.copy(alpha = 0.35f + random.nextFloat() * 0.55f),
+        radius = (0.6f + random.nextFloat() * 0.8f) * density,
+        center = Offset(random.nextFloat() * size.width, random.nextFloat() * size.height)
+      )
+    }
+  }
+}
+
+private val COVERED_BACKGROUND = Color(0xFF3A3A3C)
+private const val COVERED_DOTS = 60
 
 @DayNightPreviews
 @Composable

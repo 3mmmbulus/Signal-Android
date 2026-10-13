@@ -77,6 +77,7 @@ import org.thoughtcrime.securesms.recipients.RecipientUtil
 import org.thoughtcrime.securesms.storage.StorageSyncHelper
 import org.thoughtcrime.securesms.util.ConversationUtil
 import org.thoughtcrime.securesms.util.SignalTrace
+import org.thoughtcrime.securesms.util.TellomiSpoiler
 import org.thoughtcrime.securesms.util.TextSecurePreferences
 import org.thoughtcrime.securesms.util.isPoll
 import org.thoughtcrime.securesms.util.isScheduled
@@ -2213,7 +2214,8 @@ class ThreadTable(context: Context, databaseHelper: SignalDatabase) : DatabaseTa
       .or(Optional.ofNullable(slideDeck.stickerSlide))
       .orElse(null)
 
-    return if (thumbnail != null && !(record as MmsMessageRecord).isViewOnce) {
+    // Tellomi (tellomi/tellomi#1263, spec R-1): the chat list never shows a covered image / video
+    return if (thumbnail != null && !(record as MmsMessageRecord).isViewOnce && !TellomiSpoiler.hasCovered(slideDeck)) {
       thumbnail.uri
     } else {
       null

@@ -11,6 +11,7 @@ import org.thoughtcrime.securesms.database.AttachmentTable
 import org.thoughtcrime.securesms.stickers.StickerLocator
 import org.whispersystems.signalservice.api.InvalidMessageStructureException
 import org.whispersystems.signalservice.api.messages.SignalServiceAttachment
+import org.whispersystems.signalservice.api.messages.SignalServiceAttachmentPointer
 import org.whispersystems.signalservice.api.util.AttachmentPointerUtil
 import org.whispersystems.signalservice.internal.push.DataMessage
 import java.util.Optional
@@ -142,10 +143,19 @@ class PointerAttachment : Attachment {
           uuid = pointer.get().asPointer().uuid,
           quote = quote,
           quoteTargetContentType = quoteTargetContentType,
-          // Tellomi (ADR-0068): a quote thumbnail is only ever drawn as a thumbnail
-          transformProperties = if (!quote && pointer.get().asPointer().tellomiAsFile) TransformProperties(tellomiAsFile = true) else null
+          transformProperties = tellomiTransformProperties(pointer.get().asPointer(), quote)
         )
       )
+    }
+
+    /**
+     * Tellomi (ADR-0068): the flags a received pointer carries, already checked against the receive rules in libsignal-service.
+     * A quote thumbnail is only ever drawn as a thumbnail, so it never keeps asFile; a covered one stays covered (spec R-1).
+     */
+    private fun tellomiTransformProperties(pointer: SignalServiceAttachmentPointer, quote: Boolean): TransformProperties? {
+      val asFile = !quote && pointer.tellomiAsFile
+      val spoiler = pointer.tellomiSpoiler
+      return if (asFile || spoiler) TransformProperties(tellomiAsFile = asFile, tellomiSpoiler = spoiler) else null
     }
 
     fun forPointer(quotedAttachment: DataMessage.Quote.QuotedAttachment): Optional<Attachment> {
@@ -195,7 +205,9 @@ class PointerAttachment : Attachment {
           caption = thumbnail?.asPointer()?.caption?.orElse(null),
           stickerLocator = null,
           blurHash = null,
-          uuid = thumbnail?.asPointer()?.uuid
+          uuid = thumbnail?.asPointer()?.uuid,
+          // Tellomi (spec R-1, ADR-0068 §4.4): a reply to a covered image carries the cover on its thumbnail too
+          transformProperties = if (thumbnail?.asPointer()?.tellomiSpoiler == true) TransformProperties(tellomiSpoiler = true) else null
         )
       )
     }

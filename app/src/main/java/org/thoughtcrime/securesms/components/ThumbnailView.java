@@ -16,6 +16,7 @@ import android.graphics.PorterDuffColorFilter;
 import android.graphics.drawable.Drawable;
 import android.net.Uri;
 import android.util.AttributeSet;
+import android.view.MotionEvent;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.FrameLayout;
@@ -32,9 +33,11 @@ import com.google.android.material.color.MaterialColors;
 import com.bumptech.glide.RequestBuilder;
 import com.bumptech.glide.RequestManager;
 import com.bumptech.glide.load.engine.DiskCacheStrategy;
+import com.bumptech.glide.load.resource.bitmap.CenterCrop;
 import com.bumptech.glide.request.Request;
 import com.bumptech.glide.request.RequestListener;
 import com.bumptech.glide.request.RequestOptions;
+import com.bumptech.glide.request.target.CustomTarget;
 
 import org.signal.core.models.media.TransformProperties;
 import org.signal.core.util.concurrent.ListenableFuture;
@@ -61,7 +64,9 @@ import org.thoughtcrime.securesms.mms.SlidesClickedListener;
 import org.thoughtcrime.securesms.mms.VideoSlide;
 import org.thoughtcrime.securesms.stories.StoryTextPostModel;
 import org.thoughtcrime.securesms.util.AttachmentUtil;
+import org.thoughtcrime.securesms.util.BlurTransformation;
 import org.thoughtcrime.securesms.util.MediaUtil;
+import org.thoughtcrime.securesms.util.TellomiSpoiler;
 import org.signal.core.util.Util;
 
 import java.util.Arrays;
@@ -85,6 +90,7 @@ public class ThumbnailView extends FrameLayout {
 
   private final ImageView          image;
   private final ImageView          blurHash;
+  private final TellomiSpoilerView spoiler;
   private final View               playOverlay;
   private final View               captionIcon;
   private final AppCompatImageView errorImage;
@@ -104,6 +110,13 @@ public class ThumbnailView extends FrameLayout {
   private       SlideClickListener        playVideoClickListener      = null;
   private       Slide                     slide                       = null;
 
+  // Tellomi (tellomi/tellomi#1263, spec R-1): where the last tap went down, so the cover opens from there
+  private float              lastTouchX;
+  private float              lastTouchY;
+  private boolean            playOverlayWanted;
+  private BlurTransformation spoilerBlur;
+  private CustomTarget<Drawable> spoilerTarget;
+
 
   public ThumbnailView(Context context) {
     this(context, null);
@@ -120,6 +133,7 @@ public class ThumbnailView extends FrameLayout {
 
     this.image                   = findViewById(R.id.thumbnail_image);
     this.blurHash                = findViewById(R.id.thumbnail_blurhash);
+    this.spoiler                 = findViewById(R.id.thumbnail_spoiler);
     this.playOverlay             = findViewById(R.id.play_overlay);
     this.captionIcon             = findViewById(R.id.thumbnail_caption_icon);
     this.errorImage              = findViewById(R.id.thumbnail_error);
@@ -293,6 +307,15 @@ public class ThumbnailView extends FrameLayout {
   }
 
   @Override
+  public boolean dispatchTouchEvent(MotionEvent event) {
+    if (event.getActionMasked() == MotionEvent.ACTION_DOWN) {
+      lastTouchX = event.getX();
+      lastTouchY = event.getY();
+    }
+    return super.dispatchTouchEvent(event);
+  }
+
+  @Override
   public void setFocusable(boolean focusable) {
     super.setFocusable(focusable);
     transferControlViewStub.get().setFocusable(focusable);
@@ -328,6 +351,7 @@ public class ThumbnailView extends FrameLayout {
   public void setImageDrawable(@NonNull RequestManager requestManager, @Nullable Drawable drawable) {
     requestManager.clear(image);
     requestManager.clear(blurHash);
+    clearSpoiler(requestManager);
 
     image.setImageDrawable(drawable);
     blurHash.setImageDrawable(null);
@@ -347,6 +371,7 @@ public class ThumbnailView extends FrameLayout {
   {
     if (slide.asAttachment().isPermanentlyFailed()) {
       this.slide = slide;
+      clearSpoiler(requestManager);
 
       transferControlViewStub.setVisibility(View.GONE);
       playOverlay.setVisibility(View.GONE);
@@ -397,13 +422,12 @@ public class ThumbnailView extends FrameLayout {
       transferControlViewStub.get().setVisible(true);
     }
 
-    if (slide.getUri() != null && slide.hasPlayOverlay() &&
-        (slide.getTransferState() == AttachmentTable.TRANSFER_PROGRESS_DONE || isPreview))
-    {
-      this.playOverlay.setVisibility(View.VISIBLE);
-    } else {
-      this.playOverlay.setVisibility(View.GONE);
-    }
+    playOverlayWanted = slide.getUri() != null && slide.hasPlayOverlay() &&
+                        (slide.getTransferState() == AttachmentTable.TRANSFER_PROGRESS_DONE || isPreview);
+
+    // Tellomi (spec R-1): decided before the "same contents" shortcut, since uncovering doesn't change the contents
+    updateSpoiler(requestManager, slide);
+    this.playOverlay.setVisibility(playOverlayWanted && !spoiler.isCovering() ? View.VISIBLE : View.GONE);
 
     if (hasSameContents(this.slide, slide)) {
       Log.i(TAG, "Not re-loading slide " + slide.asAttachment().getDisplayUri());
@@ -546,6 +570,7 @@ public class ThumbnailView extends FrameLayout {
     }
 
     blurHash.setImageDrawable(null);
+    clearSpoiler(requestManager);
 
     return future;
   }
@@ -565,6 +590,7 @@ public class ThumbnailView extends FrameLayout {
 
     request.into(new GlideDrawableListeningTarget(image, future));
     blurHash.setImageDrawable(null);
+    clearSpoiler(requestManager);
 
     return future;
   }
@@ -632,6 +658,7 @@ public class ThumbnailView extends FrameLayout {
   public void clear(RequestManager requestManager) {
     requestManager.clear(image);
     image.setImageDrawable(null);
+    clearSpoiler(requestManager);
 
     if (transferControlViewStub.resolved()) {
       transferControlViewStub.get().clear();
@@ -737,9 +764,88 @@ public class ThumbnailView extends FrameLayout {
     void onLoadScheduled();
   }
 
+  /**
+   * Tellomi (tellomi/tellomi#1263, spec R-1): a covered image / video gets [TellomiSpoilerView] over it -- the photo blurred
+   * (or its blur hash while it is still downloading) under particles. Taps uncover it first; only then do they open it.
+   */
+  private void updateSpoiler(@NonNull RequestManager requestManager, @NonNull Slide slide) {
+    if (!TellomiSpoiler.isCovered(slide)) {
+      clearSpoiler(requestManager);
+      return;
+    }
+
+    boolean sameSlide = this.slide != null && hasSameContents(this.slide, slide) && Util.equals(this.slide.getDisplayUri(), slide.getDisplayUri());
+    if (spoiler.isCovering() && sameSlide) {
+      return;
+    }
+
+    clearSpoilerTarget(requestManager);
+    spoiler.cover(null);
+
+    Object model;
+    if (slide.getDisplayUri() != null) {
+      model = new DecryptableUri(slide.getDisplayUri());
+    } else if (slide.getPlaceholderBlur() != null) {
+      model = slide.getPlaceholderBlur();
+    } else {
+      return;
+    }
+
+    if (spoilerBlur == null) {
+      spoilerBlur = new BlurTransformation(getContext(), 0.25f, BlurTransformation.MAX_RADIUS);
+    }
+
+    spoilerTarget = new CustomTarget<Drawable>() {
+      @Override
+      public void onResourceReady(@NonNull Drawable resource, @Nullable com.bumptech.glide.request.transition.Transition<? super Drawable> transition) {
+        spoiler.setCoverDrawable(resource);
+      }
+
+      @Override
+      public void onLoadCleared(@Nullable Drawable placeholder) {
+        spoiler.setCoverDrawable(null);
+      }
+    };
+
+    applySizing(requestManager.load(model)
+                              .diskCacheStrategy(DiskCacheStrategy.NONE)
+                              .transform(new CenterCrop(), spoilerBlur))
+        .into(spoilerTarget);
+  }
+
+  private void clearSpoiler(@NonNull RequestManager requestManager) {
+    clearSpoilerTarget(requestManager);
+    spoiler.uncover();
+  }
+
+  private void clearSpoilerTarget(@NonNull RequestManager requestManager) {
+    if (spoilerTarget != null) {
+      requestManager.clear(spoilerTarget);
+      spoilerTarget = null;
+    }
+  }
+
+  /** Tellomi (spec R-1): still covered here (tests and accessibility read this). */
+  public boolean isTellomiSpoilerCovering() {
+    return spoiler.isCovering();
+  }
+
   private class ThumbnailClickDispatcher implements View.OnClickListener {
     @Override
     public void onClick(View view) {
+      if (spoiler.isCovering()) {
+        // Tellomi (spec R-1): the first tap uncovers from where it landed; nothing opens until it is uncovered
+        Slide revealing = slide;
+        spoiler.reveal(lastTouchX, lastTouchY, () -> {
+          if (revealing != null) {
+            TellomiSpoiler.reveal(revealing.asAttachment());
+          }
+          playOverlay.setVisibility(playOverlayWanted ? View.VISIBLE : View.GONE);
+          return kotlin.Unit.INSTANCE;
+        });
+        return;
+      }
+
       boolean controlsVisible = transferControlViewStub.getVisibility() == View.VISIBLE && !transferControlViewStub.get().isGone();
       if (thumbnailClickListener != null && !controlsVisible) {
         thumbnailClickListener.onClick(view, slide);

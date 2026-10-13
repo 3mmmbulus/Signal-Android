@@ -27,6 +27,7 @@ import org.thoughtcrime.securesms.longmessage.resolveBody
 import org.thoughtcrime.securesms.recipients.RecipientId
 import org.thoughtcrime.securesms.sms.MessageSender
 import org.thoughtcrime.securesms.util.AttachmentUtil
+import org.thoughtcrime.securesms.util.TellomiSpoiler
 
 /**
  * Repository for accessing the attachments in the encrypted database.
@@ -64,13 +65,20 @@ class MediaPreviewRepository {
 
           for (i in 0..limit) {
             val element = MediaTable.MediaRecord.from(cursor)
-            if (element.attachment?.transferState == AttachmentTable.TRANSFER_PROGRESS_DONE ||
-              element.attachment?.transferState == AttachmentTable.TRANSFER_PROGRESS_STARTED ||
-              element.attachment?.thumbnailUri != null
+            val isStartingItem = startingAttachmentId.id == cursor.requireLong(AttachmentTable.ID)
+            // Tellomi (tellomi/tellomi#1263, spec R-1): a covered image / video is only seen once it is uncovered in the chat,
+            // so swiping across the gallery skips it
+            val coveredElsewhere = !isStartingItem && TellomiSpoiler.isCovered(element.attachment)
+            if (!coveredElsewhere &&
+              (
+                element.attachment?.transferState == AttachmentTable.TRANSFER_PROGRESS_DONE ||
+                  element.attachment?.transferState == AttachmentTable.TRANSFER_PROGRESS_STARTED ||
+                  element.attachment?.thumbnailUri != null
+                )
             ) {
               mediaRecords.add(element)
 
-              if (startingAttachmentId.id == cursor.requireLong(AttachmentTable.ID)) {
+              if (isStartingItem) {
                 itemPosition = mediaRecords.lastIndex
               }
             }

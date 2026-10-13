@@ -57,6 +57,38 @@ class TellomiAttachmentPointerTest {
     assertFalse(AttachmentPointerUtil.createSignalAttachmentPointer(pointer(TellomiAttachment(spoiler = true))).tellomiAsFile)
   }
 
+  /** ADR-0068 §4.1 rules 1–3: a spoiler only counts on an image / video, and asFile wins; anything else is ignored, not dropped. */
+  @Test
+  fun `a spoiler counts on an image or a video, and nowhere else`() {
+    assertTrue(spoiler(TellomiAttachment(spoiler = true), "image/jpeg"))
+    assertTrue(spoiler(TellomiAttachment(spoiler = true), "IMAGE/HEIC"))
+    assertTrue(spoiler(TellomiAttachment(spoiler = true), "video/mp4"))
+
+    assertFalse("a document can't be covered", spoiler(TellomiAttachment(spoiler = true), "application/pdf"))
+    assertFalse("asFile wins", spoiler(TellomiAttachment(asFile = true, spoiler = true), "image/jpeg"))
+    assertFalse(spoiler(TellomiAttachment(spoiler = false), "image/jpeg"))
+    assertFalse(spoiler(null, "image/jpeg"))
+    assertFalse("no content type", spoiler(TellomiAttachment(spoiler = true), null))
+  }
+
+  @Test
+  fun `a file with a spoiler on it is still received as a file`() {
+    val received = AttachmentPointerUtil.createSignalAttachmentPointer(pointer(TellomiAttachment(asFile = true, spoiler = true)))
+    assertTrue(received.tellomiAsFile)
+    assertFalse(received.tellomiSpoiler)
+  }
+
+  /** ADR-0068 §4.3: Tellomi's protocol version 9 is the covered-media one, and it is what this client supports. */
+  @Test
+  fun `the current protocol version is Tellomi's 9`() {
+    assertEquals(9, DataMessage.ProtocolVersion.TELLOMI_MEDIA_SPOILER.value)
+    assertEquals(9, DataMessage.ProtocolVersion.CURRENT.value)
+  }
+
+  private fun spoiler(tellomi: TellomiAttachment?, contentType: String?): Boolean {
+    return AttachmentPointerUtil.createSignalAttachmentPointer(pointer(tellomi).copy(contentType = contentType)).tellomiSpoiler
+  }
+
   private fun pointer(tellomi: TellomiAttachment?) = AttachmentPointer(
     cdnNumber = 3,
     cdnKey = "cdn-key",

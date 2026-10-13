@@ -29,7 +29,9 @@ data class RecentMedia(
   val thumbnailUri: Uri?,
   val availability: Availability,
   /** Which frame of a video the thumbnail should show, for media that was trimmed before it was sent. */
-  val thumbnailTimeUs: Long = 0
+  val thumbnailTimeUs: Long = 0,
+  /** Tellomi (tellomi/tellomi#1263, spec R-1): the sender covered it and it hasn't been uncovered here, so no thumbnail. */
+  val isCovered: Boolean = false
 ) {
 
   /** Whether tapping an item can show it, and if not, what to do instead. */

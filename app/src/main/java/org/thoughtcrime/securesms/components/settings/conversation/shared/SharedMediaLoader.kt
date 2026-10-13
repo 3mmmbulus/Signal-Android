@@ -11,6 +11,7 @@ import org.signal.uicomponents.recentmediarail.RecentMediaRailPresenter
 import org.thoughtcrime.securesms.components.settings.conversation.ConversationSettingsRepository
 import org.thoughtcrime.securesms.database.AttachmentTable
 import org.thoughtcrime.securesms.database.MediaTable
+import org.thoughtcrime.securesms.util.TellomiSpoiler
 
 private const val SHARED_MEDIA_LIMIT = 100
 
@@ -39,7 +40,8 @@ private fun MediaTable.MediaRecord.toRecentMedia(): RecentMedia {
   return RecentMedia(
     thumbnailUri = attachment?.displayUri,
     availability = availability(),
-    thumbnailTimeUs = attachment?.transformProperties?.videoTrimStartTimeUs ?: 0
+    thumbnailTimeUs = attachment?.transformProperties?.videoTrimStartTimeUs ?: 0,
+    isCovered = TellomiSpoiler.isCovered(attachment)
   )
 }
 

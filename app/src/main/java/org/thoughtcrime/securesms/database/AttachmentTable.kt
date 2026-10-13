@@ -2131,8 +2131,16 @@ class AttachmentTable(
 
       values.put(TRANSFER_STATE, TRANSFER_PROGRESS_DONE)
       values.put(TRANSFER_FILE, null as String?)
-      // Tellomi (ADR-0068): keep tellomiAsFile from the received pointer
-      values.put(TRANSFORM_PROPERTIES, TransformProperties.forSkipTransform().copy(tellomiAsFile = existingPlaceholder.transformProperties?.tellomiAsFile == true).serialize())
+      // Tellomi (ADR-0068): keep the flags from the received pointer (and whether this device has uncovered it)
+      val tellomi = existingPlaceholder.transformProperties
+      values.put(
+        TRANSFORM_PROPERTIES,
+        TransformProperties.forSkipTransform().copy(
+          tellomiAsFile = tellomi?.tellomiAsFile == true,
+          tellomiSpoiler = tellomi?.tellomiSpoiler == true,
+          tellomiSpoilerRevealed = tellomi?.tellomiSpoilerRevealed == true
+        ).serialize()
+      )
       values.put(REMOTE_LOCATION, existingPlaceholder.remoteLocation)
       values.put(CDN_NUMBER, existingPlaceholder.cdn.serialize())
       values.put(REMOTE_KEY, existingPlaceholder.remoteKey!!)
@@ -2309,6 +2317,31 @@ class AttachmentTable(
 
     if (updateCount <= 0) {
       Log.w(TAG, "[finalizeAttachmentAfterUpload] Failed to update attachment after upload! $id")
+    }
+  }
+
+  /**
+   * Tellomi (spec R-1, D10): this device has uncovered a covered image / video. Stays uncovered from now on, on this device
+   * only; the conversation redraws through the attachment observers.
+   */
+  fun setTellomiSpoilerRevealed(attachmentId: AttachmentId) {
+    val messageId: Long? = writableDatabase.withinTransaction {
+      val attachment = getAttachment(attachmentId) ?: return@withinTransaction null
+      val current = attachment.transformProperties
+      if (current == null || !current.isTellomiSpoilerCovered) {
+        return@withinTransaction null
+      }
+      writableDatabase
+        .update(TABLE_NAME)
+        .values(TRANSFORM_PROPERTIES to current.copy(tellomiSpoilerRevealed = true).serialize())
+        .where("$ID = ?", attachmentId.id)
+        .run()
+      attachment.mmsId
+    }
+
+    if (messageId != null) {
+      notifyConversationListeners(messages.getThreadIdForMessage(messageId))
+      AppDependencies.databaseObserver.notifyAttachmentUpdatedObservers()
     }
   }
 
@@ -3216,8 +3249,8 @@ class AttachmentTable(
         put(BLUR_HASH, attachment.blurHash?.hash)
         put(ATTACHMENT_UUID, attachment.uuid?.toString())
 
-        // Tellomi (ADR-0068): the only thing a received attachment carries in here is tellomiAsFile
-        attachment.transformProperties?.takeIf { it.tellomiAsFile }?.let { put(TRANSFORM_PROPERTIES, it.serialize()) }
+        // Tellomi (ADR-0068): the only things a received attachment carries in here are the Tellomi flags
+        attachment.transformProperties?.tellomiOnly()?.let { put(TRANSFORM_PROPERTIES, it.serialize()) }
 
         attachment.stickerLocator?.let { sticker ->
           put(STICKER_PACK_ID, sticker.packId)
@@ -3642,7 +3675,12 @@ class AttachmentTable(
           "[insertAttachmentWithData] Found a valid template we could use to skip upload. Template: ${uploadTemplate.attachmentId}, TemplateUploadTimestamp: ${hashMatch?.uploadTimestamp}, CurrentTime: ${System.currentTimeMillis()}, InsertingAttachment: (MessageId: $messageId, ${attachment.uri})"
         )
         // Tellomi (ADR-0068): how this send is drawn is this send's choice, not the template's
-        transformProperties = (uploadTemplate.transformProperties ?: transformProperties).copy(skipTransform = true, tellomiAsFile = transformProperties.tellomiAsFile)
+        transformProperties = (uploadTemplate.transformProperties ?: transformProperties).copy(
+          skipTransform = true,
+          tellomiAsFile = transformProperties.tellomiAsFile,
+          tellomiSpoiler = transformProperties.tellomiSpoiler,
+          tellomiSpoilerRevealed = transformProperties.tellomiSpoilerRevealed
+        )
 
         contentValues.put(ARCHIVE_CDN, hashMatch!!.archiveCdn)
         contentValues.put(ARCHIVE_TRANSFER_STATE, hashMatch.archiveTransferState)

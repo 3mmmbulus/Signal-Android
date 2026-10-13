@@ -45,7 +45,25 @@ public final class AttachmentPointerUtil {
                                               pointer.blurHash != null ? Optional.of(pointer.blurHash) : Optional.empty(),
                                               pointer.uploadTimestamp != null ? pointer.uploadTimestamp : 0,
                                               UuidUtil.fromByteStringOrNull(pointer.clientUuid),
-                                              pointer.tellomi != null && Boolean.TRUE.equals(pointer.tellomi.asFile));
+                                              isTellomiAsFile(pointer),
+                                              isTellomiSpoiler(pointer));
+  }
+
+  /** Tellomi (ADR-0068 §4.1 rule 1): drawn as a file row whatever the content type. */
+  private static boolean isTellomiAsFile(AttachmentPointer pointer) {
+    return pointer.tellomi != null && Boolean.TRUE.equals(pointer.tellomi.asFile);
+  }
+
+  /**
+   * Tellomi (ADR-0068 §4.1 rules 1–3): covered until tapped. Only on an image / video, and asFile wins; anything else
+   * ignores the field and shows the attachment as usual rather than dropping the message.
+   */
+  static boolean isTellomiSpoiler(AttachmentPointer pointer) {
+    if (pointer.tellomi == null || !Boolean.TRUE.equals(pointer.tellomi.spoiler) || isTellomiAsFile(pointer)) {
+      return false;
+    }
+    String contentType = pointer.contentType != null ? pointer.contentType.toLowerCase(java.util.Locale.ROOT) : "";
+    return contentType.startsWith("image/") || contentType.startsWith("video/");
   }
 
   public static AttachmentPointer createAttachmentPointer(SignalServiceAttachmentPointer attachment) {

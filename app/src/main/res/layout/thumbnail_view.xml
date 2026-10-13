@@ -30,6 +30,15 @@
         android:longClickable="false"
         android:scaleType="centerCrop" />
 
+    <!-- Tellomi (tellomi/tellomi#1263, spec R-1): the cover over an image / video the sender covered -->
+    <org.thoughtcrime.securesms.components.TellomiSpoilerView
+        android:id="@+id/thumbnail_spoiler"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:clickable="false"
+        android:longClickable="false"
+        android:visibility="gone" />
+
     <androidx.appcompat.widget.AppCompatImageView
         android:id="@+id/thumbnail_caption_icon"
         android:layout_width="wrap_content"

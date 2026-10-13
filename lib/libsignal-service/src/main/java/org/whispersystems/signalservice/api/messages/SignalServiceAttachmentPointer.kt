@@ -36,7 +36,12 @@ class SignalServiceAttachmentPointer @JvmOverloads constructor(
   val uploadTimestamp: Long,
   val uuid: UUID?,
   /** Tellomi (ADR-0068): `AttachmentPointer.tellomi.asFile` — draw as a file row whatever the content type. */
-  val tellomiAsFile: Boolean = false
+  val tellomiAsFile: Boolean = false,
+  /**
+   * Tellomi (ADR-0068 §4.1): `AttachmentPointer.tellomi.spoiler` — cover until tapped. Already checked against the rules:
+   * only on an image / video, and never alongside [tellomiAsFile] (which wins).
+   */
+  val tellomiSpoiler: Boolean = false
 ) : SignalServiceAttachment(contentType) {
   override fun isStream() = false
   override fun isPointer() = true

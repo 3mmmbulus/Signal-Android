@@ -203,7 +203,8 @@ data class MultiselectForwardFragmentArgs @JvmOverloads constructor(
         isVideoGif = videoGif,
         bucketId = null,
         caption = caption,
-        transformProperties = transformProperties,
+        // Tellomi (spec R-1, ADR-0050 semantics): a forward never carries the cover -- it was the original sender's choice
+        transformProperties = transformProperties?.copy(tellomiSpoiler = false, tellomiSpoilerRevealed = false),
         fileName = fileName
       )
     }

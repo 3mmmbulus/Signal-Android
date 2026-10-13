@@ -13,6 +13,7 @@ import org.thoughtcrime.securesms.dependencies.AppDependencies
 import org.thoughtcrime.securesms.mms.Slide
 import org.thoughtcrime.securesms.util.ImageCompressionUtil
 import org.thoughtcrime.securesms.util.RemoteConfig
+import org.thoughtcrime.securesms.util.TellomiSpoiler
 import org.thoughtcrime.securesms.util.kb
 import org.thoughtcrime.securesms.util.mb
 
@@ -50,6 +51,11 @@ object NotificationThumbnails {
       return NotificationItem.ThumbnailInfo.NONE
     }
 
+    // Tellomi (tellomi/tellomi#1263, spec R-1): a notification never shows a covered image / video
+    if (TellomiSpoiler.hasCovered(notificationItem.slideDeck)) {
+      return NotificationItem.ThumbnailInfo.NONE
+    }
+
     if (thumbnailSlide == null || thumbnailSlide.uri == null) {
       return NotificationItem.ThumbnailInfo.NONE
     }
@@ -78,6 +84,10 @@ object NotificationThumbnails {
 
   fun get(context: Context, notificationItem: NotificationItem): NotificationItem.ThumbnailInfo {
     val thumbnailSlide: Slide? = notificationItem.slideDeck?.thumbnailSlide
+
+    if (TellomiSpoiler.hasCovered(notificationItem.slideDeck)) {
+      return NotificationItem.ThumbnailInfo.NONE
+    }
 
     if (thumbnailSlide == null || thumbnailSlide.uri == null) {
       return NotificationItem.ThumbnailInfo.NONE

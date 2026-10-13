@@ -44,6 +44,42 @@ class TellomiTransformPropertiesTest {
     assertTrue(TransformProperties.forTellomiAsFile().withSkipTransform().withMp4FastStart().tellomiAsFile)
   }
 
+  /** spec R-1 (#1263): the cover and whether this device has uncovered it, same storage rules as asFile. */
+  @Test
+  fun `spoiler flags are only written when true and the covered state is not written at all`() {
+    val covered = TransformProperties(tellomiSpoiler = true)
+    for (json in listOf(Json.encodeToString(covered), jackson.writeValueAsString(covered))) {
+      assertTrue(json.contains("\"tellomiSpoiler\":true"))
+      assertFalse(json.contains("tellomiSpoilerRevealed"))
+      assertFalse(json.contains("Covered"))
+    }
+    assertFalse(Json.encodeToString(TransformProperties.empty()).contains("tellomiSpoiler"))
+    assertFalse(jackson.writeValueAsString(TransformProperties.empty()).contains("tellomiSpoiler"))
+  }
+
+  @Test
+  fun `covered until revealed, and both flags survive both parsers`() {
+    val covered = TransformProperties(tellomiSpoiler = true)
+    assertTrue(covered.isTellomiSpoilerCovered)
+    val revealed = covered.copy(tellomiSpoilerRevealed = true)
+    assertFalse(revealed.isTellomiSpoilerCovered)
+    assertFalse(TransformProperties.empty().isTellomiSpoilerCovered)
+
+    val json = jackson.writeValueAsString(revealed)
+    for (parsed in listOf(Json.decodeFromString<TransformProperties>(json), jackson.readValue(json, TransformProperties::class.java))) {
+      assertTrue(parsed.tellomiSpoiler)
+      assertTrue(parsed.tellomiSpoilerRevealed)
+    }
+  }
+
+  @Test
+  fun `tellomiOnly keeps just the Tellomi flags, or nothing when there are none`() {
+    val full = TransformProperties(skipTransform = true, videoTrim = true, tellomiSpoiler = true, tellomiSpoilerRevealed = true)
+    assertEquals(TransformProperties(tellomiSpoiler = true, tellomiSpoilerRevealed = true), full.tellomiOnly())
+    assertEquals(TransformProperties(tellomiAsFile = true), TransformProperties.forTellomiAsFile().tellomiOnly())
+    assertEquals(null, TransformProperties.empty().tellomiOnly())
+  }
+
   @Test
   fun `json written before this field reads as not as file`() {
     val legacy = "{\"skipTransform\":true,\"videoTrim\":false,\"videoTrimStartTimeUs\":0,\"videoTrimEndTimeUs\":0,\"sentMediaQuality\":0,\"mp4Faststart\":false,\"videoMuted\":false,\"videoEdited\":false}"

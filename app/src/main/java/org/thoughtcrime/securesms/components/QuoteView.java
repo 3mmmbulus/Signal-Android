@@ -18,6 +18,7 @@ import androidx.constraintlayout.widget.ConstraintLayout;
 
 import com.bumptech.glide.RequestManager;
 import com.bumptech.glide.load.engine.DiskCacheStrategy;
+import com.bumptech.glide.load.resource.bitmap.CenterCrop;
 import com.google.android.material.imageview.ShapeableImageView;
 import com.google.android.material.shape.CornerFamily;
 import com.google.android.material.shape.ShapeAppearanceModel;
@@ -46,6 +47,7 @@ import org.thoughtcrime.securesms.recipients.LiveRecipient;
 import org.thoughtcrime.securesms.recipients.Recipient;
 import org.thoughtcrime.securesms.recipients.RecipientForeverObserver;
 import org.thoughtcrime.securesms.stories.StoryTextPostModel;
+import org.thoughtcrime.securesms.util.BlurTransformation;
 import org.thoughtcrime.securesms.util.MediaUtil;
 import org.thoughtcrime.securesms.util.Projection;
 
@@ -460,11 +462,22 @@ public class QuoteView extends ConstraintLayout implements RecipientForeverObser
         attachmentVideoOVerlayStub.setVisibility(VISIBLE);
       }
 
-      requestManager.load(slide.getUri() != null ? new DecryptableUri(slide.getUri()) : null)
-                    .centerCrop()
-                    .override(thumbWidth, thumbHeight)
-                    .diskCacheStrategy(DiskCacheStrategy.RESOURCE)
-                    .into(thumbnailView);
+      // Tellomi (tellomi/tellomi#1263, spec R-1): a quote of a covered image / video is always drawn blurred, even once the
+      // original has been uncovered
+      boolean covered = slide.asAttachment().transformProperties != null && slide.asAttachment().transformProperties.tellomiSpoiler;
+      if (covered) {
+        requestManager.load(slide.getUri() != null ? new DecryptableUri(slide.getUri()) : null)
+                      .transform(new CenterCrop(), new BlurTransformation(getContext(), 0.25f, BlurTransformation.MAX_RADIUS))
+                      .override(thumbWidth, thumbHeight)
+                      .diskCacheStrategy(DiskCacheStrategy.NONE)
+                      .into(thumbnailView);
+      } else {
+        requestManager.load(slide.getUri() != null ? new DecryptableUri(slide.getUri()) : null)
+                      .centerCrop()
+                      .override(thumbWidth, thumbHeight)
+                      .diskCacheStrategy(DiskCacheStrategy.RESOURCE)
+                      .into(thumbnailView);
+      }
     } else if (MediaUtil.isAudioType(quoteTargetContentType) || MediaUtil.isLongTextType(quoteTargetContentType)) {
       thumbnailView.setVisibility(GONE);
       attachmentNameViewStub.setVisibility(GONE);

@@ -33,6 +33,7 @@ import org.thoughtcrime.securesms.service.KeyCachingService
 import org.thoughtcrime.securesms.util.AvatarUtil
 import org.thoughtcrime.securesms.util.MediaUtil
 import org.thoughtcrime.securesms.util.SpanUtil
+import org.thoughtcrime.securesms.util.TellomiSpoiler
 import org.thoughtcrime.securesms.util.hasGiftBadge
 import org.thoughtcrime.securesms.util.hasPoll
 import org.thoughtcrime.securesms.util.hasPollTerminate
@@ -287,12 +288,19 @@ class MessageNotification(threadRecipient: Recipient, record: MessageRecord, val
   }
 
   override fun getLargeIconUri(): Uri? {
+    // Tellomi (tellomi/tellomi#1263, spec R-1): a notification never shows a covered image / video
+    if (TellomiSpoiler.hasCovered(slideDeck)) {
+      return null
+    }
     val slide: Slide? = slideDeck?.thumbnailSlide ?: slideDeck?.stickerSlide
 
     return if (slide?.isInProgress == false) slide.uri else null
   }
 
   override fun getBigPictureUri(): Uri? {
+    if (TellomiSpoiler.hasCovered(slideDeck)) {
+      return null
+    }
     val slide: Slide? = slideDeck?.thumbnailSlide
 
     return if (slide?.isInProgress == false) slide.uri else null

@@ -6,6 +6,7 @@
 package org.signal.core.models.media
 
 import android.os.Parcelable
+import com.fasterxml.jackson.annotation.JsonIgnore
 import com.fasterxml.jackson.annotation.JsonInclude
 import com.fasterxml.jackson.annotation.JsonProperty
 import kotlinx.parcelize.IgnoredOnParcel
@@ -74,7 +75,26 @@ data class TransformProperties(
   @field:JsonInclude(JsonInclude.Include.NON_DEFAULT)
   @SerialName("tellomiAsFile")
   @JvmField
-  val tellomiAsFile: Boolean = false
+  val tellomiAsFile: Boolean = false,
+
+  /**
+   * Tellomi (ADR-0068 §4.1, spec R-1): the sender covered this image / video (`AttachmentPointer.tellomi.spoiler`); drawn
+   * blurred under particles until tapped. Same storage rules as [tellomiAsFile].
+   */
+  @JsonProperty("tellomiSpoiler")
+  @field:JsonInclude(JsonInclude.Include.NON_DEFAULT)
+  @SerialName("tellomiSpoiler")
+  @JvmField
+  val tellomiSpoiler: Boolean = false,
+
+  /**
+   * Tellomi (spec R-1, D10): this device has uncovered [tellomiSpoiler]. Local only -- never sent, never backed up.
+   */
+  @JsonProperty("tellomiSpoilerRevealed")
+  @field:JsonInclude(JsonInclude.Include.NON_DEFAULT)
+  @SerialName("tellomiSpoilerRevealed")
+  @JvmField
+  val tellomiSpoilerRevealed: Boolean = false
 ) : Parcelable {
   fun shouldSkipTransform(): Boolean {
     return skipTransform
@@ -94,6 +114,20 @@ data class TransformProperties(
 
   fun withMp4FastStart(): TransformProperties {
     return this.copy(mp4FastStart = true)
+  }
+
+  /** Tellomi (spec R-1): still covered on this device. Not a stored property, so kept out of the JSON. */
+  @get:JsonIgnore
+  val isTellomiSpoilerCovered: Boolean
+    get() = tellomiSpoiler && !tellomiSpoilerRevealed
+
+  /** Tellomi (ADR-0068): just the Tellomi flags a received attachment carries, for the places that rewrite this column. */
+  fun tellomiOnly(): TransformProperties? {
+    return if (tellomiAsFile || tellomiSpoiler) {
+      TransformProperties(tellomiAsFile = tellomiAsFile, tellomiSpoiler = tellomiSpoiler, tellomiSpoilerRevealed = tellomiSpoilerRevealed)
+    } else {
+      null
+    }
   }
 
   companion object {
