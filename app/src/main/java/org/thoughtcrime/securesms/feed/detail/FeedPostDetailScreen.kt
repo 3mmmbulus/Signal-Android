@@ -113,10 +113,15 @@ fun FeedPostDetailScreen(
   onDeletePost: () -> Unit = {},
   onReportPost: () -> Unit = {},
   onInsightsDismissed: () -> Unit = {},
-  onSaveClick: () -> Unit = {}
+  onSaveClick: () -> Unit = {},
+  onNotInterested: () -> Unit = {},
+  onMuteAuthor: () -> Unit = {},
+  onBlockAuthor: () -> Unit = {},
+  onLeave: (FeedPostDetailState.Leave) -> Unit = { onBack() }
 ) {
   val snackbarHostState = remember { SnackbarHostState() }
   LaunchedEffect(state.deleted) { if (state.deleted) onBack() }
+  LaunchedEffect(state.leaving) { state.leaving?.let(onLeave) }
   val noticeText = state.notice?.let { stringResource(it.messageRes()) }
   LaunchedEffect(state.notice) {
     if (state.notice == FeedPostDetailState.Notice.PROFILE_REQUIRED) {
@@ -166,6 +171,9 @@ fun FeedPostDetailScreen(
       onDeletePost = onDeletePost,
       onReportPost = onReportPost,
       onSaveClick = onSaveClick,
+      onNotInterested = onNotInterested,
+      onMuteAuthor = onMuteAuthor,
+      onBlockAuthor = onBlockAuthor,
       modifier = Modifier.padding(padding).fillMaxSize()
     )
   }
@@ -190,9 +198,27 @@ private fun CommentList(
   onDeletePost: () -> Unit,
   onReportPost: () -> Unit,
   onSaveClick: () -> Unit,
+  onNotInterested: () -> Unit,
+  onMuteAuthor: () -> Unit,
+  onBlockAuthor: () -> Unit,
   modifier: Modifier = Modifier
 ) {
   val listState = rememberLazyListState()
+  var confirmBlock by rememberSaveable { mutableStateOf(false) }
+  if (confirmBlock) {
+    Dialogs.SimpleAlertDialog(
+      title = stringResource(R.string.TellomiFeedPage__block_title, state.post.author?.displayName.orEmpty()),
+      body = stringResource(R.string.TellomiFeedPage__block_body),
+      confirm = stringResource(R.string.TellomiFeedPage__block),
+      dismiss = stringResource(android.R.string.cancel),
+      confirmColor = MaterialTheme.colorScheme.error,
+      onConfirm = {
+        confirmBlock = false
+        onBlockAuthor()
+      },
+      onDismiss = { confirmBlock = false }
+    )
+  }
   var confirmDelete by rememberSaveable { mutableStateOf(false) }
   if (confirmDelete) {
     Dialogs.SimpleAlertDialog(
@@ -246,7 +272,6 @@ private fun CommentList(
         card = state.post,
         showIpRegion = state.showIpRegion,
         onLikeClick = { onLikeClick() },
-        onNotInterestedClick = null,
         mediaBaseUrl = state.mediaBaseUrl,
         expanded = true,
         onAuthorClick = onAuthorClick,
@@ -255,7 +280,11 @@ private fun CommentList(
         onOwnPostAction = { _, action -> onOwnPostAction(action) },
         onDeleteClick = if (state.post.viewer.isAuthor) { _ -> confirmDelete = true } else null,
         onReportClick = if (state.post.viewer.isAuthor) null else { _ -> onReportPost() },
-        onSaveClick = { onSaveClick() }
+        onSaveClick = { onSaveClick() },
+        // 别人的帖子：不感兴趣 / 不看 TA / 屏蔽，成了就关页（第三节第 11、26 条）
+        onNotInterestedClick = if (state.post.viewer.isAuthor) null else { _ -> onNotInterested() },
+        onMuteAuthorClick = if (state.post.viewer.isAuthor) null else { _ -> onMuteAuthor() },
+        onBlockAuthorClick = if (state.post.viewer.isAuthor) null else { _ -> confirmBlock = true }
       )
       HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
     }
@@ -566,6 +595,7 @@ private fun FeedPostDetailState.Notice.messageRes(): Int {
     FeedPostDetailState.Notice.PARENT_GONE -> R.string.TellomiFeedDetail__parent_gone
     FeedPostDetailState.Notice.PIN_LIMIT -> R.string.TellomiFeed__pin_limit
     FeedPostDetailState.Notice.SAVED -> R.string.TellomiFeed__saved_done
+    FeedPostDetailState.Notice.HIDE_PROFILE_REQUIRED -> R.string.TellomiFeed__hide_profile_required
     FeedPostDetailState.Notice.FAILED -> R.string.TellomiFeed__action_failed
   }
 }

@@ -8,6 +8,7 @@ package org.thoughtcrime.securesms.feed.detail
 import android.content.Context
 import android.content.Intent
 import android.os.Bundle
+import android.widget.Toast
 import androidx.activity.compose.setContent
 import androidx.activity.viewModels
 import androidx.compose.runtime.getValue
@@ -16,6 +17,7 @@ import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
 import org.signal.core.ui.compose.theme.SignalTheme
 import org.thoughtcrime.securesms.PassphraseRequiredActivity
+import org.thoughtcrime.securesms.R
 import org.thoughtcrime.securesms.feed.net.FeedCard
 import org.thoughtcrime.securesms.feed.net.FeedJson
 import org.thoughtcrime.securesms.feed.profile.FeedProfileActivity
@@ -40,7 +42,10 @@ class FeedPostDetailActivity : PassphraseRequiredActivity() {
     }
   }
 
-  private val reportLauncher = registerForActivityResult(FeedReportActivity.Contract()) { }
+  /** 举报页里选了「只是不想看到」就按不感兴趣处理（第三节第 32 条先分流）。 */
+  private val reportLauncher = registerForActivityResult(FeedReportActivity.Contract()) { result ->
+    if (result == FeedReportActivity.Result.NOT_INTERESTED) viewModel.notInterested()
+  }
 
   /** 建好公开主页回来就把刚才那条评论发出去（草稿还在）。 */
   private val profileLauncher = registerForActivityResult(FeedProfileActivity.Contract()) { saved ->
@@ -74,7 +79,20 @@ class FeedPostDetailActivity : PassphraseRequiredActivity() {
           onDeletePost = viewModel::deletePost,
           onReportPost = { reportLauncher.launch(FeedReportTarget.content(state.post.id)) },
           onInsightsDismissed = viewModel::onInsightsDismissed,
-          onSaveClick = viewModel::toggleSave
+          onSaveClick = viewModel::toggleSave,
+          onNotInterested = viewModel::notInterested,
+          onMuteAuthor = viewModel::muteAuthor,
+          onBlockAuthor = viewModel::blockAuthor,
+          onLeave = { leave ->
+            // 页面马上关，提示用 Toast 带回上一页
+            val message = when (leave) {
+              FeedPostDetailState.Leave.NOT_INTERESTED -> R.string.TellomiFeedDetail__not_interested_done
+              FeedPostDetailState.Leave.MUTED -> R.string.TellomiFeed__muted_done
+              FeedPostDetailState.Leave.BLOCKED -> R.string.TellomiFeedPage__blocked_done
+            }
+            Toast.makeText(this, message, Toast.LENGTH_SHORT).show()
+            finish()
+          }
         )
       }
     }

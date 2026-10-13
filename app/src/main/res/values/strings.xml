@@ -7224,6 +7224,7 @@
     <string name="TellomiFeedDetail__decline">Decline</string>
     <string name="TellomiFeedDetail__decline_title">Decline this reply?</string>
     <string name="TellomiFeedDetail__decline_body">The reply will be deleted.</string>
+    <string name="TellomiFeedDetail__not_interested_done">You won\'t see this post again</string>
     <string name="TellomiFeedTopic__ai">AI</string>
     <string name="TellomiFeedTopic__tech">Tech &amp; gadgets</string>
     <string name="TellomiFeedTopic__dev">Programming</string>

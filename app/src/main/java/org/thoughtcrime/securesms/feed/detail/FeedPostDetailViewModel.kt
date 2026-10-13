@@ -24,6 +24,7 @@ import org.thoughtcrime.securesms.feed.FeedSource
 import org.thoughtcrime.securesms.feed.FeedSources
 import org.thoughtcrime.securesms.feed.NoteToSelfFeedSavedMessages
 import org.thoughtcrime.securesms.feed.isPinLimit
+import org.thoughtcrime.securesms.feed.net.FeedApi
 import org.thoughtcrime.securesms.feed.net.FeedApiException
 import org.thoughtcrime.securesms.feed.net.FeedCard
 import org.thoughtcrime.securesms.feed.net.FeedCreatePostResponse
@@ -294,6 +295,40 @@ class FeedPostDetailViewModel(
       }
     }
   }
+
+  /** 「···」里的不感兴趣（第三节第 11 条）：报给引擎，成了就关页。 */
+  fun notInterested() {
+    val post = internalState.value.post
+    leaveAfter(FeedPostDetailState.Leave.NOT_INTERESTED) { source.notInterested(post.id) }
+  }
+
+  /** 「不看 TA 的动态」：开放内容的外部作者没有。 */
+  fun muteAuthor() {
+    val author = internalState.value.post.author?.takeIf { it.isNative } ?: return
+    leaveAfter(FeedPostDetailState.Leave.MUTED) { source.setHideList(FeedApi.HIDE_MUTE, author.profileId, on = true) }
+  }
+
+  /** 屏蔽作者（确认框在界面上弹）。 */
+  fun blockAuthor() {
+    val author = internalState.value.post.author ?: return
+    leaveAfter(FeedPostDetailState.Leave.BLOCKED) { source.setBlocked(author.profileId, true) }
+  }
+
+  private var leavingJob: Job? = null
+
+  private fun leaveAfter(leave: FeedPostDetailState.Leave, call: suspend () -> Unit) {
+    if (leavingJob?.isActive == true || internalState.value.leaving != null) return
+    leavingJob = viewModelScope.launch {
+      try {
+        withContext(ioDispatcher) { call() }
+        internalState.update { it.copy(leaving = leave) }
+      } catch (e: Exception) {
+        Log.w(TAG, "$leave failed", e)
+        val profileRequired = e is FeedApiException && e.code == "profile_required"
+        internalState.update { it.copy(notice = if (profileRequired) FeedPostDetailState.Notice.HIDE_PROFILE_REQUIRED else FeedPostDetailState.Notice.FAILED) }
+      }
+    }
+  }
 }
 
 data class FeedPostDetailState(
@@ -316,7 +351,9 @@ data class FeedPostDetailState(
   /** 「查看数据」弹窗；null = 没开。 */
   val insights: FeedInsightsState? = null,
   /** 自己删掉了这条，页面该关了。 */
-  val deleted: Boolean = false
+  val deleted: Boolean = false,
+  /** 不感兴趣 / 不看 TA / 屏蔽成了：提示一句，页面关掉。 */
+  val leaving: Leave? = null
 ) {
   val threads: List<FeedCommentThread> by lazy { FeedCommentThreads.build(comments) }
 
@@ -339,6 +376,15 @@ data class FeedPostDetailState(
 
     /** 已存进「我的收藏」。 */
     SAVED,
+
+    /** 「不看 TA」要先有自己的公开主页。 */
+    HIDE_PROFILE_REQUIRED,
     FAILED
+  }
+
+  enum class Leave {
+    NOT_INTERESTED,
+    MUTED,
+    BLOCKED
   }
 }

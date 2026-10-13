@@ -6997,6 +6997,7 @@
     <string name="TellomiFeedDetail__decline">拒绝</string>
     <string name="TellomiFeedDetail__decline_title">拒绝这条回复？</string>
     <string name="TellomiFeedDetail__decline_body">这条回复会被删除。</string>
+    <string name="TellomiFeedDetail__not_interested_done">以后不再给你看这条</string>
     <string name="TellomiFeedTopic__ai">AI</string>
     <string name="TellomiFeedTopic__tech">科技数码</string>
     <string name="TellomiFeedTopic__dev">编程开发</string>
