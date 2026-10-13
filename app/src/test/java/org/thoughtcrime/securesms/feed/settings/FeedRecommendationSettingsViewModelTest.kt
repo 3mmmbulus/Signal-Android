@@ -20,6 +20,7 @@ import org.junit.Before
 import org.junit.Test
 import org.thoughtcrime.securesms.feed.EmptyFeedSource
 import org.thoughtcrime.securesms.feed.FeedSource
+import org.thoughtcrime.securesms.feed.net.FeedConfig
 import org.thoughtcrime.securesms.feed.net.FeedInterest
 import org.thoughtcrime.securesms.feed.net.FeedInterests
 import org.thoughtcrime.securesms.feed.net.FeedPreferences
@@ -30,14 +31,21 @@ class FeedRecommendationSettingsViewModelTest {
 
   private val dispatcher = UnconfinedTestDispatcher()
 
-  private class FakeSource(var fail: Boolean = false) : FeedSource by EmptyFeedSource {
+  private class FakeSource(var fail: Boolean = false, val region: String = "cn") : FeedSource by EmptyFeedSource {
+    val updates = mutableListOf<FeedPreferencesUpdate>()
+    override suspend fun config(): FeedConfig = FeedConfig(enabled = true, region = region, personalizationToggleVisible = true)
     var interests = FeedInterests(topics = listOf(FeedInterest("photo", score = 1.0), FeedInterest("food", score = 0.5)))
     val calls = mutableListOf<String>()
     override suspend fun preferences(): FeedPreferences = FeedPreferences()
     override suspend fun savePreferences(update: FeedPreferencesUpdate): FeedPreferences {
       if (fail) error("offline")
-      calls += "save ${update.personalized}"
-      return FeedPreferences(personalized = update.personalized ?: true)
+      updates += update
+      if (update.personalized != null) calls += "save ${update.personalized}"
+      return FeedPreferences(
+        personalized = update.personalized ?: true,
+        categories = update.categories ?: emptyMap(),
+        pausedUntil = if (update.pauseDays == FeedPreferences.PAUSE_DAYS) "2026-11-12T08:00:00Z" else null
+      )
     }
     override suspend fun interests(): FeedInterests = interests
     override suspend fun deleteInterest(dimension: String, key: String) {
@@ -103,5 +111,45 @@ class FeedRecommendationSettingsViewModelTest {
 
     assertThat(viewModel.state.value.interests!!.isEmpty).isTrue()
     assertThat(viewModel.state.value.notice).isEqualTo(FeedRecommendationSettingsState.Notice.RESET)
+  }
+
+  @Test
+  fun `categories go as a whole map, default takes one out`() {
+    val source = FakeSource()
+    val viewModel = FeedRecommendationSettingsViewModel(source, dispatcher)
+
+    viewModel.setCategory("food", FeedPreferences.CATEGORY_INCREASE)
+    viewModel.setCategory("news", FeedPreferences.CATEGORY_REDUCE)
+    viewModel.setCategory("food", FeedPreferences.CATEGORY_DEFAULT)
+
+    assertThat(source.updates.map { it.categories }).containsExactly(
+      mapOf("food" to "increase"),
+      mapOf("food" to "increase", "news" to "reduce"),
+      mapOf("news" to "reduce")
+    )
+    assertThat(viewModel.state.value.preferences!!.categories).isEqualTo(mapOf("news" to "reduce"))
+  }
+
+  @Test
+  fun `more sensitive content is only offered overseas`() {
+    val mainland = FeedRecommendationSettingsViewModel(FakeSource(region = "cn"), dispatcher)
+    mainland.setSensitive(FeedPreferences.SENSITIVE_MORE)
+    assertThat(mainland.state.value.preferences!!.sensitive).isEqualTo(FeedPreferences.SENSITIVE_STANDARD)
+    assertThat(mainland.state.value.sensitiveChoices).containsExactly(FeedPreferences.SENSITIVE_REDUCE, FeedPreferences.SENSITIVE_STANDARD)
+
+    val overseas = FeedRecommendationSettingsViewModel(FakeSource(region = "intl"), dispatcher)
+    assertThat(overseas.state.value.sensitiveChoices).containsExactly(FeedPreferences.SENSITIVE_REDUCE, FeedPreferences.SENSITIVE_STANDARD, FeedPreferences.SENSITIVE_MORE)
+  }
+
+  @Test
+  fun `pause waits for the server, resume clears it`() {
+    val source = FakeSource()
+    val viewModel = FeedRecommendationSettingsViewModel(source, dispatcher)
+
+    viewModel.pause()
+    assertThat(viewModel.state.value.preferences!!.pausedUntil).isEqualTo("2026-11-12T08:00:00Z")
+    viewModel.resume()
+    assertThat(viewModel.state.value.preferences!!.pausedUntil).isEqualTo(null)
+    assertThat(source.updates.map { it.pauseDays }).containsExactly(30, 0)
   }
 }

@@ -35,6 +35,11 @@ class FeedRecommendationSettingsActivity : PassphraseRequiredActivity() {
           onBack = { finish() },
           onRetry = viewModel::load,
           onPersonalizedChanged = viewModel::setPersonalized,
+          onStyleChanged = viewModel::setStyle,
+          onSensitiveChanged = viewModel::setSensitive,
+          onCategoryChanged = viewModel::setCategory,
+          onPause = viewModel::pause,
+          onResume = viewModel::resume,
           onDeleteInterest = viewModel::deleteInterest,
           onReset = viewModel::reset,
           onNoticeShown = viewModel::onNoticeShown

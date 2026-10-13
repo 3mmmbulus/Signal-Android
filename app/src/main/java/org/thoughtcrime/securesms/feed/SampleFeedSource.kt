@@ -255,7 +255,17 @@ object SampleFeedSource : FeedSource {
   override suspend fun preferences(): FeedPreferences = synchronized(this) { preferences }
 
   override suspend fun savePreferences(update: FeedPreferencesUpdate): FeedPreferences = synchronized(this) {
-    preferences = preferences.copy(personalized = update.personalized ?: preferences.personalized)
+    preferences = preferences.copy(
+      personalized = update.personalized ?: preferences.personalized,
+      style = update.style ?: preferences.style,
+      sensitive = update.sensitive ?: preferences.sensitive,
+      categories = update.categories?.filterValues { it != FeedPreferences.CATEGORY_DEFAULT } ?: preferences.categories,
+      pausedUntil = when (update.pauseDays) {
+        null -> preferences.pausedUntil
+        0 -> null
+        else -> Instant.now().plus(update.pauseDays.toLong(), ChronoUnit.DAYS).toString()
+      }
+    )
     preferences
   }
 

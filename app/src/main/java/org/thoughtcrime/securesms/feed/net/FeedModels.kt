@@ -46,6 +46,9 @@ data class FeedConfig(
 
     /** 打分排序（ADR §10.4 / §10.5）；只有这时显示个性化开关（第三节第 47 条）。 */
     const val RECOMMEND_MODE_SCORED = "scored"
+
+    /** 引擎的大陆区域（敏感内容「更多」不开放，R-1.6）。 */
+    const val REGION_CN = "cn"
   }
 }
 
@@ -713,9 +716,7 @@ data class FeedClosePersonState(val state: String = FeedClosePersonEntry.STATE_P
 @Serializable
 data class FeedClosePersonAnswer(val accept: Boolean)
 
-/**
- * `GET /v1/feed/me/preferences`：内容偏好（第三节第 12、47 条）。这一版只用 [personalized]，其余字段读进来原样保留。
- */
+/** `GET /v1/feed/me/preferences`：内容偏好（第三节第 12、47 条）。[pausedUntil] 非空 = 暂停中。 */
 @Serializable
 data class FeedPreferences(
   val personalized: Boolean = true,
@@ -724,7 +725,26 @@ data class FeedPreferences(
   val categories: Map<String, String> = emptyMap(),
   @SerialName("paused_until") val pausedUntil: String? = null,
   @SerialName("recent_topics") val recentTopics: List<FeedRecentTopic> = emptyList()
-)
+) {
+  companion object {
+    const val STYLE_KEEP = "keep"
+    const val STYLE_EXPLORE = "explore"
+    val STYLES = listOf(STYLE_KEEP, STYLE_EXPLORE)
+
+    const val SENSITIVE_REDUCE = "reduce"
+    const val SENSITIVE_STANDARD = "standard"
+    const val SENSITIVE_MORE = "more"
+    val SENSITIVE_VALUES = listOf(SENSITIVE_REDUCE, SENSITIVE_STANDARD, SENSITIVE_MORE)
+
+    const val CATEGORY_REDUCE = "reduce"
+    const val CATEGORY_DEFAULT = "default"
+    const val CATEGORY_INCREASE = "increase"
+    val CATEGORY_VALUES = listOf(CATEGORY_REDUCE, CATEGORY_DEFAULT, CATEGORY_INCREASE)
+
+    /** 引擎只收 30（暂停）或 0（恢复）。 */
+    const val PAUSE_DAYS = 30
+  }
+}
 
 /** 最近 30 天看过的内容里，某个话题占多少（0–1）。 */
 @Serializable

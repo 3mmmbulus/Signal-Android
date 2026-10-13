@@ -6991,6 +6991,31 @@
     <string name="TellomiFeedRecommendation__reset_confirm_title">确定要重置吗？</string>
     <string name="TellomiFeedRecommendation__reset_confirm_body">重置后不能撤销。</string>
     <string name="TellomiFeedRecommendation__reset_done">已重置推荐</string>
+    <string name="TellomiFeedRecommendation__editorial_note">现在的推荐是编辑精选加时间顺序，不按你的兴趣。</string>
+    <string name="TellomiFeedRecommendation__recent">最近看的内容</string>
+    <string name="TellomiFeedRecommendation__content">内容偏好</string>
+    <string name="TellomiFeedRecommendation__style">推荐风格</string>
+    <string name="TellomiFeedRecommendation__style_keep">保持现状</string>
+    <string name="TellomiFeedRecommendation__style_explore">探索更多</string>
+    <string name="TellomiFeedRecommendation__sensitive">敏感内容</string>
+    <string name="TellomiFeedRecommendation__sensitive_reduce">减少</string>
+    <string name="TellomiFeedRecommendation__sensitive_standard">标准</string>
+    <string name="TellomiFeedRecommendation__sensitive_more">更多</string>
+    <string name="TellomiFeedRecommendation__categories">按类别调整</string>
+    <string name="TellomiFeedRecommendation__categories_hint">多看或少看某一类</string>
+    <string name="TellomiFeedRecommendation__category_reduce">减少</string>
+    <string name="TellomiFeedRecommendation__category_default">默认</string>
+    <string name="TellomiFeedRecommendation__category_increase">增加</string>
+    <string name="TellomiFeedRecommendation__pause">暂停推荐 30 天</string>
+    <string name="TellomiFeedRecommendation__pause_description">暂停期间推荐不按你的兴趣</string>
+    <string name="TellomiFeedRecommendation__pause_title">暂停推荐？</string>
+    <string name="TellomiFeedRecommendation__pause_body">接下来 30 天，推荐不按你的兴趣。随时可以恢复。</string>
+    <string name="TellomiFeedRecommendation__pause_confirm">暂停</string>
+    <string name="TellomiFeedRecommendation__paused">已暂停，%1$s 恢复</string>
+    <string name="TellomiFeedRecommendation__resume">恢复</string>
+    <plurals name="TellomiFeedRecommendation__categories_adjusted">
+        <item quantity="other">已调整 %1$d 类</item>
+    </plurals>
     <string name="ConversationListTabs__99p">99+</string>
     <!-- Menu item on stories landing page -->
     <string name="StoriesLandingFragment__story_privacy">快拍隐私</string>

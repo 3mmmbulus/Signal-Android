@@ -651,4 +651,10 @@ class FeedApiTest {
     assertThat(reset.method).isEqualTo("POST")
     assertThat(reset.path).isEqualTo("/v1/feed/me/interests/reset")
   }
+
+  @Test
+  fun `category and pause updates are sent as the engine names them`() {
+    val json = FeedJson.encodeToString(FeedPreferencesUpdate.serializer(), FeedPreferencesUpdate(categories = mapOf("food" to "increase"), pauseDays = 30))
+    assertThat(json).isEqualTo("""{"categories":{"food":"increase"},"pause_days":30}""")
+  }
 }

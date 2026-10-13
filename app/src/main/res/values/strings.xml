@@ -7218,6 +7218,32 @@
     <string name="TellomiFeedRecommendation__reset_confirm_title">Are you sure?</string>
     <string name="TellomiFeedRecommendation__reset_confirm_body">This can’t be undone.</string>
     <string name="TellomiFeedRecommendation__reset_done">Recommendations reset</string>
+    <string name="TellomiFeedRecommendation__editorial_note">Recommendations right now are editors’ picks in time order, not based on your interests.</string>
+    <string name="TellomiFeedRecommendation__recent">What you’ve viewed lately</string>
+    <string name="TellomiFeedRecommendation__content">Content</string>
+    <string name="TellomiFeedRecommendation__style">Recommendation style</string>
+    <string name="TellomiFeedRecommendation__style_keep">Keep it as it is</string>
+    <string name="TellomiFeedRecommendation__style_explore">Explore more</string>
+    <string name="TellomiFeedRecommendation__sensitive">Sensitive content</string>
+    <string name="TellomiFeedRecommendation__sensitive_reduce">Less</string>
+    <string name="TellomiFeedRecommendation__sensitive_standard">Standard</string>
+    <string name="TellomiFeedRecommendation__sensitive_more">More</string>
+    <string name="TellomiFeedRecommendation__categories">Adjust by category</string>
+    <string name="TellomiFeedRecommendation__categories_hint">See more or less of a category</string>
+    <string name="TellomiFeedRecommendation__category_reduce">Less</string>
+    <string name="TellomiFeedRecommendation__category_default">Default</string>
+    <string name="TellomiFeedRecommendation__category_increase">More</string>
+    <string name="TellomiFeedRecommendation__pause">Pause recommendations for 30 days</string>
+    <string name="TellomiFeedRecommendation__pause_description">Recommendations won’t use your interests while paused</string>
+    <string name="TellomiFeedRecommendation__pause_title">Pause recommendations?</string>
+    <string name="TellomiFeedRecommendation__pause_body">For the next 30 days, recommendations won’t use your interests. You can resume anytime.</string>
+    <string name="TellomiFeedRecommendation__pause_confirm">Pause</string>
+    <string name="TellomiFeedRecommendation__paused">Paused until %1$s</string>
+    <string name="TellomiFeedRecommendation__resume">Resume</string>
+    <plurals name="TellomiFeedRecommendation__categories_adjusted">
+        <item quantity="one">%1$d category adjusted</item>
+        <item quantity="other">%1$d categories adjusted</item>
+    </plurals>
     <string name="ConversationListTabs__99p">99+</string>
     <!-- Menu item on stories landing page -->
     <string name="StoriesLandingFragment__story_privacy">Story privacy</string>

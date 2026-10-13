@@ -8,14 +8,19 @@ package org.thoughtcrime.securesms.feed.settings
 import android.app.Application
 import android.graphics.Bitmap
 import androidx.compose.ui.graphics.asAndroidBitmap
+import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.captureToImage
+import androidx.compose.ui.test.hasScrollToNodeAction
+import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithText
+import androidx.compose.ui.test.onFirst
 import androidx.compose.ui.test.onLast
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performScrollToNode
 import androidx.test.core.app.ApplicationProvider
 import assertk.assertThat
 import assertk.assertions.isEqualTo
@@ -30,6 +35,7 @@ import org.signal.core.ui.compose.theme.SignalTheme
 import org.thoughtcrime.securesms.feed.net.FeedInterest
 import org.thoughtcrime.securesms.feed.net.FeedInterests
 import org.thoughtcrime.securesms.feed.net.FeedPreferences
+import org.thoughtcrime.securesms.feed.net.FeedRecentTopic
 import java.io.File
 
 /** 动态设置：个性化开关、兴趣标签、重置推荐的两次确认。设了 `FEED_SCREENSHOT_DIR` 时截图。 */
@@ -52,6 +58,10 @@ class FeedRecommendationSettingsScreenTest {
     sources = listOf(FeedInterest("unsplash", label = "Unsplash", score = 0.5))
   )
 
+  private fun scrollTo(matcher: SemanticsMatcher) {
+    composeTestRule.onNode(hasScrollToNodeAction()).performScrollToNode(matcher)
+  }
+
   private fun show(state: FeedRecommendationSettingsState) {
     composeTestRule.setContent {
       SignalTheme {
@@ -60,6 +70,9 @@ class FeedRecommendationSettingsScreenTest {
           onBack = {},
           onRetry = { events += "retry" },
           onPersonalizedChanged = { events += "personalized=$it" },
+          onCategoryChanged = { slug, value -> events += "category $slug=$value" },
+          onPause = { events += "pause" },
+          onResume = { events += "resume" },
           onDeleteInterest = { dim, interest -> events += "delete $dim/${interest.key}" },
           onReset = { events += "reset" },
           onNoticeShown = {}
@@ -70,7 +83,7 @@ class FeedRecommendationSettingsScreenTest {
 
   @Test
   fun `tags are named, deletable, and reset asks twice`() {
-    show(FeedRecommendationSettingsState(preferences = FeedPreferences(), interests = interests))
+    show(FeedRecommendationSettingsState(preferences = FeedPreferences(), interests = interests, personalizationToggleVisible = true))
 
     composeTestRule.onNodeWithText("Photography").assertExists()
     composeTestRule.onNodeWithText("Baking & desserts").assertExists()
@@ -85,6 +98,7 @@ class FeedRecommendationSettingsScreenTest {
 
     composeTestRule.onNodeWithTag(FeedRecommendationSettingsTestTags.PERSONALIZED).performClick()
     composeTestRule.onNodeWithTag(FeedRecommendationSettingsTestTags.DELETE + "topic-photo").performClick()
+    scrollTo(hasTestTag(FeedRecommendationSettingsTestTags.RESET))
     composeTestRule.onNodeWithTag(FeedRecommendationSettingsTestTags.RESET).performClick()
     composeTestRule.onNodeWithText("Continue").performClick()
     composeTestRule.onNodeWithText("Are you sure?").assertExists()
@@ -103,5 +117,42 @@ class FeedRecommendationSettingsScreenTest {
     show(FeedRecommendationSettingsState(loadFailed = true))
     composeTestRule.onNodeWithText("Retry").performClick()
     assertThat(events).isEqualTo(listOf("retry"))
+  }
+
+  @Test
+  fun `editorial mode has no switch, categories open and change, pause asks first`() {
+    val preferences = FeedPreferences(
+      categories = mapOf("food" to FeedPreferences.CATEGORY_INCREASE),
+      recentTopics = listOf(FeedRecentTopic("photo", 0.42), FeedRecentTopic("food", 0.21))
+    )
+    show(FeedRecommendationSettingsState(preferences = preferences, interests = FeedInterests(), region = "cn"))
+
+    composeTestRule.onNodeWithTag(FeedRecommendationSettingsTestTags.PERSONALIZED).assertDoesNotExist()
+    composeTestRule.onNodeWithText("Recommendations right now are editors’ picks in time order, not based on your interests.").assertExists()
+    composeTestRule.onNodeWithText("42%").assertExists()
+    composeTestRule.onNodeWithText("1 category adjusted").assertExists()
+    val dir = System.getenv("FEED_SCREENSHOT_DIR")
+    if (dir != null) {
+      val bitmap = composeTestRule.onRoot().captureToImage().asAndroidBitmap()
+      File(dir).mkdirs()
+      File(dir, "feed_recommendation_preferences.png").outputStream().use { bitmap.compress(Bitmap.CompressFormat.PNG, 100, it) }
+    }
+
+    composeTestRule.onNodeWithTag(FeedRecommendationSettingsTestTags.CATEGORIES).performClick()
+    scrollTo(hasTestTag(FeedRecommendationSettingsTestTags.CATEGORY + "ai"))
+    composeTestRule.onAllNodesWithText("Less").onFirst().performClick()
+    scrollTo(hasTestTag(FeedRecommendationSettingsTestTags.PAUSE))
+    composeTestRule.onNodeWithTag(FeedRecommendationSettingsTestTags.PAUSE).performClick()
+    composeTestRule.onNodeWithText("Pause").performClick()
+    assertThat(events).isEqualTo(listOf("category ai=reduce", "pause"))
+  }
+
+  @Test
+  fun `paused shows when it resumes`() {
+    show(FeedRecommendationSettingsState(preferences = FeedPreferences(pausedUntil = "2026-11-12T08:00:00Z"), interests = FeedInterests()))
+
+    scrollTo(hasTestTag(FeedRecommendationSettingsTestTags.PAUSE))
+    composeTestRule.onNodeWithText("Paused until", substring = true).performClick()
+    assertThat(events).isEqualTo(listOf("resume"))
   }
 }

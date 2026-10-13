@@ -52,6 +52,10 @@ object FeedTopicNames {
     "news" to R.string.TellomiFeedTopic__news
   )
 
+  /** 全部类别，按引擎的编号顺序（「按类别调整」用）。 */
+  val slugs: List<String>
+    get() = names.keys.toList()
+
   @StringRes
   fun of(slug: String): Int? = names[slug]
 }
