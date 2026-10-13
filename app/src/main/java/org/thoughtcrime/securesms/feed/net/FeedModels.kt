@@ -8,6 +8,7 @@ package org.thoughtcrime.securesms.feed.net
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.Transient
+import kotlinx.serialization.json.JsonElement
 
 /*
  * 内容引擎（`tellomi/content-engine` `internal/engine/api`）的 JSON 结构，字段名与引擎逐字相同（snake_case）。
@@ -148,7 +149,9 @@ data class FeedCard(
   /** 被引用的帖子 id；要显示时再走一次 Card API。 */
   @SerialName("quote_of") val quoteOf: String? = null,
   @SerialName("source_url") val sourceUrl: String? = null,
-  val attribution: String? = null,
+  /** 开放内容的来源与许可（契约 4.3 是对象，字段还没定稿）；先原样留着，看图页「···」做的时候再解析。 */
+  val attribution: JsonElement? = null,
+  val rights: JsonElement? = null,
   @SerialName("ip_region_label") val ipRegionLabel: String? = null,
   @SerialName("ai_generated") val aiGenerated: Boolean = false,
   val stats: FeedStats = FeedStats(),

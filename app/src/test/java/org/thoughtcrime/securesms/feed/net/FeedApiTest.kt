@@ -391,4 +391,18 @@ class FeedApiTest {
 
     assertThat(config.reportReasons).isEqualTo(mapOf("illegal" to listOf("fraud", "drugs")))
   }
+
+  @Test
+  fun `open content attribution is an object and does not break the page`() = runBlocking {
+    server.enqueue(
+      MockResponse().setBody(
+        """{"cards":[{"id":"a","state":"ok","card":{"kind":"post","text":"hi","attribution":{"name":"某站","url":"https://example.com"},"rights":{"basis":"license","license":"CC-BY-4.0"}}},{"id":"b","state":"ok","card":{"kind":"post","text":"yo","attribution":"plain"}}]}"""
+      )
+    )
+
+    val cards = api.cards(listOf("a", "b")).cards.mapNotNull { it.toCard() }
+
+    assertThat(cards.map { it.id }).containsExactly("a", "b")
+    assertThat(cards.first().attribution.toString().contains("某站")).isTrue()
+  }
 }
