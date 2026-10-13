@@ -298,6 +298,7 @@ class MediaSendFlowViewModel(
       MediaSendFlowEvent.CloseAlbumViewer -> closeAlbumViewer()
       is MediaSendFlowEvent.SwitchFolder -> backStack.switchFolder(event.mediaFolder)
       is MediaSendFlowEvent.SendNow -> sendNow(event.quality, event.separately, event.asFile, event.convertHeicToJpeg)
+      MediaSendFlowEvent.ToggleCaptionAboveMedia -> updateState { copy(isCaptionAboveMedia = !isCaptionAboveMedia) }
       is MediaSendFlowEvent.AttachmentDockEntrySelected -> sendHudCommand(MediaSendFlowHudCommand.AttachmentDockEntrySelected(event.id))
       is MediaSendFlowEvent.ShowToast -> internalToastEvents.trySend(event.toast)
       is MediaSendFlowEvent.OpenAttachmentPage -> internalState.update { it.copy(attachmentPage = event.page) }
@@ -1338,7 +1339,8 @@ class MediaSendFlowViewModel(
       preUploadResults = if (asFile != null) emptyList() else awaitPreUploadResults(),
       sendSeparately = sendSeparatelyOnce,
       sendAsFile = asFile != null,
-      convertHeicToJpeg = asFile?.convertHeicToJpeg == true
+      convertHeicToJpeg = asFile?.convertHeicToJpeg == true,
+      captionAboveMedia = snapshot.isCaptionAboveMedia && asFile == null
     )
     clearSendNowOptions()
 

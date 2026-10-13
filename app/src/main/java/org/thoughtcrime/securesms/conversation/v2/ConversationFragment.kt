@@ -2730,6 +2730,7 @@ class ConversationFragment :
     preUploadResults: List<MessageSender.PreUploadResult> = emptyList(),
     bypassPreSendSafetyNumberCheck: Boolean = false,
     isViewOnce: Boolean = false,
+    captionAboveMedia: Boolean = false,
     afterSendComplete: () -> Unit = {}
   ) {
     val threadRecipient = viewModel.recipientSnapshot
@@ -2789,7 +2790,8 @@ class ConversationFragment :
       contacts = contacts,
       linkPreviews = linkPreviews,
       preUploadResults = preUploadResults,
-      isViewOnce = isViewOnce
+      isViewOnce = isViewOnce,
+      captionAboveMedia = captionAboveMedia
     )
 
     disposables += send
@@ -4865,7 +4867,8 @@ class ConversationFragment :
         clearCompose = true,
         linkPreviews = emptyList(),
         isViewOnce = result.isViewOnce,
-        bypassPreSendSafetyNumberCheck = true
+        bypassPreSendSafetyNumberCheck = true,
+        captionAboveMedia = result.captionAboveMedia
       ) {
         viewModel.deleteSlideData(slides)
       }
@@ -4959,7 +4962,9 @@ class ConversationFragment :
           contacts = emptyList(),
           linkPreviews = emptyList(),
           preUploadResults = if (result.isPushPreUpload) listOf(preUploadParts[index]) else emptyList(),
-          isViewOnce = false
+          isViewOnce = false,
+          // 说明只挂在最后一条，「说明在上方」也只给它（按文件发的不适用：结果里本来就是 false）
+          captionAboveMedia = isLast && result.captionAboveMedia
         ).doOnComplete {
           // 离开会话后 view 已经没了，onSendComplete 里滚动、清草稿都不用做了。
           if (isFirst && isAdded && view != null) {
@@ -4999,7 +5004,8 @@ class ConversationFragment :
         linkPreviews = emptyList(),
         preUploadResults = result.preUploadResults,
         isViewOnce = result.isViewOnce,
-        bypassPreSendSafetyNumberCheck = true
+        bypassPreSendSafetyNumberCheck = true,
+        captionAboveMedia = result.captionAboveMedia
       )
     }
 

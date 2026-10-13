@@ -99,6 +99,9 @@
   <string name="MediaSelectScreen__convert_photos_to_jpeg">是否把相片轉成 JPEG？</string>
   <string name="MediaSelectScreen__keep_heic">保留 HEIC</string>
   <string name="MediaSelectScreen__convert_to_jpeg">轉成 JPEG</string>
+  <!-- Tellomi（tellomi/tellomi#1263 M-2，ADR-0068 §4.7）说明文字在媒体上方 / 下方 -->
+  <string name="MediaSelectScreen__move_caption_up">說明文字上移</string>
+  <string name="MediaSelectScreen__move_caption_down">說明文字下移</string>
   <string name="MediaSelectScreen__open_media">打開</string>
   <string name="MediaSelectScreen__select">選取</string>
   <string name="MediaSelectScreen__you_have_limited_access">你已限制 Tellomi 存取相片。</string>

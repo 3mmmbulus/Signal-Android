@@ -102,6 +102,7 @@ import org.thoughtcrime.securesms.util.MessageConstraintsUtil
 import org.thoughtcrime.securesms.util.RemoteConfig
 import org.thoughtcrime.securesms.util.SignalLocalMetrics
 import org.thoughtcrime.securesms.util.SignalTrace
+import org.thoughtcrime.securesms.util.TellomiCaptionAbove
 import org.thoughtcrime.securesms.util.TextSecurePreferences
 import org.thoughtcrime.securesms.util.hasGiftBadge
 import org.thoughtcrime.securesms.util.isStory
@@ -947,7 +948,9 @@ object DataMessageProcessor {
         linkPreviews = linkPreviews,
         mentions = mentions,
         serverGuid = UuidUtil.getStringUUID(envelope.serverGuid, envelope.serverGuidBinary),
-        messageRanges = messageRanges
+        messageRanges = messageRanges,
+        // Tellomi（ADR-0068 §4.7）：说明文字在媒体上方
+        messageExtras = TellomiCaptionAbove.extrasFrom(message)
       )
 
       insertResult = SignalDatabase.messages.insertMessageInbox(retrieved = mediaMessage, candidateThreadId = -1, skipThreadUpdate = batchCache.batchThreadUpdates).orNull()

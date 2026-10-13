@@ -27,6 +27,7 @@ import assertk.assertThat
 import assertk.assertions.contains
 import assertk.assertions.containsExactly
 import assertk.assertions.isEmpty
+import assertk.assertions.isEqualTo
 import assertk.assertions.isFalse
 import assertk.assertions.isTrue
 import org.junit.Rule
@@ -289,6 +290,39 @@ class MediaPickerGridTest {
     composeTestRule.onNodeWithText("Convert to JPEG").performClick()
 
     assertThat(sentAsFile()).containsExactly(MediaSelectScreenEvents.SendAsFile(convertHeicToJpeg = true))
+  }
+
+  // M-2（#1263，ADR-0068 §4.7）：写了说明，「···」最后（分隔线下面）是「说明文字上移」；已经在上方就是「下移」；点了是开关，不发送。
+
+  @Test
+  fun `Given a caption, when the more menu is opened, then the caption can be moved up`() {
+    setContent(selectedMedia = MEDIA.take(2), sendOptions = MediaSelectState.SendOptions(message = "caption", canSendSeparately = true, canMoveCaption = true))
+
+    composeTestRule.onNode(hasContentDescription("More options")).performClick()
+    val separately = composeTestRule.onNodeWithText("Send Separately").fetchSemanticsNode().boundsInRoot.top
+    val moveUp = composeTestRule.onNodeWithText("Move Caption Up").assertIsDisplayed().fetchSemanticsNode().boundsInRoot.top
+    assertThat(separately < moveUp).isTrue()
+    composeTestRule.onNodeWithText("Move Caption Up").performClick()
+
+    assertThat(events.filterIsInstance<MediaSelectScreenEvents.ToggleCaptionAboveMedia>().size).isEqualTo(1)
+    assertThat(sentAsFile()).isEmpty()
+  }
+
+  @Test
+  fun `Given the caption is above, when the more menu is opened, then it can be moved down`() {
+    setContent(selectedMedia = MEDIA.take(1), sendOptions = MediaSelectState.SendOptions(message = "caption", canMoveCaption = true, isCaptionAboveMedia = true))
+
+    composeTestRule.onNode(hasContentDescription("More options")).performClick()
+    composeTestRule.onNodeWithText("Move Caption Down").assertIsDisplayed()
+    composeTestRule.onNodeWithText("Move Caption Up").assertDoesNotExist()
+  }
+
+  @Test
+  fun `Given no caption, when the more menu is opened, then there is no caption item`() {
+    setContent(selectedMedia = MEDIA.take(1), sendOptions = MediaSelectState.SendOptions(message = "  ", canMoveCaption = true))
+
+    composeTestRule.onNode(hasContentDescription("More options")).performClick()
+    composeTestRule.onNodeWithText("Move Caption Up").assertDoesNotExist()
   }
 
   // P-1：「最近 ⌄」里换相册。

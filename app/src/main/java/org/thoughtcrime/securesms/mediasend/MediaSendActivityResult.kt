@@ -39,7 +39,9 @@ class MediaSendActivityResult(
    * Tellomi（tellomi/tellomi#1263 P-5「以文件发送」，ADR-0068）：[nonUploadedMedia] 是按文件发的原图（[TellomiMediaAsFiles]），
    * 会话页一个一条地发（说明挂最后一条）。
    */
-  val sendAsFile: Boolean = false
+  val sendAsFile: Boolean = false,
+  /** Tellomi（ADR-0068 §4.7）：说明文字画在媒体上方（「···」→「说明文字上移」）。 */
+  val captionAboveMedia: Boolean = false
 ) : Parcelable {
 
   val isPushPreUpload: Boolean
@@ -49,8 +51,8 @@ class MediaSendActivityResult(
     require((preUploadResults.isNotEmpty() && nonUploadedMedia.isEmpty()) || (preUploadResults.isEmpty() && nonUploadedMedia.isNotEmpty()))
   }
 
-  /** Tellomi（#1261）：同一份结果，改成一张一条地发。 */
-  fun withSendSeparately(sendSeparately: Boolean): MediaSendActivityResult = MediaSendActivityResult(
+  /** Tellomi（#1261、#1263）：同一份结果，改成一张一条地发 / 说明放在上方。 */
+  fun withTellomiOptions(sendSeparately: Boolean, captionAboveMedia: Boolean): MediaSendActivityResult = MediaSendActivityResult(
     recipientId = recipientId,
     preUploadResults = preUploadResults,
     nonUploadedMedia = nonUploadedMedia,
@@ -62,7 +64,8 @@ class MediaSendActivityResult(
     storyType = storyType,
     scheduledTime = scheduledTime,
     sendSeparately = sendSeparately,
-    sendAsFile = sendAsFile
+    sendAsFile = sendAsFile,
+    captionAboveMedia = captionAboveMedia
   )
 
   companion object {

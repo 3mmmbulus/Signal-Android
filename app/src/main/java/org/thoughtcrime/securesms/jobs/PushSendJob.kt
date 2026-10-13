@@ -49,6 +49,7 @@ import org.thoughtcrime.securesms.recipients.Recipient.Companion.self
 import org.thoughtcrime.securesms.transport.RetryLaterException
 import org.thoughtcrime.securesms.transport.UndeliverableMessageException
 import org.thoughtcrime.securesms.util.MediaUtil
+import org.thoughtcrime.securesms.util.TellomiCaptionAbove
 import org.whispersystems.signalservice.api.InvalidPreKeyException
 import org.whispersystems.signalservice.api.crypto.AttachmentCipherStreamUtil.getCiphertextLength
 import org.whispersystems.signalservice.api.messages.AttachmentTransferProgress
@@ -484,6 +485,9 @@ abstract class PushSendJob protected constructor(parameters: Parameters) : BaseJ
     val poll = message.poll ?: return null
     return SignalServiceDataMessage.PollCreate(poll.question, poll.allowMultipleVotes, poll.pollOptions)
   }
+
+  /** Tellomi（ADR-0068 §4.7）：说明文字画在媒体上方。 */
+  protected fun isTellomiCaptionAboveMedia(message: OutgoingMessage): Boolean = TellomiCaptionAbove.isCaptionAboveMedia(message.messageExtras)
 
   protected fun getPollTerminate(message: OutgoingMessage): SignalServiceDataMessage.PollTerminate? {
     val pollTerminate = message.messageExtras?.pollTerminate ?: return null

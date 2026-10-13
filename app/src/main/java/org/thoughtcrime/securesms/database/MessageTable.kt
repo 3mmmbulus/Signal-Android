@@ -150,6 +150,7 @@ import org.thoughtcrime.securesms.util.MediaUtil
 import org.thoughtcrime.securesms.util.MessageConstraintsUtil
 import org.thoughtcrime.securesms.util.RemoteConfig
 import org.thoughtcrime.securesms.util.SignalTrace
+import org.thoughtcrime.securesms.util.TellomiCaptionAbove
 import org.thoughtcrime.securesms.util.TextSecurePreferences
 import org.thoughtcrime.securesms.util.isStory
 import org.whispersystems.signalservice.internal.push.SyncMessage
@@ -3125,7 +3126,9 @@ open class MessageTable(context: Context?, databaseHelper: SignalDatabase) : Dat
           isSecure = MessageTypes.isSecureType(outboxType),
           bodyRanges = messageRanges,
           scheduledDate = scheduledDate,
-          messageToEdit = editedMessage
+          messageToEdit = editedMessage,
+          // Tellomi（ADR-0068 §4.7）：发送任务要知道说明在不在上方
+          messageExtras = TellomiCaptionAbove.onlyTellomi(messageExtras)
         )
       }
     } ?: throw NoSuchMessageException("No record found for id: $messageId")

@@ -123,6 +123,7 @@ import org.thoughtcrime.securesms.util.IdentityUtil
 import org.thoughtcrime.securesms.util.MediaUtil
 import org.thoughtcrime.securesms.util.MessageConstraintsUtil
 import org.thoughtcrime.securesms.util.SignalE164Util
+import org.thoughtcrime.securesms.util.TellomiCaptionAbove
 import org.thoughtcrime.securesms.util.TextSecurePreferences
 import org.thoughtcrime.securesms.util.hasGiftBadge
 import org.whispersystems.signalservice.api.crypto.EnvelopeMetadata
@@ -502,7 +503,9 @@ object SyncMessageProcessor {
       mentions = mentions,
       bodyRanges = bodyRanges,
       isSecure = true,
-      messageToEdit = targetMessage.id
+      messageToEdit = targetMessage.id,
+      // Tellomi（ADR-0068 §4.7）
+      messageExtras = TellomiCaptionAbove.extrasFrom(message)
     )
 
     val messageId: Long = SignalDatabase.messages.insertMessageOutbox(mediaMessage, threadId, false, GroupReceiptTable.STATUS_UNKNOWN, null).messageId
@@ -871,7 +874,9 @@ object SyncMessageProcessor {
       mentions = mentions,
       giftBadge = giftBadge,
       bodyRanges = bodyRanges,
-      isSecure = true
+      isSecure = true,
+      // Tellomi（ADR-0068 §4.7）
+      messageExtras = TellomiCaptionAbove.extrasFrom(dataMessage)
     )
 
     if (syncDestinationRecipient.expiresInSeconds != dataMessage.expireTimerDuration.inWholeSeconds.toInt() || ((dataMessage.expireTimerVersion ?: -1) > syncDestinationRecipient.expireTimerVersion)) {

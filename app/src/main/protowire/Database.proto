@@ -539,6 +539,14 @@ message MessageExtras {
         PinnedMessage pinnedMessage = 6;
         AdminDeleteStatus adminDeleteStatus = 7;
     }
+    // Tellomi（ADR-0068 §4.7）：本机存的消息级扩展，在 oneof 外面（普通消息也能带）。字段号同协议从 1000 起。
+    TellomiMessageExtras tellomi = 1000;
+}
+
+// Tellomi（tellomi/tellomi#1263，ADR-0068 §4.7）：DataMessage.tellomi 里本机要记住的。
+message TellomiMessageExtras {
+    // 说明文字画在媒体上方（默认下方）。只在「有正文 + 至少一个按媒体显示的图片 / 视频」时生效。
+    bool captionAboveMedia = 1;
 }
 
 message GV2UpdateDescription {

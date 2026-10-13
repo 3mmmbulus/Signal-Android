@@ -388,7 +388,8 @@ public final class PushGroupSendJob extends PushSendJob {
                                                                       .withBodyRanges(bodyRanges)
                                                                       .withPollCreate(pollCreate)
                                                                       .withPollTerminate(pollTerminate)
-                                                                      .withPinnedMessage(pinnedMessage);
+                                                                      .withPinnedMessage(pinnedMessage)
+                                                                      .withTellomiCaptionAboveMedia(isTellomiCaptionAboveMedia(message));
 
         if (message.getParentStoryId() != null) {
           try {

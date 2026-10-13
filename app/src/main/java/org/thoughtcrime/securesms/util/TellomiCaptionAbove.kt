@@ -1,0 +1,36 @@
+/*
+ * Copyright 2026 重庆半格智能科技有限公司
+ * SPDX-License-Identifier: AGPL-3.0-only
+ */
+
+package org.thoughtcrime.securesms.util
+
+import org.thoughtcrime.securesms.database.model.databaseprotos.MessageExtras
+import org.thoughtcrime.securesms.database.model.databaseprotos.TellomiMessageExtras
+import org.whispersystems.signalservice.internal.push.DataMessage
+
+/**
+ * Tellomi（tellomi/tellomi#1263，ADR-0068 §4.7）：说明文字画在媒体上方。
+ *
+ * 线上是 `DataMessage.tellomi.captionAboveMedia`（只在为真时写）；本机记在消息的 `message_extras` 里
+ * （[MessageExtras.tellomi]，在上游的 oneof 外面，不加列、不加迁移）。收到什么记什么，画的时候再看条件：
+ * 有正文、至少一个按媒体显示的图片 / 视频（按文件发送的不算）。
+ */
+object TellomiCaptionAbove {
+
+  /** 收到 / 同步来的消息要记的扩展；没有这个标记就是 null（和上游一样不写这一列）。 */
+  @JvmStatic
+  fun extrasFrom(message: DataMessage): MessageExtras? = extras(message.tellomi?.captionAboveMedia == true)
+
+  @JvmStatic
+  fun extras(captionAboveMedia: Boolean): MessageExtras? {
+    return if (captionAboveMedia) MessageExtras(tellomi = TellomiMessageExtras(captionAboveMedia = true)) else null
+  }
+
+  @JvmStatic
+  fun isCaptionAboveMedia(extras: MessageExtras?): Boolean = extras?.tellomi?.captionAboveMedia == true
+
+  /** 重发 / 发送任务从库里读回消息时只带这一部分，别的扩展（管理员删除状态等）不跟着进 [org.thoughtcrime.securesms.mms.OutgoingMessage]。 */
+  @JvmStatic
+  fun onlyTellomi(extras: MessageExtras?): MessageExtras? = extras?.tellomi?.let { MessageExtras(tellomi = it) }
+}

@@ -309,6 +309,7 @@ class IndividualSendJob private constructor(parameters: Parameters, private val 
         .withPollCreate(pollCreate)
         .withPollTerminate(pollTerminate)
         .withPinnedMessage(pinnedMessage)
+        .withTellomiCaptionAboveMedia(isTellomiCaptionAboveMedia(message))
 
       if (message.parentStoryId != null) {
         try {

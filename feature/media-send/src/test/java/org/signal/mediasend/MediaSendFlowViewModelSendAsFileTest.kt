@@ -43,7 +43,7 @@ import org.signal.mediasend.preupload.PreUploadResult
 /**
  * Tellomi（tellomi/tellomi#1263 P-5「以文件发送」，ADR-0068）：「···」→ 以文件发送，交给会话页的是原图——不等、不用预上传的结果
  * （那是压缩过的），已经在传的停掉、删掉；HEIC 的选择跟着这次发送走。只管这一次：停在安全码确认上没发出去的，
- * 之后点底栏的发送键照常整组发。
+ * 之后点底栏的发送键照常整组发。「说明文字上移」（ADR-0068 §4.7）也在这里测：跟着这次发送走，按文件发的不适用。
  */
 @OptIn(ExperimentalCoroutinesApi::class)
 @RunWith(RobolectricTestRunner::class)
@@ -135,6 +135,33 @@ class MediaSendFlowViewModelSendAsFileTest {
     assertThat(request.sendAsFile).isFalse()
     verify(exactly = 1) { preUploadController.getPreUploadResults(any()) }
     coVerify(exactly = 1) { repository.send(any()) }
+  }
+
+  /** M-2（ADR-0068 §4.7）：「说明文字上移」跟着这次发送走；按文件发的不适用；再点一次就回到下方。 */
+  @Test
+  fun `Given the caption was moved up, when sent, then the request has it, but not when sent as files`() = runTest {
+    val viewModel = viewModel()
+    send(viewModel, MediaSendFlowEvent.ToggleCaptionAboveMedia)
+    assertThat(viewModel.state.value.isCaptionAboveMedia).isTrue()
+
+    send(viewModel, MediaSendFlowEvent.SendNow(separately = true))
+    assertThat(requests.last().captionAboveMedia).isTrue()
+
+    val asFiles = viewModel()
+    send(asFiles, MediaSendFlowEvent.ToggleCaptionAboveMedia)
+    send(asFiles, MediaSendFlowEvent.SendNow(asFile = true))
+    assertThat(requests.last().captionAboveMedia).isFalse()
+  }
+
+  @Test
+  fun `Given the caption was moved up, when toggled again, then it is below`() = runTest {
+    val viewModel = viewModel()
+    send(viewModel, MediaSendFlowEvent.ToggleCaptionAboveMedia)
+    send(viewModel, MediaSendFlowEvent.ToggleCaptionAboveMedia)
+
+    send(viewModel, MediaSendFlowEvent.NextRequested)
+
+    assertThat(requests.single().captionAboveMedia).isFalse()
   }
 
   private fun viewModel(): MediaSendFlowViewModel {

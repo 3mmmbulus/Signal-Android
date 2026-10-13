@@ -97,6 +97,7 @@ import org.thoughtcrime.securesms.util.GroupUtil
 import org.thoughtcrime.securesms.util.MediaUtil
 import org.thoughtcrime.securesms.util.MessageUtil
 import org.thoughtcrime.securesms.util.SignalLocalMetrics
+import org.thoughtcrime.securesms.util.TellomiCaptionAbove
 import org.thoughtcrime.securesms.util.hasLinkPreview
 import org.thoughtcrime.securesms.util.hasSharedContact
 import org.thoughtcrime.securesms.util.hasTextSlide
@@ -474,9 +475,17 @@ class ConversationRepository(
     contacts: List<Contact>,
     linkPreviews: List<LinkPreview>,
     preUploadResults: List<PreUploadResult>,
-    isViewOnce: Boolean
+    isViewOnce: Boolean,
+    captionAboveMedia: Boolean = false
   ): Completable {
     val sendCompletable = Completable.create { emitter ->
+      // Tellomi（ADR-0068 §4.7）：说明文字在媒体上方。改说明（编辑）时沿用原来那条的位置。
+      val tellomiExtras = when {
+        captionAboveMedia -> TellomiCaptionAbove.extras(true)
+        messageToEdit != null -> TellomiCaptionAbove.onlyTellomi(SignalDatabase.messages.getMessageRecordOrNull(messageToEdit.id)?.messageExtras)
+        else -> null
+      }
+
       val splitMessage: MessageUtil.SplitResult = MessageUtil.getSplitMessage(
         applicationContext,
         body
@@ -503,7 +512,8 @@ class ConversationRepository(
         sharedContacts = contacts,
         linkPreviews = linkPreviews,
         attachments = outgoingMessageSlideDeck?.asAttachments() ?: emptyList(),
-        isViewOnce = isViewOnce
+        isViewOnce = isViewOnce,
+        messageExtras = tellomiExtras
       )
 
       if (preUploadResults.isEmpty()) {

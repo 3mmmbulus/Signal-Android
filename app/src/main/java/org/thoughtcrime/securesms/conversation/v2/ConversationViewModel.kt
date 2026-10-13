@@ -621,7 +621,8 @@ class ConversationViewModel(
     contacts: List<Contact>,
     linkPreviews: List<LinkPreview>,
     preUploadResults: List<MessageSender.PreUploadResult>,
-    isViewOnce: Boolean
+    isViewOnce: Boolean,
+    captionAboveMedia: Boolean = false
   ): Completable {
     return repository.sendMessage(
       threadId = threadId,
@@ -637,7 +638,8 @@ class ConversationViewModel(
       contacts = contacts,
       linkPreviews = linkPreviews,
       preUploadResults = preUploadResults,
-      isViewOnce = isViewOnce
+      isViewOnce = isViewOnce,
+      captionAboveMedia = captionAboveMedia
     ).observeOn(AndroidSchedulers.mainThread())
   }
 

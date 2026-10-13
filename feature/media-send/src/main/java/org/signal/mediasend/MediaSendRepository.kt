@@ -230,7 +230,9 @@ data class SendRequest(
    */
   val sendAsFile: Boolean = false,
   /** Tellomi（#1263）：按文件发送时，已选里的 HEIC 先转成 JPEG（用户在提问里选了「转成 JPEG」）。 */
-  val convertHeicToJpeg: Boolean = false
+  val convertHeicToJpeg: Boolean = false,
+  /** Tellomi（#1263，ADR-0068 §4.7）：说明文字画在媒体上方。按文件发送的不适用。 */
+  val captionAboveMedia: Boolean = false
 )
 
 /**

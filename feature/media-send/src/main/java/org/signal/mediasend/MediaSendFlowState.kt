@@ -53,6 +53,10 @@ data class MediaSendFlowState(
    */
   val viewOnceToggleState: ViewOnceToggleState = ViewOnceToggleState.OFF,
   /**
+   * Tellomi（tellomi/tellomi#1263，ADR-0068 §4.7）：说明文字画在媒体上方（「···」→「说明文字上移 / 下移」）。只管这一次打开的面板。
+   */
+  val isCaptionAboveMedia: Boolean = false,
+  /**
    * Optional message/caption text to accompany the media. Retains mention and styling spans.
    */
   val message: @WriteWith<NullableCharSequenceParceler> CharSequence? = null,

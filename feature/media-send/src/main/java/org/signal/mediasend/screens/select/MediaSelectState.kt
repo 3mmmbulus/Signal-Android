@@ -94,6 +94,8 @@ sealed interface MediaSelectState {
    *
    * @param canSendSeparately 「单独发送」只给已知的单个会话（拆成几条消息由会话页来发），故事、要先选联系人的流程都没有。
    * @param canSendAsFile 「以文件发送」（tellomi/tellomi#1263）同上：也是会话页一个一条地发；故事不能按文件发（ADR-0068 §4.4）。
+   * @param canMoveCaption 「说明文字上移 / 下移」（#1263，ADR-0068 §4.7）同上：标记由会话页带进消息。
+   * @param isCaptionAboveMedia 现在说明在不在上方（菜单里显示「下移」还是「上移」）。
    */
   data class SendOptions(
     val message: CharSequence? = null,
@@ -104,7 +106,9 @@ sealed interface MediaSelectState {
     val isReply: Boolean = false,
     val canScheduleSend: Boolean = false,
     val canSendSeparately: Boolean = false,
-    val canSendAsFile: Boolean = false
+    val canSendAsFile: Boolean = false,
+    val canMoveCaption: Boolean = false,
+    val isCaptionAboveMedia: Boolean = false
   ) {
     companion object {
       fun from(parent: MediaSendFlowState): SendOptions {
@@ -122,7 +126,9 @@ sealed interface MediaSelectState {
           isReply = parent.isReply,
           canScheduleSend = !parent.isStory,
           canSendSeparately = sentByConversation,
-          canSendAsFile = sentByConversation
+          canSendAsFile = sentByConversation,
+          canMoveCaption = sentByConversation,
+          isCaptionAboveMedia = parent.isCaptionAboveMedia
         )
       }
     }

@@ -45,6 +45,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
@@ -65,11 +66,13 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shadow
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.layout
 import androidx.compose.ui.platform.LocalInspectionMode
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.res.vectorResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.selected
@@ -589,20 +592,27 @@ private fun folderTitle(folder: MediaFolder): String {
 
 /**
  * P-5 的「···」里有哪几项，按这个顺序：以文件发送（#1263，已知的单个会话、没开一次性查看）；以高清 / 标准质量发送（已选里有照片）；
- * 单独发送（已选 ≥ 2、且是已知的单个会话）。
+ * 单独发送（已选 ≥ 2、且是已知的单个会话）；—— 分隔线 ——；说明文字上移 / 下移（M-2，已写说明时，开关，照 Telegram iOS 的顺序）。
  */
 private enum class MoreMenuItem {
   SEND_AS_FILE,
   SEND_HIGH_QUALITY,
   SEND_STANDARD_QUALITY,
-  SEND_SEPARATELY
+  SEND_SEPARATELY,
+  MOVE_CAPTION_UP,
+  MOVE_CAPTION_DOWN;
+
+  /** 开关类的项前面有一条分隔线，和「立即发送」的几项分开。 */
+  val isToggle: Boolean
+    get() = this == MOVE_CAPTION_UP || this == MOVE_CAPTION_DOWN
 }
 
 @Composable
 private fun rememberMoreMenuItems(state: MediaSelectState.Files): List<MoreMenuItem> {
   val hasPhoto = state.selectedMedia.any { ContentTypeUtil.isImageType(it.contentType) && !ContentTypeUtil.isGif(it.contentType) }
   val options = state.sendOptions
-  return remember(hasPhoto, state.selectedMedia.size, options.sentMediaQuality, options.canSendSeparately, options.canSendAsFile, options.isViewOnceEnabled) {
+  val hasCaption = !options.message.isNullOrBlank()
+  return remember(hasPhoto, hasCaption, state.selectedMedia.size, options.sentMediaQuality, options.canSendSeparately, options.canSendAsFile, options.canMoveCaption, options.isCaptionAboveMedia, options.isViewOnceEnabled) {
     buildList {
       // 一次性查看的只能是照片 / 视频本身，文件没有一次性查看（遮罩那一刀再加「开了遮罩就没有」，ADR-0068 §4.4）。
       if (state.selectedMedia.isNotEmpty() && options.canSendAsFile && !options.isViewOnceEnabled) {
@@ -614,6 +624,10 @@ private fun rememberMoreMenuItems(state: MediaSelectState.Files): List<MoreMenuI
       }
       if (state.selectedMedia.size >= 2 && options.canSendSeparately) {
         add(MoreMenuItem.SEND_SEPARATELY)
+      }
+      // M-2（ADR-0068 §4.7）：写了说明才有；网格里选的都是图片 / 视频（按媒体发）。一次性查看不带说明，也就没有。
+      if (hasCaption && state.selectedMedia.isNotEmpty() && options.canMoveCaption && !options.isViewOnceEnabled) {
+        add(if (options.isCaptionAboveMedia) MoreMenuItem.MOVE_CAPTION_DOWN else MoreMenuItem.MOVE_CAPTION_UP)
       }
     }
   }
@@ -636,16 +650,21 @@ private fun MoreMenuButton(
     )
 
     DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
-      items.forEach { item ->
+      items.forEachIndexed { index, item ->
         val (label, icon) = when (item) {
-          MoreMenuItem.SEND_AS_FILE -> sendAsFileLabel(selectedMedia.size) to SignalIcons.File
-          MoreMenuItem.SEND_HIGH_QUALITY -> stringResource(R.string.MediaSelectScreen__send_in_high_quality) to SignalIcons.QualityHigh
-          MoreMenuItem.SEND_STANDARD_QUALITY -> stringResource(R.string.MediaSelectScreen__send_in_standard_quality) to SignalIcons.QualityHighSlash
-          MoreMenuItem.SEND_SEPARATELY -> stringResource(R.string.MediaSelectScreen__send_separately) to SignalIcons.Photo
+          MoreMenuItem.SEND_AS_FILE -> sendAsFileLabel(selectedMedia.size) to SignalIcons.File.imageVector
+          MoreMenuItem.SEND_HIGH_QUALITY -> stringResource(R.string.MediaSelectScreen__send_in_high_quality) to SignalIcons.QualityHigh.imageVector
+          MoreMenuItem.SEND_STANDARD_QUALITY -> stringResource(R.string.MediaSelectScreen__send_in_standard_quality) to SignalIcons.QualityHighSlash.imageVector
+          MoreMenuItem.SEND_SEPARATELY -> stringResource(R.string.MediaSelectScreen__send_separately) to SignalIcons.Photo.imageVector
+          MoreMenuItem.MOVE_CAPTION_UP -> stringResource(R.string.MediaSelectScreen__move_caption_up) to ImageVector.vectorResource(R.drawable.tellomi_symbol_arrow_up_24)
+          MoreMenuItem.MOVE_CAPTION_DOWN -> stringResource(R.string.MediaSelectScreen__move_caption_down) to ImageVector.vectorResource(R.drawable.tellomi_symbol_arrow_down_24)
+        }
+        if (item.isToggle && index > 0 && !items[index - 1].isToggle) {
+          HorizontalDivider()
         }
         DropdownMenuItem(
           text = { Text(text = label) },
-          leadingIcon = { Icon(imageVector = icon.imageVector, contentDescription = null) },
+          leadingIcon = { Icon(imageVector = icon, contentDescription = null) },
           onClick = {
             expanded = false
             when (item) {
@@ -657,6 +676,8 @@ private fun MoreMenuButton(
               MoreMenuItem.SEND_HIGH_QUALITY -> onEvent(MediaSelectScreenEvents.SendWithQuality(SentMediaQuality.HIGH))
               MoreMenuItem.SEND_STANDARD_QUALITY -> onEvent(MediaSelectScreenEvents.SendWithQuality(SentMediaQuality.STANDARD))
               MoreMenuItem.SEND_SEPARATELY -> onEvent(MediaSelectScreenEvents.SendSeparately)
+              // 开关：菜单收起，下次打开换成另一项（同 Telegram iOS，点了先收起再切）。
+              MoreMenuItem.MOVE_CAPTION_UP, MoreMenuItem.MOVE_CAPTION_DOWN -> onEvent(MediaSelectScreenEvents.ToggleCaptionAboveMedia)
             }
           }
         )

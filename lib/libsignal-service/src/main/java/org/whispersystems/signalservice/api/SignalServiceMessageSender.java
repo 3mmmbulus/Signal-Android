@@ -99,6 +99,7 @@ import org.whispersystems.signalservice.api.push.exceptions.UnknownGroupSendExce
 import org.whispersystems.signalservice.api.push.exceptions.UnregisteredUserException;
 import org.whispersystems.signalservice.api.util.AttachmentPointerUtil;
 import org.whispersystems.signalservice.api.util.CredentialsProvider;
+import org.whispersystems.signalservice.api.util.TellomiDataMessages;
 import org.whispersystems.signalservice.api.websocket.WebSocketUnavailableException;
 import org.whispersystems.signalservice.internal.crypto.AttachmentDigest;
 import org.whispersystems.signalservice.internal.crypto.PaddingInputStream;
@@ -122,6 +123,7 @@ import org.whispersystems.signalservice.internal.push.SendMessageResponse;
 import org.whispersystems.signalservice.internal.push.StaleDevices;
 import org.whispersystems.signalservice.internal.push.StoryMessage;
 import org.whispersystems.signalservice.internal.push.SyncMessage;
+import org.whispersystems.signalservice.internal.push.TellomiDataMessage;
 import org.whispersystems.signalservice.internal.push.TextAttachment;
 import org.whispersystems.signalservice.internal.push.TypingMessage;
 import org.whispersystems.signalservice.internal.push.Verified;
@@ -1299,6 +1301,12 @@ public class SignalServiceMessageSender {
                                .targetAuthorAciBinary(adminDelete.getTargetAuthor().toByteString())
                                .targetSentTimestamp(adminDelete.getTargetSentTimestamp())
                                .build());
+    }
+
+    // Tellomi（ADR-0068 §4.7）：只在说明在上方时写，别的消息的字节和上游一样。
+    TellomiDataMessage tellomi = TellomiDataMessages.tellomiFor(message);
+    if (tellomi != null) {
+      builder.tellomi(tellomi);
     }
 
     builder.timestamp(message.getTimestamp());

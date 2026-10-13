@@ -54,7 +54,9 @@ class SignalServiceDataMessage private constructor(
   val pollTerminate: Optional<PollTerminate>,
   val pinnedMessage: Optional<PinnedMessage>,
   val unpinnedMessage: Optional<UnpinnedMessage>,
-  val adminDelete: Optional<AdminDelete>
+  val adminDelete: Optional<AdminDelete>,
+  /** Tellomi（ADR-0068 §4.7）：`DataMessage.tellomi.captionAboveMedia`，说明文字画在媒体上方。只在为真时写。 */
+  val tellomiCaptionAboveMedia: Boolean = false
 ) {
   val isActivatePaymentsRequest: Boolean = payment.map { it.isActivationRequest }.orElse(false)
   val isPaymentsActivated: Boolean = payment.map { it.isActivation }.orElse(false)
@@ -83,6 +85,7 @@ class SignalServiceDataMessage private constructor(
   val isEmptyGroupV2Message: Boolean = isGroupV2Message && !isGroupV2Update && !hasRenderableContent
 
   class Builder {
+    private var tellomiCaptionAboveMedia: Boolean = false
     private var timestamp: Long = 0
     private var groupV2: SignalServiceGroupV2? = null
     private val attachments: MutableList<SignalServiceAttachment> = LinkedList<SignalServiceAttachment>()
@@ -248,6 +251,12 @@ class SignalServiceDataMessage private constructor(
       return this
     }
 
+    /** Tellomi（ADR-0068 §4.7）：说明文字画在媒体上方。 */
+    fun withTellomiCaptionAboveMedia(captionAboveMedia: Boolean): Builder {
+      this.tellomiCaptionAboveMedia = captionAboveMedia
+      return this
+    }
+
     fun withUnpinnedMessage(unpinnedMessage: UnpinnedMessage?): Builder {
       this.unpinnedMessage = unpinnedMessage
       return this
@@ -291,7 +300,8 @@ class SignalServiceDataMessage private constructor(
         pollTerminate = pollTerminate.asOptional(),
         pinnedMessage = pinnedMessage.asOptional(),
         unpinnedMessage = unpinnedMessage.asOptional(),
-        adminDelete = adminDelete.asOptional()
+        adminDelete = adminDelete.asOptional(),
+        tellomiCaptionAboveMedia = tellomiCaptionAboveMedia
       )
     }
   }

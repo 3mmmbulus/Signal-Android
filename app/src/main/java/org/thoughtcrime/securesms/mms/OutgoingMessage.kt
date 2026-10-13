@@ -92,7 +92,8 @@ data class OutgoingMessage(
     isSecure: Boolean = false,
     bodyRanges: BodyRangeList? = null,
     scheduledDate: Long = -1,
-    messageToEdit: Long = 0
+    messageToEdit: Long = 0,
+    messageExtras: MessageExtras? = null
   ) : this(
     threadRecipient = recipient,
     body = body ?: "",
@@ -115,7 +116,8 @@ data class OutgoingMessage(
     isSecure = isSecure,
     bodyRanges = bodyRanges,
     scheduledDate = scheduledDate,
-    messageToEdit = messageToEdit
+    messageToEdit = messageToEdit,
+    messageExtras = messageExtras
   )
 
   /**

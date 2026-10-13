@@ -238,7 +238,15 @@ object MediaSendV3Repository : MediaSendRepository {
 
       // Tellomi（tellomi/tellomi#1261 P-5）：「单独发送」由会话页一张一条地发（只有已知的单个会话才有这一项）；
       // 「以文件发送」（#1263）的结果自己带着 sendAsFile，会话页也是一个一条地发。
-      if (result != null) SendResult.ReadyToSend(if (request.sendSeparately) result.withSendSeparately(true) else result) else SendResult.Success
+      // 「说明在上方」（#1263，ADR-0068 §4.7）只给按媒体发的；按文件发的不适用。
+      val captionAboveMedia = request.captionAboveMedia && !request.sendAsFile
+      if (result != null) {
+        SendResult.ReadyToSend(
+          if (request.sendSeparately || captionAboveMedia) result.withTellomiOptions(sendSeparately = request.sendSeparately, captionAboveMedia = captionAboveMedia) else result
+        )
+      } else {
+        SendResult.Success
+      }
     } catch (exception: Exception) {
       SendResult.Error(exception.message ?: "Failed to send media.")
     }

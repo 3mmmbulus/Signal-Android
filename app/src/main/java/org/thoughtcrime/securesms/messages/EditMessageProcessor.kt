@@ -27,6 +27,7 @@ import org.thoughtcrime.securesms.recipients.RecipientId
 import org.thoughtcrime.securesms.util.EarlyMessageCacheEntry
 import org.thoughtcrime.securesms.util.MediaUtil
 import org.thoughtcrime.securesms.util.MessageConstraintsUtil
+import org.thoughtcrime.securesms.util.TellomiCaptionAbove
 import org.thoughtcrime.securesms.util.hasAudio
 import org.thoughtcrime.securesms.util.hasSharedContact
 import org.whispersystems.signalservice.api.crypto.EnvelopeMetadata
@@ -163,7 +164,9 @@ object EditMessageProcessor {
       linkPreviews = DataMessageProcessor.getLinkPreviews(message.preview, message.body ?: "", false),
       mentions = DataMessageProcessor.getMentions(cappedBodyRanges),
       serverGuid = UuidUtil.getStringUUID(envelope.serverGuid, envelope.serverGuidBinary),
-      messageRanges = messageRanges
+      messageRanges = messageRanges,
+      // Tellomi（ADR-0068 §4.7）：编辑带的是整条新 DataMessage，上下位置跟着改
+      messageExtras = TellomiCaptionAbove.extrasFrom(message)
     )
 
     val insertResult = SignalDatabase.messages.insertEditMessageInbox(mediaMessage, targetMessage, skipThreadUpdate = batchCache.batchThreadUpdates).orNull()

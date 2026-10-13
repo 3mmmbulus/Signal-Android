@@ -165,6 +165,7 @@ import org.thoughtcrime.securesms.util.ProjectionList;
 import org.thoughtcrime.securesms.util.RemoteConfig;
 import org.thoughtcrime.securesms.util.SearchUtil;
 import org.thoughtcrime.securesms.util.SpanUtil;
+import org.thoughtcrime.securesms.util.TellomiCaptionAbove;
 import org.thoughtcrime.securesms.util.UrlClickHandler;
 import org.thoughtcrime.securesms.util.VibrateUtil;
 import org.thoughtcrime.securesms.util.ViewUtil;
@@ -301,6 +302,9 @@ public final class ConversationItem extends RelativeLayout implements BindableCo
   /** Tellomi：这一条画不画小尾巴、用什么颜色（#1206）。 */
   private           boolean    tellomiHasTail;
   private @ColorInt int        tellomiTailColor;
+  /** Tellomi（ADR-0068 §4.7）：正文在气泡里本来的位置和下边距，说明文字挪到媒体上方后放回去用。 */
+  private int                  tellomiBodyIndex = -1;
+  private int                  tellomiBodyBottomMargin;
   private @Nullable ChatColors tellomiTailChatColors;
   /** Tellomi (card-visual §3.3 / §7.3): this bubble draws the domain-only card of a message request, not the link's own card. */
   private           boolean    showsRequestLinkCard;
@@ -373,6 +377,8 @@ public final class ConversationItem extends RelativeLayout implements BindableCo
     this.contactPhotoHolder        = findViewById(R.id.contact_photo_container);
     this.bodyBubble                = findViewById(R.id.body_bubble);
     this.mediaThumbnailStub        = new NullableStub<>(findViewById(R.id.image_view_stub));
+    this.tellomiBodyIndex          = bodyText.getParent() == bodyBubble ? bodyBubble.indexOfChild(bodyText) : -1;
+    this.tellomiBodyBottomMargin   = ViewUtil.getBottomMargin(bodyText);
     this.audioViewStub             = new Stub<>(findViewById(R.id.audio_view_stub));
     this.documentViewStub          = new Stub<>(findViewById(R.id.document_view_stub));
     this.sharedContactStub         = new Stub<>(findViewById(R.id.shared_contact_view_stub));
@@ -469,6 +475,7 @@ public final class ConversationItem extends RelativeLayout implements BindableCo
     setHasBeenPinned(conversationMessage);
     setPoll(messageRecord, messageRecord.getToRecipient().getChatColors().asSingleColor());
     adjustMarginsForSenderVisibility();
+    applyTellomiCaptionPosition(messageRecord);
 
     if (audioViewStub.resolved()) {
       audioViewStub.get().setOnLongClickListener(passthroughClickListener);
@@ -616,6 +623,7 @@ public final class ConversationItem extends RelativeLayout implements BindableCo
         !BidiUtil.hasMixedTextDirection(bodyText.getText()) &&
         !messageRecord.isRemoteDelete() &&
         !MessageRecordUtil.hasPoll(messageRecord) &&
+        !isTellomiCaptionAbove(messageRecord) &&
         bodyText.getLastLineWidth() > 0)
     {
       View dateView           = footer.getDateView();
@@ -877,7 +885,10 @@ public final class ConversationItem extends RelativeLayout implements BindableCo
     MultiselectPart top    = parts.asDouble().getTopPart();
     MultiselectPart bottom = parts.asDouble().getBottomPart();
 
-    if (hasThumbnail(messageRecord)) {
+    if (isTellomiCaptionAbove(messageRecord)) {
+      // 说明文字在图上方：碰到图以上是说明（文字那一部分），图和以下是附件。
+      return isTouchAboveTop(mediaThumbnailStub.require()) ? textPart(top, bottom) : attachmentsPart(top, bottom);
+    } else if (hasThumbnail(messageRecord)) {
       return isTouchBelowBoundary(mediaThumbnailStub.require()) ? bottom : top;
     } else if (hasDocument(messageRecord)) {
       return isTouchBelowBoundary(documentViewStub.get()) ? bottom : top;
@@ -886,6 +897,22 @@ public final class ConversationItem extends RelativeLayout implements BindableCo
     } {
       throw new IllegalStateException("Found a situation where we have something other than a thumbnail or a document.");
     }
+  }
+
+  private boolean isTouchAboveTop(@NonNull View child) {
+    Projection childProjection = Projection.relativeToParent(this, child, null);
+    float      childTop        = childProjection.getY();
+    childProjection.release();
+
+    return lastYDownRelativeToThis < childTop;
+  }
+
+  private static @NonNull MultiselectPart textPart(@NonNull MultiselectPart a, @NonNull MultiselectPart b) {
+    return a instanceof MultiselectPart.Text ? a : b;
+  }
+
+  private static @NonNull MultiselectPart attachmentsPart(@NonNull MultiselectPart a, @NonNull MultiselectPart b) {
+    return a instanceof MultiselectPart.Attachments ? a : b;
   }
 
   private boolean isTouchBelowBoundary(@NonNull View child) {
@@ -900,6 +927,13 @@ public final class ConversationItem extends RelativeLayout implements BindableCo
 
     boolean isTextPart       = multiselectPart instanceof MultiselectPart.Text;
     boolean isAttachmentPart = multiselectPart instanceof MultiselectPart.Attachments;
+
+    // Tellomi（ADR-0068 §4.7）：说明文字在图上方时，文字那一部分从气泡顶到图顶，附件从图顶到气泡底。
+    if (isTellomiCaptionAbove(messageRecord) && isAttachmentPart) {
+      return getProjectionTop(mediaThumbnailStub.require());
+    } else if (isTellomiCaptionAbove(messageRecord) && isTextPart) {
+      return getProjectionTop(bodyBubble);
+    }
 
     if (hasThumbnail(messageRecord) && isAttachmentPart) {
       return getProjectionTop(mediaThumbnailStub.require());
@@ -940,6 +974,10 @@ public final class ConversationItem extends RelativeLayout implements BindableCo
 
   @Override
   public int getBottomBoundaryOfMultiselectPart(@NonNull MultiselectPart multiselectPart) {
+    if (isTellomiCaptionAbove(messageRecord)) {
+      return multiselectPart instanceof MultiselectPart.Text ? getProjectionTop(mediaThumbnailStub.require()) : getProjectionBottom(bodyBubble);
+    }
+
     if (multiselectPart instanceof MultiselectPart.Attachments && hasThumbnail(messageRecord)) {
       return getProjectionBottom(mediaThumbnailStub.require());
     } else if (multiselectPart instanceof MultiselectPart.Attachments && hasDocument(messageRecord)) {
@@ -1948,6 +1986,12 @@ public final class ConversationItem extends RelativeLayout implements BindableCo
       bottomEnd   = 0;
     }
 
+    // Tellomi（ADR-0068 §4.7）：说明文字在上面，图的上边也是平的（下边本来就接着时间那一行）。
+    if (isTellomiCaptionAbove(current)) {
+      topStart = 0;
+      topEnd   = 0;
+    }
+
     if (ViewUtil.isRtl(this)) {
       mediaThumbnailStub.require().setCorners(topEnd, topStart, bottomStart, bottomEnd);
     } else {
@@ -2440,6 +2484,47 @@ public final class ConversationItem extends RelativeLayout implements BindableCo
     }
   }
 
+  /**
+   * Tellomi（tellomi/tellomi#1263，ADR-0068 §4.7）：说明文字在媒体上方——正文挪到图片 / 视频上面，还在同一个气泡里
+   * （同 Telegram：iOS `ChatMessageBubbleItemNode` 把文字节点插到媒体前面，安卓 `ChatMessageCell.captionAbove`）。
+   * 时间那一行留在气泡最下面（图下面）。只在有正文、而且是按媒体显示的图片 / 视频时；别的照上游，正文放回原位。
+   */
+  private boolean isTellomiCaptionAbove(@NonNull MessageRecord record) {
+    return TellomiCaptionAbove.isCaptionAboveMedia(record.getMessageExtras()) &&
+           tellomiBodyIndex >= 0 &&
+           hasThumbnail(record) &&
+           mediaThumbnailStub.resolved() &&
+           !record.isDisplayBodyEmpty(getContext()) &&
+           !isViewOnceMessage(record) &&
+           !hasLinkPreview(record);
+  }
+
+  private void applyTellomiCaptionPosition(@NonNull MessageRecord record) {
+    if (tellomiBodyIndex < 0) {
+      return;
+    }
+
+    int current = bodyBubble.indexOfChild(bodyText);
+
+    if (isTellomiCaptionAbove(record)) {
+      int mediaIndex = bodyBubble.indexOfChild(mediaThumbnailStub.require());
+      if (mediaIndex >= 0 && current > mediaIndex) {
+        bodyBubble.removeView(bodyText);
+        bodyBubble.addView(bodyText, mediaIndex);
+      }
+
+      boolean senderNameVisible = groupSenderHolder != null && groupSenderHolder.getVisibility() == VISIBLE;
+      boolean quoteVisible      = quoteView != null && quoteView.getVisibility() == VISIBLE;
+      ViewUtil.setTopMargin(bodyText, quoteVisible ? readDimen(R.dimen.message_bubble_top_image_margin)
+                                                   : senderNameVisible ? 0 : readDimen(R.dimen.message_bubble_top_padding));
+      ViewUtil.setBottomMargin(bodyText, readDimen(R.dimen.message_bubble_top_image_margin));
+    } else if (current != tellomiBodyIndex) {
+      bodyBubble.removeView(bodyText);
+      bodyBubble.addView(bodyText, tellomiBodyIndex);
+      ViewUtil.setBottomMargin(bodyText, tellomiBodyBottomMargin);
+    }
+  }
+
   private void adjustMarginsForSenderVisibility() {
     boolean senderNameVisible = groupSenderHolder != null && groupSenderHolder.getVisibility() == VISIBLE;
     boolean hasContentAboveBody = (quoteView != null && quoteView.getVisibility() == VISIBLE)
@@ -2815,6 +2900,21 @@ public final class ConversationItem extends RelativeLayout implements BindableCo
         Projection videoToRoot = Projection.translateFromDescendantToParentCoords(videoToBubble, bodyBubble, coordinateRoot);
 
         List<Projection> projections = Projection.getCapAndTail(bodyBubbleToRoot, videoToRoot);
+        if (!projections.isEmpty()) {
+          projections.get(0)
+                     .scale(bodyBubble.getScaleX())
+                     .translateX(translationX)
+                     .translateY(translationY);
+          projections.get(1)
+                     .scale(bodyBubble.getScaleX())
+                     .translateX(translationX)
+                     .translateY(-translationY);
+        }
+
+        colorizerProjections.addAll(projections);
+      } else if (isTellomiCaptionAbove(messageRecord) && mediaThumb != null) {
+        // Tellomi（ADR-0068 §4.7）：说明在图上方——图以上（说明，有引用时连引用）和图以下（时间那一行）两段上色，同上面视频那样。
+        List<Projection> projections = Projection.getCapAndTail(bodyBubbleToRoot, mediaThumb);
         if (!projections.isEmpty()) {
           projections.get(0)
                      .scale(bodyBubble.getScaleX())
