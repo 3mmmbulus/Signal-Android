@@ -123,6 +123,9 @@ interface FeedSource {
 
   /** 搜人和帖子（第三节第 34 条），[scope] 是 `FeedApi.SEARCH_*`。 */
   suspend fun search(query: String, scope: String, cursor: String?): FeedSearchPage
+
+  /** 把 Signal-Server 签的好友声明交给引擎（[org.thoughtcrime.securesms.feed.friends.FeedFriendSync]）；返回两边是否都报了。 */
+  suspend fun reportFriend(assertion: String): Boolean
 }
 
 /**
@@ -222,6 +225,8 @@ class RemoteFeedSource(
 
   override suspend fun muteNotifications(contentId: String, likesOnly: Boolean) = api.muteNotifications(contentId, likesOnly)
 
+  override suspend fun reportFriend(assertion: String): Boolean = api.reportFriend(assertion).confirmed
+
   override suspend fun search(query: String, scope: String, cursor: String?): FeedSearchPage {
     val response = api.search(query, scope, cursor)
     return FeedSearchPage(users = response.users, posts = hydrate(response.items).map { it.card }, cursor = response.cursor)
@@ -309,6 +314,7 @@ object EmptyFeedSource : FeedSource {
   override suspend fun deleteNotification(id: String) = throw IllegalStateException("feed is not available")
   override suspend fun muteNotifications(contentId: String, likesOnly: Boolean) = throw IllegalStateException("feed is not available")
   override suspend fun search(query: String, scope: String, cursor: String?): FeedSearchPage = FeedSearchPage()
+  override suspend fun reportFriend(assertion: String): Boolean = throw IllegalStateException("feed is not available")
 }
 
 object FeedSources {

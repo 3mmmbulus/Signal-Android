@@ -426,6 +426,9 @@ object SampleFeedSource : FeedSource {
     FeedSearchPage(users = users, posts = posts)
   }
 
+  /** 样例里没有真实的好友关系；好友同步不会对样例调这个。 */
+  override suspend fun reportFriend(assertion: String): Boolean = false
+
   override suspend fun muteNotifications(contentId: String, likesOnly: Boolean): Unit = synchronized(this) {
     notifications.removeAll { it.contentId == contentId && (!likesOnly || it.kind == FeedNotification.KIND_LIKE) }
   }

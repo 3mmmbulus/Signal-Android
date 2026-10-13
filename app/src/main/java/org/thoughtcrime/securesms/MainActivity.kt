@@ -137,6 +137,7 @@ import org.thoughtcrime.securesms.conversationlist.model.UnreadPaymentsLiveData
 import org.thoughtcrime.securesms.devicetransfer.olddevice.OldDeviceExitActivity
 import org.thoughtcrime.securesms.feed.FeedEntryCheck
 import org.thoughtcrime.securesms.feed.TellomiFeed
+import org.thoughtcrime.securesms.feed.friends.FeedFriends
 import org.thoughtcrime.securesms.groups.ui.creategroup.CreateGroupActivity
 import org.thoughtcrime.securesms.keyvalue.SignalStore
 import org.thoughtcrime.securesms.lock.v2.CreateSvrPinActivity
@@ -771,6 +772,8 @@ class MainActivity :
       if (withContext(Dispatchers.IO) { FeedEntryCheck.forCurrentProcess().refreshIfStale() }) {
         mainNavigationViewModel.onEvent(MainNavigationEvents.RefreshNavigationBar)
       }
+      // Tellomi（M11）：把自己这一半好友关系报给内容引擎（数据模型 2.4），名单没变不走网络
+      withContext(Dispatchers.IO) { FeedFriends.forCurrentProcess().syncIfStale() }
     }
 
     CallQuality.consumeQualityRequest()?.let {

@@ -13,7 +13,9 @@ import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import org.signal.network.NetworkResult
 import org.signal.network.websocket.WebSocketRequestMessage
+import org.signal.network.websocket.delete
 import org.signal.network.websocket.get
+import org.signal.network.websocket.post
 import org.whispersystems.signalservice.api.fromWebSocketRequest
 import org.whispersystems.signalservice.api.websocket.SignalWebSocket
 import java.io.IOException
@@ -32,15 +34,39 @@ data class FeedAuthResponse(
   val region: String? = null
 )
 
-/** 向 Signal-Server 要动态凭证：走已登录的 WebSocket，和别的 `/v1/` 接口一样的账号鉴权。 */
+/** `POST /v1/tellomi/feed/friend-assertions` 的请求：对方的 ACI（标准 36 位 UUID）。 */
+@Serializable
+data class FeedFriendAssertionRequest(@SerialName("peer_aci") val peerAci: String)
+
+/** 好友声明（5 分钟有效），客户端看不懂、也不用看懂，原样交给引擎。 */
+@Serializable
+data class FeedFriendAssertionResponse(val assertion: String)
+
+/**
+ * 向 Signal-Server 要动态用的签名（tellomi/Signal-Server `TellomiFeedController`）：走已登录的 WebSocket，
+ * 和别的 `/v1/` 接口一样的账号鉴权。引擎只认这里签的东西，客户端从头到尾不接触别人的假名。
+ */
 class FeedAuthApi(private val authWebSocket: SignalWebSocket.AuthenticatedWebSocket) {
   fun getAuth(): NetworkResult<FeedAuthResponse> {
     val request = WebSocketRequestMessage.get(PATH)
     return NetworkResult.fromWebSocketRequest(signalWebSocket = authWebSocket, request = request, deserializer = FeedAuthResponse.serializer())
   }
 
+  /**
+   * 「我把 [peerAci] 当好友」（[add]）或撤回（整条边删掉）。加的时候对方没有账号回 404；撤回不管对方还在不在。
+   */
+  fun friendAssertion(peerAci: String, add: Boolean): NetworkResult<FeedFriendAssertionResponse> {
+    val request = if (add) {
+      WebSocketRequestMessage.post(FRIEND_ASSERTIONS_PATH, FeedFriendAssertionRequest(peerAci), FeedFriendAssertionRequest.serializer())
+    } else {
+      WebSocketRequestMessage.delete("$FRIEND_ASSERTIONS_PATH/$peerAci")
+    }
+    return NetworkResult.fromWebSocketRequest(signalWebSocket = authWebSocket, request = request, deserializer = FeedFriendAssertionResponse.serializer())
+  }
+
   companion object {
     const val PATH = "/v1/tellomi/feed/auth"
+    const val FRIEND_ASSERTIONS_PATH = "/v1/tellomi/feed/friend-assertions"
   }
 }
 

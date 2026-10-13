@@ -300,6 +300,15 @@ class FeedApi(
     sendNoContent(Request.Builder().url(url).put(body))
   }
 
+  /**
+   * 报自己这一半好友关系（或撤回整条边）：[assertion] 是 Signal-Server `friend-assertions` 签的 JWT，原样转交。
+   * 回 `confirmed`：对方也报了才是 true。
+   */
+  suspend fun reportFriend(assertion: String): FeedFriendReportResponse {
+    val body = FeedJson.encodeToString(FeedFriendReportRequest.serializer(), FeedFriendReportRequest(assertion)).toRequestBody(JSON)
+    return send(Request.Builder().url(url("v1/feed/friends")).post(body), FeedFriendReportResponse.serializer())
+  }
+
   /** 搜人和帖子（[scope] 是 `SEARCH_*`）。帖子一页 10 条，带 [cursor] 翻页。 */
   suspend fun search(query: String, scope: String, cursor: String?): FeedSearchResponse {
     val url = url("v1/feed/search").newBuilder()

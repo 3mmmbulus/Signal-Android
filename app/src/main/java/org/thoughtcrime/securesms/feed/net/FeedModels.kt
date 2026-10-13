@@ -625,3 +625,11 @@ data class FeedSearchPage(
   val posts: List<FeedCard> = emptyList(),
   val cursor: String? = null
 )
+
+/** `POST /v1/feed/friends`：Signal-Server 签的好友声明原样交给引擎（数据模型 2.4）。 */
+@Serializable
+data class FeedFriendReportRequest(val assertion: String)
+
+/** 两边都报了才 `confirmed`；只报了自己这一半是 false。 */
+@Serializable
+data class FeedFriendReportResponse(val confirmed: Boolean = false)

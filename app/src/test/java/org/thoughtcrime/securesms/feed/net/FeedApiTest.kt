@@ -552,4 +552,17 @@ class FeedApiTest {
     assertThat(request.requestUrl?.queryParameter("scope")).isEqualTo("all")
     assertThat(request.requestUrl?.queryParameter("cursor")).isEqualTo("n1")
   }
+
+  @Test
+  fun `reportFriend posts the assertion as is`() = runBlocking {
+    server.enqueue(MockResponse().setBody("""{"confirmed":true}"""))
+
+    val response = api.reportFriend("a.b.c")
+
+    assertThat(response.confirmed).isEqualTo(true)
+    val request = server.takeRequest()
+    assertThat(request.method).isEqualTo("POST")
+    assertThat(request.path).isEqualTo("/v1/feed/friends")
+    assertThat(request.body.readUtf8()).isEqualTo("""{"assertion":"a.b.c"}""")
+  }
 }

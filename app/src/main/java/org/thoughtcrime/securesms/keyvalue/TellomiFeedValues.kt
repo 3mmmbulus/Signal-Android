@@ -17,6 +17,8 @@ class TellomiFeedValues(store: KeyValueStore) : SignalStoreValues(store) {
     private const val USE_SAMPLE_DATA = "tellomi_feed.use_sample_data"
     private const val SEARCH_QUERIES = "tellomi_feed.search_queries"
     private const val SEARCH_PEOPLE = "tellomi_feed.search_people"
+    private const val FRIENDS_REPORTED = "tellomi_feed.friends_reported"
+    private const val FRIENDS_CHECKED_AT = "tellomi_feed.friends_checked_at"
   }
 
   public override fun onFirstEverAppLaunch() = Unit
@@ -36,4 +38,10 @@ class TellomiFeedValues(store: KeyValueStore) : SignalStoreValues(store) {
 
   /** 搜索里最近点开过的人（JSON），同样只在本机。 */
   var searchPeople: String? by stringValue(SEARCH_PEOPLE, null)
+
+  /** 报给内容引擎的好友 ACI（JSON，带引擎地址：切区后重新报）。见 `FeedFriendSync`。 */
+  var friendsReported: String? by stringValue(FRIENDS_REPORTED, null)
+
+  /** 上次对好友名单的时间（毫秒）；0 = 下次回到前台就对。 */
+  var friendsCheckedAt: Long by longValue(FRIENDS_CHECKED_AT, 0)
 }
