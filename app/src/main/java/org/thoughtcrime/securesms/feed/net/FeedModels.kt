@@ -288,6 +288,10 @@ data class FeedCreatePostRequest(
   val text: String,
   val visibility: String,
   @SerialName("comments_closed") val commentsClosed: Boolean,
+  /** `everyone` / `friends` / `following`（引擎暂定，Q-12）；null 用引擎默认（所有人）。 */
+  @SerialName("reply_policy") val replyPolicy: String? = null,
+  /** 审核回复：别人的回复等作者批准后才公开（第 40 条）。 */
+  @SerialName("reply_moderation") val replyModeration: Boolean = false,
   /** 每条草稿一个 UUID；同一个再发，引擎回第一次那条，不会多出一条。 */
   @SerialName("client_nonce") val clientNonce: String? = null,
   /** 上传完成的图片 key，按显示顺序。 */

@@ -114,7 +114,8 @@ class FeedComposeActivity : PassphraseRequiredActivity() {
               onMultiChanged = viewModel::onPollMultiChanged,
               onDurationChanged = viewModel::onPollDurationChanged
             )
-          }
+          },
+          onReplySettingsChanged = viewModel::onReplySettingsChanged
         )
       }
     }

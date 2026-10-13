@@ -7150,6 +7150,14 @@
     <string name="TellomiFeedCompose__poll_one_day">1 day</string>
     <string name="TellomiFeedCompose__poll_three_days">3 days</string>
     <string name="TellomiFeedCompose__poll_seven_days">7 days</string>
+    <string name="TellomiFeedCompose__replies_title">Reply options</string>
+    <string name="TellomiFeedCompose__replies_everyone">Anyone</string>
+    <string name="TellomiFeedCompose__replies_friends">Friends</string>
+    <string name="TellomiFeedCompose__replies_following">People you follow</string>
+    <string name="TellomiFeedCompose__replies_closed">Turn off comments</string>
+    <string name="TellomiFeedCompose__replies_closed_description">No one can comment on this post</string>
+    <string name="TellomiFeedCompose__replies_moderation">Review replies</string>
+    <string name="TellomiFeedCompose__replies_moderation_description">Replies from others show after you approve them</string>
     <string name="ConversationListTabs__99p">99+</string>
     <!-- Menu item on stories landing page -->
     <string name="StoriesLandingFragment__story_privacy">Story privacy</string>

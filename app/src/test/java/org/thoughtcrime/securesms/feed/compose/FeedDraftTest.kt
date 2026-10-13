@@ -148,4 +148,13 @@ class FeedDraftTest {
     assertThat(FeedDraftPoll.clip("字".repeat(45))).isEqualTo("字".repeat(40))
     assertThat(FeedDraftPoll.clip("😀".repeat(41)).codePointCount(0, 80)).isEqualTo(40)
   }
+
+  @Test
+  fun `reply options go into the request, defaults stay out`() {
+    val replies = FeedReplySettings(policy = FeedReplyPolicy.FRIENDS, commentsClosed = true, moderation = true)
+    val request = FeedDraft(text = "hi", visibility = FeedVisibility.ONLY_ME, replies = replies).toRequest()
+
+    assertThat(FeedJson.encodeToString(FeedCreatePostRequest.serializer(), request))
+      .isEqualTo("""{"kind":"post","text":"hi","visibility":"only_me","comments_closed":true,"reply_policy":"friends","reply_moderation":true}""")
+  }
 }

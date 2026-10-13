@@ -47,6 +47,7 @@ class FeedComposeScreenTest {
   private var visibility: FeedVisibility? = null
   private var picking: FeedVisibility? = null
   private val pollEvents = mutableListOf<String>()
+  private var replies: FeedReplySettings? = null
 
   private fun show(state: FeedComposeState) {
     composeTestRule.setContent {
@@ -69,7 +70,8 @@ class FeedComposeScreenTest {
             onOptionAdded = { pollEvents += "option+" },
             onOptionRemoved = { pollEvents += "option-$it" },
             onMultiChanged = { pollEvents += "multi=$it" }
-          )
+          ),
+          onReplySettingsChanged = { replies = it }
         )
       }
     }
@@ -208,6 +210,43 @@ class FeedComposeScreenTest {
     show(FeedComposeState(draft = FeedDraft(text = "a", poll = FeedDraftPoll(options = listOf("only", "")))))
     publishButton().assertIsNotEnabled()
     composeTestRule.onNodeWithTag(FeedComposePollTestTags.REMOVE_OPTION + 0).assertDoesNotExist()
+  }
+
+  @Test
+  fun `reply options sheet changes who can reply and turns comments off`() {
+    show(FeedComposeState(draft = FeedDraft(text = "a")))
+
+    composeTestRule.onNodeWithTag(FeedComposeTestTags.REPLIES).performClick()
+    composeTestRule.onNodeWithText("Reply options").assertExists()
+    composeTestRule.onNodeWithText("People you follow").performClick()
+    assertThat(replies).isEqualTo(FeedReplySettings(policy = FeedReplyPolicy.FOLLOWING))
+    composeTestRule.onNodeWithTag(FeedReplySettingsTestTags.CLOSED).performClick()
+    assertThat(replies).isEqualTo(FeedReplySettings(commentsClosed = true))
+  }
+
+  @Test
+  fun `closed comments grey out who can reply and review`() {
+    composeTestRule.setContent {
+      SignalTheme {
+        FeedReplySettingsContent(settings = FeedReplySettings(policy = FeedReplyPolicy.FRIENDS, commentsClosed = true), onChange = { replies = it })
+      }
+    }
+
+    composeTestRule.onNodeWithTag(FeedReplySettingsTestTags.POLICY + "EVERYONE").assertIsNotEnabled()
+    composeTestRule.onNodeWithTag(FeedReplySettingsTestTags.MODERATION).assertIsNotEnabled()
+    screenshot("compose_replies_closed")
+  }
+
+  @Test
+  fun `reply options`() {
+    composeTestRule.setContent {
+      SignalTheme {
+        FeedReplySettingsContent(settings = FeedReplySettings(policy = FeedReplyPolicy.FRIENDS, moderation = true), onChange = { replies = it })
+      }
+    }
+    composeTestRule.onNodeWithTag(FeedReplySettingsTestTags.MODERATION).performClick()
+    assertThat(replies).isEqualTo(FeedReplySettings(policy = FeedReplyPolicy.FRIENDS))
+    screenshot("compose_replies")
   }
 
   private fun publishButton() = composeTestRule.onNodeWithTag(FeedComposeTestTags.PUBLISH)

@@ -13,6 +13,7 @@ import org.signal.network.NetworkResult
 import org.thoughtcrime.securesms.dependencies.AppDependencies
 import org.thoughtcrime.securesms.feed.compose.FeedDraft
 import org.thoughtcrime.securesms.feed.compose.FeedDraftKind
+import org.thoughtcrime.securesms.feed.compose.FeedReplyPolicy
 import org.thoughtcrime.securesms.feed.net.CachingFeedTokenSource
 import org.thoughtcrime.securesms.feed.net.FeedApi
 import org.thoughtcrime.securesms.feed.net.FeedApiException
@@ -311,8 +312,10 @@ internal fun FeedDraft.toRequest(now: Instant = Instant.now()): FeedCreatePostRe
     title = title.trim().takeIf { kind == FeedDraftKind.ARTICLE && it.isNotEmpty() },
     text = text.trim(),
     visibility = visibility.apiName,
-    // 评论权限在后面的 PR 加（第三节第 40 条）
-    commentsClosed = false,
+    commentsClosed = replies.commentsClosed,
+    // 「所有人」不发，用引擎默认
+    replyPolicy = replies.policy.takeIf { it != FeedReplyPolicy.EVERYONE }?.apiName,
+    replyModeration = replies.moderation,
     poll = attachedPoll?.toApi(now)
   )
 }

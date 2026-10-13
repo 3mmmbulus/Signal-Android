@@ -100,6 +100,10 @@ class FeedComposeViewModel(
     updateDraft { it.copy(visibility = visibility, audience = members) }
   }
 
+  fun onReplySettingsChanged(settings: FeedReplySettings) {
+    if (internalState.value.editing == null) updateDraft { it.copy(replies = settings) }
+  }
+
   /** 加投票（编辑时不能加：引擎编辑只收正文和标题）。 */
   fun onPollAdded() {
     if (internalState.value.canAddPoll) updateDraft { it.copy(poll = FeedDraftPoll()) }

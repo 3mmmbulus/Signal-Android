@@ -6923,6 +6923,14 @@
     <string name="TellomiFeedCompose__poll_one_day">1 天</string>
     <string name="TellomiFeedCompose__poll_three_days">3 天</string>
     <string name="TellomiFeedCompose__poll_seven_days">7 天</string>
+    <string name="TellomiFeedCompose__replies_title">回覆選項</string>
+    <string name="TellomiFeedCompose__replies_everyone">所有人</string>
+    <string name="TellomiFeedCompose__replies_friends">好友</string>
+    <string name="TellomiFeedCompose__replies_following">我關注的人</string>
+    <string name="TellomiFeedCompose__replies_closed">關閉留言</string>
+    <string name="TellomiFeedCompose__replies_closed_description">這則不能留言</string>
+    <string name="TellomiFeedCompose__replies_moderation">審核回覆</string>
+    <string name="TellomiFeedCompose__replies_moderation_description">別人的回覆要你核准後才公開</string>
     <string name="ConversationListTabs__99p">99+</string>
     <!-- Menu item on stories landing page -->
     <string name="StoriesLandingFragment__story_privacy">快拍隱私</string>

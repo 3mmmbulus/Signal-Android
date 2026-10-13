@@ -40,6 +40,7 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.RadioButton
@@ -85,12 +86,13 @@ private val THUMBNAIL_SIZE = 96.dp
 internal object FeedComposeTestTags {
   const val PUBLISH = "feed_compose_publish"
   const val ADD_POLL = "feed_compose_add_poll"
+  const val REPLIES = "feed_compose_replies"
 }
 
 /**
  * 发布页：顶部「动态 / 长文」，正文，图片，底部可见范围和字数。
  *
- * 投票在正文下面编辑（[FeedComposePollEditor]）。话题、评论权限在后面的 PR 加（第三节第 22、40 条）；没做的入口不画。
+ * 投票在正文下面编辑（[FeedComposePollEditor]），回复选项在底部（[FeedReplySettingsSheet]）。话题在后面的 PR 加（第三节第 22 条）；没做的入口不画。
  */
 @Composable
 fun FeedComposeScreen(
@@ -106,10 +108,12 @@ fun FeedComposeScreen(
   onFailureShown: () -> Unit,
   /** 「部分可见 / 不给谁看」：打开选人页，选完由 [FeedComposeViewModel.onAudiencePicked] 换档。 */
   onPickAudience: (FeedVisibility) -> Unit = {},
-  pollActions: FeedComposePollActions = FeedComposePollActions()
+  pollActions: FeedComposePollActions = FeedComposePollActions(),
+  onReplySettingsChanged: (FeedReplySettings) -> Unit = {}
 ) {
   var showDiscardDialog by rememberSaveable { mutableStateOf(false) }
   var showVisibilitySheet by rememberSaveable { mutableStateOf(false) }
+  var showReplySheet by rememberSaveable { mutableStateOf(false) }
   val snackbarHostState = remember { SnackbarHostState() }
   val failedMessage = stringResource(R.string.TellomiFeedCompose__publish_failed)
 
@@ -212,6 +216,7 @@ fun FeedComposeScreen(
           state = state,
           onAddImages = openPicker,
           onAddPoll = pollActions.onAdd,
+          onRepliesClick = { showReplySheet = true },
           onVisibilityClick = { showVisibilitySheet = true }
         )
       }
@@ -229,6 +234,14 @@ fun FeedComposeScreen(
       onConfirm = onClose,
       onDismiss = { showDiscardDialog = false },
       confirmColor = MaterialTheme.colorScheme.error
+    )
+  }
+
+  if (showReplySheet) {
+    FeedReplySettingsSheet(
+      settings = state.draft.replies,
+      onChange = onReplySettingsChanged,
+      onDismiss = { showReplySheet = false }
     )
   }
 
@@ -415,6 +428,7 @@ private fun FeedComposeBottomBar(
   state: FeedComposeState,
   onAddImages: () -> Unit,
   onAddPoll: () -> Unit,
+  onRepliesClick: () -> Unit,
   onVisibilityClick: () -> Unit
 ) {
   Row(
@@ -440,6 +454,14 @@ private fun FeedComposeBottomBar(
     }
 
     if (state.editing == null) {
+      IconButton(onClick = onRepliesClick, modifier = Modifier.testTag(FeedComposeTestTags.REPLIES)) {
+        Icon(
+          painter = painterResource(R.drawable.symbol_reply_24),
+          contentDescription = stringResource(R.string.TellomiFeedCompose__replies_title),
+          // 改过回复选项时图标换成主色，提醒这条不是默认设置
+          tint = if (state.draft.replies.isDefault) LocalContentColor.current else MaterialTheme.colorScheme.primary
+        )
+      }
       TextButton(onClick = onVisibilityClick) {
         Icon(imageVector = SignalIcons.Visible.imageVector, contentDescription = null, modifier = Modifier.size(18.dp))
         Spacer(modifier = Modifier.width(6.dp))

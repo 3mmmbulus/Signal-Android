@@ -60,7 +60,9 @@ data class FeedDraft(
   /** 「部分可见 / 不给谁看」选的人；别的档位不发出去，切回来还在。 */
   val audience: List<FeedAudienceMember> = emptyList(),
   /** 投票（第三节第 22 条），只有动态能带；切到长文时留着、切回来还在。 */
-  val poll: FeedDraftPoll? = null
+  val poll: FeedDraftPoll? = null,
+  /** 回复选项（第三节第 40 条），动态和长文都有。 */
+  val replies: FeedReplySettings = FeedReplySettings()
 ) {
   val isEmpty: Boolean
     get() = title.isBlank() && text.isBlank() && images.isEmpty() && poll == null
@@ -165,4 +167,23 @@ data class FeedDraftPoll(
       return if (option.codePointCount(0, option.length) <= OPTION_MAX_CHARS) option else option.substring(0, option.offsetByCodePoints(0, OPTION_MAX_CHARS))
     }
   }
+}
+
+/**
+ * 谁能回复。第 40 条写「选项未定」（第五节 Q-12）；先用引擎暂定的三档（`replyPolicies`，数据模型 §5.18），定了再改。
+ */
+enum class FeedReplyPolicy(val apiName: String, @StringRes val label: Int) {
+  EVERYONE("everyone", R.string.TellomiFeedCompose__replies_everyone),
+  FRIENDS("friends", R.string.TellomiFeedCompose__replies_friends),
+  FOLLOWING("following", R.string.TellomiFeedCompose__replies_following)
+}
+
+/** 每条单独设的回复选项：谁能回复、关闭评论、审核回复（作者批准后才公开）。 */
+data class FeedReplySettings(
+  val policy: FeedReplyPolicy = FeedReplyPolicy.EVERYONE,
+  val commentsClosed: Boolean = false,
+  val moderation: Boolean = false
+) {
+  val isDefault: Boolean
+    get() = this == FeedReplySettings()
 }

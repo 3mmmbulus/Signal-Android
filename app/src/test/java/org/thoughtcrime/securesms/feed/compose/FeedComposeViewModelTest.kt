@@ -181,4 +181,17 @@ class FeedComposeViewModelTest {
 
     assertThat(viewModel.state.value.draft.poll).isNull()
   }
+
+  @Test
+  fun `reply options change a new post but not an edit`() {
+    val settings = FeedReplySettings(policy = FeedReplyPolicy.FOLLOWING, moderation = true)
+
+    val viewModel = FeedComposeViewModel(source = FakeSource(), ioDispatcher = dispatcher)
+    viewModel.onReplySettingsChanged(settings)
+    assertThat(viewModel.state.value.draft.replies).isEqualTo(settings)
+
+    val editing = FeedComposeViewModel(editTarget = target, source = FakeSource(), ioDispatcher = dispatcher)
+    editing.onReplySettingsChanged(settings)
+    assertThat(editing.state.value.draft.replies).isEqualTo(FeedReplySettings())
+  }
 }
