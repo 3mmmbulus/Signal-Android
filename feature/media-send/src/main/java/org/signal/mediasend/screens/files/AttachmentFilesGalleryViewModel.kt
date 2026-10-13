@@ -24,6 +24,7 @@ import org.signal.mediasend.MediaSendFlowActivityContract
 import org.signal.mediasend.MediaSendFlowEvent
 import org.signal.mediasend.MediaSendRepository
 import org.signal.mediasend.R
+import org.signal.mediasend.TellomiHeic
 import org.signal.mediasend.ToastEvent
 import org.signal.mediasend.ToastMessage
 import org.signal.mediasend.recentsFolder
@@ -33,7 +34,8 @@ import org.signal.mediasend.recentsFolder
  *
  * 方向照 Telegram 的文件模式相册（Android `PhotoPickerActivity.setDocumentsPicker`、iOS `MediaPickerScreen` asFile →
  * `TGMediaAssetsControllerSendFileIntent`，只读机制）：可以换相册、勾选（带序号，最多 [AttachmentFilesGalleryState.MAX_SELECTION]，
- * 同 Telegram iOS 的 100），底栏「取消 / 发送（N）」。和 Telegram 不同：点照片本身也是勾选，不开预览（Telegram 两端会开）。发出去的是相册里的原文件、原文件名（ADR-0068 `asFile`），一个一条——和「文件」页别的入口走同一条路
+ * 同 Telegram iOS 的 100），底栏「取消 / 发送（N）」。和 Telegram 不同：点照片本身也是勾选，不开预览（Telegram 两端会开）。
+ * 勾的里有 HEIC（这台手机也转得了）先问要不要转成 JPEG：同 Telegram iOS 文件模式（`asFile && hasHeic`），也同「···」以文件发送。发出去的是相册里的原文件、原文件名（ADR-0068 `asFile`），一个一条——和「文件」页别的入口走同一条路
  * （[MediaSendFlowActivityContract.AttachmentFilesResult.galleryUris] 带回会话页）。
  */
 internal class AttachmentFilesGalleryViewModel(
@@ -58,7 +60,16 @@ internal class AttachmentFilesGalleryViewModel(
       is AttachmentFilesGalleryEvent.SwitchFolder -> if (event.folder.bucketId != _state.value.folder.bucketId) load(event.folder)
       is AttachmentFilesGalleryEvent.Toggle -> toggle(event.media)
       AttachmentFilesGalleryEvent.Cancel -> parentEventEmitter(MediaSendFlowEvent.CloseFilesGallery)
-      AttachmentFilesGalleryEvent.Send -> send()
+      AttachmentFilesGalleryEvent.Send -> if (TellomiHeic.canConvert(_state.value.selected)) {
+        _state.update { it.copy(isAskingAboutHeic = true) }
+      } else {
+        send(convertHeicToJpeg = false)
+      }
+      is AttachmentFilesGalleryEvent.HeicChosen -> {
+        _state.update { it.copy(isAskingAboutHeic = false) }
+        send(convertHeicToJpeg = event.convertToJpeg)
+      }
+      AttachmentFilesGalleryEvent.HeicDismissed -> _state.update { it.copy(isAskingAboutHeic = false) }
     }
   }
 
@@ -89,7 +100,7 @@ internal class AttachmentFilesGalleryViewModel(
     _state.update { it.copy(selected = selected + media) }
   }
 
-  private fun send() {
+  private fun send(convertHeicToJpeg: Boolean) {
     val selected = _state.value.selected
     if (selected.isEmpty()) {
       return
@@ -100,7 +111,8 @@ internal class AttachmentFilesGalleryViewModel(
           recentAttachmentIds = emptyList(),
           pickedUris = emptyList(),
           caption = null,
-          galleryUris = selected.map { it.uri }
+          galleryUris = selected.map { it.uri },
+          convertHeicToJpeg = convertHeicToJpeg
         )
       )
     )
@@ -112,7 +124,9 @@ internal data class AttachmentFilesGalleryState(
   val folders: List<MediaFolder> = emptyList(),
   val folder: MediaFolder = recentsFolder(),
   val items: List<Media>? = null,
-  val selected: List<Media> = emptyList()
+  val selected: List<Media> = emptyList(),
+  /** 点了发送、勾的里有 HEIC：等用户选保留 HEIC 还是转成 JPEG。 */
+  val isAskingAboutHeic: Boolean = false
 ) {
   companion object {
     /** F-3：最多选 100（Telegram 文件模式的上限；一个文件一条消息，碰不到一条消息 32 个附件的限制）。 */
@@ -129,4 +143,10 @@ internal sealed interface AttachmentFilesGalleryEvent {
   /** 左上返回、底栏「取消」、系统返回：回到「文件」页，已选的不要了。 */
   data object Cancel : AttachmentFilesGalleryEvent
   data object Send : AttachmentFilesGalleryEvent
+
+  /** 「是否把照片转成 JPEG？」选了保留 HEIC（false）或转成 JPEG（true）：接着发。 */
+  data class HeicChosen(val convertToJpeg: Boolean) : AttachmentFilesGalleryEvent
+
+  /** 点了对话框外面：这次不发，留在网格里。 */
+  data object HeicDismissed : AttachmentFilesGalleryEvent
 }

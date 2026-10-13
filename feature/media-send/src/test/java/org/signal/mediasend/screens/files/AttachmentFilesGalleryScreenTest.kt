@@ -111,6 +111,16 @@ class AttachmentFilesGalleryScreenTest {
     composeTestRule.onNodeWithTag(TestTags.FILES_GALLERY_SEND).assertTextEquals(context.getString(R.string.AttachmentFilesGallery__send))
   }
 
+  @Test
+  fun `Given the HEIC question, when convert is tapped, then the choice is handed on`() {
+    setContent(AttachmentFilesGalleryState(items = MEDIA, selected = listOf(MEDIA[0]), isAskingAboutHeic = true))
+
+    composeTestRule.onNodeWithText(context.getString(R.string.MediaSelectScreen__convert_photos_to_jpeg)).assertIsDisplayed()
+    composeTestRule.onNodeWithText(context.getString(R.string.MediaSelectScreen__convert_to_jpeg)).performClick()
+
+    assertThat(events).containsExactly(AttachmentFilesGalleryEvent.HeicChosen(convertToJpeg = true))
+  }
+
   private fun setContent(state: AttachmentFilesGalleryState) {
     composeTestRule.setContent {
       SignalTheme {

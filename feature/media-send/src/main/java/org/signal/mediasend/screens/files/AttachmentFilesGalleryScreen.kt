@@ -54,6 +54,7 @@ import androidx.compose.ui.unit.DpSize
 import androidx.compose.ui.unit.dp
 import org.signal.core.models.media.Media
 import org.signal.core.models.media.MediaFolder
+import org.signal.core.ui.compose.Dialogs
 import org.signal.core.ui.compose.Previews
 import org.signal.core.ui.compose.SignalIcons
 import org.signal.core.util.ContentTypeUtil
@@ -69,7 +70,7 @@ import kotlin.time.Duration.Companion.milliseconds
  * Tellomi（tellomi/tellomi#1263 F-3、F-s8）：「文件」页「从相册中选择」——全屏相册网格（文件模式）。
  *
  * 左上返回、中间相册标题（点开换相册）；3 列正方形格子，右上选择圈（带序号）；点照片本身也是勾选（Telegram 两端是开预览，
- * 这里先不做预览）；底栏「取消」/「发送（N）」，一个都没选时发送置灰。
+ * 这里先不做预览）；底栏「取消」/「发送（N）」，一个都没选时发送置灰；勾的里有 HEIC 时发送前先问要不要转成 JPEG。
  */
 @Composable
 internal fun AttachmentFilesGalleryScreen(
@@ -113,6 +114,20 @@ internal fun AttachmentFilesGalleryScreen(
         }
       }
     }
+  }
+
+  if (state.isAskingAboutHeic) {
+    // 同「···」以文件发送（MediaPickerGrid）：默认「保留 HEIC」；点外面 = 这次不发。
+    Dialogs.SimpleAlertDialog(
+      title = "",
+      body = stringResource(R.string.MediaSelectScreen__convert_photos_to_jpeg),
+      confirm = stringResource(R.string.MediaSelectScreen__keep_heic),
+      dismiss = stringResource(R.string.MediaSelectScreen__convert_to_jpeg),
+      onConfirm = { onEvent(AttachmentFilesGalleryEvent.HeicChosen(convertToJpeg = false)) },
+      onDeny = { onEvent(AttachmentFilesGalleryEvent.HeicChosen(convertToJpeg = true)) },
+      // 两个按钮也会先调 onDismiss，所以「点外面」只接 onDismissRequest。
+      onDismissRequest = { onEvent(AttachmentFilesGalleryEvent.HeicDismissed) }
+    )
   }
 }
 

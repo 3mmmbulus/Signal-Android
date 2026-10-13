@@ -95,8 +95,9 @@ object TellomiMediaAsFiles {
     }
   }
 
+  /** HEIC 解码后存成 JPEG（单次会话的临时文件）；解不了返回 null，调用方原样发。「文件」页「从相册中选择」（F-3）也用它。 */
   @RequiresApi(Build.VERSION_CODES.P)
-  private fun heicToJpeg(context: Context, media: Media, fileName: String): Media? {
+  fun heicToJpeg(context: Context, media: Media, fileName: String): Media? {
     return try {
       val bytes = PartAuthority.getAttachmentStream(context, media.uri).use { it.readBytes() }
       // ImageDecoder 会按 EXIF 转正方向。整张解出来（不缩小），转出来的就是同样大小的 JPEG。
@@ -135,7 +136,6 @@ object TellomiMediaAsFiles {
   }
 
   /** 换后缀：IMG_0001.HEIC → IMG_0001.jpg；没有后缀的直接加上。 */
-  @VisibleForTesting
   fun withExtension(fileName: String, extension: String): String {
     val dot = fileName.lastIndexOf('.')
     val base = if (dot > 0) fileName.substring(0, dot) else fileName

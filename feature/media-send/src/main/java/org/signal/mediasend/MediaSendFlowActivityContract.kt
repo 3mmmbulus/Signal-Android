@@ -148,13 +148,15 @@ class MediaSendFlowActivityContract(private val clazz: Class<out Activity>) : Ac
    * @param recentAttachmentIds 「最近发送的文件」里点的 / 勾的（本机附件行号，按勾选的顺序），F-7、F-8。
    * @param pickedUris 系统文件选择器挑的（可多选），F-4。
    * @param galleryUris 「从相册中选择」勾的相册原文件（按勾选的顺序），F-3；和 [pickedUris] 一样按文件发，但不用申请读权限。
+   * @param convertHeicToJpeg F-3 里勾的有 HEIC、用户选了「转成 JPEG」（[org.signal.mediasend.TellomiHeic]）。
    */
   @Parcelize
   data class AttachmentFilesResult(
     val recentAttachmentIds: List<Long>,
     val pickedUris: List<Uri>,
     val caption: String?,
-    val galleryUris: List<Uri> = emptyList()
+    val galleryUris: List<Uri> = emptyList(),
+    val convertHeicToJpeg: Boolean = false
   ) : Parcelable
 
   /**

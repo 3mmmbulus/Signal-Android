@@ -14,7 +14,9 @@ import assertk.assertThat
 import assertk.assertions.containsExactly
 import assertk.assertions.isEmpty
 import assertk.assertions.isEqualTo
+import assertk.assertions.isFalse
 import assertk.assertions.isNull
+import assertk.assertions.isTrue
 import io.mockk.coEvery
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -146,6 +148,43 @@ class AttachmentFilesGalleryViewModelTest {
   }
 
   @Test
+  fun `Given a HEIC is ticked, when sent, then it first asks and sends with the choice`() = runTest {
+    val heic = photo("content://media/9", contentType = "image/heic")
+    coEvery { repository.getMedia(Media.ALL_MEDIA_BUCKET_ID) } returns RECENTS + heic
+    val vm = loaded()
+    vm.onEvent(AttachmentFilesGalleryEvent.Toggle(heic))
+    vm.onEvent(AttachmentFilesGalleryEvent.Toggle(RECENTS[0]))
+
+    vm.onEvent(AttachmentFilesGalleryEvent.Send)
+    advanceUntilIdle()
+    assertThat(vm.state.value.isAskingAboutHeic).isTrue()
+    assertThat(emitted).isEmpty()
+
+    vm.onEvent(AttachmentFilesGalleryEvent.HeicChosen(convertToJpeg = true))
+    advanceUntilIdle()
+    assertThat(vm.state.value.isAskingAboutHeic).isFalse()
+    val result = emitted.filterIsInstance<MediaSendFlowEvent.SendAttachmentFiles>().single().result
+    assertThat(result.galleryUris).containsExactly(heic.uri, RECENTS[0].uri)
+    assertThat(result.convertHeicToJpeg).isTrue()
+  }
+
+  @Test
+  fun `Given the HEIC question, when dismissed, then nothing is sent and the selection stays`() = runTest {
+    val heic = photo("content://media/9", contentType = "image/heif")
+    coEvery { repository.getMedia(Media.ALL_MEDIA_BUCKET_ID) } returns listOf(heic)
+    val vm = loaded()
+    vm.onEvent(AttachmentFilesGalleryEvent.Toggle(heic))
+    vm.onEvent(AttachmentFilesGalleryEvent.Send)
+
+    vm.onEvent(AttachmentFilesGalleryEvent.HeicDismissed)
+    advanceUntilIdle()
+
+    assertThat(vm.state.value.isAskingAboutHeic).isFalse()
+    assertThat(vm.state.value.selected).containsExactly(heic)
+    assertThat(emitted).isEmpty()
+  }
+
+  @Test
   fun `Given nothing is ticked, when send is asked for, then nothing happens`() = runTest {
     val vm = loaded()
 
@@ -191,9 +230,9 @@ class AttachmentFilesGalleryViewModelTest {
 
     private val RECENTS = listOf(photo("content://media/1"), photo("content://media/2"), photo("content://media/3"))
 
-    private fun photo(uri: String) = Media(
+    private fun photo(uri: String, contentType: String = "image/jpeg") = Media(
       uri = uri.toUri(),
-      contentType = "image/jpeg",
+      contentType = contentType,
       date = 0,
       width = 100,
       height = 200,

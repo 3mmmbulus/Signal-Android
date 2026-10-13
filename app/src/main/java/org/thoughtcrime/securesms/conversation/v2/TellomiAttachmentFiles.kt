@@ -6,12 +6,17 @@
 package org.thoughtcrime.securesms.conversation.v2
 
 import android.content.Context
+import android.net.Uri
+import android.os.Build
 import androidx.annotation.WorkerThread
 import org.signal.core.models.database.AttachmentId
+import org.signal.core.models.media.Media
 import org.signal.core.util.logging.Log
 import org.signal.core.util.orNull
 import org.signal.mediasend.MediaSendFlowActivityContract
+import org.signal.mediasend.TellomiHeic
 import org.thoughtcrime.securesms.database.SignalDatabase
+import org.thoughtcrime.securesms.mediasend.TellomiMediaAsFiles
 import org.thoughtcrime.securesms.mms.DocumentSlide
 import org.thoughtcrime.securesms.mms.PartAuthority
 import org.thoughtcrime.securesms.mms.Slide
@@ -28,7 +33,7 @@ import org.thoughtcrime.securesms.util.MediaUtil
  * - 最近发过的（F-7、F-8）：从本机那一行附件读（落库时按内容哈希认出是同一份，不会多存一份；刚传过的还复用 CDN）。
  *   本机已经没有文件的算发不了。
  * - 系统选择器挑的（F-4）、「从相册中选择」勾的（F-3，相册里的原文件）：文件名、大小从系统拿；超过上限的不发，
- *   名字交给调用方提示「文件太大」。
+ *   名字交给调用方提示「文件太大」。F-3 里选了「转成 JPEG」的，HEIC 先转（[TellomiMediaAsFiles.heicToJpeg]，转不了原样发）。
  */
 object TellomiAttachmentFiles {
 
@@ -72,6 +77,15 @@ object TellomiAttachmentFiles {
         unavailable++
         continue
       }
+      val jpeg = if (result.convertHeicToJpeg) heicAsJpeg(context, uri, slide) else null
+      if (jpeg != null) {
+        if (jpeg.fileSize > maxFileSize) {
+          tooLarge += jpeg.fileName.orNull().orEmpty()
+        } else {
+          slides += jpeg
+        }
+        continue
+      }
       if (slide.fileSize > maxFileSize) {
         tooLarge += slide.fileName.orNull() ?: uri.lastPathSegment.orEmpty()
         continue
@@ -85,5 +99,30 @@ object TellomiAttachmentFiles {
     }
 
     return Prepared(slides, tooLarge, unavailable)
+  }
+
+  /** F-3「转成 JPEG」：是 HEIC、这台手机解得了才转；文件名沿用原名、后缀改成 .jpg。 */
+  private fun heicAsJpeg(context: Context, uri: Uri, slide: Slide): Slide? {
+    if (Build.VERSION.SDK_INT < Build.VERSION_CODES.P || !TellomiHeic.isHeic(slide.contentType)) {
+      return null
+    }
+    val name = slide.fileName.orNull() ?: uri.lastPathSegment.orEmpty()
+    val media = Media(
+      uri = uri,
+      contentType = slide.contentType,
+      date = 0,
+      width = 0,
+      height = 0,
+      size = slide.fileSize,
+      duration = 0,
+      isBorderless = false,
+      isVideoGif = false,
+      bucketId = null,
+      caption = null,
+      transformProperties = null,
+      fileName = name
+    )
+    val jpeg = TellomiMediaAsFiles.heicToJpeg(context, media, fileName = TellomiMediaAsFiles.withExtension(name, "jpg")) ?: return null
+    return DocumentSlide.tellomiAsFile(context, jpeg.uri, MediaUtil.IMAGE_JPEG, jpeg.size, jpeg.width, jpeg.height, jpeg.fileName)
   }
 }
