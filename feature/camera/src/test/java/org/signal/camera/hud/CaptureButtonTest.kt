@@ -198,7 +198,7 @@ class CaptureButtonTest {
   /** Only travel toward the lock counts, so a drag the other way gets no closer. */
   @Test
   fun `Given a hold dragged away from the lock, when it is let go of, then nothing is locked`() {
-    setContent()
+    setContent(flipOffset = Offset.Zero)
 
     press()
     dragBy(Offset(x = -LOCK_OFFSET.x, y = 0f))
@@ -259,6 +259,48 @@ class CaptureButtonTest {
     composeTestRule.waitForIdle()
   }
 
+  /**
+   * Tellomi (tellomi/tellomi#1520, as Telegram's new camera on both platforms): dragging a held recording onto the camera
+   * switch flips the camera once, without ending the recording; leaving and coming back flips again.
+   */
+  @Test
+  fun `Given a hold dragged onto the camera switch, when it arrives, then the camera flips once and the recording goes on`() {
+    setContent()
+
+    press()
+    dragBy(FLIP_OFFSET)
+    dragBy(Offset(x = 4f, y = 0f))
+
+    assertThat(gestures).isEqualTo(listOf(LONG_PRESS_START, FLIPPED))
+
+    lift()
+    assertThat(gestures).isEqualTo(listOf(LONG_PRESS_START, FLIPPED, LONG_PRESS_END))
+  }
+
+  @Test
+  fun `Given a hold that flipped, when it leaves the switch and comes back, then it flips again`() {
+    setContent()
+
+    press()
+    dragBy(FLIP_OFFSET)
+    dragBy(Offset(x = -FLIP_OFFSET.x, y = 0f))
+    dragBy(FLIP_OFFSET)
+    lift()
+
+    assertThat(gestures).isEqualTo(listOf(LONG_PRESS_START, FLIPPED, FLIPPED, LONG_PRESS_END))
+  }
+
+  @Test
+  fun `Given no camera switch on offer, when a hold is dragged there, then nothing flips`() {
+    setContent(flipOffset = Offset.Zero)
+
+    press()
+    dragBy(FLIP_OFFSET)
+    lift()
+
+    assertThat(gestures).isEqualTo(listOf(LONG_PRESS_START, LONG_PRESS_END))
+  }
+
   private fun dragBy(offset: Offset) {
     composeTestRule.onNodeWithTag(TestTags.CAMERA_HUD_CAPTURE_BUTTON).performTouchInput { moveBy(offset) }
     composeTestRule.waitForIdle()
@@ -271,7 +313,8 @@ class CaptureButtonTest {
 
   private fun setContent(
     state: CaptureButtonState = CaptureButtonState.PHOTO,
-    lockOffset: Offset = LOCK_OFFSET
+    lockOffset: Offset = LOCK_OFFSET,
+    flipOffset: Offset = FLIP_OFFSET
   ) {
     composeTestRule.setContent {
       longPressTimeoutMillis = LocalViewConfiguration.current.longPressTimeoutMillis
@@ -296,7 +339,9 @@ class CaptureButtonTest {
           onLongPressEnd = { gestures += LONG_PRESS_END },
           onZoomChange = { zoomChanges += it },
           onLock = { gestures += LOCKED },
-          lockOffset = lockOffset
+          lockOffset = lockOffset,
+          onFlip = { gestures += FLIPPED },
+          flipOffset = flipOffset
         )
       }
     }
@@ -309,8 +354,12 @@ class CaptureButtonTest {
     private const val LONG_PRESS_START = "long_press_start"
     private const val LONG_PRESS_END = "long_press_end"
     private const val LOCKED = "locked"
+    private const val FLIPPED = "flipped"
 
     /** A lock off to the start side, which is where a portrait phone puts it. */
     private val LOCK_OFFSET = Offset(x = -300f, y = 0f)
+
+    /** The camera switch on the other side, where a portrait phone puts it. */
+    private val FLIP_OFFSET = Offset(x = 300f, y = 0f)
   }
 }

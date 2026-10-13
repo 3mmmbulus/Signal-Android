@@ -183,6 +183,10 @@ private val CaptureButtonState.innerShape: CaptureButtonInnerShape
  *   seen at the end of the drag.
  * @param lockOffset Where the lock sits relative to this button's center, in pixels of this button's own frame.
  *   [Offset.Zero] for a recording that has no lock to be dragged to.
+ * @param onFlip Tellomi（tellomi/tellomi#1520，照 Telegram 两端的新相机）：按住录像时手指拖到切换摄像头键上，换一次摄像头，录像不停。
+ *   离开再回来又换一次。
+ * @param flipOffset Where the camera switch sits relative to this button's center, like [lockOffset]. [Offset.Zero] for
+ *   none on offer.
  * @param modifier Modifier to be applied to the button
  */
 @Composable
@@ -195,6 +199,8 @@ fun CaptureButton(
   onLock: () -> Unit = {},
   onOverLockChanged: (Boolean) -> Unit = {},
   lockOffset: Offset = Offset.Zero,
+  onFlip: () -> Unit = {},
+  flipOffset: Offset = Offset.Zero,
   modifier: Modifier = Modifier
 ) {
   var isPressed by remember { mutableStateOf(false) }
@@ -213,6 +219,8 @@ fun CaptureButton(
   val currentOnLock by rememberUpdatedState(onLock)
   val currentOnOverLockChanged by rememberUpdatedState(onOverLockChanged)
   val currentLockOffset by rememberUpdatedState(lockOffset)
+  val currentOnFlip by rememberUpdatedState(onFlip)
+  val currentFlipOffset by rememberUpdatedState(flipOffset)
 
   // A drag toward the lock takes the shape part of the way to what it will be once it gets there, so the button shows
   // what letting go would leave behind before the finger commits to it.
@@ -265,15 +273,15 @@ fun CaptureButton(
           // The lock takes hold further out than its own edge and does not release until the finger is further out
           // still, so it snaps on rather than having to be held on. Offset.Zero means no lock is on offer, which would
           // otherwise resolve to the button's own center.
-          fun isOverLock(position: Offset, wasOver: Boolean): Boolean {
-            val offset = currentLockOffset
-
+          fun isOver(offset: Offset, position: Offset, wasOver: Boolean): Boolean {
             if (offset == Offset.Zero) {
               return false
             }
 
             return (position - (buttonCenter + offset)).getDistance() <= if (wasOver) snapOff else snapTo
           }
+
+          fun isOverLock(position: Offset, wasOver: Boolean): Boolean = isOver(currentLockOffset, position, wasOver)
 
           try {
             // The press becomes a hold when the timeout expires rather than when the finger does anything, so it
@@ -305,6 +313,9 @@ fun CaptureButton(
             // Whether the finger was over the lock when it was last seen, which is what the lift is judged against.
             var overLock = false
 
+            // Tellomi: whether the finger is over the camera switch. Arriving there is what flips, once per arrival.
+            var overFlip = false
+
             while (true) {
               val pointer = awaitPointerEvent().changes.firstOrNull { it.id == down.id } ?: break
 
@@ -319,6 +330,13 @@ fun CaptureButton(
                 if (overLock) {
                   haptics.performHapticFeedback(LockSnapHaptic)
                 }
+              }
+
+              val wasOverFlip = overFlip
+              overFlip = isOver(currentFlipOffset, pointer.position, wasOverFlip)
+              if (overFlip && !wasOverFlip && pointer.pressed) {
+                haptics.performHapticFeedback(LockSnapHaptic)
+                currentOnFlip()
               }
 
               if (!pointer.pressed) {
@@ -339,7 +357,7 @@ fun CaptureButton(
               }
 
               val zoom = when {
-                isHeadedForLock -> null
+                isHeadedForLock || overFlip -> null
                 pointer.position.y < deadzoneTop -> decelerateInterpolation(((deadzoneTop - pointer.position.y) / maxRange).coerceIn(0f, 1f))
                 pointer.position.y > deadzoneBottom -> -decelerateInterpolation(((pointer.position.y - deadzoneBottom) / maxRange).coerceIn(0f, 1f))
                 else -> null

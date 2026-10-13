@@ -515,6 +515,9 @@ private fun CameraControls(
   var captureButtonCenter by remember { mutableStateOf(Offset.Zero) }
   var lockCenter by remember { mutableStateOf(Offset.Zero) }
 
+  // Tellomi（#1520）：切换摄像头键的位置，按住录像时拖到它上面就换摄像头（照 Telegram 两端的新相机）。
+  var switchCenter by remember { mutableStateOf(Offset.Zero) }
+
   // Whether the thumb dragging from the capture button has reached the lock. The lock is the one that shows it: the
   // circle the drag carries there arrives underneath it, since this corner is drawn after the capture button.
   var isOverLock by remember { mutableStateOf(false) }
@@ -568,10 +571,18 @@ private fun CameraControls(
         Offset.Zero
       }
 
+      val flipOffset = if (captureButtonState == CaptureButtonState.RECORDING_HELD && switchCenter != Offset.Zero) {
+        (switchCenter - captureButtonCenter).rotatedBy(-iconRotation)
+      } else {
+        Offset.Zero
+      }
+
       CaptureButton(
         state = captureButtonState,
         modifier = Modifier.onGloballyPositioned { captureButtonCenter = it.boundsInRoot().center },
         lockOffset = lockOffset,
+        flipOffset = flipOffset,
+        onFlip = { currentEmitter(StandardCameraHudEvents.SwitchCamera) },
         onLock = {
           requestedRecording = RequestedRecording.UNHELD
           currentEmitter(StandardCameraHudEvents.VideoCaptureLocked)
@@ -604,6 +615,7 @@ private fun CameraControls(
         emitter = emitter,
         zoomBarSlot = zoomBarSlot,
         aboveControls = aboveControls,
+        onSwitchCenterChanged = { switchCenter = it },
         modifier = modifier
       )
     }
@@ -632,7 +644,8 @@ private fun HorizontalControlBar(
   emitter: (StandardCameraHudEvents) -> Unit,
   zoomBarSlot: @Composable (Modifier) -> Unit,
   modifier: Modifier,
-  aboveControls: @Composable () -> Unit = {}
+  aboveControls: @Composable () -> Unit = {},
+  onSwitchCenterChanged: (Offset) -> Unit = {}
 ) {
   Column(
     horizontalAlignment = Alignment.CenterHorizontally,
@@ -647,10 +660,10 @@ private fun HorizontalControlBar(
         .padding(bottom = 40.dp, start = 40.dp, end = 40.dp)
     ) {
       CameraSwitchCorner(
-        isRecording = captureButtonState.isRecording,
         iconRotation = iconRotation,
         stringResources = stringResources,
-        emitter = emitter
+        emitter = emitter,
+        onCenterChanged = onSwitchCenterChanged
       )
       Box(modifier = Modifier.align(Alignment.Center).rotate(iconRotation)) {
         captureSlot(captureButtonState)
@@ -663,20 +676,25 @@ private fun HorizontalControlBar(
 }
 
 /**
- * The camera switch in its own corner of the bottom bar. The camera cannot be swapped out from under a running
- * recording, so the button goes for as long as one runs; it is aligned into the corner rather than laid out beside
- * anything, so nothing moves when it does.
+ * The camera switch in its own corner of the bottom bar; it is aligned into the corner rather than laid out beside
+ * anything, so nothing moves around it.
+ *
+ * Tellomi（tellomi/tellomi#1520，照 Telegram 两端的新相机）：录像时也在——录着也能换摄像头（录像不停）：点它，或者按住录像时把手指拖到它上面。
+ *
+ * @param onCenterChanged Where the switch sits in the root's frame, which is where a held recording's drag flips.
  */
 @Composable
 private fun BoxScope.CameraSwitchCorner(
-  isRecording: Boolean,
   iconRotation: Float,
   stringResources: StringResources,
-  emitter: (StandardCameraHudEvents) -> Unit
+  emitter: (StandardCameraHudEvents) -> Unit,
+  onCenterChanged: (Offset) -> Unit = {}
 ) {
   Chrome.Control(
-    visible = !isRecording,
-    modifier = Modifier.align(Alignment.CenterEnd)
+    visible = true,
+    modifier = Modifier
+      .align(Alignment.CenterEnd)
+      .onGloballyPositioned { onCenterChanged(it.boundsInRoot().center) }
   ) {
     Box(modifier = Modifier.rotate(iconRotation)) {
       CameraSwitchButton(

@@ -124,6 +124,15 @@ class CameraScreenViewModel(
   private var imageCapture: ImageCapture? = null
   private var videoCapture: VideoCapture<Recorder>? = null
   private var recording: Recording? = null
+
+  /** The lens the use cases are bound to right now; a recording that switched lenses rebinds itself (see [switchLensDuringRecording]). */
+  private var boundLensFacing: Int? = null
+
+  /** A recording switched lenses with only preview and video bound, so the full set goes back on once it finalizes. */
+  private var needsRebindAfterRecording = false
+
+  /** The last ask to bind, replayed (with its fallbacks) to put the full set back after [needsRebindAfterRecording]. */
+  private var lastBindEvent: CameraScreenEvents.BindCamera? = null
   private var captureMode: CameraCaptureMode = CameraCaptureMode.ImageOnly
   private var brightnessBeforeFlash: Float = WindowManager.LayoutParams.BRIGHTNESS_OVERRIDE_NONE
   private var brightnessWindow: WeakReference<Window>? = null
@@ -381,7 +390,9 @@ class CameraScreenViewModel(
       pendingRecording
     }
 
+    // Tellomi（tellomi/tellomi#1520，照 Telegram 两端的新相机）：录着也能换摄像头，所以录像要能跨过重新绑定活下来。
     val activeRecording = configuredRecording
+      .asPersistentRecording()
       .start(ContextCompat.getMainExecutor(context)) { recordEvent ->
         when (recordEvent) {
           is VideoRecordEvent.Start -> {
@@ -438,7 +449,13 @@ class CameraScreenViewModel(
             // Clear recording
             recording = null
 
-            if (captureMode == CameraCaptureMode.ImageAndVideoExclusive) {
+            val bindEvent = lastBindEvent
+            if (needsRebindAfterRecording && bindEvent != null) {
+              // The lens is not the one the last full binding was made for, so this goes the whole way through binding,
+              // fallbacks and all, rather than reusing that one.
+              needsRebindAfterRecording = false
+              handleBindCameraEvent(_state.value, bindEvent)
+            } else if (captureMode == CameraCaptureMode.ImageAndVideoExclusive) {
               rebindToLastSuccessfulAttempt()
             }
           }
@@ -479,6 +496,7 @@ class CameraScreenViewModel(
     return try {
       cameraProvider.unbindAll()
       camera = cameraProvider.bindToLifecycle(lifecycleOwner, cameraSelector, lastAttempt.preview, lastAttempt.imageCapture, videoCapture)
+      boundLensFacing = _state.value.lensFacing
       this.videoCapture = videoCapture
       observeZoomRange()
       Log.d(TAG, "Rebound with video capture for limited device")
@@ -505,6 +523,7 @@ class CameraScreenViewModel(
     try {
       cameraProvider.unbindAll()
       camera = cameraProvider.bindToLifecycle(lifecycleOwner, cameraSelector, *attempt.toTypedArray())
+      boundLensFacing = _state.value.lensFacing
       videoCapture = attempt.videoCapture
       observeZoomRange()
       Log.d(TAG, "Rebound to last successful configuration after video capture")
@@ -524,6 +543,13 @@ class CameraScreenViewModel(
     state: CameraScreenState,
     event: CameraScreenEvents.BindCamera
   ) {
+    lastBindEvent = event
+
+    // Tellomi（#1520）：录着的时候换的镜头已经绑好了；再按新用例重绑会把录像用例换掉，录像就断了。
+    if (hasActiveRecording && boundLensFacing == state.lensFacing) {
+      return
+    }
+
     if (tryBindCamera(state, event)) {
       return
     }
@@ -581,6 +607,7 @@ class CameraScreenViewModel(
 
         lifecycleOwner = event.lifecycleOwner
         cameraProvider = event.cameraProvider
+        boundLensFacing = state.lensFacing
         lastSuccessfulAttempt = attempt
         preview = attempt.preview
         surfaceProvider = event.surfaceProvider
@@ -796,10 +823,6 @@ class CameraScreenViewModel(
   }
 
   private fun handleSwitchCameraEvent(state: CameraScreenState) {
-    if (state.isRecording) {
-      return
-    }
-
     // The lens being animated is about to be unbound, and the one replacing it starts from its own zoom.
     zoomAnimation?.cancel()
 
@@ -810,7 +833,47 @@ class CameraScreenViewModel(
       CameraSelector.LENS_FACING_BACK
     }
 
+    // Tellomi（#1520）：录着的时候换摄像头，录像不停（照 Telegram 两端的新相机）：同一个录像用例换一个镜头重新绑定。
+    if (hasActiveRecording && !switchLensDuringRecording(newLensFacing)) {
+      return
+    }
+
     _state.value = state.copy(lensFacing = newLensFacing)
+  }
+
+  /**
+   * Rebinds the bound use cases, the recording's own [videoCapture] among them, to [lensFacing]. The recording was started
+   * persistent, so it carries on into the new lens rather than ending with the old one.
+   *
+   * @return Whether the switch took; a failure is put back to the lens the recording was on.
+   */
+  private fun switchLensDuringRecording(lensFacing: Int): Boolean {
+    val cameraProvider = cameraProvider ?: return false
+    val lifecycleOwner = lifecycleOwner ?: return false
+    val videoCapture = videoCapture ?: return false
+    // Only what a running recording needs. With the photo and QR use cases bound too CameraX shares one stream among them
+    // all, and the recording's encoder stopped getting frames from the new lens (seen on the emulator). The full set goes
+    // back on when the recording finalizes.
+    val useCases = listOfNotNull(preview, videoCapture)
+
+    fun bind(lens: Int) {
+      cameraProvider.unbindAll()
+      camera = cameraProvider.bindToLifecycle(lifecycleOwner, CameraSelector.Builder().requireLensFacing(lens).build(), *useCases.toTypedArray())
+      boundLensFacing = lens
+      observeZoomRange()
+      camera?.cameraControl?.enableTorch(_state.value.flashMode == FlashMode.On && lens == CameraSelector.LENS_FACING_BACK)
+    }
+
+    return try {
+      bind(lensFacing)
+      needsRebindAfterRecording = true
+      Log.d(TAG, "Switched lens during recording")
+      true
+    } catch (e: Exception) {
+      Log.e(TAG, "Failed to switch lens during recording", e)
+      runCatching { bind(_state.value.lensFacing) }
+      false
+    }
   }
 
   private fun handleSetFlashModeEvent(

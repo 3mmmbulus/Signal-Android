@@ -115,19 +115,22 @@ class StandardCameraHudTest {
     composeTestRule.onNodeWithTag(TestTags.CAMERA_HUD_FLASH_BUTTON).assertDoesNotExist()
   }
 
-  /** The camera cannot be swapped out from under a running recording, however that recording was started. */
+  /**
+   * Tellomi (tellomi/tellomi#1520, as Telegram's new camera on both platforms): the camera can be switched while a
+   * recording runs, however it was started, so the switch stays.
+   */
   @Test
-  fun `Given a recording, when displayed, then the camera switch is gone`() {
+  fun `Given a recording, when displayed, then the camera switch is still there`() {
     setContent(state = lockedRecording())
 
-    composeTestRule.onNodeWithTag(TestTags.CAMERA_HUD_SWITCH_BUTTON).assertDoesNotExist()
+    composeTestRule.onNodeWithTag(TestTags.CAMERA_HUD_SWITCH_BUTTON).assertIsDisplayed()
   }
 
   @Test
-  fun `Given a recording that is being held, when displayed, then the camera switch is gone`() {
+  fun `Given a recording that is being held, when displayed, then the camera switch is still there to drag to`() {
     setContent(state = heldRecording())
 
-    composeTestRule.onNodeWithTag(TestTags.CAMERA_HUD_SWITCH_BUTTON).assertDoesNotExist()
+    composeTestRule.onNodeWithTag(TestTags.CAMERA_HUD_SWITCH_BUTTON).assertIsDisplayed()
   }
 
   @Test
