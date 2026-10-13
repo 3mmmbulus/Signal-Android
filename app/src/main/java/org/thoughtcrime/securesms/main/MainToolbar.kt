@@ -495,6 +495,7 @@ private fun PrimaryToolbar(
         controller = controller
       ) {
         when (state.destination) {
+          MainListRoute.Feed -> Unit
           MainListRoute.Archive -> Unit
           MainListRoute.Chats -> ChatDropdownItems(state, callback, dismiss)
           MainListRoute.Calls -> CallDropdownItems(state.callFilter, callback, dismiss)

@@ -135,6 +135,7 @@ import org.thoughtcrime.securesms.conversationlist.RestoreCompleteBottomSheetDia
 import org.thoughtcrime.securesms.conversationlist.model.ConversationFilter
 import org.thoughtcrime.securesms.conversationlist.model.UnreadPaymentsLiveData
 import org.thoughtcrime.securesms.devicetransfer.olddevice.OldDeviceExitActivity
+import org.thoughtcrime.securesms.feed.TellomiFeed
 import org.thoughtcrime.securesms.groups.ui.creategroup.CreateGroupActivity
 import org.thoughtcrime.securesms.keyvalue.SignalStore
 import org.thoughtcrime.securesms.lock.v2.CreateSvrPinActivity
@@ -392,6 +393,7 @@ class MainActivity :
 
       LaunchedEffect(mainNavigationState.currentListLocation) {
         when (mainNavigationState.currentListLocation) {
+          MainListRoute.Feed -> toolbarViewModel.presentToolbarForFeed()
           MainListRoute.Chats -> toolbarViewModel.presentToolbarForConversationListFragment()
           MainListRoute.Archive -> toolbarViewModel.presentToolbarForConversationListArchiveFragment()
           MainListRoute.Calls -> toolbarViewModel.presentToolbarForCallLogFragment()
@@ -612,10 +614,13 @@ class MainActivity :
           .background(listContainerColor, contentLayoutData.shape)
           .clip(contentLayoutData.shape)
       ) {
-        MainToolbar(
-          state = mainToolbarState,
-          callback = toolbarCallback
-        )
+        // Tellomi（M11 动态）：动态页的顶栏是它自己的「推荐 / 关注」，不叠主顶栏
+        if (mainToolbarState.destination != MainListRoute.Feed) {
+          MainToolbar(
+            state = mainToolbarState,
+            callback = toolbarCallback
+          )
+        }
 
         Box(modifier = Modifier.weight(1f)) {
           content()
@@ -709,7 +714,13 @@ class MainActivity :
 
     val startingTab = extras.getSerializableCompat(KEY_STARTING_TAB, MainListRoute::class.java) ?: return
 
-    if (startingTab != MainListRoute.Stories || Stories.isFeatureEnabled()) {
+    val startingTabEnabled = when (startingTab) {
+      MainListRoute.Stories -> Stories.isFeatureEnabled()
+      MainListRoute.Feed -> TellomiFeed.isTabEnabled()
+      else -> true
+    }
+
+    if (startingTabEnabled) {
       mainNavigationViewModel.onEvent(MainNavigationEvents.GoToTab(startingTab))
     }
   }

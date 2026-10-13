@@ -96,6 +96,11 @@ class MainToolbarViewModel : ViewModel() {
     setToolbarMode(MainToolbarMode.FULL, destination = MainListRoute.Stories)
   }
 
+  /** Tellomi（M11 动态）：动态页有自己的顶栏（推荐 / 关注居中），主顶栏不显示，见 MainActivity。 */
+  fun presentToolbarForFeed() {
+    setToolbarMode(MainToolbarMode.FULL, destination = MainListRoute.Feed)
+  }
+
   fun presentToolbarForCallLogFragment() {
     setToolbarMode(MainToolbarMode.FULL, destination = MainListRoute.Calls)
   }

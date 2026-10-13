@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Copyright 2026 重庆半格智能科技有限公司
+  SPDX-License-Identifier: AGPL-3.0-only
+-->
+<!-- 底栏「动态」图标（选中）：实心卡片，头像和文字镂空 -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="28dp"
+    android:height="28dp"
+    android:viewportWidth="28"
+    android:viewportHeight="28">
+  <path
+      android:fillType="evenOdd"
+      android:pathData="M8.5,3.5h11a5,5 0,0 1,5 5v11a5,5 0,0 1,-5 5h-11a5,5 0,0 1,-5 -5v-11a5,5 0,0 1,5 -5z
+        M10.5,8.5a2,2 0,1 0,0 4a2,2 0,1 0,0 -4z
+        M14.5,9.5h5a1,1 0,0 1,0 2h-5a1,1 0,0 1,0 -2z
+        M8.5,15.5h11a1,1 0,0 1,0 2h-11a1,1 0,0 1,0 -2z
+        M8.5,19h7a1,1 0,0 1,0 2h-7a1,1 0,0 1,0 -2z"
+      android:fillColor="#FF000000" />
+</vector>

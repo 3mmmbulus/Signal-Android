@@ -67,6 +67,11 @@ fun MainFloatingActionButtons(
   modifier: Modifier = Modifier,
   navigationType: NavigationType = NavigationType.rememberNavigationType()
 ) {
+  if (destination == MainListRoute.Feed) {
+    // Tellomi（M11 动态）：动态页只有右下角自己的发布按钮（dynamic-feed.md 第三节第 45 条），由 FeedListPane 画，主 FAB 不显示。
+    return
+  }
+
   val boxHeightDp = (ACTION_BUTTON_SIZE * 2 + ACTION_BUTTON_SPACING)
   val boxHeightPx = with(LocalDensity.current) {
     boxHeightDp.toPx().roundToInt()
@@ -172,6 +177,7 @@ private fun PrimaryActionButton(
 ) {
   val onClick = remember(destination) {
     when (destination) {
+      MainListRoute.Feed -> onNewChatClick
       MainListRoute.Archive -> onNewChatClick
       MainListRoute.Chats -> onNewChatClick
       MainListRoute.Calls -> onNewCallClick
@@ -187,6 +193,7 @@ private fun PrimaryActionButton(
     icon = {
       AnimatedContent(destination) { targetState ->
         val (icon, contentDescriptionId) = when (targetState) {
+          MainListRoute.Feed -> CoreUiR.drawable.symbol_edit_24 to R.string.conversation_list_fragment__fab_content_description
           MainListRoute.Archive -> CoreUiR.drawable.symbol_edit_24 to R.string.conversation_list_fragment__fab_content_description
           MainListRoute.Chats -> CoreUiR.drawable.symbol_edit_24 to R.string.conversation_list_fragment__fab_content_description
           MainListRoute.Calls -> R.drawable.symbol_phone_plus_24 to R.string.CallLogFragment__start_a_new_call

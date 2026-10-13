@@ -1144,6 +1144,20 @@ object RemoteConfig {
     return upstreamGifSearch && !"none".equals(provider, ignoreCase = true)
   }
 
+  /**
+   * Tellomi（M11 动态，ADR-0071 §8.8、tellomi/tellomi#1355）：「动态」标签显不显示。
+   *
+   * 服务端按账号所在的内容区域和内测名单算好下发（`global.feed.enabled`）；没下发就是关。紧急开关关掉整个区域的动态时
+   * 也是把它改成 false，客户端随下一次远程配置拉取隐藏入口（`dynamic-feed.md` R-2.11）。客户端不做区域判断。
+   */
+  @JvmStatic
+  @get:JvmName("feedEnabled")
+  val feedEnabled: Boolean by remoteBoolean(
+    key = "global.feed.enabled",
+    defaultValue = false,
+    hotSwappable = true
+  )
+
   /** Allow media converters to remux audio instead of transcoding it.  */
   @JvmStatic
   @get:JvmName("allowAudioRemuxing")

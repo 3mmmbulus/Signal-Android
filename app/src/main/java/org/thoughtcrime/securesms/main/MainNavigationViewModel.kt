@@ -37,6 +37,7 @@ import org.thoughtcrime.securesms.calls.log.CallLogRow
 import org.thoughtcrime.securesms.components.settings.app.notifications.profiles.NotificationProfilesRepository
 import org.thoughtcrime.securesms.components.snackbars.SnackbarStateConsumerRegistry
 import org.thoughtcrime.securesms.dependencies.AppDependencies
+import org.thoughtcrime.securesms.feed.TellomiFeed
 import org.thoughtcrime.securesms.keyvalue.SignalStore
 import org.thoughtcrime.securesms.megaphone.Megaphone
 import org.thoughtcrime.securesms.megaphone.Megaphones
@@ -58,6 +59,7 @@ class MainNavigationViewModel(
     private const val CHATS_BACK_STACK_KEY = "chats_back_stack_v2"
     private const val CALLS_BACK_STACK_KEY = "calls_back_stack_v2"
     private const val STORIES_BACK_STACK_KEY = "stories_back_stack_v2"
+    private const val FEED_BACK_STACK_KEY = "tellomi_feed_back_stack"
   }
 
   class Factory(
@@ -82,6 +84,7 @@ class MainNavigationViewModel(
     savedStateHandle = savedStateHandle,
     scope = viewModelScope,
     stackKeys = mapOf(
+      MainListRoute.Feed to FEED_BACK_STACK_KEY,
       MainListRoute.Chats to CHATS_BACK_STACK_KEY,
       MainListRoute.Calls to CALLS_BACK_STACK_KEY,
       MainListRoute.Stories to STORIES_BACK_STACK_KEY
@@ -288,7 +291,11 @@ class MainNavigationViewModel(
       it.copy(
         compact = SignalStore.settings.useCompactNavigationBar,
         destinations = MainNavigationBarState.ALL_DESTINATIONS.filter { destination ->
-          destination != MainListRoute.Stories || Stories.isFeatureEnabled()
+          when (destination) {
+            MainListRoute.Stories -> Stories.isFeatureEnabled()
+            MainListRoute.Feed -> TellomiFeed.isTabEnabled()
+            else -> true
+          }
         }
       )
     }

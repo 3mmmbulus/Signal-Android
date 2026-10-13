@@ -21,6 +21,14 @@ enum class MainListRoute(
   @get:RawRes val icon: Int,
   @get:StringRes val contentDescription: Int = label
 ) : ListNavKey {
+  /**
+   * Tellomi（M11 动态，tellomi/tellomi#1355）：社交动态。底栏最左（`dynamic-feed.md` 第三节第 17 条），
+   * 但打开 App 仍默认落在聊天。图标是静态矢量图，不是 Lottie：[icon] 为 0，见 [MainNavigationBar] 的 `NavigationDestinationIcon`。
+   */
+  Feed(
+    label = R.string.ConversationListTabs__tellomi_feed,
+    icon = 0
+  ),
   Chats(
     label = R.string.ConversationListTabs__chats,
     icon = R.raw.chats_28

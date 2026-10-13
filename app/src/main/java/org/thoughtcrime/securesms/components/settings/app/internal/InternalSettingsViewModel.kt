@@ -52,6 +52,11 @@ class InternalSettingsViewModel(private val repository: InternalSettingsReposito
     refresh()
   }
 
+  fun setForceFeedTab(enabled: Boolean) {
+    preferenceDataStore.putBoolean(InternalValues.TELLOMI_FORCE_FEED_TAB, enabled)
+    refresh()
+  }
+
   fun setShowMediaArchiveStateHint(enabled: Boolean) {
     preferenceDataStore.putBoolean(InternalValues.SHOW_ARCHIVE_STATE_HINT, enabled)
     refresh()
@@ -250,6 +255,7 @@ class InternalSettingsViewModel(private val repository: InternalSettingsReposito
   private fun getState() = InternalSettingsState(
     seeMoreUserDetails = SignalStore.internal.recipientDetails,
     shakeToReport = SignalStore.internal.shakeToReport,
+    forceFeedTab = SignalStore.internal.forceFeedTab,
     showArchiveStateHint = SignalStore.internal.showArchiveStateHint,
     gv2forceInvites = SignalStore.internal.gv2ForceInvites,
     gv2ignoreP2PChanges = SignalStore.internal.gv2IgnoreP2PChanges,

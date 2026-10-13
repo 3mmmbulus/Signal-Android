@@ -21,6 +21,7 @@ import org.thoughtcrime.securesms.chats.ArchiveListPane
 import org.thoughtcrime.securesms.chats.ChatsListPane
 import org.thoughtcrime.securesms.chats.ConversationTransitionState
 import org.thoughtcrime.securesms.chats.registerChatsTabDetailRoutes
+import org.thoughtcrime.securesms.feed.FeedListPane
 import org.thoughtcrime.securesms.stories.StoriesListPane
 import org.thoughtcrime.securesms.stories.registerStoriesTabDetailRoutes
 
@@ -68,6 +69,7 @@ private fun rememberMainNavEntryProvider(
 private fun EntryProviderScope<NavKey>.registerMainScreenRoutes() {
   listEntry<MainListRoute> { location ->
     when (location) {
+      MainListRoute.Feed -> FeedListPane(modifier = Modifier.fillMaxSize())
       MainListRoute.Chats -> ChatsListPane(modifier = Modifier.fillMaxSize())
       MainListRoute.Archive -> ArchiveListPane(modifier = Modifier.fillMaxSize())
       MainListRoute.Calls -> CallsListPane(modifier = Modifier.fillMaxSize())

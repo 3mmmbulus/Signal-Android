@@ -36,6 +36,7 @@ class InternalValues internal constructor(store: KeyValueStore) : SignalStoreVal
     const val CALLING_STATS_INTERVAL_SECS: String = "internal.calling_stats_interval_secs"
     const val CALLING_MINIMUM_CAPTURE_FPS: String = "internal.calling_minimum_capture_fps"
     const val SHAKE_TO_REPORT: String = "internal.shake_to_report"
+    const val TELLOMI_FORCE_FEED_TAB: String = "internal.tellomi_force_feed_tab"
     const val DISABLE_STORAGE_SERVICE: String = "internal.disable_storage_service"
     const val LAST_SCROLL_POSITION: String = "internal.last_scroll_position"
     const val CONVERSATION_ITEM_V2_MEDIA: String = "internal.conversation_item_v2_media"
@@ -92,6 +93,11 @@ class InternalValues internal constructor(store: KeyValueStore) : SignalStoreVal
    * Whether or not "shake to report" is enabled.
    */
   var shakeToReport: Boolean by booleanValue(SHAKE_TO_REPORT, true).falseForExternalUsers()
+
+  /**
+   * Tellomi（M11 动态）：内部用户在服务端下发 `global.feed.enabled` 之前先看到「动态」标签，开发和内测用。
+   */
+  var forceFeedTab: Boolean by booleanValue(TELLOMI_FORCE_FEED_TAB, false).falseForExternalUsers()
 
   /**
    * Whether or not storage service is manually disabled.

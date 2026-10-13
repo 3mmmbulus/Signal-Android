@@ -6586,6 +6586,13 @@
     <!-- Label for Stories tab in home app screen -->
     <string name="ConversationListTabs__stories">快拍</string>
     <!-- String for counts above 99 in conversation list tabs -->
+    <string name="ConversationListTabs__tellomi_feed">动态</string>
+    <string name="TellomiFeed__tab_recommend">推荐</string>
+    <string name="TellomiFeed__tab_following">关注</string>
+    <string name="TellomiFeed__recommend_empty_title">还没有内容</string>
+    <string name="TellomiFeed__recommend_empty_body">推荐的动态会出现在这里。</string>
+    <string name="TellomiFeed__following_empty_title">关注的人还没有发动态</string>
+    <string name="TellomiFeed__following_empty_body">好友和你关注的人、话题发的动态会出现在这里。</string>
     <string name="ConversationListTabs__99p">99+</string>
     <!-- Menu item on stories landing page -->
     <string name="StoriesLandingFragment__story_privacy">快拍隐私</string>

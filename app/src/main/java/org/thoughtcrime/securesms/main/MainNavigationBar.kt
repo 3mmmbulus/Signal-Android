@@ -17,6 +17,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
@@ -35,10 +36,12 @@ import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.colorResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.res.vectorResource
 import androidx.compose.ui.text.drawText
 import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.tooling.preview.Preview
@@ -75,6 +78,7 @@ fun MainNavigationBar(
   ) {
     state.destinations.forEach { destination ->
       val badgeCount = when (destination) {
+        MainListRoute.Feed -> 0
         MainListRoute.Archive -> error("Not supported")
         MainListRoute.Chats -> state.chatsCount
         MainListRoute.Calls -> state.callsCount
@@ -226,6 +230,7 @@ private fun BoxScope.NavigationRailCountIndicator(
 ) {
   val count = remember(state, destination) {
     when (destination) {
+      MainListRoute.Feed -> 0
       MainListRoute.Archive -> error("Not supported")
       MainListRoute.Chats -> state.chatsCount
       MainListRoute.Calls -> state.callsCount
@@ -259,6 +264,11 @@ private fun NavigationDestinationIcon(
   destination: MainListRoute,
   selected: Boolean
 ) {
+  if (destination == MainListRoute.Feed) {
+    TellomiFeedDestinationIcon(selected = selected)
+    return
+  }
+
   val dynamicProperties = rememberLottieDynamicProperties(
     rememberLottieDynamicProperty(
       property = LottieProperty.COLOR_FILTER,
@@ -277,6 +287,20 @@ private fun NavigationDestinationIcon(
     composition = composition,
     progress = { if (selected) progress else 0f },
     dynamicProperties = dynamicProperties,
+    modifier = Modifier.size(LOTTIE_SIZE)
+  )
+}
+
+/**
+ * Tellomi（M11 动态）：「动态」的底栏图标。选中时换成实心，颜色和其他三个 Lottie 图标一样跟着 onSurface 走。
+ * 交互与动效审计里「Tab 图标选中时轻弹一次」那条随底栏改版一起做（`10-feed-prototype-log.md` 第 417 行）。
+ */
+@Composable
+private fun TellomiFeedDestinationIcon(selected: Boolean) {
+  Icon(
+    imageVector = ImageVector.vectorResource(if (selected) R.drawable.tellomi_feed_fill_28 else R.drawable.tellomi_feed_28),
+    contentDescription = null,
+    tint = MaterialTheme.colorScheme.onSurface,
     modifier = Modifier.size(LOTTIE_SIZE)
   )
 }

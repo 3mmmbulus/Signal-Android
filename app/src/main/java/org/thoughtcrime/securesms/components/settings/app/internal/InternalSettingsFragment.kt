@@ -613,6 +613,16 @@ class InternalSettingsFragment : DSLSettingsFragment(R.string.preferences__inter
         )
       }
 
+      // Tellomi（M11 动态）：服务端还没下发 global.feed.enabled 时先打开「动态」标签
+      switchPref(
+        title = DSLSettingsText.from("Force feed tab"),
+        summary = DSLSettingsText.from("Show the feed tab before the server enables global.feed.enabled. Takes effect when you return to the main screen."),
+        isChecked = state.forceFeedTab,
+        onClick = {
+          viewModel.setForceFeedTab(!state.forceFeedTab)
+        }
+      )
+
       // #1055 第四刀：手动跑一次选路器的探测，看它会怎么建议（不切区）
       clickPref(
         title = DSLSettingsText.from("Probe regions"),

@@ -6801,6 +6801,15 @@
     <!-- Label for Stories tab in home app screen -->
     <string name="ConversationListTabs__stories">Stories</string>
     <!-- String for counts above 99 in conversation list tabs -->
+    <!-- Tellomi (M11): label for the social feed tab in the home screen navigation bar -->
+    <string name="ConversationListTabs__tellomi_feed">Feed</string>
+    <!-- Tellomi (M11 feed): the two tabs at the top of the feed, and what each shows while it has no posts -->
+    <string name="TellomiFeed__tab_recommend">For you</string>
+    <string name="TellomiFeed__tab_following">Following</string>
+    <string name="TellomiFeed__recommend_empty_title">Nothing here yet</string>
+    <string name="TellomiFeed__recommend_empty_body">Recommended posts will show up here.</string>
+    <string name="TellomiFeed__following_empty_title">No posts from people you follow</string>
+    <string name="TellomiFeed__following_empty_body">Posts from your friends and the people and topics you follow will show up here.</string>
     <string name="ConversationListTabs__99p">99+</string>
     <!-- Menu item on stories landing page -->
     <string name="StoriesLandingFragment__story_privacy">Story privacy</string>
