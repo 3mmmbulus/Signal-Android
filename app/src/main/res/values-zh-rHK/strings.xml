@@ -6931,6 +6931,12 @@
     <string name="TellomiFeedCompose__replies_closed_description">呢則唔可以留言</string>
     <string name="TellomiFeedCompose__replies_moderation">審核回覆</string>
     <string name="TellomiFeedCompose__replies_moderation_description">其他人嘅回覆要你批准先會公開</string>
+    <string name="TellomiFeedDetail__held_for_you">等你批准</string>
+    <string name="TellomiFeedDetail__held_waiting">作者批准後公開</string>
+    <string name="TellomiFeedDetail__approve">批准</string>
+    <string name="TellomiFeedDetail__decline">拒絕</string>
+    <string name="TellomiFeedDetail__decline_title">拒絕呢則回覆？</string>
+    <string name="TellomiFeedDetail__decline_body">呢則回覆會被刪除。</string>
     <string name="ConversationListTabs__99p">99+</string>
     <!-- Menu item on stories landing page -->
     <string name="StoriesLandingFragment__story_privacy">快拍隱私</string>

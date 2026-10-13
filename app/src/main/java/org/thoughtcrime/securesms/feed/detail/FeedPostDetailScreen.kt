@@ -44,6 +44,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
@@ -55,6 +56,7 @@ import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
+import org.signal.core.ui.compose.Dialogs
 import org.signal.core.ui.compose.Scaffolds
 import org.signal.core.ui.compose.Snackbars
 import org.thoughtcrime.securesms.R
@@ -70,6 +72,8 @@ import org.signal.core.ui.R as CoreUiR
 object FeedPostDetailTestTags {
   const val COMPOSER = "feed_detail_composer"
   const val SEND = "feed_detail_send"
+  const val APPROVE = "feed_detail_approve_"
+  const val DECLINE = "feed_detail_decline_"
 }
 
 /** 楼里先露几条回复，多的折起来（照 Threads）。 */
@@ -100,7 +104,9 @@ fun FeedPostDetailScreen(
   onNoticeShown: () -> Unit,
   onProfileRequired: () -> Unit = {},
   onAuthorClick: (FeedAuthor) -> Unit = {},
-  onVote: (List<Int>) -> Unit = {}
+  onVote: (List<Int>) -> Unit = {},
+  onApproveComment: (FeedCard) -> Unit = {},
+  onDeclineComment: (FeedCard) -> Unit = {}
 ) {
   val snackbarHostState = remember { SnackbarHostState() }
   val noticeText = state.notice?.let { stringResource(it.messageRes()) }
@@ -146,6 +152,8 @@ fun FeedPostDetailScreen(
       onReplyClick = onReplyClick,
       onAuthorClick = onAuthorClick,
       onVote = onVote,
+      onApproveComment = onApproveComment,
+      onDeclineComment = onDeclineComment,
       modifier = Modifier.padding(padding).fillMaxSize()
     )
   }
@@ -160,11 +168,31 @@ private fun CommentList(
   onReplyClick: (FeedCard) -> Unit,
   onAuthorClick: (FeedAuthor) -> Unit,
   onVote: (List<Int>) -> Unit,
+  onApproveComment: (FeedCard) -> Unit,
+  onDeclineComment: (FeedCard) -> Unit,
   modifier: Modifier = Modifier
 ) {
   val listState = rememberLazyListState()
   var expandedThreads by rememberSaveable { mutableStateOf(setOf<String>()) }
   val postAuthorId = state.post.author?.profileId
+  // 只有帖子作者能批准 / 拒绝等着的回复
+  val canModerate = state.post.viewer.isAuthor
+  var decliningId by rememberSaveable { mutableStateOf<String?>(null) }
+
+  state.comments.firstOrNull { it.id == decliningId }?.let { comment ->
+    Dialogs.SimpleAlertDialog(
+      title = stringResource(R.string.TellomiFeedDetail__decline_title),
+      body = stringResource(R.string.TellomiFeedDetail__decline_body),
+      confirm = stringResource(R.string.TellomiFeedDetail__decline),
+      dismiss = stringResource(android.R.string.cancel),
+      onConfirm = {
+        decliningId = null
+        onDeclineComment(comment)
+      },
+      onDismiss = { decliningId = null },
+      confirmColor = MaterialTheme.colorScheme.error
+    )
+  }
 
   val nearEnd by remember {
     derivedStateOf {
@@ -206,7 +234,10 @@ private fun CommentList(
           canReply = state.canComment,
           onReplyClick = onReplyClick,
           isReply = false,
-          onAuthorClick = onAuthorClick
+          onAuthorClick = onAuthorClick,
+          canModerate = canModerate,
+          onApprove = onApproveComment,
+          onDecline = { decliningId = it.id }
         )
       }
 
@@ -222,7 +253,10 @@ private fun CommentList(
             canReply = state.canComment,
             onReplyClick = onReplyClick,
             isReply = true,
-            onAuthorClick = onAuthorClick
+            onAuthorClick = onAuthorClick,
+            canModerate = canModerate,
+            onApprove = onApproveComment,
+            onDecline = { decliningId = it.id }
           )
         }
       }
@@ -295,7 +329,10 @@ private fun CommentBubble(
   canReply: Boolean,
   onReplyClick: (FeedCard) -> Unit,
   isReply: Boolean,
-  onAuthorClick: (FeedAuthor) -> Unit = {}
+  onAuthorClick: (FeedAuthor) -> Unit = {},
+  canModerate: Boolean = false,
+  onApprove: (FeedCard) -> Unit = {},
+  onDecline: (FeedCard) -> Unit = {}
 ) {
   val context = LocalContext.current
   val start = if (isReply) 16.dp + COMMENT_AVATAR + 12.dp else 16.dp
@@ -363,7 +400,18 @@ private fun CommentBubble(
         if (meta.isNotEmpty()) {
           Text(text = meta, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
-        if (canReply) {
+        if (comment.held) {
+          // 等作者批准的回复（第 40 条）：作者看到「批准 / 拒绝」，写的人看到「等作者批准」，别人看不到它
+          Text(
+            text = stringResource(if (canModerate) R.string.TellomiFeedDetail__held_for_you else R.string.TellomiFeedDetail__held_waiting),
+            style = MaterialTheme.typography.labelMedium,
+            color = MaterialTheme.colorScheme.tertiary
+          )
+          if (canModerate) {
+            ModerationAction(R.string.TellomiFeedDetail__approve, FeedPostDetailTestTags.APPROVE + comment.id, MaterialTheme.colorScheme.primary) { onApprove(comment) }
+            ModerationAction(R.string.TellomiFeedDetail__decline, FeedPostDetailTestTags.DECLINE + comment.id, MaterialTheme.colorScheme.error) { onDecline(comment) }
+          }
+        } else if (canReply) {
           Text(
             text = stringResource(R.string.TellomiFeedDetail__reply),
             style = MaterialTheme.typography.labelMedium,
@@ -378,6 +426,21 @@ private fun CommentBubble(
       }
     }
   }
+}
+
+@Composable
+private fun ModerationAction(label: Int, tag: String, color: Color, onClick: () -> Unit) {
+  Text(
+    text = stringResource(label),
+    style = MaterialTheme.typography.labelMedium,
+    fontWeight = FontWeight.SemiBold,
+    color = color,
+    modifier = Modifier
+      .clip(RoundedCornerShape(50))
+      .clickable(onClick = onClick)
+      .padding(horizontal = 4.dp, vertical = 6.dp)
+      .testTag(tag)
+  )
 }
 
 @Composable

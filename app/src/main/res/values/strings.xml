@@ -7158,6 +7158,12 @@
     <string name="TellomiFeedCompose__replies_closed_description">No one can comment on this post</string>
     <string name="TellomiFeedCompose__replies_moderation">Review replies</string>
     <string name="TellomiFeedCompose__replies_moderation_description">Replies from others show after you approve them</string>
+    <string name="TellomiFeedDetail__held_for_you">Waiting for you</string>
+    <string name="TellomiFeedDetail__held_waiting">Visible after the author approves</string>
+    <string name="TellomiFeedDetail__approve">Approve</string>
+    <string name="TellomiFeedDetail__decline">Decline</string>
+    <string name="TellomiFeedDetail__decline_title">Decline this reply?</string>
+    <string name="TellomiFeedDetail__decline_body">The reply will be deleted.</string>
     <string name="ConversationListTabs__99p">99+</string>
     <!-- Menu item on stories landing page -->
     <string name="StoriesLandingFragment__story_privacy">Story privacy</string>

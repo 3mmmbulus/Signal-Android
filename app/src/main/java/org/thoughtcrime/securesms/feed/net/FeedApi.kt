@@ -361,6 +361,12 @@ class FeedApi(
   }
 
   /** 删自己的帖子（204）。别人的帖子引擎回 404。 */
+  /** 帖子作者批准一条等着的回复（第三节第 40 条「审核回复」）。拒绝就是删掉它（[deletePost]）。 */
+  suspend fun approveComment(postId: String, commentId: String) {
+    val url = url("v1/feed/posts").newBuilder().addPathSegment(postId).addPathSegment("comments").addPathSegment(commentId).addPathSegment("approve").build()
+    sendNoContent(Request.Builder().url(url).post(EMPTY_BODY))
+  }
+
   suspend fun deletePost(contentId: String) {
     val url = url("v1/feed/posts").newBuilder().addPathSegment(contentId).build()
     sendNoContent(Request.Builder().url(url).delete())

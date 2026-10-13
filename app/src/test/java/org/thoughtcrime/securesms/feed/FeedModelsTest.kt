@@ -82,6 +82,13 @@ class FeedModelsTest {
   }
 
   @Test
+  fun `held sits outside the card`() {
+    val result = FeedJson.decodeFromString(FeedCardResult.serializer(), """{"id":"c","state":"ok","card":{"kind":"comment","text":"hi"},"held":true}""")
+
+    assertThat(result.toCard()!!.held).isEqualTo(true)
+  }
+
+  @Test
   fun `refresh puts new cards on top without duplicates`() {
     val merged = mergeRefresh(incoming = listOf(card("c"), card("a")), existing = listOf(card("a"), card("b")))
 

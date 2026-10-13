@@ -63,7 +63,9 @@ class FeedPostDetailActivity : PassphraseRequiredActivity() {
           onNoticeShown = viewModel::onNoticeShown,
           onProfileRequired = { profileLauncher.launch(Unit) },
           onAuthorClick = { startActivity(FeedProfilePageActivity.intent(this, it.profileId)) },
-          onVote = viewModel::vote
+          onVote = viewModel::vote,
+          onApproveComment = viewModel::approveComment,
+          onDeclineComment = viewModel::declineComment
         )
       }
     }

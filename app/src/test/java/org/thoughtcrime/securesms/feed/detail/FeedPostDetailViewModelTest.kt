@@ -43,6 +43,16 @@ class FeedPostDetailViewModelTest {
     var voteResult: () -> FeedPollState = { FeedPollState(counts = listOf(1, 0), voted = listOf(0)) }
   ) : FeedSource by EmptyFeedSource {
     val votes = mutableListOf<List<Int>>()
+    val moderated = mutableListOf<String>()
+    var moderationError: Exception? = null
+    override suspend fun approveComment(postId: String, commentId: String) {
+      moderationError?.let { throw it }
+      moderated += "approve $postId/$commentId"
+    }
+    override suspend fun deletePost(contentId: String) {
+      moderationError?.let { throw it }
+      moderated += "delete $contentId"
+    }
     override suspend fun vote(contentId: String, options: List<Int>): FeedPollState {
       votes += options
       return voteResult()
@@ -169,6 +179,34 @@ class FeedPostDetailViewModelTest {
     viewModel.vote(listOf(1))
 
     assertThat(viewModel.state.value.post.pollState).isNull()
+    assertThat(viewModel.state.value.notice).isEqualTo(FeedPostDetailState.Notice.FAILED)
+  }
+
+  @Test
+  fun `approving shows the reply, declining removes it, only held ones`() {
+    val held = comment("h").copy(held = true)
+    val other = comment("x").copy(held = true)
+    val source = FakeSource(fresh = post, pages = mapOf(null to FeedCommentsPage(comments = listOf(comment("a"), held, other))))
+    val viewModel = FeedPostDetailViewModel(post, source, dispatcher)
+
+    viewModel.approveComment(held)
+    viewModel.declineComment(other)
+    viewModel.approveComment(comment("a"))
+
+    assertThat(source.moderated).containsExactly("approve p/h", "delete x")
+    assertThat(viewModel.state.value.comments.map { it.id to it.held }).containsExactly("a" to false, "h" to false)
+  }
+
+  @Test
+  fun `a failed approval keeps the reply waiting`() {
+    val held = comment("h").copy(held = true)
+    val source = FakeSource(fresh = post, pages = mapOf(null to FeedCommentsPage(comments = listOf(held))))
+    source.moderationError = FeedApiException(404, code = "not_found")
+    val viewModel = FeedPostDetailViewModel(post, source, dispatcher)
+
+    viewModel.approveComment(held)
+
+    assertThat(viewModel.state.value.comments.single().held).isTrue()
     assertThat(viewModel.state.value.notice).isEqualTo(FeedPostDetailState.Notice.FAILED)
   }
 }

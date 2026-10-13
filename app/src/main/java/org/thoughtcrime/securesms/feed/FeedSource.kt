@@ -73,6 +73,9 @@ interface FeedSource {
 
   suspend fun deletePost(contentId: String)
 
+  /** 批准一条等着的回复；拒绝用 [deletePost] 删掉它。 */
+  suspend fun approveComment(postId: String, commentId: String)
+
   /** 未通过的帖子申诉一次，进人工复核。 */
   suspend fun appeal(contentId: String, text: String)
 
@@ -195,6 +198,7 @@ class RemoteFeedSource(
   override suspend fun myPosts(before: String?): FeedMyPostsPage = api.myPosts(before)
 
   override suspend fun deletePost(contentId: String) = api.deletePost(contentId)
+  override suspend fun approveComment(postId: String, commentId: String) = api.approveComment(postId, commentId)
 
   override suspend fun editPost(contentId: String, draft: FeedDraft): FeedCreatePostResponse = api.editPost(contentId, draft.toEditRequest())
 
@@ -334,6 +338,7 @@ object EmptyFeedSource : FeedSource {
   override suspend fun publish(draft: FeedDraft, clientNonce: String): FeedCreatePostResponse = throw IllegalStateException("feed is not available")
   override suspend fun myPosts(before: String?): FeedMyPostsPage = FeedMyPostsPage()
   override suspend fun deletePost(contentId: String) = Unit
+  override suspend fun approveComment(postId: String, commentId: String) = throw IllegalStateException("feed is not available")
   override suspend fun editPost(contentId: String, draft: FeedDraft): FeedCreatePostResponse = throw IllegalStateException("feed is not available")
   override suspend fun card(contentId: String): FeedCard? = null
   override suspend fun comments(postId: String, cursor: String?): FeedCommentsPage = FeedCommentsPage()

@@ -613,4 +613,15 @@ class FeedApiTest {
     assertThat(put.path).isEqualTo("/v1/feed/posts/p%201/vote")
     assertThat(put.body.readUtf8()).isEqualTo("""{"options":[0]}""")
   }
+
+  @Test
+  fun `approving a held reply posts to its approve path`() = runBlocking {
+    server.enqueue(MockResponse().setResponseCode(204))
+
+    api.approveComment("p1", "c 2")
+
+    val request = server.takeRequest()
+    assertThat(request.method).isEqualTo("POST")
+    assertThat(request.path).isEqualTo("/v1/feed/posts/p1/comments/c%202/approve")
+  }
 }

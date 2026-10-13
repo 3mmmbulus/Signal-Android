@@ -177,6 +177,34 @@ class FeedPostDetailViewModel(
     }
   }
 
+  private val moderating = mutableSetOf<String>()
+
+  /** 帖子作者批准一条等着的回复（第三节第 40 条）：成功后去掉「等你批准」，别人就看得到了。 */
+  fun approveComment(comment: FeedCard) = moderate(comment) {
+    source.approveComment(internalState.value.post.id, comment.id)
+    internalState.update { state -> state.copy(comments = state.comments.map { if (it.id == comment.id) it.copy(held = false) else it }) }
+  }
+
+  /** 拒绝 = 删掉这条回复（引擎没有单独的拒绝）。 */
+  fun declineComment(comment: FeedCard) = moderate(comment) {
+    source.deletePost(comment.id)
+    internalState.update { state -> state.copy(comments = state.comments.filterNot { it.id == comment.id }) }
+  }
+
+  private fun moderate(comment: FeedCard, action: suspend () -> Unit) {
+    if (!comment.held || !moderating.add(comment.id)) return
+    viewModelScope.launch {
+      try {
+        withContext(ioDispatcher) { action() }
+      } catch (e: Exception) {
+        Log.w(TAG, "moderating a reply failed", e)
+        internalState.update { it.copy(notice = FeedPostDetailState.Notice.FAILED) }
+      } finally {
+        moderating -= comment.id
+      }
+    }
+  }
+
   fun onNoticeShown() {
     internalState.update { it.copy(notice = null) }
   }

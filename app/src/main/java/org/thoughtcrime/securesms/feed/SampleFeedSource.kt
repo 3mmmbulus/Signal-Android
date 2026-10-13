@@ -237,6 +237,14 @@ object SampleFeedSource : FeedSource {
   override suspend fun deletePost(contentId: String): Unit = synchronized(this) {
     mine.removeAll { it.id == contentId }
     reviewSamples.removeAll { it.id == contentId }
+    comments.values.forEach { list -> list.removeAll { it.id == contentId } }
+  }
+
+  override suspend fun approveComment(postId: String, commentId: String): Unit = synchronized(this) {
+    val list = commentsFor(postId)
+    val index = list.indexOfFirst { it.id == commentId && it.held }
+    if (index < 0) throw FeedApiException(404, code = "not_found")
+    list[index] = list[index].copy(held = false)
   }
 
   override suspend fun card(contentId: String): FeedCard? = synchronized(this) {
@@ -534,7 +542,10 @@ object SampleFeedSource : FeedSource {
         comment(3, authors[3], commentTexts[1]),
         comment(4, authors[2], "谢谢！", parent = "$postId-c2"),
         comment(5, authors[4], commentTexts[2])
-      )
+      ).apply {
+        // 自己的帖子开着「审核回复」时，别人的回复先等我批准
+        if (postAuthor == me) add(comment(6, authors[1], "这张照片是在哪儿拍的？").copy(held = true))
+      }
     }
   }
 

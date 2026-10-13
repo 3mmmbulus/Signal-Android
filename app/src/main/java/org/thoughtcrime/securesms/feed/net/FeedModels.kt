@@ -107,7 +107,9 @@ data class FeedCardResult(
   val card: FeedCard? = null,
   val stats: FeedStats? = null,
   val me: FeedMine? = null,
-  val poll: FeedPollState? = null
+  val poll: FeedPollState? = null,
+  /** 等帖子作者批准的回复（第 40 条），只有写的人和帖子作者看得到。 */
+  val held: Boolean = false
 ) {
   /** `unavailable` 不区分原因。不认识的 state 一律按不可用处理。 */
   val isAvailable: Boolean
@@ -121,7 +123,8 @@ data class FeedCardResult(
       version = version,
       stats = stats ?: base.stats,
       viewer = base.viewer.copy(liked = me?.liked ?: base.viewer.liked, saved = me?.saved ?: base.viewer.saved),
-      pollState = poll
+      pollState = poll,
+      held = held
     )
   }
 
@@ -162,7 +165,9 @@ data class FeedCard(
   @SerialName("root_id") val rootId: String? = null,
   /** 回复别的评论时才有：被回复的那条评论（直接评论帖子时没有）。 */
   @SerialName("parent_id") val parentId: String? = null,
-  @Transient val pollState: FeedPollState? = null
+  @Transient val pollState: FeedPollState? = null,
+  /** 外层 `held`：这条回复还在等帖子作者批准。 */
+  @Transient val held: Boolean = false
 ) {
   /** P1 客户端只渲染这几种 `kind`；别的（快拍、视频等）不显示，不报错。 */
   val isRenderable: Boolean

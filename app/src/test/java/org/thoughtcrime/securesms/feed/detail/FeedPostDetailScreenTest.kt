@@ -12,6 +12,7 @@ import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.captureToImage
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithText
+import androidx.compose.ui.test.onLast
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.onRoot
@@ -81,6 +82,7 @@ class FeedPostDetailScreenTest {
   )
 
   private var replyTarget: FeedCard? = null
+  private val moderated = mutableListOf<String>()
 
   private fun show(state: FeedPostDetailState) {
     composeTestRule.setContent {
@@ -94,7 +96,9 @@ class FeedPostDetailScreenTest {
           onReplyClick = { replyTarget = it },
           onDraftChanged = {},
           onSend = {},
-          onNoticeShown = {}
+          onNoticeShown = {},
+          onApproveComment = { moderated += "approve ${it.id}" },
+          onDeclineComment = { moderated += "decline ${it.id}" }
         )
       }
     }
@@ -143,5 +147,34 @@ class FeedPostDetailScreenTest {
 
     composeTestRule.onNodeWithText("No comments yet").assertExists()
     composeTestRule.onNodeWithTag(FeedPostDetailTestTags.SEND).assertIsNotEnabled()
+  }
+
+  @Test
+  fun `the post author approves or declines a held reply`() {
+    val held = comment("h", third, "这张照片是在哪儿拍的？").copy(held = true)
+    show(FeedPostDetailState(post = post.copy(viewer = post.viewer.copy(isAuthor = true)), comments = listOf(comments.last(), held), loading = false, loadedOnce = true))
+
+    composeTestRule.onNodeWithText("Waiting for you").assertExists()
+    val dir = System.getenv("FEED_SCREENSHOT_DIR")
+    if (dir != null) {
+      val bitmap = composeTestRule.onRoot().captureToImage().asAndroidBitmap()
+      File(dir).mkdirs()
+      File(dir, "post_detail_held.png").outputStream().use { bitmap.compress(Bitmap.CompressFormat.PNG, 100, it) }
+    }
+
+    composeTestRule.onNodeWithTag(FeedPostDetailTestTags.APPROVE + "h").performClick()
+    composeTestRule.onNodeWithTag(FeedPostDetailTestTags.DECLINE + "h").performClick()
+    composeTestRule.onNodeWithText("Decline this reply?").assertExists()
+    composeTestRule.onAllNodesWithText("Decline").onLast().performClick()
+    assertThat(moderated).isEqualTo(listOf("approve h", "decline h"))
+  }
+
+  @Test
+  fun `the writer of a held reply sees it is waiting`() {
+    val held = comment("h", third, "这张照片是在哪儿拍的？").copy(held = true)
+    show(FeedPostDetailState(post = post, comments = listOf(held), loading = false, loadedOnce = true))
+
+    composeTestRule.onNodeWithText("Visible after the author approves").assertExists()
+    composeTestRule.onNodeWithTag(FeedPostDetailTestTags.APPROVE + "h").assertDoesNotExist()
   }
 }
