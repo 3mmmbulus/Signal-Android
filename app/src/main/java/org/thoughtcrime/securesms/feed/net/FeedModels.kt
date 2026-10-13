@@ -712,3 +712,67 @@ data class FeedClosePersonState(val state: String = FeedClosePersonEntry.STATE_P
 
 @Serializable
 data class FeedClosePersonAnswer(val accept: Boolean)
+
+/**
+ * `GET /v1/feed/me/preferences`：内容偏好（第三节第 12、47 条）。这一版只用 [personalized]，其余字段读进来原样保留。
+ */
+@Serializable
+data class FeedPreferences(
+  val personalized: Boolean = true,
+  val style: String = "keep",
+  val sensitive: String = "standard",
+  val categories: Map<String, String> = emptyMap(),
+  @SerialName("paused_until") val pausedUntil: String? = null,
+  @SerialName("recent_topics") val recentTopics: List<FeedRecentTopic> = emptyList()
+)
+
+/** 最近 30 天看过的内容里，某个话题占多少（0–1）。 */
+@Serializable
+data class FeedRecentTopic(val key: String, val share: Double = 0.0)
+
+/** `PUT /v1/feed/me/preferences`：只发要改的字段（null 不发）。 */
+@Serializable
+data class FeedPreferencesUpdate(
+  val personalized: Boolean? = null,
+  val style: String? = null,
+  val sensitive: String? = null,
+  val categories: Map<String, String>? = null,
+  @SerialName("pause_days") val pauseDays: Int? = null
+)
+
+/**
+ * `GET /v1/feed/me/interests`：推荐用的兴趣标签，按行为算出，只有自己看得到（第 28、47 条；《算法推荐管理规定》第 17 条）。
+ * 每类最多 30 个，强的在前。
+ */
+@Serializable
+data class FeedInterests(
+  val topics: List<FeedInterest> = emptyList(),
+  val authors: List<FeedInterest> = emptyList(),
+  val sources: List<FeedInterest> = emptyList()
+) {
+  val isEmpty: Boolean
+    get() = topics.isEmpty() && authors.isEmpty() && sources.isEmpty()
+
+  fun without(dimension: String, key: String): FeedInterests {
+    return when (dimension) {
+      DIM_TOPIC -> copy(topics = topics.filterNot { it.key == key })
+      DIM_AUTHOR -> copy(authors = authors.filterNot { it.key == key })
+      DIM_SOURCE -> copy(sources = sources.filterNot { it.key == key })
+      else -> this
+    }
+  }
+
+  companion object {
+    const val DIM_TOPIC = "topic"
+    const val DIM_AUTHOR = "author"
+    const val DIM_SOURCE = "source"
+  }
+}
+
+/** 一个标签：话题是 slug（名字客户端自己起），作者、来源带 [label]。[score] 是同类里相对最强那个的比例。 */
+@Serializable
+data class FeedInterest(
+  val key: String,
+  val label: String? = null,
+  val score: Double = 0.0
+)

@@ -18,6 +18,7 @@ import org.thoughtcrime.securesms.feed.compose.FeedComposeActivity
 import org.thoughtcrime.securesms.feed.people.FeedPeopleActivity
 import org.thoughtcrime.securesms.feed.people.FeedPeopleMode
 import org.thoughtcrime.securesms.feed.profile.FeedProfileActivity
+import org.thoughtcrime.securesms.feed.settings.FeedRecommendationSettingsActivity
 import org.thoughtcrime.securesms.util.DynamicNoActionBarTheme
 
 /**
@@ -54,6 +55,7 @@ class FeedMyPostsActivity : PassphraseRequiredActivity() {
           onProfileClick = { profileLauncher.launch(Unit) },
           onFollowRequestsClick = { startActivity(FeedPeopleActivity.intent(this, FeedPeopleMode.FOLLOW_REQUESTS)) },
           onBlockedClick = { startActivity(FeedPeopleActivity.intent(this, FeedPeopleMode.BLOCKED)) },
+          onSettingsClick = { startActivity(FeedRecommendationSettingsActivity.intent(this)) },
           onAppeal = viewModel::appeal,
           onAppealNoticeShown = viewModel::onAppealNoticeShown
         )

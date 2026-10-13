@@ -624,4 +624,31 @@ class FeedApiTest {
     assertThat(request.method).isEqualTo("POST")
     assertThat(request.path).isEqualTo("/v1/feed/posts/p1/comments/c%202/approve")
   }
+
+  @Test
+  fun `preferences put only what changes, interests delete and reset`() = runBlocking {
+    server.enqueue(MockResponse().setBody("""{"personalized":true,"style":"keep","sensitive":"standard","categories":{},"paused_until":null,"recent_topics":[{"key":"photo","share":0.5}]}"""))
+    server.enqueue(MockResponse().setBody("""{"personalized":false,"style":"keep","sensitive":"standard","categories":{},"paused_until":null}"""))
+    server.enqueue(MockResponse().setBody("""{"topics":[{"key":"photo","score":1}],"authors":[{"key":"n:p1","label":"Anan","score":0.5}],"sources":[]}"""))
+    server.enqueue(MockResponse().setResponseCode(204))
+    server.enqueue(MockResponse().setResponseCode(204))
+
+    assertThat(api.preferences().recentTopics.single().key).isEqualTo("photo")
+    assertThat(api.putPreferences(FeedPreferencesUpdate(personalized = false)).personalized).isEqualTo(false)
+    assertThat(api.interests().authors.single().label).isEqualTo("Anan")
+    api.deleteInterest(FeedInterests.DIM_AUTHOR, "n:p1")
+    api.resetInterests()
+
+    assertThat(server.takeRequest().path).isEqualTo("/v1/feed/me/preferences")
+    val put = server.takeRequest()
+    assertThat(put.method).isEqualTo("PUT")
+    assertThat(put.body.readUtf8()).isEqualTo("""{"personalized":false}""")
+    assertThat(server.takeRequest().path).isEqualTo("/v1/feed/me/interests")
+    val delete = server.takeRequest()
+    assertThat(delete.method).isEqualTo("DELETE")
+    assertThat(delete.path).isEqualTo("/v1/feed/me/interests/author/n:p1")
+    val reset = server.takeRequest()
+    assertThat(reset.method).isEqualTo("POST")
+    assertThat(reset.path).isEqualTo("/v1/feed/me/interests/reset")
+  }
 }

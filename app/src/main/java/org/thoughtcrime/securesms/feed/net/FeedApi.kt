@@ -331,6 +331,30 @@ class FeedApi(
   }
 
   /** 动态通知的来源和类别。没设置过给默认值（所有人、全开）。 */
+  suspend fun preferences(): FeedPreferences {
+    return get(url("v1/feed/me/preferences"), FeedPreferences.serializer())
+  }
+
+  suspend fun putPreferences(update: FeedPreferencesUpdate): FeedPreferences {
+    val body = FeedJson.encodeToString(FeedPreferencesUpdate.serializer(), update).toRequestBody(JSON)
+    return send(Request.Builder().url(url("v1/feed/me/preferences")).put(body), FeedPreferences.serializer())
+  }
+
+  suspend fun interests(): FeedInterests {
+    return get(url("v1/feed/me/interests"), FeedInterests.serializer())
+  }
+
+  /** 删掉一个兴趣标签：之后不会再长回来（引擎留一行置零的记录）。 */
+  suspend fun deleteInterest(dimension: String, key: String) {
+    val url = url("v1/feed/me/interests").newBuilder().addPathSegment(dimension).addPathSegment(key).build()
+    sendNoContent(Request.Builder().url(url).delete())
+  }
+
+  /** 重置推荐：算出来的标签全清掉，删过的照样不回来。客户端二次确认（第 12 条）。 */
+  suspend fun resetInterests() {
+    sendNoContent(Request.Builder().url(url("v1/feed/me/interests/reset")).post(EMPTY_BODY))
+  }
+
   suspend fun notificationSettings(): FeedNotificationSettings {
     return get(url("v1/feed/me/notification-settings"), FeedNotificationSettings.serializer())
   }

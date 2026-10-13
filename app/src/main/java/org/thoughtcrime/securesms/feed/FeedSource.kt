@@ -32,12 +32,15 @@ import org.thoughtcrime.securesms.feed.net.FeedEntry
 import org.thoughtcrime.securesms.feed.net.FeedEventPayload
 import org.thoughtcrime.securesms.feed.net.FeedFollowRequest
 import org.thoughtcrime.securesms.feed.net.FeedImageUploader
+import org.thoughtcrime.securesms.feed.net.FeedInterests
 import org.thoughtcrime.securesms.feed.net.FeedItemRef
 import org.thoughtcrime.securesms.feed.net.FeedMyPostsPage
 import org.thoughtcrime.securesms.feed.net.FeedMyProfile
 import org.thoughtcrime.securesms.feed.net.FeedNotificationSettings
 import org.thoughtcrime.securesms.feed.net.FeedNotificationsResponse
 import org.thoughtcrime.securesms.feed.net.FeedPollState
+import org.thoughtcrime.securesms.feed.net.FeedPreferences
+import org.thoughtcrime.securesms.feed.net.FeedPreferencesUpdate
 import org.thoughtcrime.securesms.feed.net.FeedProfilePage
 import org.thoughtcrime.securesms.feed.net.FeedProfilePostsPage
 import org.thoughtcrime.securesms.feed.net.FeedProfileUpdate
@@ -72,6 +75,12 @@ interface FeedSource {
   suspend fun myPosts(before: String?): FeedMyPostsPage
 
   suspend fun deletePost(contentId: String)
+
+  suspend fun preferences(): FeedPreferences
+  suspend fun savePreferences(update: FeedPreferencesUpdate): FeedPreferences
+  suspend fun interests(): FeedInterests
+  suspend fun deleteInterest(dimension: String, key: String)
+  suspend fun resetInterests()
 
   /** 批准一条等着的回复；拒绝用 [deletePost] 删掉它。 */
   suspend fun approveComment(postId: String, commentId: String)
@@ -198,6 +207,11 @@ class RemoteFeedSource(
   override suspend fun myPosts(before: String?): FeedMyPostsPage = api.myPosts(before)
 
   override suspend fun deletePost(contentId: String) = api.deletePost(contentId)
+  override suspend fun preferences(): FeedPreferences = api.preferences()
+  override suspend fun savePreferences(update: FeedPreferencesUpdate): FeedPreferences = api.putPreferences(update)
+  override suspend fun interests(): FeedInterests = api.interests()
+  override suspend fun deleteInterest(dimension: String, key: String) = api.deleteInterest(dimension, key)
+  override suspend fun resetInterests() = api.resetInterests()
   override suspend fun approveComment(postId: String, commentId: String) = api.approveComment(postId, commentId)
 
   override suspend fun editPost(contentId: String, draft: FeedDraft): FeedCreatePostResponse = api.editPost(contentId, draft.toEditRequest())
@@ -338,6 +352,11 @@ object EmptyFeedSource : FeedSource {
   override suspend fun publish(draft: FeedDraft, clientNonce: String): FeedCreatePostResponse = throw IllegalStateException("feed is not available")
   override suspend fun myPosts(before: String?): FeedMyPostsPage = FeedMyPostsPage()
   override suspend fun deletePost(contentId: String) = Unit
+  override suspend fun preferences(): FeedPreferences = throw IllegalStateException("feed is not available")
+  override suspend fun savePreferences(update: FeedPreferencesUpdate): FeedPreferences = throw IllegalStateException("feed is not available")
+  override suspend fun interests(): FeedInterests = throw IllegalStateException("feed is not available")
+  override suspend fun deleteInterest(dimension: String, key: String) = throw IllegalStateException("feed is not available")
+  override suspend fun resetInterests() = throw IllegalStateException("feed is not available")
   override suspend fun approveComment(postId: String, commentId: String) = throw IllegalStateException("feed is not available")
   override suspend fun editPost(contentId: String, draft: FeedDraft): FeedCreatePostResponse = throw IllegalStateException("feed is not available")
   override suspend fun card(contentId: String): FeedCard? = null

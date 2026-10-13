@@ -24,6 +24,8 @@ import org.thoughtcrime.securesms.feed.net.FeedCreatePostResponse
 import org.thoughtcrime.securesms.feed.net.FeedEntry
 import org.thoughtcrime.securesms.feed.net.FeedEventPayload
 import org.thoughtcrime.securesms.feed.net.FeedFollowRequest
+import org.thoughtcrime.securesms.feed.net.FeedInterest
+import org.thoughtcrime.securesms.feed.net.FeedInterests
 import org.thoughtcrime.securesms.feed.net.FeedMedia
 import org.thoughtcrime.securesms.feed.net.FeedMyPost
 import org.thoughtcrime.securesms.feed.net.FeedMyPostsPage
@@ -34,9 +36,12 @@ import org.thoughtcrime.securesms.feed.net.FeedNotificationsResponse
 import org.thoughtcrime.securesms.feed.net.FeedPersonSummary
 import org.thoughtcrime.securesms.feed.net.FeedPoll
 import org.thoughtcrime.securesms.feed.net.FeedPollState
+import org.thoughtcrime.securesms.feed.net.FeedPreferences
+import org.thoughtcrime.securesms.feed.net.FeedPreferencesUpdate
 import org.thoughtcrime.securesms.feed.net.FeedProfilePage
 import org.thoughtcrime.securesms.feed.net.FeedProfilePostsPage
 import org.thoughtcrime.securesms.feed.net.FeedProfileUpdate
+import org.thoughtcrime.securesms.feed.net.FeedRecentTopic
 import org.thoughtcrime.securesms.feed.net.FeedRelation
 import org.thoughtcrime.securesms.feed.net.FeedReportRequest
 import org.thoughtcrime.securesms.feed.net.FeedSearchPage
@@ -238,6 +243,30 @@ object SampleFeedSource : FeedSource {
     mine.removeAll { it.id == contentId }
     reviewSamples.removeAll { it.id == contentId }
     comments.values.forEach { list -> list.removeAll { it.id == contentId } }
+  }
+
+  private var preferences = FeedPreferences(recentTopics = listOf(FeedRecentTopic("photo", 0.4), FeedRecentTopic("food", 0.3)))
+  private var interests = FeedInterests(
+    topics = listOf(FeedInterest("photo", score = 1.0), FeedInterest("baking", score = 0.6), FeedInterest("travel", score = 0.3)),
+    authors = listOf(FeedInterest("n:s-1", label = "山风", score = 1.0)),
+    sources = listOf(FeedInterest("unsplash", label = "Unsplash", score = 0.5))
+  )
+
+  override suspend fun preferences(): FeedPreferences = synchronized(this) { preferences }
+
+  override suspend fun savePreferences(update: FeedPreferencesUpdate): FeedPreferences = synchronized(this) {
+    preferences = preferences.copy(personalized = update.personalized ?: preferences.personalized)
+    preferences
+  }
+
+  override suspend fun interests(): FeedInterests = synchronized(this) { interests }
+
+  override suspend fun deleteInterest(dimension: String, key: String): Unit = synchronized(this) {
+    interests = interests.without(dimension, key)
+  }
+
+  override suspend fun resetInterests(): Unit = synchronized(this) {
+    interests = FeedInterests()
   }
 
   override suspend fun approveComment(postId: String, commentId: String): Unit = synchronized(this) {
