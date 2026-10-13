@@ -101,15 +101,23 @@ fun FeedSearchScreen(
   onRetry: () -> Unit,
   autoFocus: Boolean = true,
   onSaveClick: ((FeedCard) -> Unit)? = null,
+  onRepostClick: ((FeedCard) -> Unit)? = null,
   onNoticeShown: () -> Unit = {}
 ) {
   val snackbarHostState = remember { SnackbarHostState() }
   val savedDone = stringResource(R.string.TellomiFeed__saved_done)
   val failed = stringResource(R.string.TellomiFeed__action_failed)
+  val repostedDone = stringResource(R.string.TellomiFeed__reposted_done)
   LaunchedEffect(state.notice) {
     val notice = state.notice ?: return@LaunchedEffect
     onNoticeShown()
-    snackbarHostState.showSnackbar(if (notice == FeedSearchState.Notice.SAVED) savedDone else failed)
+    snackbarHostState.showSnackbar(
+      when (notice) {
+        FeedSearchState.Notice.SAVED -> savedDone
+        FeedSearchState.Notice.REPOSTED -> repostedDone
+        FeedSearchState.Notice.FAILED -> failed
+      }
+    )
   }
 
   Scaffold(contentWindowInsets = WindowInsets(0), snackbarHost = { Snackbars.Host(snackbarHostState) }) { padding ->
@@ -138,6 +146,7 @@ fun FeedSearchScreen(
           onOpenPost = onOpenPost,
           onLikeClick = onLikeClick,
           onSaveClick = onSaveClick,
+          onRepostClick = onRepostClick,
           onSeeAllPeople = { onSelectScope(FeedApi.SEARCH_USERS) },
           onLoadMore = onLoadMore,
           onRetry = onRetry
@@ -314,6 +323,7 @@ private fun Results(
   onOpenPost: (FeedCard) -> Unit,
   onLikeClick: (FeedCard) -> Unit,
   onSaveClick: ((FeedCard) -> Unit)?,
+  onRepostClick: ((FeedCard) -> Unit)?,
   onSeeAllPeople: () -> Unit,
   onLoadMore: () -> Unit,
   onRetry: () -> Unit
@@ -343,6 +353,7 @@ private fun Results(
         onOpenPost = onOpenPost,
         onLikeClick = onLikeClick,
         onSaveClick = onSaveClick,
+        onRepostClick = onRepostClick,
         onSeeAllPeople = onSeeAllPeople,
         onLoadMore = onLoadMore
       )
@@ -361,6 +372,7 @@ private fun ResultList(
   onOpenPost: (FeedCard) -> Unit,
   onLikeClick: (FeedCard) -> Unit,
   onSaveClick: ((FeedCard) -> Unit)?,
+  onRepostClick: ((FeedCard) -> Unit)?,
   onSeeAllPeople: () -> Unit,
   onLoadMore: () -> Unit
 ) {
@@ -397,6 +409,7 @@ private fun ResultList(
           mediaBaseUrl = state.mediaBaseUrl,
           onOpen = onOpenPost,
           onSaveClick = onSaveClick,
+          onRepostClick = onRepostClick,
           onAuthorClick = { author ->
             onOpenPerson(FeedPersonSummary(id = author.profileId, handle = author.handle, displayName = author.displayName, avatarKey = author.avatarKey))
           }

@@ -25,6 +25,7 @@ import org.thoughtcrime.securesms.feed.net.FeedApiException
 import org.thoughtcrime.securesms.feed.net.FeedCard
 import org.thoughtcrime.securesms.feed.setSaved
 import org.thoughtcrime.securesms.feed.withLiked
+import org.thoughtcrime.securesms.feed.withReposted
 import org.thoughtcrime.securesms.feed.withSaved
 
 /**
@@ -150,6 +151,27 @@ class FeedTopicViewModel(
     }
   }
 
+  private val reposting = mutableSetOf<String>()
+
+  /** 转发到动态 / 取消（第三节第 26 条）：先改界面，失败改回来。 */
+  fun toggleRepost(card: FeedCard) {
+    if (!reposting.add(card.id)) return
+    val nowReposted = !card.viewer.reposted
+    updatePost(card.id) { it.withReposted(nowReposted) }
+    viewModelScope.launch {
+      try {
+        withContext(ioDispatcher) { source.setReposted(card.id, nowReposted) }
+        if (nowReposted) internalState.update { it.copy(notice = FeedTopicState.Notice.REPOSTED) }
+      } catch (e: Exception) {
+        Log.w(TAG, "repost failed", e)
+        updatePost(card.id) { it.withReposted(!nowReposted) }
+        internalState.update { it.copy(notice = FeedTopicState.Notice.FAILED) }
+      } finally {
+        reposting -= card.id
+      }
+    }
+  }
+
   fun onNoticeShown() {
     internalState.update { it.copy(notice = null) }
   }
@@ -179,6 +201,9 @@ data class FeedTopicState(
 
     /** 存进了「我的收藏」。 */
     SAVED,
+
+    /** 已转发到自己的动态。 */
+    REPOSTED,
     FAILED
   }
 }

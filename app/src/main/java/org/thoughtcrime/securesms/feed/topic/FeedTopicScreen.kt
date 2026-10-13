@@ -72,7 +72,8 @@ fun FeedTopicScreen(
   onReportPost: (FeedCard) -> Unit,
   onTopicClick: (FeedTopic) -> Unit,
   onNoticeShown: () -> Unit,
-  onSaveClick: ((FeedCard) -> Unit)? = null
+  onSaveClick: ((FeedCard) -> Unit)? = null,
+  onRepostClick: ((FeedCard) -> Unit)? = null
 ) {
   val snackbarHostState = remember { SnackbarHostState() }
   val followed = stringResource(R.string.TellomiFeedTopicPage__followed)
@@ -80,6 +81,7 @@ fun FeedTopicScreen(
   val failed = stringResource(R.string.TellomiFeed__action_failed)
   val undo = stringResource(R.string.TellomiFeed__undo)
   val savedDone = stringResource(R.string.TellomiFeed__saved_done)
+  val repostedDone = stringResource(R.string.TellomiFeed__reposted_done)
   LaunchedEffect(state.notice) {
     val notice = state.notice ?: return@LaunchedEffect
     onNoticeShown()
@@ -87,6 +89,7 @@ fun FeedTopicScreen(
       FeedTopicState.Notice.FOLLOWED -> if (snackbarHostState.showSnackbar(followed, actionLabel = undo) == SnackbarResult.ActionPerformed) onToggleFollow()
       FeedTopicState.Notice.UNFOLLOWED -> snackbarHostState.showSnackbar(unfollowed)
       FeedTopicState.Notice.SAVED -> snackbarHostState.showSnackbar(savedDone)
+      FeedTopicState.Notice.REPOSTED -> snackbarHostState.showSnackbar(repostedDone)
       FeedTopicState.Notice.FAILED -> snackbarHostState.showSnackbar(failed)
     }
   }
@@ -112,7 +115,8 @@ fun FeedTopicScreen(
           onOpenPost = onOpenPost,
           onReportPost = onReportPost,
           onTopicClick = onTopicClick,
-          onSaveClick = onSaveClick
+          onSaveClick = onSaveClick,
+          onRepostClick = onRepostClick
         )
       }
     }
@@ -130,7 +134,8 @@ private fun TopicContent(
   onOpenPost: (FeedCard) -> Unit,
   onReportPost: (FeedCard) -> Unit,
   onTopicClick: (FeedTopic) -> Unit,
-  onSaveClick: ((FeedCard) -> Unit)?
+  onSaveClick: ((FeedCard) -> Unit)?,
+  onRepostClick: ((FeedCard) -> Unit)?
 ) {
   val listState = rememberLazyListState()
   val nearEnd by remember {
@@ -169,7 +174,8 @@ private fun TopicContent(
             onOpen = onOpenPost,
             onReportClick = if (card.viewer.isAuthor) null else onReportPost,
             onTopicClick = onTopicClick,
-            onSaveClick = onSaveClick
+            onSaveClick = onSaveClick,
+            onRepostClick = onRepostClick
           )
           HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
         }

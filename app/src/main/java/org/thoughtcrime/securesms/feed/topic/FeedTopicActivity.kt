@@ -59,7 +59,8 @@ class FeedTopicActivity : PassphraseRequiredActivity() {
           onReportPost = { reportLauncher.launch(FeedReportTarget.content(it.id)) },
           onTopicClick = { if (it.slug != slug) startActivity(intent(this, it.slug, it.label)) },
           onNoticeShown = viewModel::onNoticeShown,
-          onSaveClick = viewModel::toggleSave
+          onSaveClick = viewModel::toggleSave,
+          onRepostClick = viewModel::toggleRepost
         )
       }
     }

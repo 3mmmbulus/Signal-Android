@@ -54,6 +54,7 @@ class FeedSearchActivity : PassphraseRequiredActivity() {
           onLoadMore = viewModel::loadMore,
           onRetry = viewModel::retry,
           onSaveClick = viewModel::toggleSave,
+          onRepostClick = viewModel::toggleRepost,
           onNoticeShown = viewModel::onNoticeShown
         )
       }

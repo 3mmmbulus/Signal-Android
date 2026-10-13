@@ -74,7 +74,8 @@ class FeedProfilePageActivity : PassphraseRequiredActivity() {
           onOwnPostAction = viewModel::onOwnPostAction,
           onInsightsDismissed = viewModel::onInsightsDismissed,
           onSetHidden = viewModel::setHidden,
-          onSaveClick = viewModel::toggleSave
+          onSaveClick = viewModel::toggleSave,
+          onRepostClick = viewModel::toggleRepost
         )
       }
     }

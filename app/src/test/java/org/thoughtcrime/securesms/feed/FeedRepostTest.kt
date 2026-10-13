@@ -49,10 +49,21 @@ import org.thoughtcrime.securesms.feed.net.FeedApi
 import org.thoughtcrime.securesms.feed.net.FeedAuthor
 import org.thoughtcrime.securesms.feed.net.FeedCard
 import org.thoughtcrime.securesms.feed.net.FeedEntry
+import org.thoughtcrime.securesms.feed.net.FeedProfilePage
+import org.thoughtcrime.securesms.feed.net.FeedProfilePostsPage
 import org.thoughtcrime.securesms.feed.net.FeedRepostedBy
+import org.thoughtcrime.securesms.feed.net.FeedSearchPage
 import org.thoughtcrime.securesms.feed.net.FeedStats
 import org.thoughtcrime.securesms.feed.net.FeedTimelinePage
 import org.thoughtcrime.securesms.feed.net.FeedTokenSource
+import org.thoughtcrime.securesms.feed.net.FeedTopicPage
+import org.thoughtcrime.securesms.feed.profile.FeedProfilePageState
+import org.thoughtcrime.securesms.feed.profile.FeedProfilePageViewModel
+import org.thoughtcrime.securesms.feed.search.FeedSearchState
+import org.thoughtcrime.securesms.feed.search.FeedSearchViewModel
+import org.thoughtcrime.securesms.feed.search.InMemoryFeedSearchHistory
+import org.thoughtcrime.securesms.feed.topic.FeedTopicState
+import org.thoughtcrime.securesms.feed.topic.FeedTopicViewModel
 import java.io.File
 
 /** 转发到动态（第三节第 26 条）：分享菜单里转发 / 取消，关注流里「谁 转发了」。 */
@@ -78,6 +89,10 @@ class FeedRepostTest {
     val calls = mutableListOf<String>()
     var error: Exception? = null
     override suspend fun timeline(tab: FeedTab, cursor: String?) = FeedTimelinePage(entries = listOf(FeedEntry(id = card.id, card = card)))
+    override suspend fun profile(profileId: String) = FeedProfilePage(id = profileId, displayName = "山风")
+    override suspend fun profilePosts(profileId: String, cursor: String?) = FeedProfilePostsPage(posts = listOf(card))
+    override suspend fun topicPosts(slug: String, cursor: String?) = FeedTopicPage(posts = listOf(card))
+    override suspend fun search(query: String, scope: String, cursor: String?) = FeedSearchPage(posts = listOf(card))
     override suspend fun setReposted(contentId: String, reposted: Boolean) {
       error?.let { throw it }
       calls += "$contentId $reposted"
@@ -171,6 +186,34 @@ class FeedRepostTest {
 
     assertThat(viewModel.state.value.post.viewer.reposted).isTrue()
     assertThat(viewModel.state.value.notice).isEqualTo(FeedPostDetailState.Notice.REPOSTED)
+  }
+
+  @Test
+  fun `profile, topic and search pages repost the same way`() {
+    val fake = FakeSource(card)
+
+    val profile = FeedProfilePageViewModel("p1", fake, dispatcher)
+    profile.toggleRepost(profile.state.value.posts.single())
+    assertThat(profile.state.value.posts.single().viewer.reposted).isTrue()
+    assertThat(profile.state.value.notice).isEqualTo(FeedProfilePageState.Notice.REPOSTED)
+
+    val topic = FeedTopicViewModel("hiking", fake, dispatcher)
+    topic.toggleRepost(topic.state.value.posts.single())
+    assertThat(topic.state.value.posts.single().stats.reposts).isEqualTo(3)
+    assertThat(topic.state.value.notice).isEqualTo(FeedTopicState.Notice.REPOSTED)
+
+    val search = FeedSearchViewModel(fake, InMemoryFeedSearchHistory(), dispatcher, debounceMillis = 0)
+    search.onQueryChange("山")
+    search.submit()
+    search.toggleRepost(search.state.value.results!!.posts.single())
+    assertThat(search.state.value.results!!.posts.single().viewer.reposted).isTrue()
+
+    fake.error = IllegalStateException("net")
+    search.toggleRepost(search.state.value.results!!.posts.single())
+    assertThat(search.state.value.results!!.posts.single().viewer.reposted).isTrue()
+    assertThat(search.state.value.notice).isEqualTo(FeedSearchState.Notice.FAILED)
+
+    assertThat(fake.calls).containsExactly("c1 true", "c1 true", "c1 true")
   }
 
   @Test
