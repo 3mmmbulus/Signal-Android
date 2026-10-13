@@ -16,6 +16,7 @@ import org.thoughtcrime.securesms.database.model.ReactionRecord
 import org.thoughtcrime.securesms.database.model.StoryType
 import org.thoughtcrime.securesms.database.model.databaseprotos.BodyRangeList
 import org.thoughtcrime.securesms.database.model.databaseprotos.GiftBadge
+import org.thoughtcrime.securesms.database.model.databaseprotos.MessageExtras
 import org.thoughtcrime.securesms.linkpreview.LinkPreview
 import org.thoughtcrime.securesms.mms.SlideDeck
 import org.thoughtcrime.securesms.payments.Payment
@@ -166,7 +167,8 @@ object FakeMessageRecords {
     payment: Payment? = null,
     call: CallTable.Call? = null,
     poll: PollRecord? = null,
-    deletedBy: RecipientId? = null
+    deletedBy: RecipientId? = null,
+    messageExtras: MessageExtras? = null
   ): MmsMessageRecord {
     return MmsMessageRecord(
       id,
@@ -214,7 +216,7 @@ object FakeMessageRecords {
       deletedBy,
       CollapsedState.NONE,
       0,
-      null,
+      messageExtras,
       false
     )
   }

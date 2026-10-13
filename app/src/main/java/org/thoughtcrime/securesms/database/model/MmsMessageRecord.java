@@ -4,6 +4,7 @@
  */
 package org.thoughtcrime.securesms.database.model;
 
+import org.thoughtcrime.securesms.util.TellomiCaptionAbove;
 import android.content.Context;
 import android.text.SpannableString;
 
@@ -221,6 +222,19 @@ public class MmsMessageRecord extends MessageRecord {
 
   public boolean isRead() {
     return isRead;
+  }
+
+  /**
+   * Tellomi (ADR-0075 §4.4, as Telegram): a message with per-media captions whose bubble shows no caption (two or more of
+   * them and none for the whole message) lays out like a captionless album, though its body has text for other clients.
+   */
+  @Override
+  public boolean isDisplayBodyEmpty(@NonNull Context context) {
+    String tellomiCaption = TellomiCaptionAbove.bubbleCaption(this);
+    if (tellomiCaption != null) {
+      return tellomiCaption.isEmpty();
+    }
+    return super.isDisplayBodyEmpty(context);
   }
 
   @Override

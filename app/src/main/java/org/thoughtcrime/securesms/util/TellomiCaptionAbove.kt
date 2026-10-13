@@ -5,6 +5,8 @@
 
 package org.thoughtcrime.securesms.util
 
+import org.thoughtcrime.securesms.database.model.MessageRecord
+import org.thoughtcrime.securesms.database.model.MmsMessageRecord
 import org.thoughtcrime.securesms.database.model.databaseprotos.MessageExtras
 import org.thoughtcrime.securesms.database.model.databaseprotos.TellomiMessageExtras
 import org.whispersystems.signalservice.internal.push.DataMessage
@@ -44,6 +46,33 @@ object TellomiCaptionAbove {
   /** ADR-0075：整条消息的说明；没有就是 null。 */
   @JvmStatic
   fun messageCaption(extras: MessageExtras?): String? = extras?.tellomi?.messageCaption?.takeIf { it.isNotEmpty() }
+
+  /**
+   * ADR-0075 §4.4（owner 2026-10-14 照 Telegram）：气泡里画哪段说明。一条消息里只有一个说明（整条的，或某一张的）就画它；
+   * 两个及以上只画整条消息的说明，没有就不画（返回 ""）；逐张的在查看器里看（Telegram `GroupedMessages.calculate()`
+   * 遇到第二个说明就把相册的说明清掉）。没有逐张说明、也没有整条说明的消息返回 null：照旧画 body（兼容文本）。
+   */
+  @JvmStatic
+  fun bubbleCaption(record: MessageRecord): String? {
+    val mediaCaptions = (record as? MmsMessageRecord)?.slideDeck?.slides.orEmpty().map { it.caption.orElse(null) }
+    return bubbleCaption(messageCaption(record.messageExtras), mediaCaptions)
+  }
+
+  @JvmStatic
+  fun bubbleCaption(messageCaption: String?, mediaCaptions: List<String?>): String? {
+    val captions = listOfNotNull(messageCaption?.takeIf { it.isNotEmpty() }) + mediaCaptions.filterNot { it.isNullOrEmpty() }.filterNotNull()
+    return when {
+      captions.isEmpty() -> null
+      captions.size == 1 -> captions[0]
+      else -> messageCaption?.takeIf { it.isNotEmpty() } ?: ""
+    }
+  }
+
+  /** 查看器里没有自己说明的那一张显示什么：有逐张说明的消息只给整条消息的说明（没有就是 ""）；别的消息返回 null，照旧用正文。 */
+  @JvmStatic
+  fun viewerFallback(record: MessageRecord): String? {
+    return if (bubbleCaption(record) == null) null else messageCaption(record.messageExtras) ?: ""
+  }
 
   /** 重发 / 发送任务从库里读回消息时只带这一部分，别的扩展（管理员删除状态等）不跟着进 [org.thoughtcrime.securesms.mms.OutgoingMessage]。 */
   @JvmStatic

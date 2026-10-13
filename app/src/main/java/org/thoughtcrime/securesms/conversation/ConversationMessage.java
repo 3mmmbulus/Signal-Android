@@ -1,5 +1,6 @@
 package org.thoughtcrime.securesms.conversation;
 
+import org.thoughtcrime.securesms.util.TellomiCaptionAbove;
 import android.content.Context;
 import android.graphics.Bitmap;
 import android.text.SpannableString;
@@ -357,6 +358,15 @@ public class ConversationMessage {
                                                                         @Nullable Map<RecipientId, MemberLabel> prefetchedLabels,
                                                                         @Nullable SharedContactPresentation sharedContactPresentation)
     {
+      // Tellomi (ADR-0075 §4.4, as Telegram): with per-media captions the bubble shows one caption, or only the whole
+      // message's; the body is then the text for other clients, and its mentions and ranges belong to it.
+      String  tellomiCaption      = TellomiCaptionAbove.bubbleCaption(messageRecord);
+      boolean tellomiReplacesBody = tellomiCaption != null && !tellomiCaption.contentEquals(body);
+      if (tellomiReplacesBody) {
+        body     = tellomiCaption;
+        mentions = null;
+      }
+
       SpannableString      styledAndMentionBody = null;
       MessageStyler.Result styleResult          = MessageStyler.Result.none();
 
@@ -365,7 +375,7 @@ public class ConversationMessage {
         mentionsUpdate = MentionUtil.updateBodyAndMentionsWithDisplayNames(context, body, mentions);
       }
 
-      if (messageRecord.getMessageRanges() != null) {
+      if (messageRecord.getMessageRanges() != null && !tellomiReplacesBody) {
         BodyRangeList bodyRanges = mentionsUpdate == null ? messageRecord.getMessageRanges()
                                                           : BodyRangeUtil.adjustBodyRanges(messageRecord.getMessageRanges(), mentionsUpdate.getBodyAdjustments());
 

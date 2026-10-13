@@ -27,6 +27,7 @@ import org.thoughtcrime.securesms.longmessage.resolveBody
 import org.thoughtcrime.securesms.recipients.RecipientId
 import org.thoughtcrime.securesms.sms.MessageSender
 import org.thoughtcrime.securesms.util.AttachmentUtil
+import org.thoughtcrime.securesms.util.TellomiCaptionAbove
 import org.thoughtcrime.securesms.util.TellomiSpoiler
 
 /**
@@ -102,7 +103,9 @@ class MediaPreviewRepository {
     return Single.fromCallable {
       SignalDatabase.messages.getMessages(messageIds).toList().withAttachments()
         .filterIsInstance<MmsMessageRecord>()
-        .associate { it.id to it.resolveBody(context).getDisplayBody(context) }
+        // Tellomi (ADR-0075): a message with per-media captions gives only the caption for the whole message to items
+        // without their own, not the text for other clients
+        .associate { record -> record.id to (TellomiCaptionAbove.viewerFallback(record)?.let { SpannableString(it) } ?: record.resolveBody(context).getDisplayBody(context)) }
     }.subscribeOn(Schedulers.io())
   }
 
