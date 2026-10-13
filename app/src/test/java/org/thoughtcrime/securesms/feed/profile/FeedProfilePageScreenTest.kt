@@ -26,6 +26,7 @@ import org.robolectric.annotation.Config
 import org.robolectric.annotation.GraphicsMode
 import org.signal.core.ui.CoreUiDependenciesRule
 import org.signal.core.ui.compose.theme.SignalTheme
+import org.thoughtcrime.securesms.feed.FeedOfficial
 import org.thoughtcrime.securesms.feed.net.FeedAuthor
 import org.thoughtcrime.securesms.feed.net.FeedCard
 import org.thoughtcrime.securesms.feed.net.FeedClosePerson
@@ -153,5 +154,26 @@ class FeedProfilePageScreenTest {
     val bitmap = composeTestRule.onRoot().captureToImage().asAndroidBitmap()
     File(dir).mkdirs()
     File(dir, name).outputStream().use { bitmap.compress(Bitmap.CompressFormat.PNG, 100, it) }
+  }
+
+  @Test
+  fun `official accounts get the mark and look-alikes get a warning`() {
+    show(FeedProfilePageState(profile = profile.copy(displayName = "Tellomi", badge = "official"), loading = false))
+    composeTestRule.onNodeWithTag(FeedOfficial.TEST_TAG_MARK).assertExists()
+    composeTestRule.onNodeWithTag(FeedProfilePageTestTags.NOT_OFFICIAL).assertDoesNotExist()
+  }
+
+  @Test
+  fun `a look-alike name without the badge shows not official`() {
+    show(FeedProfilePageState(profile = profile.copy(displayName = "Tellomi 客服"), loading = false))
+    composeTestRule.onNodeWithTag(FeedOfficial.TEST_TAG_MARK).assertDoesNotExist()
+    composeTestRule.onNodeWithTag(FeedProfilePageTestTags.NOT_OFFICIAL).assertExists()
+  }
+
+  @Test
+  fun `ordinary names show neither`() {
+    show(FeedProfilePageState(profile = profile, loading = false))
+    composeTestRule.onNodeWithTag(FeedOfficial.TEST_TAG_MARK).assertDoesNotExist()
+    composeTestRule.onNodeWithTag(FeedProfilePageTestTags.NOT_OFFICIAL).assertDoesNotExist()
   }
 }

@@ -7067,6 +7067,7 @@
     <string name="TellomiFeedPage__follows_you">Follows you</string>
     <string name="TellomiFeedPage__close_people">Close people: %1$s</string>
     <string name="TellomiFeedPage__badge_official">Official</string>
+    <string name="TellomiFeedPage__not_official">This is not an official Tellomi account</string>
     <string name="TellomiFeedPage__badge_verified">Verified</string>
     <string name="TellomiFeedPage__badge_org">Organization</string>
     <string name="TellomiFeedPage__badge_channel">Auto content channel</string>

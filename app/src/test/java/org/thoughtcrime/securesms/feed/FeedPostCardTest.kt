@@ -135,4 +135,15 @@ class FeedPostCardTest {
     assertThat(started.component?.className).isEqualTo(ShareActivity::class.java.name)
     assertThat(started.getStringExtra(Intent.EXTRA_TEXT)).isEqualTo("山风：公开的\nhttps://tell.cc/m#$id")
   }
+
+  @Test
+  fun `official authors get the mark after their name`() {
+    val card = FeedCard(id = "o", kind = FeedCard.KIND_POST, text = "公告", author = FeedAuthor(profileId = "t", displayName = "Tellomi", badge = "official"))
+    composeTestRule.setContent {
+      SignalTheme {
+        FeedPostCard(card = card, showIpRegion = false, onLikeClick = {}, onNotInterestedClick = {})
+      }
+    }
+    composeTestRule.onNodeWithTag(FeedOfficial.TEST_TAG_MARK).assertExists()
+  }
 }

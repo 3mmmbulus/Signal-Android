@@ -6847,6 +6847,7 @@
     <string name="TellomiFeedPage__follows_you">关注了你</string>
     <string name="TellomiFeedPage__close_people">关心的人：%1$s</string>
     <string name="TellomiFeedPage__badge_official">官方账号</string>
+    <string name="TellomiFeedPage__not_official">此账号不是 Tellomi 官方账号</string>
     <string name="TellomiFeedPage__badge_verified">已认证</string>
     <string name="TellomiFeedPage__badge_org">机构</string>
     <string name="TellomiFeedPage__badge_channel">自动内容频道</string>

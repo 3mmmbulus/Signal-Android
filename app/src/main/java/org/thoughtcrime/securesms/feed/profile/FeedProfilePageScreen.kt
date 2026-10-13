@@ -59,6 +59,8 @@ import org.signal.core.ui.compose.Snackbars
 import org.thoughtcrime.securesms.R
 import org.thoughtcrime.securesms.feed.FeedAvatar
 import org.thoughtcrime.securesms.feed.FeedInsightsDialog
+import org.thoughtcrime.securesms.feed.FeedOfficial
+import org.thoughtcrime.securesms.feed.FeedOfficialMark
 import org.thoughtcrime.securesms.feed.FeedOwnPostAction
 import org.thoughtcrime.securesms.feed.FeedPostCard
 import org.thoughtcrime.securesms.feed.net.FeedApi
@@ -72,6 +74,7 @@ object FeedProfilePageTestTags {
   const val MORE = "feed_profile_page_more"
   const val MUTE = "feed_profile_page_mute"
   const val HIDE_FROM = "feed_profile_page_hide_from"
+  const val NOT_OFFICIAL = "feed_profile_page_not_official"
 }
 
 private const val LOAD_MORE_THRESHOLD = 4
@@ -378,14 +381,20 @@ private fun ProfileHeader(profile: FeedProfilePage, showIpRegion: Boolean) {
       .padding(start = 20.dp, end = 20.dp, top = 24.dp, bottom = 20.dp)
   ) {
     Column(modifier = Modifier.weight(1f)) {
-      Text(
-        text = profile.displayName,
-        style = MaterialTheme.typography.headlineSmall,
-        fontWeight = FontWeight.SemiBold,
-        color = colors.onSurface,
-        maxLines = 2,
-        overflow = TextOverflow.Ellipsis
-      )
+      Row(verticalAlignment = Alignment.CenterVertically) {
+        Text(
+          text = profile.displayName,
+          style = MaterialTheme.typography.headlineSmall,
+          fontWeight = FontWeight.SemiBold,
+          color = colors.onSurface,
+          maxLines = 2,
+          overflow = TextOverflow.Ellipsis,
+          modifier = Modifier.weight(1f, fill = false)
+        )
+        if (FeedOfficial.isOfficial(profile.badge)) {
+          FeedOfficialMark(size = 20.dp)
+        }
+      }
       Spacer(modifier = Modifier.height(4.dp))
       val id = profile.handle?.let { "@$it" } ?: profile.tellomiNumber?.let { stringResource(R.string.TellomiFeed__tellomi_number, it) }
       val line = listOfNotNull(
@@ -396,6 +405,15 @@ private fun ProfileHeader(profile: FeedProfilePage, showIpRegion: Boolean) {
       if (line.isNotEmpty()) {
         Text(text = line, style = MaterialTheme.typography.bodyMedium, color = colors.onSurfaceVariant)
       }
+      if (!FeedOfficial.isOfficial(profile.badge) && FeedOfficial.looksOfficial(profile.displayName, profile.handle)) {
+        // 第 33 条：冒充官方的提示（official-account-and-saved.md 3.3）
+        Text(
+          text = stringResource(R.string.TellomiFeedPage__not_official),
+          style = MaterialTheme.typography.bodyMedium,
+          color = colors.error,
+          modifier = Modifier.padding(top = 4.dp).testTag(FeedProfilePageTestTags.NOT_OFFICIAL)
+        )
+      }
     }
     Spacer(modifier = Modifier.width(16.dp))
     FeedAvatar(author = profile.asAuthor(), size = AVATAR_SIZE)
@@ -405,7 +423,7 @@ private fun ProfileHeader(profile: FeedProfilePage, showIpRegion: Boolean) {
 @Composable
 private fun badgeLabel(badge: String?): String? {
   return when (badge) {
-    "official" -> stringResource(R.string.TellomiFeedPage__badge_official)
+    // 官方用名字后面的认证标（FeedOfficialMark），这里不再写字
     "verified" -> stringResource(R.string.TellomiFeedPage__badge_verified)
     "org" -> stringResource(R.string.TellomiFeedPage__badge_org)
     "channel" -> stringResource(R.string.TellomiFeedPage__badge_channel)

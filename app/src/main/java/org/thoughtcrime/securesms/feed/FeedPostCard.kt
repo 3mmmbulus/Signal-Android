@@ -287,6 +287,9 @@ private fun FeedPostHeader(
             .weight(1f, fill = false)
             .then(if (onAuthorClick != null) Modifier.clickable(onClick = onAuthorClick) else Modifier)
         )
+        if (FeedOfficial.isOfficial(author?.badge)) {
+          FeedOfficialMark()
+        }
 
         val published = remember(card.publishedAt) { card.publishedAt?.let { parseInstantMillis(it) } }
         if (published != null) {
