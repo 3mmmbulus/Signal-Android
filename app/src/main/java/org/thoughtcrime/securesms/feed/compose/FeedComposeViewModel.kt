@@ -68,7 +68,8 @@ class FeedComposeViewModel(
   }
 
   fun onKindChanged(kind: FeedDraftKind) {
-    if (internalState.value.editing == null) updateDraft { it.copy(kind = kind) }
+    // 编辑时不换类型；引用只能是动态
+    if (internalState.value.editing == null && internalState.value.draft.quote == null) updateDraft { it.copy(kind = kind) }
   }
 
   fun onTitleChanged(title: String) = updateDraft { it.copy(title = title) }

@@ -104,6 +104,14 @@ class FeedApi(
     sendNoContent(builder)
   }
 
+  /** 转发到动态 / 取消（第三节第 26 条）：PUT 加、DELETE 去，幂等；不能转发的 404。 */
+  suspend fun setRepost(contentId: String, on: Boolean) {
+    val url = url("v1/feed/posts").newBuilder().addPathSegment(contentId).addPathSegment("repost").build()
+    val builder = Request.Builder().url(url)
+    if (on) builder.put(EMPTY_BODY) else builder.delete()
+    sendNoContent(builder)
+  }
+
   suspend fun notInterested(contentId: String, reason: String?) {
     val body = FeedJson.encodeToString(
       FeedNotInterestedRequest.serializer(),

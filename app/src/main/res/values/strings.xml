@@ -6839,6 +6839,11 @@
     <!-- Tellomi M11：卡片「分享」（dynamic-feed.md 第三节第 26、29 条） -->
     <string name="TellomiFeed__share">Share</string>
     <string name="TellomiFeed__send_to_chats">Send to chats</string>
+    <string name="TellomiFeed__repost">Repost</string>
+    <string name="TellomiFeed__undo_repost">Undo repost</string>
+    <string name="TellomiFeed__reposted_done">Reposted to your feed</string>
+    <string name="TellomiFeed__reposted_by">%1$s reposted</string>
+    <string name="TellomiFeed__reposted">Reposted</string>
     <string name="TellomiFeed__quote">Quote</string>
     <string name="TellomiFeed__quote_unavailable">The original post is no longer available</string>
     <string name="TellomiFeed__quote_deleted">The original post was deleted by its author</string>

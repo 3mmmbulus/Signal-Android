@@ -86,6 +86,7 @@ class FeedPostDetailActivity : PassphraseRequiredActivity() {
           onReportPost = { reportLauncher.launch(FeedReportTarget.content(state.post.id)) },
           onInsightsDismissed = viewModel::onInsightsDismissed,
           onSaveClick = viewModel::toggleSave,
+          onRepostClick = viewModel::toggleRepost,
           onNotInterested = viewModel::notInterested,
           onMuteAuthor = viewModel::muteAuthor,
           onBlockAuthor = viewModel::blockAuthor,

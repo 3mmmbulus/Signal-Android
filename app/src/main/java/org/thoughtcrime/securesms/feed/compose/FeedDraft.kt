@@ -65,7 +65,7 @@ data class FeedDraft(
   val replies: FeedReplySettings = FeedReplySettings(),
   /** 话题（第三节第 22 条）：最多 [MAX_TOPICS] 个 slug，名字见 `FeedTopicNames`。 */
   val topics: List<String> = emptyList(),
-  /** 引用的那条（第三节第 26 条）；引用也要写点什么（引擎不收空正文的引用）。 */
+  /** 引用的那条（第三节第 26 条）；引用也要写点什么（引擎不收空正文的引用），而且只能是动态（引擎只收 `kind: post`）。 */
   val quote: FeedQuoteTarget? = null
 ) {
   val isEmpty: Boolean

@@ -162,6 +162,7 @@ fun FeedComposeScreen(
         FeedComposeTopBar(
           kind = state.draft.kind,
           editing = state.editing != null,
+          quoting = state.draft.quote != null,
           publishEnabled = state.problem == null && !state.publishing,
           publishing = state.publishing,
           onClose = requestClose,
@@ -291,6 +292,8 @@ private fun FeedComposeTopBar(
   kind: FeedDraftKind,
   editing: Boolean,
   publishEnabled: Boolean,
+  /** 引用只能发动态（引擎 `quote_of` 只收 `kind: post`），不给切长文。 */
+  quoting: Boolean = false,
   publishing: Boolean,
   onClose: () -> Unit,
   onKindChanged: (FeedDraftKind) -> Unit,
@@ -317,7 +320,7 @@ private fun FeedComposeTopBar(
       )
     } else {
       Row(modifier = Modifier.align(Alignment.Center), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-        FeedDraftKind.entries.forEach { entry ->
+        (if (quoting) listOf(FeedDraftKind.POST) else FeedDraftKind.entries).forEach { entry ->
           val selected = entry == kind
           Text(
             text = stringResource(entry.label),

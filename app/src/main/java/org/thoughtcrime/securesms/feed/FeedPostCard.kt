@@ -114,7 +114,9 @@ fun FeedPostCard(
   /** 收藏 / 取消收藏（第三节第 27 条：存进「我的收藏」）；null 的地方不显示。 */
   onSaveClick: ((FeedCard) -> Unit)? = null,
   /** 点 #话题；null = 开这个话题的话题页。 */
-  onTopicClick: ((FeedTopic) -> Unit)? = null
+  onTopicClick: ((FeedTopic) -> Unit)? = null,
+  /** 「分享」里的「转发到动态 / 取消转发」（第三节第 26 条）；null 的地方不显示。 */
+  onRepostClick: ((FeedCard) -> Unit)? = null
 ) {
   val author = card.author
   val openAuthor: (() -> Unit)? = if (author != null && author.isNative && onAuthorClick != null) {
@@ -129,6 +131,30 @@ fun FeedPostCard(
       .then(if (onOpen != null) Modifier.clickable { onOpen(card) } else Modifier)
       .padding(top = 12.dp, bottom = 4.dp)
   ) {
+    card.repostedBy?.let { reposter ->
+      // 关注流里因为有人转发才出现的（第三节第 26 条），照 Threads 在作者行上面写一行
+      Row(
+        verticalAlignment = Alignment.CenterVertically,
+        modifier = Modifier
+          .padding(start = CONTENT_START - 20.dp, end = 16.dp, bottom = 6.dp)
+          .testTag(FeedPostCardTestTags.REPOSTED_BY)
+      ) {
+        Icon(
+          imageVector = ImageVector.vectorResource(R.drawable.symbol_refresh_24),
+          contentDescription = null,
+          tint = MaterialTheme.colorScheme.onSurfaceVariant,
+          modifier = Modifier.size(14.dp)
+        )
+        Text(
+          text = reposter.displayName?.let { stringResource(R.string.TellomiFeed__reposted_by, it) } ?: stringResource(R.string.TellomiFeed__reposted),
+          style = MaterialTheme.typography.labelMedium,
+          color = MaterialTheme.colorScheme.onSurfaceVariant,
+          maxLines = 1,
+          overflow = TextOverflow.Ellipsis,
+          modifier = Modifier.padding(start = 6.dp)
+        )
+      }
+    }
     Row(modifier = Modifier.padding(start = 16.dp, end = 4.dp)) {
       FeedAvatar(author = card.author, modifier = if (openAuthor != null) Modifier.clip(CircleShape).clickable(onClick = openAuthor) else Modifier)
 
@@ -233,6 +259,7 @@ fun FeedPostCard(
       onLikeClick = onLikeClick,
       onCommentClick = onOpen,
       onSaveClick = onSaveClick,
+      onRepostClick = onRepostClick,
       modifier = Modifier.padding(start = CONTENT_START - 12.dp, top = 2.dp)
     )
   }
@@ -496,6 +523,7 @@ private fun FeedActionRow(
   onLikeClick: (FeedCard) -> Unit,
   onCommentClick: ((FeedCard) -> Unit)?,
   onSaveClick: ((FeedCard) -> Unit)?,
+  onRepostClick: ((FeedCard) -> Unit)?,
   modifier: Modifier = Modifier
 ) {
   val liked = card.viewer.liked
@@ -573,7 +601,7 @@ private fun FeedActionRow(
     }
 
     if (card.shareable) {
-      FeedShareButton(card)
+      FeedShareButton(card, onRepostClick)
     }
   }
 }
@@ -583,6 +611,8 @@ object FeedPostCardTestTags {
   const val COPY_LINK = "feed_card_copy_link"
   const val SEND_TO_CHATS = "feed_card_send_to_chats"
   const val QUOTE = "feed_card_quote"
+  const val REPOST = "feed_card_repost"
+  const val REPOSTED_BY = "feed_card_reposted_by"
   const val MUTE_AUTHOR = "feed_card_mute_author"
   const val SAVE = "feed_card_save"
 
@@ -592,11 +622,11 @@ object FeedPostCardTestTags {
 }
 
 /**
- * 「分享」：发到聊天、引用、复制链接、分享到其他 App（第三节第 26 条；转发到动态、分享到快拍还没做）。
+ * 「分享」：发到聊天、转发到动态、引用、复制链接、分享到其他 App（第三节第 26 条；分享到快拍还没做）。
  * 只有 [FeedCard.shareable] 才画：私密账号和非公开动态没有外链（第 29 条）。
  */
 @Composable
-private fun FeedShareButton(card: FeedCard) {
+private fun FeedShareButton(card: FeedCard, onRepostClick: ((FeedCard) -> Unit)?) {
   val context = LocalContext.current
   var open by remember { mutableStateOf(false) }
   val shareLabel = stringResource(R.string.TellomiFeed__share)
@@ -621,6 +651,16 @@ private fun FeedShareButton(card: FeedCard) {
         },
         modifier = Modifier.testTag(FeedPostCardTestTags.SEND_TO_CHATS)
       )
+      if (onRepostClick != null && card.kind != FeedCard.KIND_COMMENT) {
+        DropdownMenuItem(
+          text = { Text(stringResource(if (card.viewer.reposted) R.string.TellomiFeed__undo_repost else R.string.TellomiFeed__repost)) },
+          onClick = {
+            open = false
+            onRepostClick(card)
+          },
+          modifier = Modifier.testTag(FeedPostCardTestTags.REPOST)
+        )
+      }
       FeedQuoteTarget.of(card)?.let { target ->
         DropdownMenuItem(
           text = { Text(stringResource(R.string.TellomiFeed__quote)) },

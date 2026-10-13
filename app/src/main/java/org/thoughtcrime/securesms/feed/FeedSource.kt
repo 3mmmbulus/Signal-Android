@@ -8,6 +8,7 @@ package org.thoughtcrime.securesms.feed
 import android.net.Uri
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import kotlinx.serialization.SerializationException
 import okhttp3.HttpUrl.Companion.toHttpUrlOrNull
 import org.signal.network.NetworkResult
 import org.thoughtcrime.securesms.dependencies.AppDependencies
@@ -50,6 +51,7 @@ import org.thoughtcrime.securesms.feed.net.FeedProfilePostsPage
 import org.thoughtcrime.securesms.feed.net.FeedProfileUpdate
 import org.thoughtcrime.securesms.feed.net.FeedQuotedCard
 import org.thoughtcrime.securesms.feed.net.FeedReportRequest
+import org.thoughtcrime.securesms.feed.net.FeedRepostedBy
 import org.thoughtcrime.securesms.feed.net.FeedSearchPage
 import org.thoughtcrime.securesms.feed.net.FeedServerKeyword
 import org.thoughtcrime.securesms.feed.net.FeedTimelinePage
@@ -72,6 +74,9 @@ interface FeedSource {
 
   /** 以假名上报收藏 / 取消（第三节第 27 条）；收藏本身在「我的收藏」里。 */
   suspend fun setSaved(contentId: String, saved: Boolean)
+
+  /** 转发到动态 / 取消（第三节第 26 条）。 */
+  suspend fun setReposted(contentId: String, reposted: Boolean)
 
   /** 不感兴趣；[reason] 是 [FeedNotInterestedReason.apiName]，同一条再发一次带上原因。 */
   suspend fun notInterested(contentId: String, reason: String? = null)
@@ -241,6 +246,7 @@ class RemoteFeedSource(
 
   override suspend fun setLiked(contentId: String, liked: Boolean) = api.setReaction(contentId, FeedApi.REACTION_LIKE, liked)
   override suspend fun setSaved(contentId: String, saved: Boolean) = api.setReaction(contentId, FeedApi.REACTION_SAVE, saved)
+  override suspend fun setReposted(contentId: String, reposted: Boolean) = api.setRepost(contentId, reposted)
   override suspend fun notInterested(contentId: String, reason: String?) = api.notInterested(contentId, reason)
   override suspend fun undoNotInterested(contentId: String) = api.undoNotInterested(contentId)
   override suspend fun myPosts(before: String?): FeedMyPostsPage = api.myPosts(before)
@@ -362,18 +368,40 @@ class RemoteFeedSource(
   private companion object {
     /** 推荐「还有下一页」的标记，不发给服务端。 */
     const val RECOMMEND_MORE = "more"
+
+    const val REASON_REPOST = "repost"
   }
 
   private suspend fun hydrate(items: List<FeedItemRef>): List<FeedEntry> {
     if (items.isEmpty()) return emptyList()
     val reasons = items.associate { it.id to it.reason }
+    val reposters = repostersFor(items)
     val entries = items.map { it.id }.distinct().chunked(FeedApi.MAX_CARD_IDS).flatMap { ids ->
       api.cards(ids).cards.mapNotNull { result ->
         result.toCard()?.let { FeedEntry(id = result.id, reason = reasons[result.id], card = it) }
       }
     }
     val cards = attachQuotes(entries.map { it.card })
-    return entries.mapIndexed { i, entry -> entry.copy(card = cards[i]) }
+    return entries.mapIndexed { i, entry -> entry.copy(card = reposters[entry.id]?.let { cards[i].copy(repostedBy = it) } ?: cards[i]) }
+  }
+
+  /** 转发人的名字：引擎只给 profile id，按人取一次公开主页（记住，取不到就不写名字）。 */
+  private val reposterNames = mutableMapOf<String, String?>()
+
+  private suspend fun repostersFor(items: List<FeedItemRef>): Map<String, FeedRepostedBy> {
+    val byItem = items.mapNotNull { item -> item.repostedBy?.takeIf { item.reason == REASON_REPOST }?.let { item.id to it } }.toMap()
+    for (profileId in byItem.values.distinct()) {
+      if (synchronized(reposterNames) { profileId in reposterNames }) continue
+      val name = try {
+        api.profile(profileId)?.displayName
+      } catch (e: IOException) {
+        null
+      } catch (e: SerializationException) {
+        null
+      }
+      synchronized(reposterNames) { reposterNames[profileId] = name }
+    }
+    return byItem.mapValues { (_, profileId) -> FeedRepostedBy(profileId, synchronized(reposterNames) { reposterNames[profileId] }) }
   }
 
   /**
@@ -429,6 +457,7 @@ object EmptyFeedSource : FeedSource {
   override suspend fun timeline(tab: FeedTab, cursor: String?): FeedTimelinePage = FeedTimelinePage()
   override suspend fun setLiked(contentId: String, liked: Boolean) = Unit
   override suspend fun setSaved(contentId: String, saved: Boolean) = Unit
+  override suspend fun setReposted(contentId: String, reposted: Boolean) = Unit
   override suspend fun notInterested(contentId: String, reason: String?) = Unit
   override suspend fun undoNotInterested(contentId: String) = Unit
   override suspend fun reportEvents(events: List<FeedEventPayload>) = Unit

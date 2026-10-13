@@ -77,7 +77,9 @@ data class FeedIdsPage(
 @Serializable
 data class FeedItemRef(
   val id: String,
-  val reason: String? = null
+  val reason: String? = null,
+  /** `reason == "repost"` 时：转发的人（profile id），第三节第 26 条。 */
+  @SerialName("reposted_by") val repostedBy: String? = null
 )
 
 /** 界面用的一页：已经把 id 换成了卡片。不是线上的 JSON。 */
@@ -134,7 +136,8 @@ data class FeedCardResult(
       viewer = base.viewer.copy(
         liked = me?.liked ?: base.viewer.liked,
         saved = me?.saved ?: base.viewer.saved,
-        isAuthor = me?.author ?: base.viewer.isAuthor
+        isAuthor = me?.author ?: base.viewer.isAuthor,
+        reposted = me?.reposted ?: base.viewer.reposted
       ),
       pollState = poll,
       held = held,
@@ -189,7 +192,9 @@ data class FeedCard(
   /** 外层 `pinned`：作者置顶了。 */
   @Transient val pinned: Boolean = false,
   /** [quoteOf] 那条的卡片，由来源另取一次 Card API 填上；取不到时 [FeedQuotedCard.card] 是 null（第 41 条：显示「原动态已不可见」）。 */
-  @Transient val quoted: FeedQuotedCard? = null
+  @Transient val quoted: FeedQuotedCard? = null,
+  /** 关注流里因为有人转发才出现的（`reason == "repost"`）：卡片顶上写「谁 转发了」。 */
+  @Transient val repostedBy: FeedRepostedBy? = null
 ) {
   /** P1 客户端只渲染这几种 `kind`；别的（快拍、视频等）不显示，不报错。 */
   val isRenderable: Boolean
@@ -214,6 +219,9 @@ data class FeedCard(
  * 别的原因（屏蔽、隐藏、不给你看）不分。
  */
 data class FeedQuotedCard(val id: String, val card: FeedCard?, val deleted: Boolean = false)
+
+/** 转发这条的人；名字取不到时只写「转发」。 */
+data class FeedRepostedBy(val profileId: String, val displayName: String?)
 
 /** Card API 外层的 `quoted`：`ok` 带卡片，`deleted` / `unavailable` 只有 id。 */
 @Serializable
@@ -294,7 +302,7 @@ data class FeedStats(
 
 /** Card API 外层的 `me`。[author] 只在是我发的时候出现。 */
 @Serializable
-data class FeedMine(val liked: Boolean = false, val saved: Boolean = false, val author: Boolean = false)
+data class FeedMine(val liked: Boolean = false, val saved: Boolean = false, val author: Boolean = false, val reposted: Boolean = false)
 
 /** 界面用：我和这条的关系。[liked]、[saved]、[isAuthor] 来自 [FeedMine]，[canComment] 引擎还没给。 */
 @Serializable
@@ -302,7 +310,9 @@ data class FeedViewer(
   val liked: Boolean = false,
   val saved: Boolean = false,
   @SerialName("is_author") val isAuthor: Boolean = false,
-  @SerialName("can_comment") val canComment: Boolean = true
+  @SerialName("can_comment") val canComment: Boolean = true,
+  /** 我转发到动态了（第三节第 26 条）。 */
+  val reposted: Boolean = false
 )
 
 /** `POST /v1/feed/events`：只报日志类事件（曝光、打开、停留、快速退出、分享）。 */

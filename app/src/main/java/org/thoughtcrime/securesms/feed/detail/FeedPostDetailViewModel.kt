@@ -32,6 +32,7 @@ import org.thoughtcrime.securesms.feed.net.FeedLimits
 import org.thoughtcrime.securesms.feed.setSaved
 import org.thoughtcrime.securesms.feed.withLiked
 import org.thoughtcrime.securesms.feed.withPollState
+import org.thoughtcrime.securesms.feed.withReposted
 import org.thoughtcrime.securesms.feed.withSaved
 import org.thoughtcrime.securesms.feed.withSettings
 
@@ -153,6 +154,28 @@ class FeedPostDetailViewModel(
         internalState.update { it.copy(post = it.post.withSaved(!nowSaved), notice = FeedPostDetailState.Notice.FAILED) }
       } finally {
         saving = false
+      }
+    }
+  }
+
+  private var reposting = false
+
+  /** 转发到动态 / 取消（第三节第 26 条）：先改界面，失败改回来。 */
+  fun toggleRepost() {
+    if (reposting) return
+    reposting = true
+    val post = internalState.value.post
+    val nowReposted = !post.viewer.reposted
+    internalState.update { it.copy(post = it.post.withReposted(nowReposted)) }
+    viewModelScope.launch {
+      try {
+        withContext(ioDispatcher) { source.setReposted(post.id, nowReposted) }
+        if (nowReposted) internalState.update { it.copy(notice = FeedPostDetailState.Notice.REPOSTED) }
+      } catch (e: Exception) {
+        Log.w(TAG, "repost failed", e)
+        internalState.update { it.copy(post = it.post.withReposted(!nowReposted), notice = FeedPostDetailState.Notice.FAILED) }
+      } finally {
+        reposting = false
       }
     }
   }
@@ -391,6 +414,9 @@ data class FeedPostDetailState(
 
     /** 已存进「我的收藏」。 */
     SAVED,
+
+    /** 已转发到自己的动态。 */
+    REPOSTED,
 
     /** 编辑保存了；大陆区要重新审核。 */
     EDITED,

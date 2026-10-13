@@ -189,6 +189,31 @@ class FeedViewModel(
     internalState.update { it.copy(savedNotice = false) }
   }
 
+  private val reposting = mutableSetOf<String>()
+
+  /** 转发到动态 / 取消（第三节第 26 条）：先改界面，失败改回来。 */
+  fun toggleRepost(card: FeedCard) {
+    if (!reposting.add(card.id)) return
+    val nowReposted = !card.viewer.reposted
+    updateCard(card.id) { it.withReposted(nowReposted) }
+    viewModelScope.launch {
+      try {
+        withContext(ioDispatcher) { source.setReposted(card.id, nowReposted) }
+        if (nowReposted) internalState.update { it.copy(repostedNotice = true) }
+      } catch (e: Exception) {
+        Log.w(TAG, "repost failed", e)
+        updateCard(card.id) { it.withReposted(!nowReposted) }
+        internalState.update { it.copy(transientError = FeedState.TransientError.ACTION_FAILED) }
+      } finally {
+        reposting -= card.id
+      }
+    }
+  }
+
+  fun onRepostedNoticeShown() {
+    internalState.update { it.copy(repostedNotice = false) }
+  }
+
   private val voting = mutableSetOf<String>()
 
   /** 投票不能撤回，所以不先改界面：等服务端回了票数再换上。 */
@@ -462,6 +487,12 @@ internal fun FeedCard.withLiked(liked: Boolean): FeedCard {
 
 internal fun FeedCard.withSaved(saved: Boolean): FeedCard = if (viewer.saved == saved) this else copy(viewer = viewer.copy(saved = saved))
 
+internal fun FeedCard.withReposted(reposted: Boolean): FeedCard {
+  if (viewer.reposted == reposted) return this
+  val reposts = (stats.reposts + if (reposted) 1 else -1).coerceAtLeast(0)
+  return copy(viewer = viewer.copy(reposted = reposted), stats = stats.copy(reposts = reposts))
+}
+
 /** 投完票：换成服务端给的票数和我的选择。 */
 internal fun FeedCard.withPollState(state: FeedPollState): FeedCard = copy(pollState = state)
 
@@ -479,6 +510,8 @@ data class FeedState(
   val mutedAuthor: FeedAuthor? = null,
   /** 刚收藏了一条，提示「已存进我的收藏」。 */
   val savedNotice: Boolean = false,
+  /** 刚转发成功，提示一句。 */
+  val repostedNotice: Boolean = false,
   val transientError: TransientError? = null,
   val publishNotice: String? = null,
   /** 刚保存的编辑，服务端给的 `state`。 */

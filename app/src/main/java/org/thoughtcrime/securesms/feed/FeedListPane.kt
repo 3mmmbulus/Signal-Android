@@ -153,6 +153,12 @@ fun FeedListPane(
     viewModel.onSavedNoticeShown()
     snackbarHostState.showSnackbar(savedToNoteMessage)
   }
+  val repostedMessage = stringResource(R.string.TellomiFeed__reposted_done)
+  LaunchedEffect(state.repostedNotice) {
+    if (!state.repostedNotice) return@LaunchedEffect
+    viewModel.onRepostedNoticeShown()
+    snackbarHostState.showSnackbar(repostedMessage)
+  }
   LaunchedEffect(state.transientError) {
     val error = state.transientError ?: return@LaunchedEffect
     snackbarHostState.showSnackbar(
@@ -238,6 +244,7 @@ fun FeedListPane(
       onLoadMore = viewModel::loadMore,
       onLikeClick = viewModel::toggleLike,
       onSaveClick = viewModel::toggleSave,
+      onRepostClick = viewModel::toggleRepost,
       onNotInterestedClick = viewModel::notInterested,
       onUndoNotInterested = viewModel::undoNotInterested,
       onNotInterestedReason = viewModel::notInterestedReason,
@@ -318,6 +325,7 @@ private fun FeedPager(
   onLoadMore: (FeedTab) -> Unit,
   onLikeClick: (FeedCard) -> Unit,
   onSaveClick: (FeedCard) -> Unit = {},
+  onRepostClick: ((FeedCard) -> Unit)? = null,
   onNotInterestedClick: (FeedCard) -> Unit,
   onCardsVisible: (FeedTab, Set<String>) -> Unit,
   onUndoNotInterested: (FeedCard) -> Unit = {},
@@ -394,6 +402,7 @@ private fun FeedPager(
         onLoadMore = { onLoadMore(tab) },
         onLikeClick = onLikeClick,
         onSaveClick = onSaveClick,
+        onRepostClick = onRepostClick,
         onNotInterestedClick = onNotInterestedClick,
         hidden = state.hidden,
         reasonAsks = state.reasonAsks,
@@ -429,6 +438,7 @@ private fun FeedTimeline(
   onLoadMore: () -> Unit,
   onLikeClick: (FeedCard) -> Unit,
   onSaveClick: (FeedCard) -> Unit,
+  onRepostClick: ((FeedCard) -> Unit)?,
   onNotInterestedClick: (FeedCard) -> Unit,
   hidden: Set<String>,
   reasonAsks: Map<String, FeedNotInterestedReason?>,
@@ -519,6 +529,7 @@ private fun FeedTimeline(
             showIpRegion = showIpRegion,
             onLikeClick = onLikeClick,
             onSaveClick = onSaveClick,
+            onRepostClick = onRepostClick,
             onNotInterestedClick = onNotInterestedClick,
             modifier = Modifier.animateItem(),
             mediaBaseUrl = mediaBaseUrl,

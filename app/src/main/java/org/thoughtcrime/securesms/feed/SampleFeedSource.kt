@@ -168,6 +168,8 @@ object SampleFeedSource : FeedSource {
 
   override suspend fun setSaved(contentId: String, saved: Boolean) = Unit
 
+  override suspend fun setReposted(contentId: String, reposted: Boolean) = Unit
+
   override suspend fun notInterested(contentId: String, reason: String?) {
     hidden += contentId
   }

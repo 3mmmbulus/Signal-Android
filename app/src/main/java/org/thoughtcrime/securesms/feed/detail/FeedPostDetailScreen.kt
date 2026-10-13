@@ -115,6 +115,7 @@ fun FeedPostDetailScreen(
   onReportPost: () -> Unit = {},
   onInsightsDismissed: () -> Unit = {},
   onSaveClick: () -> Unit = {},
+  onRepostClick: () -> Unit = {},
   onNotInterested: () -> Unit = {},
   onMuteAuthor: () -> Unit = {},
   onBlockAuthor: () -> Unit = {},
@@ -173,6 +174,7 @@ fun FeedPostDetailScreen(
       onDeletePost = onDeletePost,
       onReportPost = onReportPost,
       onSaveClick = onSaveClick,
+      onRepostClick = onRepostClick,
       onNotInterested = onNotInterested,
       onMuteAuthor = onMuteAuthor,
       onBlockAuthor = onBlockAuthor,
@@ -201,6 +203,7 @@ private fun CommentList(
   onDeletePost: () -> Unit,
   onReportPost: () -> Unit,
   onSaveClick: () -> Unit,
+  onRepostClick: () -> Unit,
   onNotInterested: () -> Unit,
   onMuteAuthor: () -> Unit,
   onBlockAuthor: () -> Unit,
@@ -290,6 +293,7 @@ private fun CommentList(
         onEditClick = editTarget?.let { target -> { _ -> onEditPost(target) } },
         onReportClick = if (state.post.viewer.isAuthor) null else { _ -> onReportPost() },
         onSaveClick = { onSaveClick() },
+        onRepostClick = { onRepostClick() },
         // 别人的帖子：不感兴趣 / 不看 TA / 屏蔽，成了就关页（第三节第 11、26 条）
         onNotInterestedClick = if (state.post.viewer.isAuthor) null else { _ -> onNotInterested() },
         onMuteAuthorClick = if (state.post.viewer.isAuthor) null else { _ -> onMuteAuthor() },
@@ -604,6 +608,7 @@ private fun FeedPostDetailState.Notice.messageRes(): Int {
     FeedPostDetailState.Notice.PARENT_GONE -> R.string.TellomiFeedDetail__parent_gone
     FeedPostDetailState.Notice.PIN_LIMIT -> R.string.TellomiFeed__pin_limit
     FeedPostDetailState.Notice.SAVED -> R.string.TellomiFeed__saved_done
+    FeedPostDetailState.Notice.REPOSTED -> R.string.TellomiFeed__reposted_done
     FeedPostDetailState.Notice.HIDE_PROFILE_REQUIRED -> R.string.TellomiFeed__hide_profile_required
     FeedPostDetailState.Notice.EDITED -> R.string.TellomiFeedCompose__edit_saved
     FeedPostDetailState.Notice.EDITED_PENDING -> R.string.TellomiFeedCompose__edit_saved_pending

@@ -6622,6 +6622,11 @@
     <!-- Tellomi M11：卡片「分享」（dynamic-feed.md 第三节第 26、29 条） -->
     <string name="TellomiFeed__share">分享</string>
     <string name="TellomiFeed__send_to_chats">发到聊天</string>
+    <string name="TellomiFeed__repost">转发到动态</string>
+    <string name="TellomiFeed__undo_repost">取消转发</string>
+    <string name="TellomiFeed__reposted_done">已转发到你的动态</string>
+    <string name="TellomiFeed__reposted_by">%1$s 转发了</string>
+    <string name="TellomiFeed__reposted">转发</string>
     <string name="TellomiFeed__quote">引用</string>
     <string name="TellomiFeed__quote_unavailable">原动态已不可见</string>
     <string name="TellomiFeed__quote_deleted">原动态已被作者删除</string>
