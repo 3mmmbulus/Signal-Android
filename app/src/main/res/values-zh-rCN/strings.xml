@@ -6621,6 +6621,7 @@
     <string name="TellomiFeed__retry">重试</string>
     <!-- Tellomi M11：卡片「分享」（dynamic-feed.md 第三节第 26、29 条） -->
     <string name="TellomiFeed__share">分享</string>
+    <string name="TellomiFeed__send_to_chats">发到聊天</string>
     <string name="TellomiFeed__copy_link">复制链接</string>
     <string name="TellomiFeed__share_other_apps">分享到其他 App</string>
     <string name="TellomiFeed__link_copied">链接已复制</string>

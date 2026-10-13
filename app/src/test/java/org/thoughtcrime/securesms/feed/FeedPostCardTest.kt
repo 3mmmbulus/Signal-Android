@@ -7,6 +7,7 @@ package org.thoughtcrime.securesms.feed
 
 import android.app.Application
 import android.content.ClipboardManager
+import android.content.Intent
 import android.graphics.Bitmap
 import androidx.compose.foundation.layout.Column
 import androidx.compose.material3.HorizontalDivider
@@ -28,12 +29,14 @@ import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
+import org.robolectric.Shadows
 import org.robolectric.annotation.Config
 import org.robolectric.annotation.GraphicsMode
 import org.signal.core.ui.CoreUiDependenciesRule
 import org.signal.core.ui.compose.theme.SignalTheme
 import org.thoughtcrime.securesms.feed.net.FeedAuthor
 import org.thoughtcrime.securesms.feed.net.FeedCard
+import org.thoughtcrime.securesms.sharing.v2.ShareActivity
 import java.io.File
 
 /**
@@ -114,5 +117,22 @@ class FeedPostCardTest {
 
     val clipboard = ApplicationProvider.getApplicationContext<Application>().getSystemService(ClipboardManager::class.java)
     assertThat(clipboard.primaryClip!!.getItemAt(0).text.toString()).isEqualTo("https://tell.cc/m#$id")
+  }
+
+  @Test
+  fun `send to chats opens the forward picker with the post's text and link`() {
+    val id = "0f8e2c1a-3b4d-4e5f-8a9b-0c1d2e3f4a5b"
+    val card = FeedCard(id = id, kind = FeedCard.KIND_POST, text = "公开的", author = FeedAuthor(profileId = "p1", displayName = "山风"), shareable = true)
+    composeTestRule.setContent {
+      SignalTheme {
+        FeedPostCard(card = card, showIpRegion = false, onLikeClick = {}, onNotInterestedClick = {})
+      }
+    }
+    composeTestRule.onNodeWithTag(FeedPostCardTestTags.SHARE).performClick()
+    composeTestRule.onNodeWithTag(FeedPostCardTestTags.SEND_TO_CHATS).performClick()
+
+    val started = Shadows.shadowOf(ApplicationProvider.getApplicationContext<Application>()).nextStartedActivity
+    assertThat(started.component?.className).isEqualTo(ShareActivity::class.java.name)
+    assertThat(started.getStringExtra(Intent.EXTRA_TEXT)).isEqualTo("山风：公开的\nhttps://tell.cc/m#$id")
   }
 }

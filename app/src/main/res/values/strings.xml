@@ -6838,6 +6838,7 @@
     <string name="TellomiFeed__retry">Retry</string>
     <!-- Tellomi M11：卡片「分享」（dynamic-feed.md 第三节第 26、29 条） -->
     <string name="TellomiFeed__share">Share</string>
+    <string name="TellomiFeed__send_to_chats">Send to chats</string>
     <string name="TellomiFeed__copy_link">Copy link</string>
     <string name="TellomiFeed__share_other_apps">Share to other apps</string>
     <string name="TellomiFeed__link_copied">Link copied</string>
