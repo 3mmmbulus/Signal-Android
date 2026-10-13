@@ -101,6 +101,8 @@ object SampleFeedSource : FeedSource {
     )
   }
 
+  override suspend fun isVisible(): Boolean = true
+
   override suspend fun timeline(tab: FeedTab, cursor: String?): FeedTimelinePage {
     val all = synchronized(this) { mine.toList() } + when (tab) {
       FeedTab.RECOMMEND -> recommend

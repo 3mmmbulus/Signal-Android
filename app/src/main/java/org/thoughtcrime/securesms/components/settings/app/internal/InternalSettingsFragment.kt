@@ -623,6 +623,16 @@ class InternalSettingsFragment : DSLSettingsFragment(R.string.preferences__inter
         }
       )
 
+      switchPref(
+        title = DSLSettingsText.from("Feed sample data"),
+        summary = DSLSettingsText.from("With the forced feed tab: on = local sample posts, off = the current region's content engine (needs the Signal-Server feed token endpoint)."),
+        isChecked = state.feedSampleData,
+        isEnabled = state.forceFeedTab,
+        onClick = {
+          viewModel.setFeedSampleData(!state.feedSampleData)
+        }
+      )
+
       // #1055 第四刀：手动跑一次选路器的探测，看它会怎么建议（不切区）
       clickPref(
         title = DSLSettingsText.from("Probe regions"),

@@ -1,0 +1,31 @@
+/*
+ * Copyright 2026 重庆半格智能科技有限公司
+ * SPDX-License-Identifier: AGPL-3.0-only
+ */
+
+package org.thoughtcrime.securesms.keyvalue
+
+/**
+ * Tellomi 动态（M11）：内容引擎上一次说的「能不能看」（`GET /v1/feed/status`，契约 3.1），和内部用户的样例数据开关。
+ *
+ * 只存在本机，不进备份：内测名单和紧急开关随时会变，换设备应该重新问。
+ */
+class TellomiFeedValues(store: KeyValueStore) : SignalStoreValues(store) {
+  companion object {
+    private const val ENGINE_VISIBLE = "tellomi_feed.engine_visible"
+    private const val ENGINE_CHECKED_AT = "tellomi_feed.engine_checked_at"
+    private const val USE_SAMPLE_DATA = "tellomi_feed.use_sample_data"
+  }
+
+  public override fun onFirstEverAppLaunch() = Unit
+  public override fun getKeysToIncludeInBackup(): List<String> = emptyList()
+
+  /** 引擎上一次回的 `visible`。没问过是 false：入口要等引擎说了能看才出现。 */
+  var engineVisible: Boolean by booleanValue(ENGINE_VISIBLE, false)
+
+  /** 上一次问到结果的时间（毫秒）；0 = 没问过。 */
+  var engineCheckedAt: Long by longValue(ENGINE_CHECKED_AT, 0)
+
+  /** 内部用户强制打开动态标签时，用本机样例（true）还是连内容引擎（false）。 */
+  var useSampleData: Boolean by booleanValue(USE_SAMPLE_DATA, true)
+}

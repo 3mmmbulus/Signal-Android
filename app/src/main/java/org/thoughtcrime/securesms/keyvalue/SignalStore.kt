@@ -41,6 +41,7 @@ class SignalStore(context: Application, private val store: KeyValueStore) {
   val labsValues = LabsValues(store)
   val tellomiRegionValues = TellomiRegionValues(store)
   val tellomiLinkValues = TellomiLinkValues(store)
+  val tellomiFeedValues = TellomiFeedValues(store)
 
   companion object {
 
@@ -286,6 +287,10 @@ class SignalStore(context: Application, private val store: KeyValueStore) {
     @get:JvmName("tellomiLinks")
     val tellomiLinks: TellomiLinkValues
       get() = instance!!.tellomiLinkValues
+
+    @get:JvmName("tellomiFeed")
+    val tellomiFeed: TellomiFeedValues
+      get() = instance!!.tellomiFeedValues
 
     @JvmStatic
     @get:JvmName("backup")

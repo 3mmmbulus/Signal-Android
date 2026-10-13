@@ -29,6 +29,9 @@ import org.thoughtcrime.securesms.region.TellomiRegions
  */
 interface FeedSource {
   suspend fun config(): FeedConfig
+
+  /** 能不能看（契约 3.1 `status`）：比 [config] 轻，用来决定入口显不显示。 */
+  suspend fun isVisible(): Boolean
   suspend fun timeline(tab: FeedTab, cursor: String?): FeedTimelinePage
   suspend fun setLiked(contentId: String, liked: Boolean)
   suspend fun notInterested(contentId: String)
@@ -54,6 +57,8 @@ interface FeedSource {
  * 不可用的卡片（删了、被屏蔽、没权限看，引擎不说是哪种）直接跳过。
  */
 class RemoteFeedSource(private val api: FeedApi) : FeedSource {
+
+  override suspend fun isVisible(): Boolean = api.status().visible
 
   override suspend fun config(): FeedConfig {
     return api.config()
@@ -126,6 +131,7 @@ internal fun FeedDraft.toRequest(): FeedCreatePostRequest {
  */
 object EmptyFeedSource : FeedSource {
   override suspend fun config(): FeedConfig = FeedConfig(enabled = false)
+  override suspend fun isVisible(): Boolean = false
   override suspend fun timeline(tab: FeedTab, cursor: String?): FeedTimelinePage = FeedTimelinePage()
   override suspend fun setLiked(contentId: String, liked: Boolean) = Unit
   override suspend fun notInterested(contentId: String) = Unit
@@ -149,8 +155,12 @@ object FeedSources {
    */
   @JvmStatic
   fun current(): FeedSource {
-    return if (TellomiFeed.isSampleDataEnabled()) SampleFeedSource else remoteFor(TellomiRegions.current())
+    return if (TellomiFeed.isSampleDataEnabled()) SampleFeedSource else engine()
   }
+
+  /** 当前区的内容引擎（不看样例开关）。 */
+  @JvmStatic
+  fun engine(): FeedSource = remoteFor(TellomiRegions.current())
 
   /**
    * 每个区一份：切区后 [TellomiRegions.current] 换了，下次取到的是新区的主机和新的凭证缓存（token 里带着区）。

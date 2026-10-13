@@ -7,6 +7,7 @@ data class InternalSettingsState(
   val seeMoreUserDetails: Boolean,
   val shakeToReport: Boolean,
   val forceFeedTab: Boolean,
+  val feedSampleData: Boolean,
   val showArchiveStateHint: Boolean,
   val gv2forceInvites: Boolean,
   val gv2ignoreP2PChanges: Boolean,

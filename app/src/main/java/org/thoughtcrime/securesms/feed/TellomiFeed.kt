@@ -11,28 +11,39 @@ import org.thoughtcrime.securesms.util.RemoteConfig
 /**
  * M11 动态（ADR-0071、`docs/product/specs/dynamic-feed.md`、tellomi/tellomi#1355）的总开关。
  *
- * 客户端不做任何区域判断（ADR-0071 §十五）：显不显示入口只看服务端下发的 `global.feed.enabled`。
+ * 客户端不做任何区域判断（ADR-0071 §十五）：显不显示入口看服务端下发的 `global.feed.enabled`，
+ * 再加上内容引擎说的能不能看（内测名单、紧急开关，`GET /v1/feed/status`，契约 3.1，见 [FeedEntryCheck]）。
  * 内部用户可以在「内部设置 → Force feed tab」里先打开，方便在服务端下发之前开发和内测。
  */
 object TellomiFeed {
 
   @JvmStatic
   fun isTabEnabled(): Boolean {
-    return isTabEnabled(remoteEnabled = RemoteConfig.feedEnabled, forcedByInternalUser = SignalStore.internal.forceFeedTab)
+    return isTabEnabled(
+      remoteEnabled = RemoteConfig.feedEnabled,
+      engineVisible = SignalStore.tellomiFeed.engineVisible,
+      forcedByInternalUser = SignalStore.internal.forceFeedTab
+    )
   }
 
-  /** 纯函数版本，单测用。 */
+  /** 纯函数版本，单测用。引擎说不能看（不在内测名单、紧急开关关了）时隐藏入口，不显示空列表（契约 1.1）。 */
   @JvmStatic
-  fun isTabEnabled(remoteEnabled: Boolean, forcedByInternalUser: Boolean): Boolean {
-    return remoteEnabled || forcedByInternalUser
+  fun isTabEnabled(remoteEnabled: Boolean, engineVisible: Boolean, forcedByInternalUser: Boolean): Boolean {
+    return forcedByInternalUser || (remoteEnabled && engineVisible)
   }
 
   /**
-   * 内部用户强制打开动态标签时，信息流用本机样例（[SampleFeedSource]），不连内容引擎。
-   * 内容引擎接上之后改成单独的开关。
+   * 内部用户强制打开动态标签、并且没关掉「Feed sample data」时，信息流用本机样例（[SampleFeedSource]），不连内容引擎。
+   * 关掉之后强制打开的标签连当前区的内容引擎，用来联调。
    */
   @JvmStatic
   fun isSampleDataEnabled(): Boolean {
-    return SignalStore.internal.forceFeedTab
+    return SignalStore.internal.forceFeedTab && SignalStore.tellomiFeed.useSampleData
+  }
+
+  /** 要不要去问内容引擎能不能看：入口可能出现（远程开关开了），或者内部用户要连引擎联调。 */
+  @JvmStatic
+  fun shouldAskEngine(): Boolean {
+    return RemoteConfig.feedEnabled || (SignalStore.internal.forceFeedTab && !SignalStore.tellomiFeed.useSampleData)
   }
 }

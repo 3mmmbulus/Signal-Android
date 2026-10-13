@@ -135,6 +135,7 @@ import org.thoughtcrime.securesms.conversationlist.RestoreCompleteBottomSheetDia
 import org.thoughtcrime.securesms.conversationlist.model.ConversationFilter
 import org.thoughtcrime.securesms.conversationlist.model.UnreadPaymentsLiveData
 import org.thoughtcrime.securesms.devicetransfer.olddevice.OldDeviceExitActivity
+import org.thoughtcrime.securesms.feed.FeedEntryCheck
 import org.thoughtcrime.securesms.feed.TellomiFeed
 import org.thoughtcrime.securesms.groups.ui.creategroup.CreateGroupActivity
 import org.thoughtcrime.securesms.keyvalue.SignalStore
@@ -764,6 +765,13 @@ class MainActivity :
 
     vitalsViewModel.checkSlowNotificationHeuristics()
     mainNavigationViewModel.onEvent(MainNavigationEvents.RefreshNavigationBar)
+
+    // Tellomi（M11）：动态入口跟着内容引擎的内测名单 / 紧急开关走，变了再重画一次底栏
+    lifecycleScope.launch {
+      if (withContext(Dispatchers.IO) { FeedEntryCheck.forCurrentProcess().refreshIfStale() }) {
+        mainNavigationViewModel.onEvent(MainNavigationEvents.RefreshNavigationBar)
+      }
+    }
 
     CallQuality.consumeQualityRequest()?.let {
       CallQualityBottomSheetFragment.create(it).show(supportFragmentManager, BottomSheetUtil.STANDARD_BOTTOM_SHEET_FRAGMENT_TAG)

@@ -40,9 +40,10 @@ class FeedTabTest {
   }
 
   @Test
-  fun `tab shows when the server enables it or an internal user forces it`() {
-    assertThat(TellomiFeed.isTabEnabled(remoteEnabled = false, forcedByInternalUser = false)).isFalse()
-    assertThat(TellomiFeed.isTabEnabled(remoteEnabled = true, forcedByInternalUser = false)).isTrue()
-    assertThat(TellomiFeed.isTabEnabled(remoteEnabled = false, forcedByInternalUser = true)).isTrue()
+  fun `tab shows when the server enables it and the engine lets you in, or an internal user forces it`() {
+    assertThat(TellomiFeed.isTabEnabled(remoteEnabled = false, engineVisible = true, forcedByInternalUser = false)).isFalse()
+    assertThat(TellomiFeed.isTabEnabled(remoteEnabled = true, engineVisible = true, forcedByInternalUser = false)).isTrue()
+    assertThat(TellomiFeed.isTabEnabled(remoteEnabled = true, engineVisible = false, forcedByInternalUser = false)).isFalse()
+    assertThat(TellomiFeed.isTabEnabled(remoteEnabled = false, engineVisible = false, forcedByInternalUser = true)).isTrue()
   }
 }
