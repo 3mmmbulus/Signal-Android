@@ -26,6 +26,7 @@ import org.thoughtcrime.securesms.feed.net.FeedEventPayload
 import org.thoughtcrime.securesms.feed.net.FeedFollowRequest
 import org.thoughtcrime.securesms.feed.net.FeedInterest
 import org.thoughtcrime.securesms.feed.net.FeedInterests
+import org.thoughtcrime.securesms.feed.net.FeedKeywordRequest
 import org.thoughtcrime.securesms.feed.net.FeedMedia
 import org.thoughtcrime.securesms.feed.net.FeedMyPost
 import org.thoughtcrime.securesms.feed.net.FeedMyPostsPage
@@ -46,6 +47,7 @@ import org.thoughtcrime.securesms.feed.net.FeedRelation
 import org.thoughtcrime.securesms.feed.net.FeedReportRequest
 import org.thoughtcrime.securesms.feed.net.FeedSearchPage
 import org.thoughtcrime.securesms.feed.net.FeedSearchUser
+import org.thoughtcrime.securesms.feed.net.FeedServerKeyword
 import org.thoughtcrime.securesms.feed.net.FeedStats
 import org.thoughtcrime.securesms.feed.net.FeedTimelinePage
 import org.thoughtcrime.securesms.feed.net.FeedTopic
@@ -270,6 +272,21 @@ object SampleFeedSource : FeedSource {
   }
 
   override suspend fun interests(): FeedInterests = synchronized(this) { interests }
+
+  private val serverKeywords = linkedMapOf<String, String?>("剧透" to null)
+
+  override suspend fun keywords(): List<FeedServerKeyword> = synchronized(this) {
+    serverKeywords.map { (k, v) -> FeedServerKeyword(k, v) }
+  }
+
+  override suspend fun putKeyword(keyword: String, days: Int): Unit = synchronized(this) {
+    if (keyword.isBlank() || keyword.length > FeedKeywordRequest.MAX_CHARS || days !in FeedKeywordRequest.DAYS) throw FeedApiException(400, code = "invalid_keyword")
+    serverKeywords[keyword] = if (days == 0) null else Instant.now().plus(days.toLong(), ChronoUnit.DAYS).toString()
+  }
+
+  override suspend fun deleteKeyword(keyword: String): Unit = synchronized(this) {
+    serverKeywords.remove(keyword)
+  }
 
   override suspend fun deleteInterest(dimension: String, key: String): Unit = synchronized(this) {
     interests = interests.without(dimension, key)

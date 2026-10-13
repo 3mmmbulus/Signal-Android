@@ -17,12 +17,16 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.selection.selectable
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.RadioButton
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -32,6 +36,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.listSaver
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -42,6 +47,7 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.res.vectorResource
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.unit.dp
 import org.signal.core.ui.compose.Dialogs
 import org.signal.core.ui.compose.Dividers
@@ -53,6 +59,7 @@ import org.signal.core.ui.compose.Texts
 import org.thoughtcrime.securesms.R
 import org.thoughtcrime.securesms.feed.net.FeedInterest
 import org.thoughtcrime.securesms.feed.net.FeedInterests
+import org.thoughtcrime.securesms.feed.net.FeedKeywordRequest
 import org.thoughtcrime.securesms.feed.net.FeedPreferences
 import org.thoughtcrime.securesms.feed.parseInstantMillis
 import org.signal.core.ui.R as CoreUiR
@@ -66,12 +73,18 @@ object FeedRecommendationSettingsTestTags {
   const val CATEGORIES = "feed_rec_categories"
   const val CATEGORY = "feed_rec_category_"
   const val PAUSE = "feed_rec_pause"
+  const val KEYWORD_ADD = "feed_rec_keyword_add"
+  const val KEYWORD_FIELD = "feed_rec_keyword_field"
+  const val KEYWORD_BLOCK = "feed_rec_keyword_block"
+  const val KEYWORD_DAYS = "feed_rec_keyword_days_"
+  const val KEYWORD_CONFIRM = "feed_rec_keyword_confirm"
+  const val KEYWORD_DELETE = "feed_rec_keyword_delete_"
 }
 
 /**
  * 「动态设置」：个性化推荐开关、兴趣标签（只有自己看得到，能删）、重置推荐（确认两次）。
  *
- * 还有第 12 条的最近看的内容分布、推荐风格、敏感内容、按类别调整、暂停推荐 30 天。屏蔽关键词后面加在这一页。
+ * 还有第 12 条的最近看的内容分布、推荐风格、敏感内容、按类别调整、屏蔽关键词、暂停推荐 30 天。
  */
 @Composable
 fun FeedRecommendationSettingsScreen(
@@ -84,13 +97,22 @@ fun FeedRecommendationSettingsScreen(
   onCategoryChanged: (String, String) -> Unit = { _, _ -> },
   onPause: () -> Unit = {},
   onResume: () -> Unit = {},
+  onAddKeyword: (String, FeedKeyword.Mode, Int) -> Unit = { _, _, _ -> },
+  onRemoveKeyword: (FeedKeyword) -> Unit = {},
   onDeleteInterest: (String, FeedInterest) -> Unit,
   onReset: () -> Unit,
   onNoticeShown: () -> Unit
 ) {
   val snackbarHostState = remember { SnackbarHostState() }
   val noticeText = state.notice?.let {
-    stringResource(if (it == FeedRecommendationSettingsState.Notice.RESET) R.string.TellomiFeedRecommendation__reset_done else R.string.TellomiFeed__action_failed)
+    stringResource(
+      when (it) {
+        FeedRecommendationSettingsState.Notice.RESET -> R.string.TellomiFeedRecommendation__reset_done
+        FeedRecommendationSettingsState.Notice.INVALID_KEYWORD -> R.string.TellomiFeedKeywords__invalid
+        FeedRecommendationSettingsState.Notice.TOO_MANY_KEYWORDS -> R.string.TellomiFeedKeywords__too_many
+        FeedRecommendationSettingsState.Notice.FAILED -> R.string.TellomiFeed__action_failed
+      }
+    )
   }
   LaunchedEffect(state.notice) {
     if (noticeText != null) {
@@ -103,6 +125,7 @@ fun FeedRecommendationSettingsScreen(
   var resetStep by rememberSaveable { mutableIntStateOf(0) }
   var confirmPause by rememberSaveable { mutableStateOf(false) }
   var categoriesOpen by rememberSaveable { mutableStateOf(false) }
+  var addingKeyword by rememberSaveable { mutableStateOf(false) }
 
   Scaffolds.Settings(
     title = stringResource(R.string.TellomiFeedRecommendation__title),
@@ -223,6 +246,28 @@ fun FeedRecommendationSettingsScreen(
         }
 
         item { Dividers.Default() }
+        item { Texts.SectionHeader(stringResource(R.string.TellomiFeedKeywords__title)) }
+        item {
+          Text(
+            text = stringResource(R.string.TellomiFeedKeywords__description),
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.padding(Rows.defaultPadding())
+          )
+        }
+        items(state.keywords, key = { "keyword-${it.mode}-${it.keyword}" }) { keyword ->
+          KeywordRow(keyword = keyword, onRemove = { onRemoveKeyword(keyword) })
+        }
+        item {
+          Rows.TextRow(
+            text = stringResource(R.string.TellomiFeedKeywords__add),
+            icon = SignalIcons.Plus.imageVector,
+            onClick = { addingKeyword = true },
+            modifier = Modifier.testTag(FeedRecommendationSettingsTestTags.KEYWORD_ADD)
+          )
+        }
+
+        item { Dividers.Default() }
         item {
           val pausedUntil = preferences.pausedUntil?.let { parseInstantMillis(it) }
           if (pausedUntil != null) {
@@ -264,6 +309,16 @@ fun FeedRecommendationSettingsScreen(
         }
       }
     }
+  }
+
+  if (addingKeyword) {
+    AddKeywordDialog(
+      onAdd = { keyword, mode, days ->
+        addingKeyword = false
+        onAddKeyword(keyword, mode, days)
+      },
+      onDismiss = { addingKeyword = false }
+    )
   }
 
   if (confirmPause) {
@@ -402,6 +457,108 @@ private fun CategoryRow(label: String, value: String, onChange: (String) -> Unit
           }
         )
       }
+    }
+  }
+}
+
+/** 一个屏蔽关键词：词 + 「少推荐 / 完全屏蔽 · 永久 / 到哪天」+ 删除。 */
+@Composable
+private fun KeywordRow(keyword: FeedKeyword, onRemove: () -> Unit) {
+  val mode = stringResource(if (keyword.mode == FeedKeyword.Mode.BLOCK) R.string.TellomiFeedKeywords__block else R.string.TellomiFeedKeywords__downrank)
+  val until = keyword.expiresAt?.let { stringResource(R.string.TellomiFeedKeywords__until, DateUtils.formatDateTime(LocalContext.current, it, DateUtils.FORMAT_SHOW_DATE)) }
+    ?: stringResource(R.string.TellomiFeedKeywords__forever)
+  Row(
+    verticalAlignment = Alignment.CenterVertically,
+    modifier = Modifier.fillMaxWidth().padding(start = 24.dp, end = 12.dp, top = 4.dp, bottom = 4.dp)
+  ) {
+    Column(modifier = Modifier.weight(1f)) {
+      Text(text = keyword.keyword, style = MaterialTheme.typography.bodyLarge)
+      Text(text = "$mode · $until", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+    }
+    IconButton(
+      onClick = onRemove,
+      modifier = Modifier.testTag(FeedRecommendationSettingsTestTags.KEYWORD_DELETE + keyword.keyword)
+    ) {
+      Icon(imageVector = SignalIcons.X.imageVector, contentDescription = stringResource(R.string.TellomiFeedRecommendation__delete))
+    }
+  }
+}
+
+/** 加关键词：词（最多 20 个字）、少推荐（默认）/ 完全屏蔽、永久 / 30 天 / 7 天。 */
+@Composable
+private fun AddKeywordDialog(onAdd: (String, FeedKeyword.Mode, Int) -> Unit, onDismiss: () -> Unit) {
+  var form by rememberSaveable(stateSaver = KeywordFormSaver) { mutableStateOf(KeywordForm()) }
+
+  AlertDialog(
+    onDismissRequest = onDismiss,
+    title = { Text(stringResource(R.string.TellomiFeedKeywords__add)) },
+    text = { AddKeywordForm(form = form, onChange = { form = it }) },
+    confirmButton = {
+      TextButton(
+        enabled = form.valid,
+        onClick = { onAdd(form.trimmed, if (form.block) FeedKeyword.Mode.BLOCK else FeedKeyword.Mode.DOWNRANK, form.days) },
+        modifier = Modifier.testTag(FeedRecommendationSettingsTestTags.KEYWORD_CONFIRM)
+      ) {
+        Text(stringResource(R.string.TellomiFeedKeywords__confirm))
+      }
+    },
+    dismissButton = {
+      TextButton(onClick = onDismiss) { Text(stringResource(android.R.string.cancel)) }
+    }
+  )
+}
+
+/** 加关键词对话框里填的东西。 */
+data class KeywordForm(val text: String = "", val block: Boolean = false, val days: Int = 0) {
+  val trimmed: String get() = text.trim()
+  val valid: Boolean get() = trimmed.isNotEmpty() && trimmed.codePointCount(0, trimmed.length) <= FeedKeywordRequest.MAX_CHARS
+}
+
+private val KeywordFormSaver = listSaver<KeywordForm, Any>(
+  save = { listOf(it.text, it.block, it.days) },
+  restore = { KeywordForm(it[0] as String, it[1] as Boolean, it[2] as Int) }
+)
+
+@Composable
+internal fun AddKeywordForm(form: KeywordForm, onChange: (KeywordForm) -> Unit) {
+  Column {
+    OutlinedTextField(
+      value = form.text,
+      onValueChange = { onChange(form.copy(text = it)) },
+      singleLine = true,
+      isError = form.trimmed.isNotEmpty() && !form.valid,
+      placeholder = { Text(stringResource(R.string.TellomiFeedKeywords__hint)) },
+      modifier = Modifier.fillMaxWidth().testTag(FeedRecommendationSettingsTestTags.KEYWORD_FIELD)
+    )
+    ModeChoice(selected = !form.block, title = R.string.TellomiFeedKeywords__downrank, body = R.string.TellomiFeedKeywords__downrank_description, onClick = { onChange(form.copy(block = false)) }, tag = null)
+    ModeChoice(selected = form.block, title = R.string.TellomiFeedKeywords__block, body = R.string.TellomiFeedKeywords__block_description, onClick = { onChange(form.copy(block = true)) }, tag = FeedRecommendationSettingsTestTags.KEYWORD_BLOCK)
+    Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.padding(top = 8.dp)) {
+      FeedKeywordRequest.DAYS.forEach { choice ->
+        FilterChip(
+          selected = form.days == choice,
+          onClick = { onChange(form.copy(days = choice)) },
+          label = { Text(if (choice == 0) stringResource(R.string.TellomiFeedKeywords__forever) else pluralStringResource(R.plurals.TellomiFeedKeywords__days, choice, choice)) },
+          modifier = Modifier.testTag(FeedRecommendationSettingsTestTags.KEYWORD_DAYS + choice)
+        )
+      }
+    }
+  }
+}
+
+@Composable
+private fun ModeChoice(selected: Boolean, title: Int, body: Int, onClick: () -> Unit, tag: String?) {
+  Row(
+    verticalAlignment = Alignment.CenterVertically,
+    modifier = Modifier
+      .fillMaxWidth()
+      .padding(top = 8.dp)
+      .selectable(selected = selected, onClick = onClick, role = Role.RadioButton)
+      .then(if (tag != null) Modifier.testTag(tag) else Modifier)
+  ) {
+    RadioButton(selected = selected, onClick = null)
+    Column(modifier = Modifier.padding(start = 8.dp)) {
+      Text(text = stringResource(title), style = MaterialTheme.typography.bodyLarge)
+      Text(text = stringResource(body), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
     }
   }
 }

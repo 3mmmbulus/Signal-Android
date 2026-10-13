@@ -796,3 +796,28 @@ data class FeedInterest(
   val label: String? = null,
   val score: Double = 0.0
 )
+
+/** `GET /v1/feed/me/keywords`：「少推荐」的词（「完全屏蔽」的不离开手机）。 */
+@Serializable
+data class FeedKeywordsResponse(val keywords: List<FeedServerKeyword> = emptyList())
+
+@Serializable
+data class FeedServerKeyword(
+  val keyword: String,
+  /** null = 永久。 */
+  @SerialName("expires_at") val expiresAt: String? = null
+)
+
+/** `PUT /v1/feed/me/keywords`：[days] 0 = 永久、7、30。0 也要发出去。 */
+@OptIn(ExperimentalSerializationApi::class)
+@Serializable
+data class FeedKeywordRequest(
+  val keyword: String,
+  @EncodeDefault val days: Int = 0
+) {
+  companion object {
+    const val MAX_CHARS = 20
+    const val MAX_KEYWORDS = 100
+    val DAYS = listOf(0, 30, 7)
+  }
+}

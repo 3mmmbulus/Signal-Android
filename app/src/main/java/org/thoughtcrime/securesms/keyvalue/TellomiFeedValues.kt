@@ -19,6 +19,7 @@ class TellomiFeedValues(store: KeyValueStore) : SignalStoreValues(store) {
     private const val SEARCH_PEOPLE = "tellomi_feed.search_people"
     private const val FRIENDS_REPORTED = "tellomi_feed.friends_reported"
     private const val FRIENDS_CHECKED_AT = "tellomi_feed.friends_checked_at"
+    private const val BLOCKED_KEYWORDS = "tellomi_feed.blocked_keywords"
   }
 
   public override fun onFirstEverAppLaunch() = Unit
@@ -44,4 +45,7 @@ class TellomiFeedValues(store: KeyValueStore) : SignalStoreValues(store) {
 
   /** 上次对好友名单的时间（毫秒）；0 = 下次回到前台就对。 */
   var friendsCheckedAt: Long by longValue(FRIENDS_CHECKED_AT, 0)
+
+  /** 「完全屏蔽」的关键词（JSON）。只在本机，不发给服务器（第三节第 12 条；引擎 `relations.go`）。见 `FeedBlockedKeywords`。 */
+  var blockedKeywords: String? by stringValue(BLOCKED_KEYWORDS, null)
 }

@@ -7,6 +7,10 @@ package org.thoughtcrime.securesms.feed.settings
 
 import android.app.Application
 import android.graphics.Bitmap
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.graphics.asAndroidBitmap
 import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.captureToImage
@@ -73,6 +77,8 @@ class FeedRecommendationSettingsScreenTest {
           onCategoryChanged = { slug, value -> events += "category $slug=$value" },
           onPause = { events += "pause" },
           onResume = { events += "resume" },
+          onAddKeyword = { k, mode, days -> events += "add $k $mode $days" },
+          onRemoveKeyword = { events += "remove ${it.keyword}" },
           onDeleteInterest = { dim, interest -> events += "delete $dim/${interest.key}" },
           onReset = { events += "reset" },
           onNoticeShown = {}
@@ -154,5 +160,52 @@ class FeedRecommendationSettingsScreenTest {
     scrollTo(hasTestTag(FeedRecommendationSettingsTestTags.PAUSE))
     composeTestRule.onNodeWithText("Paused until", substring = true).performClick()
     assertThat(events).isEqualTo(listOf("resume"))
+  }
+
+  @Test
+  fun `muted words list and add dialog`() {
+    val keywords = listOf(
+      FeedKeyword("考研", FeedKeyword.Mode.BLOCK),
+      FeedKeyword("剧透", FeedKeyword.Mode.DOWNRANK)
+    )
+    show(FeedRecommendationSettingsState(preferences = FeedPreferences(), interests = FeedInterests(), keywords = keywords))
+
+    scrollTo(hasTestTag(FeedRecommendationSettingsTestTags.KEYWORD_ADD))
+    composeTestRule.onNodeWithText("Hide completely · Forever").assertExists()
+    composeTestRule.onNodeWithText("Show less · Forever").assertExists()
+    System.getenv("FEED_SCREENSHOT_DIR")?.let { dir ->
+      val bitmap = composeTestRule.onRoot().captureToImage().asAndroidBitmap()
+      File(dir).mkdirs()
+      File(dir, "feed_keywords_list.png").outputStream().use { bitmap.compress(Bitmap.CompressFormat.PNG, 100, it) }
+    }
+    composeTestRule.onNodeWithTag(FeedRecommendationSettingsTestTags.KEYWORD_DELETE + "剧透").performClick()
+
+    assertThat(events).isEqualTo(listOf("remove 剧透"))
+  }
+
+  @Test
+  fun `add word form`() {
+    var form = KeywordForm()
+    // 对话框窗口里的输入框在 Robolectric 下等不到空闲，单独测表单
+    composeTestRule.setContent {
+      SignalTheme {
+        var current by remember { mutableStateOf(KeywordForm(text = "减肥")) }
+        AddKeywordForm(form = current, onChange = {
+          current = it
+          form = it
+        })
+      }
+    }
+    composeTestRule.onNodeWithTag(FeedRecommendationSettingsTestTags.KEYWORD_BLOCK).performClick()
+    composeTestRule.onNodeWithTag(FeedRecommendationSettingsTestTags.KEYWORD_DAYS + 7).performClick()
+    val dir = System.getenv("FEED_SCREENSHOT_DIR")
+    if (dir != null) {
+      val bitmap = composeTestRule.onRoot().captureToImage().asAndroidBitmap()
+      File(dir).mkdirs()
+      File(dir, "feed_keywords_add.png").outputStream().use { bitmap.compress(Bitmap.CompressFormat.PNG, 100, it) }
+    }
+    assertThat(form).isEqualTo(KeywordForm(text = "减肥", block = true, days = 7))
+    assertThat(KeywordForm(text = "  ").valid).isEqualTo(false)
+    assertThat(KeywordForm(text = "字".repeat(21)).valid).isEqualTo(false)
   }
 }

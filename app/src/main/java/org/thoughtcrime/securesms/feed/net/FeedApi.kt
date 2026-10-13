@@ -340,6 +340,21 @@ class FeedApi(
     return send(Request.Builder().url(url("v1/feed/me/preferences")).put(body), FeedPreferences.serializer())
   }
 
+  suspend fun keywords(): List<FeedServerKeyword> {
+    return get(url("v1/feed/me/keywords"), FeedKeywordsResponse.serializer()).keywords
+  }
+
+  /** 加一个「少推荐」的词；已经有就改有效期。超过 100 个 409 `too_many_keywords`。 */
+  suspend fun putKeyword(keyword: String, days: Int) {
+    val body = FeedJson.encodeToString(FeedKeywordRequest.serializer(), FeedKeywordRequest(keyword, days)).toRequestBody(JSON)
+    sendNoContent(Request.Builder().url(url("v1/feed/me/keywords")).put(body))
+  }
+
+  suspend fun deleteKeyword(keyword: String) {
+    val url = url("v1/feed/me/keywords").newBuilder().addPathSegment(keyword).build()
+    sendNoContent(Request.Builder().url(url).delete())
+  }
+
   suspend fun interests(): FeedInterests {
     return get(url("v1/feed/me/interests"), FeedInterests.serializer())
   }

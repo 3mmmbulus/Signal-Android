@@ -34,7 +34,8 @@ import java.time.Instant
 class FeedViewModel(
   private val source: FeedSource = FeedSources.current(),
   private val ioDispatcher: CoroutineDispatcher = Dispatchers.IO,
-  private val clock: () -> Long = System::currentTimeMillis
+  private val clock: () -> Long = System::currentTimeMillis,
+  private val blockedKeywords: FeedBlockedKeywords = StoredFeedBlockedKeywords()
 ) : ViewModel() {
 
   companion object {
@@ -248,7 +249,9 @@ class FeedViewModel(
     loadJobs[tab] = viewModelScope.launch {
       try {
         val page = withContext(ioDispatcher) { source.timeline(tab, cursor) }
-        val incoming = page.entries.map { it.card }.filter { it.isRenderable }
+        // 「完全屏蔽」的词在本机过滤（第三节第 12 条），每页现读，设置页刚改的下一页就生效
+        val blocked = blockedKeywords.active(clock())
+        val incoming = page.entries.map { it.card }.filter { it.isRenderable && !it.matchesAny(blocked) }
         setTab(tab) { current ->
           val cards = if (refresh) mergeRefresh(incoming, current.cards) else appendPage(current.cards, incoming)
           current.copy(

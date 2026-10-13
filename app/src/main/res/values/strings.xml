@@ -7244,6 +7244,23 @@
         <item quantity="one">%1$d category adjusted</item>
         <item quantity="other">%1$d categories adjusted</item>
     </plurals>
+    <string name="TellomiFeedKeywords__title">Muted words</string>
+    <string name="TellomiFeedKeywords__description">“Show less” lowers matching posts in your recommendations and is saved to your account. “Hide completely” stays on this phone and removes matching posts from your feed. Search and profiles are not affected.</string>
+    <string name="TellomiFeedKeywords__add">Add a word</string>
+    <string name="TellomiFeedKeywords__hint">Word or phrase</string>
+    <string name="TellomiFeedKeywords__confirm">Add</string>
+    <string name="TellomiFeedKeywords__downrank">Show less</string>
+    <string name="TellomiFeedKeywords__downrank_description">Matching posts are recommended less</string>
+    <string name="TellomiFeedKeywords__block">Hide completely</string>
+    <string name="TellomiFeedKeywords__block_description">Matching posts never appear in your feed (this phone only)</string>
+    <string name="TellomiFeedKeywords__forever">Forever</string>
+    <string name="TellomiFeedKeywords__until">Until %1$s</string>
+    <string name="TellomiFeedKeywords__invalid">Use 1 to 20 characters</string>
+    <string name="TellomiFeedKeywords__too_many">You can add up to 100 words</string>
+    <plurals name="TellomiFeedKeywords__days">
+        <item quantity="one">%1$d day</item>
+        <item quantity="other">%1$d days</item>
+    </plurals>
     <string name="ConversationListTabs__99p">99+</string>
     <!-- Menu item on stories landing page -->
     <string name="StoriesLandingFragment__story_privacy">Story privacy</string>

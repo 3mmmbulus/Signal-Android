@@ -7016,6 +7016,22 @@
     <plurals name="TellomiFeedRecommendation__categories_adjusted">
         <item quantity="other">已調整 %1$d 類</item>
     </plurals>
+    <string name="TellomiFeedKeywords__title">封鎖關鍵字</string>
+    <string name="TellomiFeedKeywords__description">「少推薦」會降低含這個詞的內容在推薦裡的出現，跟著帳戶走；「完全封鎖」只存在這部手機上，資訊流裡不再出現含這個詞的內容。搜尋和個人主頁不受影響。</string>
+    <string name="TellomiFeedKeywords__add">新增關鍵字</string>
+    <string name="TellomiFeedKeywords__hint">詞或短語</string>
+    <string name="TellomiFeedKeywords__confirm">新增</string>
+    <string name="TellomiFeedKeywords__downrank">少推薦</string>
+    <string name="TellomiFeedKeywords__downrank_description">含這個詞的內容會少推薦</string>
+    <string name="TellomiFeedKeywords__block">完全封鎖</string>
+    <string name="TellomiFeedKeywords__block_description">資訊流裡不再出現（只在這部手機上）</string>
+    <string name="TellomiFeedKeywords__forever">永久</string>
+    <string name="TellomiFeedKeywords__until">到 %1$s</string>
+    <string name="TellomiFeedKeywords__invalid">請輸入 1 至 20 個字</string>
+    <string name="TellomiFeedKeywords__too_many">最多新增 100 個詞</string>
+    <plurals name="TellomiFeedKeywords__days">
+        <item quantity="other">%1$d 天</item>
+    </plurals>
     <string name="ConversationListTabs__99p">99+</string>
     <!-- Menu item on stories landing page -->
     <string name="StoriesLandingFragment__story_privacy">快拍隱私</string>

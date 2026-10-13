@@ -16,13 +16,19 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import org.signal.core.util.logging.Log
+import org.thoughtcrime.securesms.feed.FeedBlockedKeywords
 import org.thoughtcrime.securesms.feed.FeedSource
 import org.thoughtcrime.securesms.feed.FeedSources
+import org.thoughtcrime.securesms.feed.StoredFeedBlockedKeywords
+import org.thoughtcrime.securesms.feed.net.FeedApiException
 import org.thoughtcrime.securesms.feed.net.FeedConfig
 import org.thoughtcrime.securesms.feed.net.FeedInterest
 import org.thoughtcrime.securesms.feed.net.FeedInterests
+import org.thoughtcrime.securesms.feed.net.FeedKeywordRequest
 import org.thoughtcrime.securesms.feed.net.FeedPreferences
 import org.thoughtcrime.securesms.feed.net.FeedPreferencesUpdate
+import org.thoughtcrime.securesms.feed.parseInstantMillis
+import java.util.concurrent.TimeUnit
 
 /**
  * 「动态设置」里推荐那一部分（第三节第 12、28、47 条；《算法推荐管理规定》第 17 条）：
@@ -32,7 +38,9 @@ import org.thoughtcrime.securesms.feed.net.FeedPreferencesUpdate
  */
 class FeedRecommendationSettingsViewModel(
   private val source: FeedSource = FeedSources.current(),
-  private val ioDispatcher: CoroutineDispatcher = Dispatchers.IO
+  private val ioDispatcher: CoroutineDispatcher = Dispatchers.IO,
+  private val blockedKeywords: FeedBlockedKeywords = StoredFeedBlockedKeywords(),
+  private val clock: () -> Long = System::currentTimeMillis
 ) : ViewModel() {
 
   companion object {
@@ -53,9 +61,17 @@ class FeedRecommendationSettingsViewModel(
         val config = withContext(ioDispatcher) { source.config() }
         val preferences = withContext(ioDispatcher) { source.preferences() }
         val interests = withContext(ioDispatcher) { source.interests() }
+        // 关键词拿不到不挡整页，本机的照样显示
+        val server = try {
+          withContext(ioDispatcher) { source.keywords() }
+        } catch (e: Exception) {
+          Log.w(TAG, "keywords failed", e)
+          null
+        }
         internalState.update {
           it.copy(
             loading = false,
+            keywords = mergeKeywords(server?.map { k -> FeedKeyword(k.keyword, FeedKeyword.Mode.DOWNRANK, k.expiresAt?.let(::parseInstantMillis)) }),
             preferences = preferences,
             interests = interests,
             region = config.region,
@@ -144,6 +160,79 @@ class FeedRecommendationSettingsViewModel(
     }
   }
 
+  /**
+   * 加一个屏蔽关键词（第三节第 12 条）：「少推荐」交给服务端降权；「完全屏蔽」只存在手机上，信息流里直接不显示。
+   * [days] 0 = 永久，30，7。
+   */
+  fun addKeyword(keyword: String, mode: FeedKeyword.Mode, days: Int) {
+    val k = keyword.trim()
+    if (k.isEmpty() || k.codePointCount(0, k.length) > FeedKeywordRequest.MAX_CHARS || days !in FeedKeywordRequest.DAYS) {
+      internalState.update { it.copy(notice = FeedRecommendationSettingsState.Notice.INVALID_KEYWORD) }
+      return
+    }
+    val expiresAt = if (days == 0) null else clock() + TimeUnit.DAYS.toMillis(days.toLong())
+    when (mode) {
+      FeedKeyword.Mode.BLOCK -> {
+        blockedKeywords.add(k, expiresAt)
+        internalState.update { it.copy(keywords = mergeKeywords(it.keywords)) }
+      }
+      FeedKeyword.Mode.DOWNRANK -> {
+        if (internalState.value.keywords.count { it.mode == FeedKeyword.Mode.DOWNRANK } >= FeedKeywordRequest.MAX_KEYWORDS &&
+          internalState.value.keywords.none { it.mode == FeedKeyword.Mode.DOWNRANK && it.keyword == k }
+        ) {
+          internalState.update { it.copy(notice = FeedRecommendationSettingsState.Notice.TOO_MANY_KEYWORDS) }
+          return
+        }
+        viewModelScope.launch {
+          try {
+            withContext(ioDispatcher) { source.putKeyword(k, days) }
+            internalState.update { state ->
+              val server = state.keywords.filter { it.mode == FeedKeyword.Mode.DOWNRANK && it.keyword != k }
+              state.copy(keywords = mergeKeywords(listOf(FeedKeyword(k, FeedKeyword.Mode.DOWNRANK, expiresAt)) + server))
+            }
+          } catch (e: Exception) {
+            Log.w(TAG, "add keyword failed", e)
+            val notice = when {
+              e is FeedApiException && e.code == "too_many_keywords" -> FeedRecommendationSettingsState.Notice.TOO_MANY_KEYWORDS
+              e is FeedApiException && e.code == "invalid_keyword" -> FeedRecommendationSettingsState.Notice.INVALID_KEYWORD
+              else -> FeedRecommendationSettingsState.Notice.FAILED
+            }
+            internalState.update { it.copy(notice = notice) }
+          }
+        }
+      }
+    }
+  }
+
+  fun removeKeyword(keyword: FeedKeyword) {
+    when (keyword.mode) {
+      FeedKeyword.Mode.BLOCK -> {
+        blockedKeywords.remove(keyword.keyword)
+        internalState.update { it.copy(keywords = mergeKeywords(it.keywords)) }
+      }
+      FeedKeyword.Mode.DOWNRANK -> {
+        val before = internalState.value.keywords
+        internalState.update { it.copy(keywords = before - keyword) }
+        viewModelScope.launch {
+          try {
+            withContext(ioDispatcher) { source.deleteKeyword(keyword.keyword) }
+          } catch (e: Exception) {
+            Log.w(TAG, "delete keyword failed", e)
+            internalState.update { it.copy(keywords = before, notice = FeedRecommendationSettingsState.Notice.FAILED) }
+          }
+        }
+      }
+    }
+  }
+
+  /** 本机「完全屏蔽」的放前面，再接服务端「少推荐」的（[server] 为 null 时沿用当前列表里的）。 */
+  private fun mergeKeywords(server: List<FeedKeyword>?): List<FeedKeyword> {
+    val now = clock()
+    val local = blockedKeywords.active(now).map { FeedKeyword(it.keyword, FeedKeyword.Mode.BLOCK, it.expiresAt) }
+    val remote = (server ?: internalState.value.keywords).filter { it.mode == FeedKeyword.Mode.DOWNRANK && (it.expiresAt == null || it.expiresAt > now) }
+    return local + remote
+  }
+
   fun onNoticeShown() {
     internalState.update { it.copy(notice = null) }
   }
@@ -156,13 +245,25 @@ data class FeedRecommendationSettingsState(
   val loadFailed: Boolean = false,
   val resetting: Boolean = false,
   val notice: Notice? = null,
+  val keywords: List<FeedKeyword> = emptyList(),
   val region: String? = null,
   /** 引擎在按兴趣排序（`recommend_mode == scored`）时才有个性化开关；编辑精选阶段推荐本来就不按个人兴趣。 */
   val personalizationToggleVisible: Boolean = false
 ) {
-  enum class Notice { FAILED, RESET }
+  enum class Notice { FAILED, RESET, INVALID_KEYWORD, TOO_MANY_KEYWORDS }
 
   /** 敏感内容的档位：「更多」只给海外（R-1.6）。区域不知道时按大陆算。 */
   val sensitiveChoices: List<String>
     get() = if (region != null && region != FeedConfig.REGION_CN) FeedPreferences.SENSITIVE_VALUES else FeedPreferences.SENSITIVE_VALUES - FeedPreferences.SENSITIVE_MORE
+}
+
+/** 设置页里的一个屏蔽关键词。[expiresAt] 毫秒，null = 永久。 */
+data class FeedKeyword(val keyword: String, val mode: Mode, val expiresAt: Long? = null) {
+  enum class Mode {
+    /** 少推荐：服务端降权，换设备还在。 */
+    DOWNRANK,
+
+    /** 完全屏蔽：只在这台手机上，信息流里命中的不显示。 */
+    BLOCK
+  }
 }

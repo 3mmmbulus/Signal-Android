@@ -40,6 +40,8 @@ class FeedRecommendationSettingsActivity : PassphraseRequiredActivity() {
           onCategoryChanged = viewModel::setCategory,
           onPause = viewModel::pause,
           onResume = viewModel::resume,
+          onAddKeyword = viewModel::addKeyword,
+          onRemoveKeyword = viewModel::removeKeyword,
           onDeleteInterest = viewModel::deleteInterest,
           onReset = viewModel::reset,
           onNoticeShown = viewModel::onNoticeShown

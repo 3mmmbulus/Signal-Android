@@ -657,4 +657,23 @@ class FeedApiTest {
     val json = FeedJson.encodeToString(FeedPreferencesUpdate.serializer(), FeedPreferencesUpdate(categories = mapOf("food" to "increase"), pauseDays = 30))
     assertThat(json).isEqualTo("""{"categories":{"food":"increase"},"pause_days":30}""")
   }
+
+  @Test
+  fun `keywords list, put with days and delete by path`() = runBlocking {
+    server.enqueue(MockResponse().setBody("""{"keywords":[{"keyword":"剧透","expires_at":null},{"keyword":"减肥","expires_at":"2026-11-12T08:00:00Z"}]}"""))
+    server.enqueue(MockResponse().setResponseCode(204))
+    server.enqueue(MockResponse().setResponseCode(204))
+
+    assertThat(api.keywords().map { it.keyword to it.expiresAt }).isEqualTo(listOf("剧透" to null, "减肥" to "2026-11-12T08:00:00Z"))
+    api.putKeyword("x", 0)
+    api.deleteKeyword("a b")
+
+    assertThat(server.takeRequest().path).isEqualTo("/v1/feed/me/keywords")
+    val put = server.takeRequest()
+    assertThat(put.method).isEqualTo("PUT")
+    assertThat(put.body.readUtf8()).isEqualTo("""{"keyword":"x","days":0}""")
+    val delete = server.takeRequest()
+    assertThat(delete.method).isEqualTo("DELETE")
+    assertThat(delete.path).isEqualTo("/v1/feed/me/keywords/a%20b")
+  }
 }

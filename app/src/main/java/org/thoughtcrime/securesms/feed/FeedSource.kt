@@ -46,6 +46,7 @@ import org.thoughtcrime.securesms.feed.net.FeedProfilePostsPage
 import org.thoughtcrime.securesms.feed.net.FeedProfileUpdate
 import org.thoughtcrime.securesms.feed.net.FeedReportRequest
 import org.thoughtcrime.securesms.feed.net.FeedSearchPage
+import org.thoughtcrime.securesms.feed.net.FeedServerKeyword
 import org.thoughtcrime.securesms.feed.net.FeedTimelinePage
 import org.thoughtcrime.securesms.region.TellomiRegionProfile
 import org.thoughtcrime.securesms.region.TellomiRegions
@@ -79,6 +80,9 @@ interface FeedSource {
   suspend fun preferences(): FeedPreferences
   suspend fun savePreferences(update: FeedPreferencesUpdate): FeedPreferences
   suspend fun interests(): FeedInterests
+  suspend fun keywords(): List<FeedServerKeyword>
+  suspend fun putKeyword(keyword: String, days: Int)
+  suspend fun deleteKeyword(keyword: String)
   suspend fun deleteInterest(dimension: String, key: String)
   suspend fun resetInterests()
 
@@ -210,6 +214,9 @@ class RemoteFeedSource(
   override suspend fun preferences(): FeedPreferences = api.preferences()
   override suspend fun savePreferences(update: FeedPreferencesUpdate): FeedPreferences = api.putPreferences(update)
   override suspend fun interests(): FeedInterests = api.interests()
+  override suspend fun keywords(): List<FeedServerKeyword> = api.keywords()
+  override suspend fun putKeyword(keyword: String, days: Int) = api.putKeyword(keyword, days)
+  override suspend fun deleteKeyword(keyword: String) = api.deleteKeyword(keyword)
   override suspend fun deleteInterest(dimension: String, key: String) = api.deleteInterest(dimension, key)
   override suspend fun resetInterests() = api.resetInterests()
   override suspend fun approveComment(postId: String, commentId: String) = api.approveComment(postId, commentId)
@@ -355,6 +362,9 @@ object EmptyFeedSource : FeedSource {
   override suspend fun preferences(): FeedPreferences = throw IllegalStateException("feed is not available")
   override suspend fun savePreferences(update: FeedPreferencesUpdate): FeedPreferences = throw IllegalStateException("feed is not available")
   override suspend fun interests(): FeedInterests = throw IllegalStateException("feed is not available")
+  override suspend fun keywords(): List<FeedServerKeyword> = throw IllegalStateException("feed is not available")
+  override suspend fun putKeyword(keyword: String, days: Int) = throw IllegalStateException("feed is not available")
+  override suspend fun deleteKeyword(keyword: String) = throw IllegalStateException("feed is not available")
   override suspend fun deleteInterest(dimension: String, key: String) = throw IllegalStateException("feed is not available")
   override suspend fun resetInterests() = throw IllegalStateException("feed is not available")
   override suspend fun approveComment(postId: String, commentId: String) = throw IllegalStateException("feed is not available")
