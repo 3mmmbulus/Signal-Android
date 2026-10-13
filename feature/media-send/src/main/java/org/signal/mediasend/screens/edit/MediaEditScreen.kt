@@ -443,6 +443,7 @@ internal fun MediaEditScreen(
           enabled = !isInteracting && !state.isSending,
           canScheduleSend = !state.isStory,
           captionAboveMedia = state.captionAboveMediaOption,
+          sendPreviewMedia = state.selectedMedia,
           viewOnceAvailable = state.isViewOnceAvailable,
           viewOnce = state.isViewOnceEnabled,
           isReply = state.isReply,

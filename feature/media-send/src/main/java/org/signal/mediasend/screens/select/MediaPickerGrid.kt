@@ -894,6 +894,7 @@ private fun PickerSendBar(
       enabled = !options.isSending,
       canScheduleSend = options.canScheduleSend,
       captionAboveMedia = if (options.canMoveCaption && !options.message.isNullOrBlank() && !options.isViewOnceEnabled) options.isCaptionAboveMedia else null,
+      sendPreviewMedia = state.selectedMedia,
       viewOnceAvailable = options.isViewOnceAvailable,
       viewOnce = options.isViewOnceEnabled,
       isReply = options.isReply,

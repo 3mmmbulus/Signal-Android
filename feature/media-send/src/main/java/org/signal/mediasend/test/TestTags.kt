@@ -73,6 +73,15 @@ object TestTags {
 
   // Tellomi (tellomi/tellomi#1263, ADR-0068 §4.7 P3): the caption position item at the top of the long-press send menu.
   const val SEND_MENU_CAPTION_POSITION = "send_menu_caption_position"
+
+  // Tellomi (tellomi/tellomi#1519 M-5): the preview of the message above the long-press send menu.
+  const val SEND_PREVIEW = "send_preview"
+  const val SEND_PREVIEW_SCRIM = "send_preview_scrim"
+  const val SEND_PREVIEW_BUBBLE = "send_preview_bubble"
+  const val SEND_PREVIEW_CAPTION_ABOVE = "send_preview_caption_above"
+  const val SEND_PREVIEW_CAPTION_BELOW = "send_preview_caption_below"
+  const val SEND_PREVIEW_SEND_BUTTON = "send_preview_send_button"
+
   fun filesGalleryCheck(uri: String): String = "files_gallery_check_$uri"
   const val FILES_GALLERY_PREVIEW = "files_gallery_preview"
   const val FILES_GALLERY_PREVIEW_BACK = "files_gallery_preview_back"

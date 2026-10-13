@@ -218,6 +218,7 @@ internal fun MediaAlbumScreen(
           sendEnabled = !state.isSending && state.selectedMedia.isNotEmpty(),
           canScheduleSend = !state.isStory,
           captionAboveMedia = state.captionAboveMediaOption,
+          sendPreviewMedia = state.selectedMedia,
           viewOnceAvailable = state.isViewOnceAvailable,
           viewOnce = state.isViewOnceEnabled,
           isReply = state.isReply,

@@ -18,15 +18,21 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.compositionLocalOf
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import org.signal.core.models.media.Media
 import org.signal.core.ui.compose.ColorProfiles
 import org.signal.core.ui.compose.DayNightPreviews
 import org.signal.core.ui.compose.DropdownMenus
@@ -72,6 +78,8 @@ val LocalAddAMessageRowTextField = compositionLocalOf<@Composable (CharSequence,
  * @param captionAboveMedia Tellomi（tellomi/tellomi#1263，ADR-0068 §4.7 P3）：长按发送菜单顶上的「说明文字上移 / 下移」；
  *   null = 不给，true = 说明现在在上方（显示「下移」）。照 Telegram 两端长按发送菜单的第一项（iOS
  *   `ChatSendMessageContextScreen` 的 captionPosition、安卓 `ChatAttachAlert` 的 CaptionAbove / CaptionBelow 开关），点了菜单不收。
+ * @param sendPreviewMedia Tellomi（tellomi/tellomi#1519 M-5，照 Telegram）：要发的媒体；给了，长按发送就是整屏的
+ *   「发出去是什么样」预览加菜单（[SendPreviewOverlay]），不给还是原来贴着发送键的小菜单。
  */
 @Composable
 fun AddAMessageRow(
@@ -86,8 +94,12 @@ fun AddAMessageRow(
   viewOnce: Boolean = false,
   isReply: Boolean = false,
   recipientChatColor: Color? = null,
-  captionAboveMedia: Boolean? = null
+  captionAboveMedia: Boolean? = null,
+  sendPreviewMedia: List<Media>? = null
 ) {
+  var previewShown by remember { mutableStateOf(false) }
+  var sendButtonBounds by remember { mutableStateOf(Rect.Zero) }
+
   Row(
     horizontalArrangement = Arrangement.Center,
     verticalAlignment = Alignment.CenterVertically,
@@ -151,31 +163,54 @@ fun AddAMessageRow(
       }
     }
 
-    Box {
+    Box(modifier = Modifier.onGloballyPositioned { sendButtonBounds = it.boundsOnScreen() }) {
       val scheduleSendMenuController = remember { DropdownMenus.MenuController() }
 
       val nextButtonColor = recipientChatColor ?: MaterialTheme.colorScheme.primaryContainer
+      val onNextButtonColor = if (recipientChatColor != null) SignalTheme.colors.colorOnCustom else MaterialTheme.colorScheme.onPrimaryContainer
+      val showPreview = !sendPreviewMedia.isNullOrEmpty()
 
-      IconButtons.IconButton(
+      NextButton(
         enabled = sendEnabled,
         onClick = onNextClick,
-        size = NextButtonSize,
-        onLongClick = if (canScheduleSend || captionAboveMedia != null) scheduleSendMenuController::show else null,
-        onLongClickLabel = stringResource(R.string.AddAMessageRow__schedule_send),
-        colors = IconButtons.iconButtonColors(
-          containerColor = nextButtonColor,
-          contentColor = if (recipientChatColor != null) SignalTheme.colors.colorOnCustom else MaterialTheme.colorScheme.onPrimaryContainer,
-          disabledContainerColor = ColorProfiles.disabledContainer(nextButtonColor),
-          disabledContentColor = ColorProfiles.disabledContent()
-        ),
-        modifier = Modifier
-          .testTag(TestTags.ADD_A_MESSAGE_NEXT_BUTTON)
-          .padding(start = 12.dp)
-      ) {
-        Icon(
-          painter = if (recipientChatColor != null) SignalIcons.SendFill.painter else SignalIcons.ArrowEnd.painter,
-          contentDescription = stringResource(if (recipientChatColor != null) R.string.AddAMessageRow__send else R.string.AddAMessageRow__next)
-        )
+        onLongClick = when {
+          !canScheduleSend && captionAboveMedia == null -> null
+          showPreview -> ({ previewShown = true })
+          else -> scheduleSendMenuController::show
+        },
+        containerColor = nextButtonColor,
+        contentColor = onNextButtonColor,
+        isSend = recipientChatColor != null,
+        modifier = Modifier.testTag(TestTags.ADD_A_MESSAGE_NEXT_BUTTON)
+      )
+
+      if (previewShown && sendPreviewMedia != null) {
+        SendPreviewOverlay(
+          media = sendPreviewMedia,
+          // 一次性查看的不带说明
+          message = if (viewOnce) null else message?.toString(),
+          bubbleColor = nextButtonColor,
+          onBubbleColor = onNextButtonColor,
+          sendButtonBounds = sendButtonBounds,
+          captionAboveMedia = captionAboveMedia,
+          showScheduleOptions = canScheduleSend,
+          onToggleCaptionPosition = { onEvent(MediaEditScreenEvents.ToggleCaptionAboveMedia) },
+          onScheduleOption = { onEvent(MediaEditScreenEvents.ScheduleSendClick(it)) },
+          onDismiss = { previewShown = false }
+        ) { hide ->
+          NextButton(
+            enabled = sendEnabled,
+            onClick = {
+              hide()
+              onNextClick()
+            },
+            onLongClick = null,
+            containerColor = nextButtonColor,
+            contentColor = onNextButtonColor,
+            isSend = recipientChatColor != null,
+            modifier = Modifier.testTag(TestTags.SEND_PREVIEW_SEND_BUTTON)
+          )
+        }
       }
 
       ScheduleSendMenu(
@@ -186,6 +221,37 @@ fun AddAMessageRow(
         onToggleCaptionPosition = { onEvent(MediaEditScreenEvents.ToggleCaptionAboveMedia) }
       )
     }
+  }
+}
+
+@Composable
+private fun NextButton(
+  enabled: Boolean,
+  onClick: () -> Unit,
+  onLongClick: (() -> Unit)?,
+  containerColor: Color,
+  contentColor: Color,
+  isSend: Boolean,
+  modifier: Modifier = Modifier
+) {
+  IconButtons.IconButton(
+    enabled = enabled,
+    onClick = onClick,
+    size = NextButtonSize,
+    onLongClick = onLongClick,
+    onLongClickLabel = stringResource(R.string.AddAMessageRow__schedule_send),
+    colors = IconButtons.iconButtonColors(
+      containerColor = containerColor,
+      contentColor = contentColor,
+      disabledContainerColor = ColorProfiles.disabledContainer(containerColor),
+      disabledContentColor = ColorProfiles.disabledContent()
+    ),
+    modifier = modifier.padding(start = 12.dp)
+  ) {
+    Icon(
+      painter = if (isSend) SignalIcons.SendFill.painter else SignalIcons.ArrowEnd.painter,
+      contentDescription = stringResource(if (isSend) R.string.AddAMessageRow__send else R.string.AddAMessageRow__next)
+    )
   }
 }
 

@@ -155,7 +155,7 @@ fun ScheduleSendMenu(
 }
 
 @Composable
-private fun CaptionPositionMenuItem(captionAboveMedia: Boolean, onClick: () -> Unit) {
+internal fun CaptionPositionMenuItem(captionAboveMedia: Boolean, onClick: () -> Unit) {
   DropdownMenus.Item(
     modifier = Modifier.testTag(TestTags.SEND_MENU_CAPTION_POSITION),
     text = {
