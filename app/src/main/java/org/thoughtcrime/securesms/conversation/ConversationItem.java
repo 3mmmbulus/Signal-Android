@@ -1788,7 +1788,7 @@ public final class ConversationItem extends RelativeLayout implements BindableCo
       mediaThumbnailStub.require().setPlayVideoClickListener(playVideoClickListener);
       mediaThumbnailStub.require().setOnLongClickListener(passthroughClickListener);
       mediaThumbnailStub.require().setOnClickListener(passthroughClickListener);
-      mediaThumbnailStub.require().showShade(messageRecord.isDisplayBodyEmpty(getContext()) && !hasExtraText(messageRecord) && !hasCondensedContent(messageRecord));
+      mediaThumbnailStub.require().showShade((messageRecord.isDisplayBodyEmpty(getContext()) || isTellomiCaptionAbove(messageRecord)) && !hasExtraText(messageRecord) && !hasCondensedContent(messageRecord));
       mediaThumbnailStub.require().setImageResource(requestManager,
                                                     thumbnailSlides,
                                                     showControls,
@@ -1966,7 +1966,8 @@ public final class ConversationItem extends RelativeLayout implements BindableCo
       }
     }
 
-    if (!current.isDisplayBodyEmpty(getContext())) {
+    // Tellomi（ADR-0068 §4.7）：说明在上方时，图下面没有别的了，下边跟气泡一样圆。
+    if (!current.isDisplayBodyEmpty(getContext()) && !isTellomiCaptionAbove(current)) {
       bottomStart = 0;
       bottomEnd   = 0;
     }
@@ -1986,7 +1987,7 @@ public final class ConversationItem extends RelativeLayout implements BindableCo
       bottomEnd   = 0;
     }
 
-    // Tellomi（ADR-0068 §4.7）：说明文字在上面，图的上边也是平的（下边本来就接着时间那一行）。
+    // Tellomi（ADR-0068 §4.7）：说明文字在上面，图的上边是平的。
     if (isTellomiCaptionAbove(current)) {
       topStart = 0;
       topEnd   = 0;
@@ -2375,6 +2376,9 @@ public final class ConversationItem extends RelativeLayout implements BindableCo
       return sharedContactStub.get().getFooter();
     } else if (hasOnlyThumbnail(messageRecord) && messageRecord.isDisplayBodyEmpty(getContext())) {
       return mediaThumbnailStub.require().getFooter().get();
+    } else if (isTellomiCaptionAbove(messageRecord)) {
+      // Tellomi（ADR-0068 §4.7）：说明在上方时图是气泡最下面一块，时间压在图上（同没有说明的图、同 Telegram / iOS / 电脑端）。
+      return mediaThumbnailStub.require().getFooter().get();
     } else {
       return footer;
     }
@@ -2487,7 +2491,7 @@ public final class ConversationItem extends RelativeLayout implements BindableCo
   /**
    * Tellomi（tellomi/tellomi#1263，ADR-0068 §4.7）：说明文字在媒体上方——正文挪到图片 / 视频上面，还在同一个气泡里
    * （同 Telegram：iOS `ChatMessageBubbleItemNode` 把文字节点插到媒体前面，安卓 `ChatMessageCell.captionAbove`）。
-   * 时间那一行留在气泡最下面（图下面）。只在有正文、而且是按媒体显示的图片 / 视频时；别的照上游，正文放回原位。
+   * 图是气泡最下面一块，时间压在图上（[getActiveFooter]）。只在有正文、而且是按媒体显示的图片 / 视频时；别的照上游，正文放回原位。
    */
   private boolean isTellomiCaptionAbove(@NonNull MessageRecord record) {
     return TellomiCaptionAbove.isCaptionAboveMedia(record.getMessageExtras()) &&
