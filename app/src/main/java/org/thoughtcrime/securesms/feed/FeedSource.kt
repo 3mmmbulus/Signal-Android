@@ -5,8 +5,12 @@
 
 package org.thoughtcrime.securesms.feed
 
+import org.thoughtcrime.securesms.feed.compose.FeedDraft
+import org.thoughtcrime.securesms.feed.compose.FeedDraftKind
 import org.thoughtcrime.securesms.feed.net.FeedApi
 import org.thoughtcrime.securesms.feed.net.FeedConfig
+import org.thoughtcrime.securesms.feed.net.FeedCreatePostRequest
+import org.thoughtcrime.securesms.feed.net.FeedCreatePostResponse
 import org.thoughtcrime.securesms.feed.net.FeedTimelinePage
 
 /**
@@ -18,6 +22,9 @@ interface FeedSource {
   suspend fun setLiked(contentId: String, liked: Boolean)
   suspend fun notInterested(contentId: String)
   suspend fun undoNotInterested(contentId: String)
+
+  /** 发一条（契约 7.2）。[clientNonce] 每条草稿一个，重试时不变。 */
+  suspend fun publish(draft: FeedDraft, clientNonce: String): FeedCreatePostResponse
 }
 
 /** 内容引擎（契约 `docs/adr/0071/client-api-2026-10.md`）。 */
@@ -27,6 +34,27 @@ class RemoteFeedSource(private val api: FeedApi) : FeedSource {
   override suspend fun setLiked(contentId: String, liked: Boolean) = api.setReaction(contentId, FeedApi.REACTION_LIKE, liked)
   override suspend fun notInterested(contentId: String) = api.notInterested(contentId, reason = null)
   override suspend fun undoNotInterested(contentId: String) = api.undoNotInterested(contentId)
+
+  override suspend fun publish(draft: FeedDraft, clientNonce: String): FeedCreatePostResponse {
+    // 图片要先走 tus 上传拿到 key（契约 7.1），上传在接内容引擎地址的 PR 里做；在那之前带图的帖子不发。
+    check(draft.attachedImages.isEmpty()) { "media upload is not wired yet" }
+    return api.createPost(draft.toRequest(mediaKeys = emptyList(), clientNonce = clientNonce))
+  }
+}
+
+internal fun FeedDraft.toRequest(mediaKeys: List<String>, clientNonce: String): FeedCreatePostRequest {
+  return FeedCreatePostRequest(
+    kind = kind.apiName,
+    title = title.trim().takeIf { kind == FeedDraftKind.ARTICLE && it.isNotEmpty() },
+    text = text.trim(),
+    mediaKeys = mediaKeys,
+    // 话题和评论权限在后面的 PR 加（第三节第 22、40 条）
+    topics = emptyList(),
+    visibility = visibility.apiName,
+    commentsClosed = false,
+    replyModeration = false,
+    clientNonce = clientNonce
+  )
 }
 
 /**
@@ -41,6 +69,7 @@ object EmptyFeedSource : FeedSource {
   override suspend fun setLiked(contentId: String, liked: Boolean) = Unit
   override suspend fun notInterested(contentId: String) = Unit
   override suspend fun undoNotInterested(contentId: String) = Unit
+  override suspend fun publish(draft: FeedDraft, clientNonce: String): FeedCreatePostResponse = throw IllegalStateException("feed is not available")
 }
 
 object FeedSources {

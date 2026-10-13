@@ -5,9 +5,12 @@
 
 package org.thoughtcrime.securesms.feed
 
+import org.thoughtcrime.securesms.feed.compose.FeedDraft
+import org.thoughtcrime.securesms.feed.compose.FeedDraftKind
 import org.thoughtcrime.securesms.feed.net.FeedAuthor
 import org.thoughtcrime.securesms.feed.net.FeedCard
 import org.thoughtcrime.securesms.feed.net.FeedConfig
+import org.thoughtcrime.securesms.feed.net.FeedCreatePostResponse
 import org.thoughtcrime.securesms.feed.net.FeedEntry
 import org.thoughtcrime.securesms.feed.net.FeedMedia
 import org.thoughtcrime.securesms.feed.net.FeedStats
@@ -27,6 +30,12 @@ object SampleFeedSource : FeedSource {
 
   private val liked = mutableSetOf<String>()
   private val hidden = mutableSetOf<String>()
+
+  /** 自己在样例里发的，放在两栏最上面。 */
+  private val mine = mutableListOf<FeedCard>()
+  private val published = mutableMapOf<String, FeedCreatePostResponse>()
+
+  private val me = FeedAuthor(profileId = "s-me", displayName = "我", tellomiNumber = "1000000001")
 
   private val authors = listOf(
     FeedAuthor(profileId = "s-1", displayName = "山风", handle = "shanfeng"),
@@ -74,7 +83,7 @@ object SampleFeedSource : FeedSource {
   }
 
   override suspend fun timeline(tab: FeedTab, cursor: String?): FeedTimelinePage {
-    val all = when (tab) {
+    val all = synchronized(this) { mine.toList() } + when (tab) {
       FeedTab.RECOMMEND -> recommend
       FeedTab.FOLLOWING -> following
     }.filter { it.id !in hidden }
@@ -104,6 +113,32 @@ object SampleFeedSource : FeedSource {
 
   override suspend fun undoNotInterested(contentId: String) {
     hidden -= contentId
+  }
+
+  /** 同一个 [clientNonce] 重复发只算一次（契约 7.2 的去重）。 */
+  override suspend fun publish(draft: FeedDraft, clientNonce: String): FeedCreatePostResponse = synchronized(this) {
+    published[clientNonce]?.let { return it }
+
+    val id = "mine-${mine.size}"
+    val card = FeedCard(
+      id = id,
+      kind = draft.kind.apiName,
+      displayMode = when {
+        draft.kind == FeedDraftKind.ARTICLE -> FeedCard.DISPLAY_ARTICLE_CARD
+        draft.attachedImages.isNotEmpty() -> FeedCard.DISPLAY_TEXT_IMAGES
+        else -> FeedCard.DISPLAY_TEXT
+      },
+      publishedAt = Instant.now().toString(),
+      author = me,
+      title = draft.title.trim().takeIf { draft.kind == FeedDraftKind.ARTICLE },
+      text = draft.text.trim(),
+      media = draft.attachedImages.map { FeedMedia(key = it.toString()) },
+      ipRegionLabel = ipLabels.first(),
+      viewer = FeedViewer(isAuthor = true)
+    )
+    mine.add(0, card)
+
+    FeedCreatePostResponse(id = id, state = FeedCreatePostResponse.STATE_PUBLISHED).also { published[clientNonce] = it }
   }
 
   private fun sampleCard(index: Int): FeedCard {

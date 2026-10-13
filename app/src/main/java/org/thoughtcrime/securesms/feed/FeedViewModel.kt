@@ -126,6 +126,16 @@ class FeedViewModel(
     internalState.update { it.copy(transientError = null, lastHidden = null) }
   }
 
+  /** 发布页带回服务端给的 `state`：两栏都刷新，提示「已发布」或「审核中」（R-2.2）。 */
+  fun onPublished(publishState: String) {
+    internalState.update { it.copy(publishNotice = publishState) }
+    FeedTab.entries.forEach { refresh(it) }
+  }
+
+  fun onPublishNoticeShown() {
+    internalState.update { it.copy(publishNotice = null) }
+  }
+
   private fun load(tab: FeedTab, refresh: Boolean) {
     loadJobs[tab]?.cancel()
     val cursor = if (refresh) null else internalState.value.tab(tab).nextCursor
@@ -194,7 +204,8 @@ data class FeedState(
   val tabs: List<FeedTab> = FeedTab.entries,
   val tabStates: Map<FeedTab, FeedTabState> = emptyMap(),
   val lastHidden: FeedCard? = null,
-  val transientError: TransientError? = null
+  val transientError: TransientError? = null,
+  val publishNotice: String? = null
 ) {
   fun tab(tab: FeedTab): FeedTabState = tabStates[tab] ?: FeedTabState()
 

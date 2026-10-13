@@ -6829,6 +6829,36 @@
         <item quantity="one">%1$d comment</item>
         <item quantity="other">%1$d comments</item>
     </plurals>
+    <string name="TellomiFeedCompose__kind_post">Post</string>
+    <string name="TellomiFeedCompose__kind_article">Article</string>
+    <string name="TellomiFeedCompose__publish">Post</string>
+    <string name="TellomiFeedCompose__close">Close</string>
+    <string name="TellomiFeedCompose__new_post">New post</string>
+    <string name="TellomiFeedCompose__post_hint">What\'s on your mind?</string>
+    <string name="TellomiFeedCompose__article_hint">Write your article</string>
+    <string name="TellomiFeedCompose__title_hint">Title</string>
+    <string name="TellomiFeedCompose__add_images">Add photos</string>
+    <string name="TellomiFeedCompose__remove_image">Remove photo</string>
+    <string name="TellomiFeedCompose__visibility_title">Who can see this</string>
+    <string name="TellomiFeedCompose__visibility_public">Public</string>
+    <string name="TellomiFeedCompose__visibility_public_description">Anyone on Feed</string>
+    <string name="TellomiFeedCompose__visibility_friends">Friends</string>
+    <string name="TellomiFeedCompose__visibility_friends_description">Only your friends</string>
+    <string name="TellomiFeedCompose__visibility_include">Only some friends</string>
+    <string name="TellomiFeedCompose__visibility_include_description">Only the people you pick</string>
+    <string name="TellomiFeedCompose__visibility_exclude">Hide from</string>
+    <string name="TellomiFeedCompose__visibility_exclude_description">Everyone except the people you pick</string>
+    <string name="TellomiFeedCompose__visibility_only_me">Only me</string>
+    <string name="TellomiFeedCompose__visibility_only_me_description">Only you can see it</string>
+    <string name="TellomiFeedCompose__visibility_coming_soon">Picking people isn\'t available yet</string>
+    <string name="TellomiFeedCompose__visibility_minor_mode">In minor mode, posts can only be seen by friends or yourself.</string>
+    <string name="TellomiFeedCompose__discard_title">Discard this post?</string>
+    <string name="TellomiFeedCompose__discard_body">What you\'ve written will be lost.</string>
+    <string name="TellomiFeedCompose__discard">Discard</string>
+    <string name="TellomiFeedCompose__keep_editing">Keep editing</string>
+    <string name="TellomiFeedCompose__publish_failed">Couldn\'t post. Try again.</string>
+    <string name="TellomiFeedCompose__published">Posted</string>
+    <string name="TellomiFeedCompose__pending">Submitted. Others can see it once it\'s reviewed.</string>
     <string name="ConversationListTabs__99p">99+</string>
     <!-- Menu item on stories landing page -->
     <string name="StoriesLandingFragment__story_privacy">Story privacy</string>

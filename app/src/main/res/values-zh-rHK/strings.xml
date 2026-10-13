@@ -6611,6 +6611,36 @@
     <plurals name="TellomiFeed__comments">
         <item quantity="other">%1$d 則留言</item>
     </plurals>
+    <string name="TellomiFeedCompose__kind_post">動態</string>
+    <string name="TellomiFeedCompose__kind_article">長文</string>
+    <string name="TellomiFeedCompose__publish">發佈</string>
+    <string name="TellomiFeedCompose__close">關閉</string>
+    <string name="TellomiFeedCompose__new_post">發動態</string>
+    <string name="TellomiFeedCompose__post_hint">說點甚麼…</string>
+    <string name="TellomiFeedCompose__article_hint">寫正文</string>
+    <string name="TellomiFeedCompose__title_hint">標題</string>
+    <string name="TellomiFeedCompose__add_images">加入圖片</string>
+    <string name="TellomiFeedCompose__remove_image">移除圖片</string>
+    <string name="TellomiFeedCompose__visibility_title">誰可以看</string>
+    <string name="TellomiFeedCompose__visibility_public">公開</string>
+    <string name="TellomiFeedCompose__visibility_public_description">所有人可見</string>
+    <string name="TellomiFeedCompose__visibility_friends">僅好友</string>
+    <string name="TellomiFeedCompose__visibility_friends_description">只有好友能看</string>
+    <string name="TellomiFeedCompose__visibility_include">部分可見</string>
+    <string name="TellomiFeedCompose__visibility_include_description">只給選中的人看</string>
+    <string name="TellomiFeedCompose__visibility_exclude">不給誰看</string>
+    <string name="TellomiFeedCompose__visibility_exclude_description">選中的人看不到</string>
+    <string name="TellomiFeedCompose__visibility_only_me">僅自己</string>
+    <string name="TellomiFeedCompose__visibility_only_me_description">只有你能看</string>
+    <string name="TellomiFeedCompose__visibility_coming_soon">選人功能尚未推出</string>
+    <string name="TellomiFeedCompose__visibility_minor_mode">未成年人模式下只能發給好友或僅自己可見。</string>
+    <string name="TellomiFeedCompose__discard_title">放棄這條動態？</string>
+    <string name="TellomiFeedCompose__discard_body">寫的內容不會保留。</string>
+    <string name="TellomiFeedCompose__discard">放棄</string>
+    <string name="TellomiFeedCompose__keep_editing">繼續編輯</string>
+    <string name="TellomiFeedCompose__publish_failed">發佈失敗，請再試</string>
+    <string name="TellomiFeedCompose__published">已發佈</string>
+    <string name="TellomiFeedCompose__pending">已提交，審核通過後其他人才能看到</string>
     <string name="ConversationListTabs__99p">99+</string>
     <!-- Menu item on stories landing page -->
     <string name="StoriesLandingFragment__story_privacy">快拍隱私</string>

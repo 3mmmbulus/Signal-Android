@@ -200,3 +200,33 @@ data class FeedNotInterestedRequest(
 /** 契约 1.1 错误体。 */
 @Serializable
 data class FeedErrorBody(val error: String? = null, val message: String? = null)
+
+/**
+ * 契约 7.2 `POST /v1/feed/posts`。`audience` 只放 Signal-Server 签的 `audience_token`（7.3），这里还不发。
+ * 除了 `title` 都不给默认值：[FeedJson] 不编码默认值，这样每个字段都会明着发出去。
+ */
+@Serializable
+data class FeedCreatePostRequest(
+  val kind: String,
+  val title: String? = null,
+  val text: String,
+  @SerialName("media_keys") val mediaKeys: List<String>,
+  val topics: List<String>,
+  val visibility: String,
+  @SerialName("comments_closed") val commentsClosed: Boolean,
+  @SerialName("reply_moderation") val replyModeration: Boolean,
+  @SerialName("client_nonce") val clientNonce: String
+)
+
+@Serializable
+data class FeedCreatePostResponse(
+  val id: String,
+  val state: String,
+  val version: Int = 1
+) {
+  companion object {
+    /** 大陆先审后发（R-2.2）：作者看到「审核中」，别人看不到。 */
+    const val STATE_PENDING = "pending"
+    const val STATE_PUBLISHED = "published"
+  }
+}

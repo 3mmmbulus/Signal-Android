@@ -5,6 +5,7 @@
 
 package org.thoughtcrime.securesms.feed
 
+import android.net.Uri
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -49,6 +50,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import org.signal.core.ui.compose.Previews
+import org.signal.glide.compose.GlideImage
 import org.thoughtcrime.securesms.R
 import org.thoughtcrime.securesms.feed.net.FeedAuthor
 import org.thoughtcrime.securesms.feed.net.FeedCard
@@ -64,6 +66,8 @@ private val CONTENT_START = 16.dp + AVATAR_SIZE + 12.dp
 
 /** 点过赞的红心颜色。 */
 private val LIKED_COLOR = Color(0xFFE5484D)
+
+private const val ARTICLE_PREVIEW_LINES = 4
 
 /**
  * 动态里的一条帖子（`kind = post`），照 Threads 的单栏排法（`dynamic-feed.md` 第三节第 2、3 条）：
@@ -90,12 +94,25 @@ fun FeedPostCard(
       Column(modifier = Modifier.weight(1f)) {
         FeedPostHeader(card = card, showIpRegion = showIpRegion, onNotInterestedClick = onNotInterestedClick)
 
-        val text = card.text
+        val title = card.title
+        if (!title.isNullOrBlank()) {
+          Text(
+            text = title,
+            style = MaterialTheme.typography.titleMedium,
+            color = MaterialTheme.colorScheme.onSurface,
+            modifier = Modifier.padding(end = 12.dp, bottom = 2.dp)
+          )
+        }
+
+        // 长文在信息流里是卡片（第三节第 25 条）：只露开头几行，点开是阅读页（阅读页在后面的 PR）
+        val text = if (card.kind == FeedCard.KIND_ARTICLE) card.summary ?: card.text else card.text
         if (!text.isNullOrBlank()) {
           Text(
             text = text,
             style = MaterialTheme.typography.bodyLarge,
             color = MaterialTheme.colorScheme.onSurface,
+            maxLines = if (card.kind == FeedCard.KIND_ARTICLE) ARTICLE_PREVIEW_LINES else Int.MAX_VALUE,
+            overflow = TextOverflow.Ellipsis,
             modifier = Modifier.padding(end = 12.dp)
           )
         }
@@ -278,7 +295,18 @@ private fun FeedMediaPlaceholder(item: FeedMedia, modifier: Modifier = Modifier)
       .clip(RoundedCornerShape(10.dp))
       .background(MaterialTheme.colorScheme.surfaceVariant)
       .semantics { contentDescription = description }
-  )
+  ) {
+    // 内容引擎的媒体地址（config.media_base_url）接上之前，只有本机样例里自己刚发的图有本地 Uri 可以显示
+    val localUri = item.localUriOrNull()
+    if (localUri != null) {
+      GlideImage(model = localUri, modifier = Modifier.matchParentSize())
+    }
+  }
+}
+
+/** 样例来源把本机图片的 content Uri 当 key 用；内容引擎给的 key 不会是这个形式。 */
+internal fun FeedMedia.localUriOrNull(): Uri? {
+  return if (key.startsWith("content://") || key.startsWith("file://")) Uri.parse(key) else null
 }
 
 @Composable

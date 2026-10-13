@@ -5,6 +5,7 @@
 
 package org.thoughtcrime.securesms.feed
 
+import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -29,10 +30,12 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -53,6 +56,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.res.vectorResource
 import androidx.compose.ui.semantics.Role
@@ -68,7 +72,10 @@ import kotlinx.coroutines.launch
 import org.signal.core.ui.compose.DayNightPreviews
 import org.signal.core.ui.compose.Previews
 import org.thoughtcrime.securesms.R
+import org.thoughtcrime.securesms.feed.compose.FeedComposeActivity
 import org.thoughtcrime.securesms.feed.net.FeedCard
+import org.thoughtcrime.securesms.feed.net.FeedCreatePostResponse
+import org.signal.core.ui.R as CoreUiR
 
 private val TOP_BAR_HEIGHT = 48.dp
 private val INDICATOR_WIDTH = 20.dp
@@ -83,7 +90,7 @@ private const val LOAD_MORE_THRESHOLD = 4
  * 滑块和内容一起跟手（`10-feed-prototype-log.md` 第 435 行）。
  *
  * 每栏一个信息流（契约 `docs/adr/0071/client-api-2026-10.md` 4.1）：下拉刷新、滑到底自动取下一页、点赞、「不感兴趣」可撤销。
- * 发布按钮、搜索与通知入口随后面的 PR 接上；没接上的入口不画，不放点了没反应的按钮。
+ * 右下角是发布按钮；搜索与通知入口随后面的 PR 接上，没接上的入口不画，不放点了没反应的按钮。
  */
 @Composable
 fun FeedListPane(
@@ -111,6 +118,18 @@ fun FeedListPane(
     }
   }
 
+  val publishedMessage = stringResource(R.string.TellomiFeedCompose__published)
+  val pendingMessage = stringResource(R.string.TellomiFeedCompose__pending)
+  LaunchedEffect(state.publishNotice) {
+    val notice = state.publishNotice ?: return@LaunchedEffect
+    snackbarHostState.showSnackbar(if (notice == FeedCreatePostResponse.STATE_PENDING) pendingMessage else publishedMessage)
+    viewModel.onPublishNoticeShown()
+  }
+
+  val composeLauncher = rememberLauncherForActivityResult(FeedComposeActivity.Contract()) { publishState ->
+    if (publishState != null) viewModel.onPublished(publishState)
+  }
+
   Box(modifier = modifier) {
     FeedPager(
       state = state,
@@ -121,6 +140,22 @@ fun FeedListPane(
       onNotInterestedClick = viewModel::notInterested,
       modifier = Modifier.fillMaxSize()
     )
+
+    // 发布按钮只在右下角（第三节第 45 条），滑动时不动（第 46 条）
+    FloatingActionButton(
+      onClick = { composeLauncher.launch(Unit) },
+      shape = CircleShape,
+      containerColor = MaterialTheme.colorScheme.primaryContainer,
+      contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
+      modifier = Modifier
+        .align(Alignment.BottomEnd)
+        .padding(16.dp)
+    ) {
+      Icon(
+        painter = painterResource(CoreUiR.drawable.symbol_edit_24),
+        contentDescription = stringResource(R.string.TellomiFeedCompose__new_post)
+      )
+    }
 
     SnackbarHost(hostState = snackbarHostState, modifier = Modifier.align(Alignment.BottomCenter))
   }

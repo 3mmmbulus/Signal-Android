@@ -106,6 +106,12 @@ class FeedApi(
     sendNoContent(Request.Builder().url(url("v1/feed/events")).post(body))
   }
 
+  /** 契约 7.2：发帖。[FeedCreatePostRequest.clientNonce] 让服务端对重试去重，重试时用同一个。 */
+  suspend fun createPost(request: FeedCreatePostRequest): FeedCreatePostResponse {
+    val body = FeedJson.encodeToString(FeedCreatePostRequest.serializer(), request).toRequestBody(JSON)
+    return send(Request.Builder().url(url("v1/feed/posts")).post(body), FeedCreatePostResponse.serializer())
+  }
+
   private fun url(path: String): HttpUrl {
     return baseUrl.newBuilder().addPathSegments(path).build()
   }

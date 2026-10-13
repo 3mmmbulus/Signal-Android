@@ -199,4 +199,27 @@ class FeedApiTest {
         assertThat(e.isFeedDisabled).isFalse()
       }
   }
+
+  @Test
+  fun `create post returns the review state`() = runBlocking {
+    server.enqueue(MockResponse().setResponseCode(201).setBody("""{"id":"p1","state":"pending","version":1}"""))
+
+    val response = api.createPost(
+      FeedCreatePostRequest(
+        kind = "post",
+        text = "hi",
+        mediaKeys = emptyList(),
+        topics = emptyList(),
+        visibility = "friends",
+        commentsClosed = false,
+        replyModeration = false,
+        clientNonce = "n"
+      )
+    )
+
+    val request = server.takeRequest()
+    assertThat(request.method).isEqualTo("POST")
+    assertThat(request.requestUrl!!.encodedPath).isEqualTo("/v1/feed/posts")
+    assertThat(response.state).isEqualTo(FeedCreatePostResponse.STATE_PENDING)
+  }
 }
