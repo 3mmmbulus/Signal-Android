@@ -7013,6 +7013,19 @@
         <item quantity="one">%1$d following</item>
         <item quantity="other">%1$d following</item>
     </plurals>
+    <string name="TellomiFeedPeople__requests_title">Follow requests</string>
+    <string name="TellomiFeedPeople__blocked_title">Blocked in Feed</string>
+    <string name="TellomiFeedPeople__approve">Approve</string>
+    <string name="TellomiFeedPeople__decline">Decline</string>
+    <string name="TellomiFeedPeople__approved">Approved</string>
+    <string name="TellomiFeedPeople__declined">Declined</string>
+    <string name="TellomiFeedPeople__requests_empty">No follow requests. People who want to follow your private account will show up here.</string>
+    <string name="TellomiFeedPeople__blocked_empty">You haven\'t blocked anyone in Feed.</string>
+    <string name="TellomiFeedPeople__blocked_explain">Blocking here only affects Feed. It doesn\'t block anyone in chats.</string>
+    <string name="TellomiFeedPeople__load_failed">Couldn\'t load this list</string>
+    <string name="TellomiFeedPeople__blocked_source">Source: %1$s</string>
+    <string name="TellomiFeedPeople__blocked_topic">Topic: %1$s</string>
+    <string name="TellomiFeedPeople__blocked_other">Blocked: %1$s</string>
     <string name="ConversationListTabs__99p">99+</string>
     <!-- Menu item on stories landing page -->
     <string name="StoriesLandingFragment__story_privacy">Story privacy</string>

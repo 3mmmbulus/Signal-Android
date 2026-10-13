@@ -15,6 +15,7 @@ import org.thoughtcrime.securesms.feed.compose.FeedDraftKind
 import org.thoughtcrime.securesms.feed.net.CachingFeedTokenSource
 import org.thoughtcrime.securesms.feed.net.FeedApi
 import org.thoughtcrime.securesms.feed.net.FeedAuthApi
+import org.thoughtcrime.securesms.feed.net.FeedBlockEntry
 import org.thoughtcrime.securesms.feed.net.FeedCard
 import org.thoughtcrime.securesms.feed.net.FeedCommentsPage
 import org.thoughtcrime.securesms.feed.net.FeedConfig
@@ -24,6 +25,7 @@ import org.thoughtcrime.securesms.feed.net.FeedCreatePostResponse
 import org.thoughtcrime.securesms.feed.net.FeedEditPostRequest
 import org.thoughtcrime.securesms.feed.net.FeedEntry
 import org.thoughtcrime.securesms.feed.net.FeedEventPayload
+import org.thoughtcrime.securesms.feed.net.FeedFollowRequest
 import org.thoughtcrime.securesms.feed.net.FeedImageUploader
 import org.thoughtcrime.securesms.feed.net.FeedItemRef
 import org.thoughtcrime.securesms.feed.net.FeedMyPostsPage
@@ -94,6 +96,18 @@ interface FeedSource {
 
   /** 在动态里屏蔽 / 取消屏蔽一个人（第三节第 32 条「屏蔽作者」）。 */
   suspend fun setBlocked(profileId: String, blocked: Boolean)
+
+  /** 等我同意的关注请求（第三节第 29 条：私密账号的关注要本人同意）。 */
+  suspend fun followRequests(): List<FeedFollowRequest>
+
+  /** 同意或拒绝一条关注请求。 */
+  suspend fun answerFollowRequest(profileId: String, approve: Boolean)
+
+  /** 我在动态里屏蔽的作者、来源、话题（第三节第 44 条，和聊天屏蔽分开）。 */
+  suspend fun blocks(): List<FeedBlockEntry>
+
+  /** 从屏蔽列表里取消一项。 */
+  suspend fun unblock(entry: FeedBlockEntry)
 }
 
 /**
@@ -177,6 +191,14 @@ class RemoteFeedSource(
 
   override suspend fun setBlocked(profileId: String, blocked: Boolean) = api.block(FeedApi.TARGET_AUTHOR, profileId, blocked)
 
+  override suspend fun followRequests(): List<FeedFollowRequest> = api.followRequests().requests
+
+  override suspend fun answerFollowRequest(profileId: String, approve: Boolean) = api.answerFollowRequest(profileId, approve)
+
+  override suspend fun blocks(): List<FeedBlockEntry> = api.blocks().blocks
+
+  override suspend fun unblock(entry: FeedBlockEntry) = api.block(entry.type, entry.id, on = false)
+
   override suspend fun publish(draft: FeedDraft, clientNonce: String): FeedCreatePostResponse {
     val keys = draft.attachedImages.map { uri -> uploadOnce(clientNonce, uri) }
     val response = api.createPost(draft.toRequest().copy(clientNonce = clientNonce, mediaKeys = keys.ifEmpty { null }))
@@ -250,6 +272,10 @@ object EmptyFeedSource : FeedSource {
   override suspend fun profilePosts(profileId: String, cursor: String?): FeedProfilePostsPage = FeedProfilePostsPage()
   override suspend fun setFollowing(profileId: String, following: Boolean): String = throw IllegalStateException("feed is not available")
   override suspend fun setBlocked(profileId: String, blocked: Boolean) = throw IllegalStateException("feed is not available")
+  override suspend fun followRequests(): List<FeedFollowRequest> = emptyList()
+  override suspend fun answerFollowRequest(profileId: String, approve: Boolean) = throw IllegalStateException("feed is not available")
+  override suspend fun blocks(): List<FeedBlockEntry> = emptyList()
+  override suspend fun unblock(entry: FeedBlockEntry) = throw IllegalStateException("feed is not available")
 }
 
 object FeedSources {

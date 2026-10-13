@@ -30,6 +30,7 @@ import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.SnackbarHostState
@@ -70,6 +71,7 @@ import org.signal.core.ui.R as CoreUiR
 
 object FeedMyPostsTestTags {
   const val MORE = "feed_my_posts_more"
+  const val PEOPLE = "feed_my_posts_people"
   const val APPEAL_TEXT = "feed_my_posts_appeal_text"
 }
 
@@ -88,6 +90,8 @@ fun FeedMyPostsScreen(
   onEdit: (FeedEditTarget) -> Unit = {},
   onEditNoticeShown: () -> Unit = {},
   onProfileClick: () -> Unit = {},
+  onFollowRequestsClick: () -> Unit = {},
+  onBlockedClick: () -> Unit = {},
   onAppeal: (FeedMyPost, String) -> Unit = { _, _ -> },
   onAppealNoticeShown: () -> Unit = {},
   nowMillis: () -> Long = System::currentTimeMillis
@@ -128,6 +132,7 @@ fun FeedMyPostsScreen(
     actions = {
       // 公开主页的名字和简介（主页页面做好后挪过去）
       TextButton(onClick = onProfileClick) { Text(stringResource(R.string.TellomiFeedProfile__title)) }
+      PeopleMenu(onFollowRequestsClick = onFollowRequestsClick, onBlockedClick = onBlockedClick)
     }
   ) { padding ->
     PullToRefreshBox(
@@ -423,5 +428,35 @@ internal fun rejectionReasonLabel(code: String): Int {
     "review_unavailable" -> R.string.TellomiFeedMine__reason_review_unavailable
     "account_restricted" -> R.string.TellomiFeedMine__reason_account
     else -> R.string.TellomiFeedMine__reason_guidelines
+  }
+}
+
+/** 「关注请求」「屏蔽列表」（第三节第 29、44 条）。一级导航改成「我」之后挪进设置。 */
+@Composable
+private fun PeopleMenu(onFollowRequestsClick: () -> Unit, onBlockedClick: () -> Unit) {
+  var open by remember { mutableStateOf(false) }
+  Box {
+    IconButton(onClick = { open = true }, modifier = Modifier.testTag(FeedMyPostsTestTags.PEOPLE)) {
+      Icon(
+        imageVector = ImageVector.vectorResource(CoreUiR.drawable.symbol_more_vertical_24),
+        contentDescription = stringResource(R.string.TellomiFeed__more)
+      )
+    }
+    DropdownMenu(expanded = open, onDismissRequest = { open = false }) {
+      DropdownMenuItem(
+        text = { Text(stringResource(R.string.TellomiFeedPeople__requests_title)) },
+        onClick = {
+          open = false
+          onFollowRequestsClick()
+        }
+      )
+      DropdownMenuItem(
+        text = { Text(stringResource(R.string.TellomiFeedPeople__blocked_title)) },
+        onClick = {
+          open = false
+          onBlockedClick()
+        }
+      )
+    }
   }
 }

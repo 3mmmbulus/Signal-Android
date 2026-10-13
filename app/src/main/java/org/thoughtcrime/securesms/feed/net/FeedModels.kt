@@ -503,3 +503,43 @@ data class FeedProfilePostsPage(
 /** `PUT` / `DELETE /v1/feed/follow/{type}/{id}` 的回包：私密账号是 `pending`，取消后是 `none`。 */
 @Serializable
 data class FeedFollowResponse(val state: String = FeedRelation.FOLLOW_NONE)
+
+/** 关注请求、屏蔽列表里的一个人。 */
+@Serializable
+data class FeedPersonSummary(
+  val id: String,
+  val handle: String? = null,
+  @SerialName("display_name") val displayName: String,
+  @SerialName("avatar_key") val avatarKey: String? = null
+)
+
+/** `GET /v1/feed/me/follow-requests`：别人想关注我的私密账号。 */
+@Serializable
+data class FeedFollowRequestsResponse(
+  val requests: List<FeedFollowRequest> = emptyList()
+)
+
+@Serializable
+data class FeedFollowRequest(
+  val profile: FeedPersonSummary,
+  @SerialName("requested_at") val requestedAt: String? = null
+)
+
+/** `GET /v1/feed/me/blocks`：作者、来源、话题都在里面；只有作者带 [FeedBlockEntry.profile]。 */
+@Serializable
+data class FeedBlocksResponse(
+  val blocks: List<FeedBlockEntry> = emptyList()
+)
+
+@Serializable
+data class FeedBlockEntry(
+  val type: String,
+  val id: String,
+  @SerialName("created_at") val createdAt: String? = null,
+  val profile: FeedPersonSummary? = null
+)
+
+@Serializable
+data class FeedFollowRequestDecision(
+  val approve: Boolean
+)

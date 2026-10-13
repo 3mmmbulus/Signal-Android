@@ -9,17 +9,21 @@ import android.net.Uri
 import org.signal.core.util.logging.Log
 import org.thoughtcrime.securesms.feed.compose.FeedDraft
 import org.thoughtcrime.securesms.feed.compose.FeedDraftKind
+import org.thoughtcrime.securesms.feed.net.FeedApi
 import org.thoughtcrime.securesms.feed.net.FeedAuthor
+import org.thoughtcrime.securesms.feed.net.FeedBlockEntry
 import org.thoughtcrime.securesms.feed.net.FeedCard
 import org.thoughtcrime.securesms.feed.net.FeedCommentsPage
 import org.thoughtcrime.securesms.feed.net.FeedConfig
 import org.thoughtcrime.securesms.feed.net.FeedCreatePostResponse
 import org.thoughtcrime.securesms.feed.net.FeedEntry
 import org.thoughtcrime.securesms.feed.net.FeedEventPayload
+import org.thoughtcrime.securesms.feed.net.FeedFollowRequest
 import org.thoughtcrime.securesms.feed.net.FeedMedia
 import org.thoughtcrime.securesms.feed.net.FeedMyPost
 import org.thoughtcrime.securesms.feed.net.FeedMyPostsPage
 import org.thoughtcrime.securesms.feed.net.FeedMyProfile
+import org.thoughtcrime.securesms.feed.net.FeedPersonSummary
 import org.thoughtcrime.securesms.feed.net.FeedProfilePage
 import org.thoughtcrime.securesms.feed.net.FeedProfilePostsPage
 import org.thoughtcrime.securesms.feed.net.FeedProfileUpdate
@@ -318,6 +322,30 @@ object SampleFeedSource : FeedSource {
     } else {
       this.blocked -= profileId
     }
+  }
+
+  /** 想关注我的人（样例里两条）。 */
+  private val incomingRequests = mutableListOf("s-2", "s-5")
+
+  private fun summaryOf(profileId: String): FeedPersonSummary? {
+    val author = authors.firstOrNull { it.profileId == profileId } ?: return null
+    return FeedPersonSummary(id = author.profileId, handle = author.handle, displayName = author.displayName, avatarKey = author.avatarKey)
+  }
+
+  override suspend fun followRequests(): List<FeedFollowRequest> = synchronized(this) {
+    incomingRequests.filter { it !in blocked }.mapNotNull { id -> summaryOf(id)?.let { FeedFollowRequest(profile = it) } }
+  }
+
+  override suspend fun answerFollowRequest(profileId: String, approve: Boolean): Unit = synchronized(this) {
+    incomingRequests -= profileId
+  }
+
+  override suspend fun blocks(): List<FeedBlockEntry> = synchronized(this) {
+    blocked.map { FeedBlockEntry(type = FeedApi.TARGET_AUTHOR, id = it, profile = summaryOf(it)) }
+  }
+
+  override suspend fun unblock(entry: FeedBlockEntry): Unit = synchronized(this) {
+    blocked -= entry.id
   }
 
   private val commentTexts = listOf(

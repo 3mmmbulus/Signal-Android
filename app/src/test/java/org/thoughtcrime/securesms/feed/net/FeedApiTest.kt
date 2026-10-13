@@ -471,4 +471,34 @@ class FeedApiTest {
       .isInstanceOf(FeedApiException::class)
       .prop(FeedApiException::code).isEqualTo("profile_required")
   }
+
+  @Test
+  fun `follow requests are listed and answered, blocks list keeps non-author entries`() = runBlocking {
+    server.enqueue(
+      MockResponse().setBody(
+        """{"requests":[{"profile":{"id":"p2","handle":"xm","display_name":"Xiaoman","avatar_key":null},"requested_at":"2026-10-13T10:00:00Z"}]}"""
+      )
+    )
+    server.enqueue(MockResponse().setResponseCode(204))
+    server.enqueue(
+      MockResponse().setBody(
+        """{"blocks":[{"type":"author","id":"p3","created_at":"2026-10-12T00:00:00Z","profile":{"id":"p3","display_name":"Ahe"}},{"type":"topic","id":"t-cooking"}]}"""
+      )
+    )
+
+    val requests = api.followRequests().requests
+    assertThat(requests.single().profile.handle).isEqualTo("xm")
+    api.answerFollowRequest("p2", approve = false)
+    val blocks = api.blocks().blocks
+    assertThat(blocks.map { it.type }).containsExactly("author", "topic")
+    assertThat(blocks[0].profile?.displayName).isEqualTo("Ahe")
+    assertThat(blocks[1].profile).isNull()
+
+    assertThat(server.takeRequest().path).isEqualTo("/v1/feed/me/follow-requests")
+    val answer = server.takeRequest()
+    assertThat(answer.method).isEqualTo("POST")
+    assertThat(answer.path).isEqualTo("/v1/feed/me/follow-requests/p2")
+    assertThat(answer.body.readUtf8()).isEqualTo("""{"approve":false}""")
+    assertThat(server.takeRequest().path).isEqualTo("/v1/feed/me/blocks")
+  }
 }

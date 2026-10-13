@@ -6792,6 +6792,19 @@
     <plurals name="TellomiFeedPage__following">
         <item quantity="other">%1$d 已關注</item>
     </plurals>
+    <string name="TellomiFeedPeople__requests_title">關注請求</string>
+    <string name="TellomiFeedPeople__blocked_title">動態封鎖名單</string>
+    <string name="TellomiFeedPeople__approve">同意</string>
+    <string name="TellomiFeedPeople__decline">拒絕</string>
+    <string name="TellomiFeedPeople__approved">已同意</string>
+    <string name="TellomiFeedPeople__declined">已拒絕</string>
+    <string name="TellomiFeedPeople__requests_empty">沒有關注請求。想關注你私密帳號的人會出現在這裡。</string>
+    <string name="TellomiFeedPeople__blocked_empty">你還沒有在動態裡封鎖任何人。</string>
+    <string name="TellomiFeedPeople__blocked_explain">這裡的封鎖只對動態生效，不影響聊天。</string>
+    <string name="TellomiFeedPeople__load_failed">名單載入失敗</string>
+    <string name="TellomiFeedPeople__blocked_source">來源：%1$s</string>
+    <string name="TellomiFeedPeople__blocked_topic">話題：%1$s</string>
+    <string name="TellomiFeedPeople__blocked_other">已封鎖：%1$s</string>
     <string name="ConversationListTabs__99p">99+</string>
     <!-- Menu item on stories landing page -->
     <string name="StoriesLandingFragment__story_privacy">快拍隱私</string>

@@ -15,6 +15,8 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import org.signal.core.ui.compose.theme.SignalTheme
 import org.thoughtcrime.securesms.PassphraseRequiredActivity
 import org.thoughtcrime.securesms.feed.compose.FeedComposeActivity
+import org.thoughtcrime.securesms.feed.people.FeedPeopleActivity
+import org.thoughtcrime.securesms.feed.people.FeedPeopleMode
 import org.thoughtcrime.securesms.feed.profile.FeedProfileActivity
 import org.thoughtcrime.securesms.util.DynamicNoActionBarTheme
 
@@ -50,6 +52,8 @@ class FeedMyPostsActivity : PassphraseRequiredActivity() {
           onEdit = { editLauncher.launch(it) },
           onEditNoticeShown = viewModel::onEditNoticeShown,
           onProfileClick = { profileLauncher.launch(Unit) },
+          onFollowRequestsClick = { startActivity(FeedPeopleActivity.intent(this, FeedPeopleMode.FOLLOW_REQUESTS)) },
+          onBlockedClick = { startActivity(FeedPeopleActivity.intent(this, FeedPeopleMode.BLOCKED)) },
           onAppeal = viewModel::appeal,
           onAppealNoticeShown = viewModel::onAppealNoticeShown
         )

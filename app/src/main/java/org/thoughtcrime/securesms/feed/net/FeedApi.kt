@@ -259,6 +259,19 @@ class FeedApi(
     sendNoContent(builder)
   }
 
+  /** 等我同意的关注请求（私密账号才会有）。 */
+  suspend fun followRequests(): FeedFollowRequestsResponse = get(url("v1/feed/me/follow-requests"), FeedFollowRequestsResponse.serializer())
+
+  /** 同意或拒绝一条关注请求（204）。对方已经撤回时 404。 */
+  suspend fun answerFollowRequest(profileId: String, approve: Boolean) {
+    val url = url("v1/feed/me/follow-requests").newBuilder().addPathSegment(profileId).build()
+    val body = FeedJson.encodeToString(FeedFollowRequestDecision.serializer(), FeedFollowRequestDecision(approve)).toRequestBody(JSON)
+    sendNoContent(Request.Builder().url(url).post(body))
+  }
+
+  /** 我在动态里屏蔽的作者、来源、话题。 */
+  suspend fun blocks(): FeedBlocksResponse = get(url("v1/feed/me/blocks"), FeedBlocksResponse.serializer())
+
   /** 删自己的帖子（204）。别人的帖子引擎回 404。 */
   suspend fun deletePost(contentId: String) {
     val url = url("v1/feed/posts").newBuilder().addPathSegment(contentId).build()
@@ -330,6 +343,8 @@ class FeedApi(
     const val PROFILE_PAGE = 20
 
     const val TARGET_AUTHOR = "author"
+    const val TARGET_SOURCE = "source"
+    const val TARGET_TOPIC = "topic"
     const val NOT_FOUND = "not_found"
     const val MAX_EVENTS = 100
 

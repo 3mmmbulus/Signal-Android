@@ -6792,6 +6792,19 @@
     <plurals name="TellomiFeedPage__following">
         <item quantity="other">%1$d 关注</item>
     </plurals>
+    <string name="TellomiFeedPeople__requests_title">关注请求</string>
+    <string name="TellomiFeedPeople__blocked_title">动态屏蔽列表</string>
+    <string name="TellomiFeedPeople__approve">同意</string>
+    <string name="TellomiFeedPeople__decline">拒绝</string>
+    <string name="TellomiFeedPeople__approved">已同意</string>
+    <string name="TellomiFeedPeople__declined">已拒绝</string>
+    <string name="TellomiFeedPeople__requests_empty">没有关注请求。想关注你私密账号的人会出现在这里。</string>
+    <string name="TellomiFeedPeople__blocked_empty">你还没有在动态里屏蔽任何人。</string>
+    <string name="TellomiFeedPeople__blocked_explain">这里的屏蔽只对动态生效，不影响聊天。</string>
+    <string name="TellomiFeedPeople__load_failed">名单加载失败</string>
+    <string name="TellomiFeedPeople__blocked_source">来源：%1$s</string>
+    <string name="TellomiFeedPeople__blocked_topic">话题：%1$s</string>
+    <string name="TellomiFeedPeople__blocked_other">已屏蔽：%1$s</string>
     <string name="ConversationListTabs__99p">99+</string>
     <!-- Menu item on stories landing page -->
     <string name="StoriesLandingFragment__story_privacy">快拍隐私</string>
