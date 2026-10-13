@@ -84,7 +84,10 @@ fun FeedPostCard(
   onLikeClick: (FeedCard) -> Unit,
   onNotInterestedClick: (FeedCard) -> Unit,
   modifier: Modifier = Modifier,
-  mediaBaseUrl: String? = null
+  mediaBaseUrl: String? = null,
+  /** 自己的帖子：「···」里的编辑（null = 已过 15 分钟或不能改）和删除（第三节第 26 条）。 */
+  onEditClick: ((FeedCard) -> Unit)? = null,
+  onDeleteClick: ((FeedCard) -> Unit)? = null
 ) {
   Column(modifier = modifier.fillMaxWidth().padding(top = 12.dp, bottom = 4.dp)) {
     Row(modifier = Modifier.padding(start = 16.dp, end = 4.dp)) {
@@ -93,7 +96,13 @@ fun FeedPostCard(
       Spacer(modifier = Modifier.width(12.dp))
 
       Column(modifier = Modifier.weight(1f)) {
-        FeedPostHeader(card = card, showIpRegion = showIpRegion, onNotInterestedClick = onNotInterestedClick)
+        FeedPostHeader(
+          card = card,
+          showIpRegion = showIpRegion,
+          onNotInterestedClick = onNotInterestedClick,
+          onEditClick = onEditClick,
+          onDeleteClick = onDeleteClick
+        )
 
         val title = card.title
         if (!title.isNullOrBlank()) {
@@ -173,7 +182,9 @@ private fun FeedAvatar(author: FeedAuthor?) {
 private fun FeedPostHeader(
   card: FeedCard,
   showIpRegion: Boolean,
-  onNotInterestedClick: (FeedCard) -> Unit
+  onNotInterestedClick: (FeedCard) -> Unit,
+  onEditClick: ((FeedCard) -> Unit)?,
+  onDeleteClick: ((FeedCard) -> Unit)?
 ) {
   val context = LocalContext.current
   val author = card.author
@@ -215,7 +226,8 @@ private fun FeedPostHeader(
       }
     }
 
-    if (!card.viewer.isAuthor) {
+    val isAuthor = card.viewer.isAuthor
+    if (!isAuthor || onEditClick != null || onDeleteClick != null) {
       Box {
         val moreLabel = stringResource(R.string.TellomiFeed__more)
         Icon(
@@ -230,13 +242,34 @@ private fun FeedPostHeader(
         )
 
         DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {
-          DropdownMenuItem(
-            text = { Text(stringResource(R.string.TellomiFeed__not_interested)) },
-            onClick = {
-              menuOpen = false
-              onNotInterestedClick(card)
+          if (isAuthor) {
+            if (onEditClick != null) {
+              DropdownMenuItem(
+                text = { Text(stringResource(R.string.TellomiFeedMine__edit)) },
+                onClick = {
+                  menuOpen = false
+                  onEditClick(card)
+                }
+              )
             }
-          )
+            if (onDeleteClick != null) {
+              DropdownMenuItem(
+                text = { Text(stringResource(R.string.TellomiFeedMine__delete)) },
+                onClick = {
+                  menuOpen = false
+                  onDeleteClick(card)
+                }
+              )
+            }
+          } else {
+            DropdownMenuItem(
+              text = { Text(stringResource(R.string.TellomiFeed__not_interested)) },
+              onClick = {
+                menuOpen = false
+                onNotInterestedClick(card)
+              }
+            )
+          }
         }
       }
     }

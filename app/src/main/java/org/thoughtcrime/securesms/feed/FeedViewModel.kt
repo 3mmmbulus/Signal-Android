@@ -194,6 +194,33 @@ class FeedViewModel(
     internalState.update { it.copy(publishNotice = null) }
   }
 
+  /** 编辑保存后：两栏刷新；大陆区提示「审核通过后别人看到新版本」（R-2.3）。 */
+  fun onEdited(publishState: String) {
+    internalState.update { it.copy(editNotice = publishState) }
+    FeedTab.entries.forEach { refresh(it) }
+  }
+
+  fun onEditNoticeShown() {
+    internalState.update { it.copy(editNotice = null) }
+  }
+
+  /** 删自己的帖子：先从两栏拿掉；失败提示一次，再刷新拿回来。 */
+  fun deletePost(card: FeedCard) {
+    internalState.update { state ->
+      state.copy(tabStates = state.tabStates.mapValues { (_, tabState) -> tabState.copy(cards = tabState.cards.filterNot { it.id == card.id }) })
+    }
+
+    viewModelScope.launch {
+      try {
+        withContext(ioDispatcher) { source.deletePost(card.id) }
+      } catch (e: Exception) {
+        Log.w(TAG, "delete failed", e)
+        internalState.update { it.copy(transientError = FeedState.TransientError.ACTION_FAILED) }
+        FeedTab.entries.forEach { refresh(it) }
+      }
+    }
+  }
+
   private fun load(tab: FeedTab, refresh: Boolean) {
     loadJobs[tab]?.cancel()
     val cursor = if (refresh) null else internalState.value.tab(tab).nextCursor
@@ -263,7 +290,9 @@ data class FeedState(
   val tabStates: Map<FeedTab, FeedTabState> = emptyMap(),
   val lastHidden: FeedCard? = null,
   val transientError: TransientError? = null,
-  val publishNotice: String? = null
+  val publishNotice: String? = null,
+  /** 刚保存的编辑，服务端给的 `state`。 */
+  val editNotice: String? = null
 ) {
   fun tab(tab: FeedTab): FeedTabState = tabStates[tab] ?: FeedTabState()
 

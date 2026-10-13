@@ -19,6 +19,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.navigationBarsPadding
@@ -107,7 +108,7 @@ fun FeedComposeScreen(
   val failedMessage = stringResource(R.string.TellomiFeedCompose__publish_failed)
 
   val requestClose = {
-    if (state.draft.isEmpty || state.publishing) onClose() else showDiscardDialog = true
+    if (!state.hasUnsavedChanges || state.publishing) onClose() else showDiscardDialog = true
   }
 
   BackHandler(onBack = requestClose)
@@ -125,9 +126,10 @@ fun FeedComposeScreen(
     if (remainingImages > 1) pickImages.launch(request) else pickOneImage.launch(request)
   }
 
-  LaunchedEffect(state.failed) {
-    if (state.failed) {
-      snackbarHostState.showSnackbar(failedMessage)
+  val windowClosedMessage = stringResource(R.string.TellomiFeedCompose__edit_window_closed)
+  LaunchedEffect(state.failed, state.editWindowClosed) {
+    if (state.failed || state.editWindowClosed) {
+      snackbarHostState.showSnackbar(if (state.editWindowClosed) windowClosedMessage else failedMessage)
       onFailureShown()
     }
   }
@@ -143,6 +145,7 @@ fun FeedComposeScreen(
       ) {
         FeedComposeTopBar(
           kind = state.draft.kind,
+          editing = state.editing != null,
           publishEnabled = state.problem == null && !state.publishing,
           publishing = state.publishing,
           onClose = requestClose,
@@ -234,6 +237,7 @@ fun FeedComposeScreen(
 @Composable
 private fun FeedComposeTopBar(
   kind: FeedDraftKind,
+  editing: Boolean,
   publishEnabled: Boolean,
   publishing: Boolean,
   onClose: () -> Unit,
@@ -250,19 +254,30 @@ private fun FeedComposeTopBar(
       Icon(imageVector = SignalIcons.X.imageVector, contentDescription = stringResource(R.string.TellomiFeedCompose__close))
     }
 
-    Row(modifier = Modifier.align(Alignment.Center), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-      FeedDraftKind.entries.forEach { entry ->
-        val selected = entry == kind
-        Text(
-          text = stringResource(entry.label),
-          style = MaterialTheme.typography.titleMedium,
-          fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Normal,
-          color = if (selected) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurfaceVariant,
-          modifier = Modifier
-            .clip(RoundedCornerShape(8.dp))
-            .clickable(role = Role.Tab) { onKindChanged(entry) }
-            .padding(horizontal = 12.dp, vertical = 8.dp)
-        )
+    if (editing) {
+      // 编辑时不能换类型（第三节第 23 条只改内容）
+      Text(
+        text = stringResource(if (kind == FeedDraftKind.ARTICLE) R.string.TellomiFeedCompose__edit_article else R.string.TellomiFeedCompose__edit_post),
+        style = MaterialTheme.typography.titleMedium,
+        fontWeight = FontWeight.SemiBold,
+        color = MaterialTheme.colorScheme.onSurface,
+        modifier = Modifier.align(Alignment.Center)
+      )
+    } else {
+      Row(modifier = Modifier.align(Alignment.Center), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+        FeedDraftKind.entries.forEach { entry ->
+          val selected = entry == kind
+          Text(
+            text = stringResource(entry.label),
+            style = MaterialTheme.typography.titleMedium,
+            fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Normal,
+            color = if (selected) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier
+              .clip(RoundedCornerShape(8.dp))
+              .clickable(role = Role.Tab) { onKindChanged(entry) }
+              .padding(horizontal = 12.dp, vertical = 8.dp)
+          )
+        }
       }
     }
 
@@ -277,7 +292,7 @@ private fun FeedComposeTopBar(
       if (publishing) {
         CircularProgressIndicator(strokeWidth = 2.dp, modifier = Modifier.size(16.dp))
       } else {
-        Text(text = stringResource(R.string.TellomiFeedCompose__publish))
+        Text(text = stringResource(if (editing) R.string.TellomiFeedCompose__save else R.string.TellomiFeedCompose__publish))
       }
     }
   }
@@ -395,7 +410,8 @@ private fun FeedComposeBottomBar(
       .fillMaxWidth()
       .padding(horizontal = 8.dp, vertical = 4.dp)
   ) {
-    if (state.draft.kind == FeedDraftKind.POST) {
+    // 编辑时图片和可见范围不改（引擎只收正文和标题）
+    if (state.draft.kind == FeedDraftKind.POST && state.editing == null) {
       IconButton(onClick = onAddImages, enabled = state.canAddImages) {
         Icon(
           painter = painterResource(CoreUiR.drawable.symbol_photo_24),
@@ -404,10 +420,14 @@ private fun FeedComposeBottomBar(
       }
     }
 
-    TextButton(onClick = onVisibilityClick) {
-      Icon(imageVector = SignalIcons.Visible.imageVector, contentDescription = null, modifier = Modifier.size(18.dp))
-      Spacer(modifier = Modifier.width(6.dp))
-      Text(text = stringResource(state.draft.visibility.label))
+    if (state.editing == null) {
+      TextButton(onClick = onVisibilityClick) {
+        Icon(imageVector = SignalIcons.Visible.imageVector, contentDescription = null, modifier = Modifier.size(18.dp))
+        Spacer(modifier = Modifier.width(6.dp))
+        Text(text = stringResource(state.draft.visibility.label))
+      }
+    } else {
+      Spacer(modifier = Modifier.height(48.dp))
     }
 
     Spacer(modifier = Modifier.weight(1f))

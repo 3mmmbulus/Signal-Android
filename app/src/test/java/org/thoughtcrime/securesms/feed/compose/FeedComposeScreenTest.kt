@@ -135,5 +135,28 @@ class FeedComposeScreenTest {
     composeTestRule.onNodeWithText("Hide from").assertDoesNotExist()
   }
 
+  @Test
+  fun `edit mode saves only after a change and keeps images and visibility as they are`() {
+    val target = FeedEditTarget(id = "p1", kind = "post", title = null, text = "今天的云很低。", publishedAt = null)
+    val original = FeedDraft(text = target.text)
+    show(FeedComposeState(draft = original, editing = target, original = original))
+
+    composeTestRule.onNodeWithText("Edit post").assertExists()
+    composeTestRule.onNodeWithText("Save").assertExists()
+    composeTestRule.onNodeWithText("Public").assertDoesNotExist()
+    composeTestRule.onNodeWithText("Article").assertDoesNotExist()
+    publishButton().assertIsNotEnabled()
+  }
+
+  @Test
+  fun `edited text can be saved`() {
+    val target = FeedEditTarget(id = "p1", kind = "post", title = null, text = "今天的云很低。", publishedAt = null)
+    show(FeedComposeState(draft = FeedDraft(text = "今天的云很低，像是伸手就能摸到。"), editing = target, original = FeedDraft(text = target.text)))
+
+    publishButton().assertIsEnabled().performClick()
+    assertThat(published).isEqualTo(1)
+    screenshot("compose_edit")
+  }
+
   private fun publishButton() = composeTestRule.onNodeWithTag(FeedComposeTestTags.PUBLISH)
 }

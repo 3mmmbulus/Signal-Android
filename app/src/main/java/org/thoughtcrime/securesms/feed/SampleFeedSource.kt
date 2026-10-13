@@ -171,6 +171,22 @@ object SampleFeedSource : FeedSource {
     FeedMyPostsPage(posts = if (before == null) posts else emptyList())
   }
 
+  /** 样例不审核：改了直接生效，标「已编辑」。 */
+  override suspend fun editPost(contentId: String, draft: FeedDraft): FeedCreatePostResponse = synchronized(this) {
+    val title = draft.title.trim().takeIf { draft.kind == FeedDraftKind.ARTICLE }
+    val index = mine.indexOfFirst { it.id == contentId }
+    if (index >= 0) {
+      mine[index] = mine[index].copy(text = draft.text.trim(), title = title, edited = true)
+      return FeedCreatePostResponse(id = contentId, state = FeedCreatePostResponse.STATE_PUBLISHED, version = 2)
+    }
+    val review = reviewSamples.indexOfFirst { it.id == contentId }
+    if (review >= 0) {
+      reviewSamples[review] = reviewSamples[review].copy(text = draft.text.trim(), title = title, editedAt = Instant.now().toString())
+      return FeedCreatePostResponse(id = contentId, state = FeedCreatePostResponse.STATE_PENDING, version = 2)
+    }
+    throw IllegalArgumentException("not my post: $contentId")
+  }
+
   override suspend fun deletePost(contentId: String): Unit = synchronized(this) {
     mine.removeAll { it.id == contentId }
     reviewSamples.removeAll { it.id == contentId }

@@ -265,4 +265,26 @@ class FeedApiTest {
     assertThat(request.method).isEqualTo("DELETE")
     assertThat(request.path).isEqualTo("/v1/feed/posts/p%201")
   }
+
+  @Test
+  fun `edit post is a PATCH with only text for a post`() = runBlocking {
+    server.enqueue(MockResponse().setBody("""{"id":"p1","state":"pending","version":2}"""))
+
+    val response = api.editPost("p1", FeedEditPostRequest(text = "new"))
+
+    val request = server.takeRequest()
+    assertThat(request.method).isEqualTo("PATCH")
+    assertThat(request.path).isEqualTo("/v1/feed/posts/p1")
+    assertThat(request.body.readUtf8()).isEqualTo("""{"text":"new"}""")
+    assertThat(response.version).isEqualTo(2)
+  }
+
+  @Test
+  fun `closed edit window is a 409 with its code`() {
+    server.enqueue(MockResponse().setResponseCode(409).setBody("""{"error":"edit_window_closed"}"""))
+
+    assertFailure { runBlocking { api.editPost("p1", FeedEditPostRequest(text = "new")) } }
+      .isInstanceOf(FeedApiException::class)
+      .prop(FeedApiException::code).isEqualTo("edit_window_closed")
+  }
 }

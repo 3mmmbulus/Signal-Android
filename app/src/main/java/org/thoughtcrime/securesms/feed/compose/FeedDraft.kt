@@ -92,6 +92,9 @@ data class FeedDraft(
     TOO_LONG,
     TOO_MANY_IMAGES,
     VISIBILITY_NOT_ALLOWED,
-    MISSING_AUDIENCE
+    MISSING_AUDIENCE,
+
+    /** 编辑时和原来一样，没什么可保存的（只由 [FeedComposeState.problem] 给出）。 */
+    UNCHANGED
   }
 }

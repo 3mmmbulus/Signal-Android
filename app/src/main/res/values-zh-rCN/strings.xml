@@ -6657,6 +6657,13 @@
     <string name="TellomiFeedMine__delete_title">删除这条动态？</string>
     <string name="TellomiFeedMine__delete_body">评论、点赞和投票会一起删除，删除后无法恢复。</string>
     <string name="TellomiFeedMine__delete_failed">删除失败，请重试</string>
+    <string name="TellomiFeedCompose__edit_post">编辑动态</string>
+    <string name="TellomiFeedCompose__edit_article">编辑长文</string>
+    <string name="TellomiFeedCompose__save">保存</string>
+    <string name="TellomiFeedCompose__edit_window_closed">发布已超过 15 分钟，不能再修改了</string>
+    <string name="TellomiFeedCompose__edit_saved">已保存</string>
+    <string name="TellomiFeedCompose__edit_saved_pending">已保存，审核通过后别人会看到新版本</string>
+    <string name="TellomiFeedMine__edit">编辑</string>
     <string name="TellomiFeedCompose__published">已发布</string>
     <string name="TellomiFeedCompose__pending">已提交，审核通过后别人才能看到</string>
     <string name="ConversationListTabs__99p">99+</string>

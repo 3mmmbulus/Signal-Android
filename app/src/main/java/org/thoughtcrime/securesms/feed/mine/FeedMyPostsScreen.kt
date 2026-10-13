@@ -58,6 +58,7 @@ import org.signal.core.ui.compose.Dialogs
 import org.signal.core.ui.compose.Scaffolds
 import org.signal.core.ui.compose.Snackbars
 import org.thoughtcrime.securesms.R
+import org.thoughtcrime.securesms.feed.compose.FeedEditTarget
 import org.thoughtcrime.securesms.feed.net.FeedCard
 import org.thoughtcrime.securesms.feed.net.FeedMyPost
 import org.thoughtcrime.securesms.feed.parseInstantMillis
@@ -80,9 +81,19 @@ fun FeedMyPostsScreen(
   onRefresh: () -> Unit,
   onLoadMore: () -> Unit,
   onDelete: (FeedMyPost) -> Unit,
-  onDeleteFailureShown: () -> Unit
+  onDeleteFailureShown: () -> Unit,
+  onEdit: (FeedEditTarget) -> Unit = {},
+  onEditNoticeShown: () -> Unit = {},
+  nowMillis: () -> Long = System::currentTimeMillis
 ) {
   val snackbarHostState = remember { SnackbarHostState() }
+  val savedPending = stringResource(R.string.TellomiFeedCompose__edit_saved_pending)
+  val saved = stringResource(R.string.TellomiFeedCompose__edit_saved)
+  LaunchedEffect(state.editNotice) {
+    val notice = state.editNotice ?: return@LaunchedEffect
+    snackbarHostState.showSnackbar(if (notice == FeedMyPost.STATE_PENDING) savedPending else saved)
+    onEditNoticeShown()
+  }
   val deleteFailed = stringResource(R.string.TellomiFeedMine__delete_failed)
   LaunchedEffect(state.deleteFailed) {
     if (state.deleteFailed) {
@@ -121,7 +132,7 @@ fun FeedMyPostsScreen(
             textAlign = TextAlign.Center
           )
         }
-        else -> MyPostsList(state = state, onLoadMore = onLoadMore, onDeleteClick = { confirmDelete = it })
+        else -> MyPostsList(state = state, onLoadMore = onLoadMore, onDeleteClick = { confirmDelete = it }, onEditClick = onEdit, nowMillis = nowMillis)
       }
     }
   }
@@ -143,7 +154,9 @@ fun FeedMyPostsScreen(
 private fun MyPostsList(
   state: FeedMyPostsState,
   onLoadMore: () -> Unit,
-  onDeleteClick: (FeedMyPost) -> Unit
+  onDeleteClick: (FeedMyPost) -> Unit,
+  onEditClick: (FeedEditTarget) -> Unit,
+  nowMillis: () -> Long
 ) {
   val listState = rememberLazyListState()
   val nearEnd by remember {
@@ -159,7 +172,11 @@ private fun MyPostsList(
 
   LazyColumn(state = listState, modifier = Modifier.fillMaxSize()) {
     items(items = state.posts, key = { it.id }) { post ->
-      MyPostRow(post = post, onDeleteClick = onDeleteClick)
+      // 15 分钟内、没被拒的才给「编辑」（第三节第 23 条）；最后由引擎判
+      val editTarget = remember(post, state.editWindowSeconds) {
+        FeedEditTarget.of(post)?.takeIf { it.isWithinWindow(nowMillis(), state.editWindowSeconds) }
+      }
+      MyPostRow(post = post, editTarget = editTarget, onDeleteClick = onDeleteClick, onEditClick = onEditClick)
       HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
     }
 
@@ -174,7 +191,12 @@ private fun MyPostsList(
 }
 
 @Composable
-private fun MyPostRow(post: FeedMyPost, onDeleteClick: (FeedMyPost) -> Unit) {
+private fun MyPostRow(
+  post: FeedMyPost,
+  editTarget: FeedEditTarget?,
+  onDeleteClick: (FeedMyPost) -> Unit,
+  onEditClick: (FeedEditTarget) -> Unit
+) {
   val context = LocalContext.current
   var menuOpen by remember { mutableStateOf(false) }
 
@@ -207,6 +229,16 @@ private fun MyPostRow(post: FeedMyPost, onDeleteClick: (FeedMyPost) -> Unit) {
             .size(20.dp)
         )
         DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {
+          if (editTarget != null) {
+            DropdownMenuItem(
+              text = { Text(stringResource(R.string.TellomiFeedMine__edit)) },
+              leadingIcon = { Icon(imageVector = ImageVector.vectorResource(CoreUiR.drawable.symbol_edit_24), contentDescription = null) },
+              onClick = {
+                menuOpen = false
+                onEditClick(editTarget)
+              }
+            )
+          }
           DropdownMenuItem(
             text = { Text(stringResource(R.string.TellomiFeedMine__delete)) },
             leadingIcon = { Icon(imageVector = ImageVector.vectorResource(CoreUiR.drawable.symbol_trash_24), contentDescription = null) },

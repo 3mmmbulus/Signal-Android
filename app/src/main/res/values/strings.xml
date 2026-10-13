@@ -6875,6 +6875,13 @@
     <string name="TellomiFeedMine__delete_title">Delete this post?</string>
     <string name="TellomiFeedMine__delete_body">Its comments, likes and votes are deleted too. This can\'t be undone.</string>
     <string name="TellomiFeedMine__delete_failed">Couldn\'t delete. Try again.</string>
+    <string name="TellomiFeedCompose__edit_post">Edit post</string>
+    <string name="TellomiFeedCompose__edit_article">Edit article</string>
+    <string name="TellomiFeedCompose__save">Save</string>
+    <string name="TellomiFeedCompose__edit_window_closed">It\'s been more than 15 minutes since you posted, so this can\'t be edited.</string>
+    <string name="TellomiFeedCompose__edit_saved">Saved</string>
+    <string name="TellomiFeedCompose__edit_saved_pending">Saved. Others will see the new version once it\'s reviewed.</string>
+    <string name="TellomiFeedMine__edit">Edit</string>
     <string name="TellomiFeedCompose__published">Posted</string>
     <string name="TellomiFeedCompose__pending">Submitted. Others can see it once it\'s reviewed.</string>
     <string name="ConversationListTabs__99p">99+</string>

@@ -15,6 +15,7 @@ import org.thoughtcrime.securesms.feed.net.FeedAuthApi
 import org.thoughtcrime.securesms.feed.net.FeedConfig
 import org.thoughtcrime.securesms.feed.net.FeedCreatePostRequest
 import org.thoughtcrime.securesms.feed.net.FeedCreatePostResponse
+import org.thoughtcrime.securesms.feed.net.FeedEditPostRequest
 import org.thoughtcrime.securesms.feed.net.FeedEntry
 import org.thoughtcrime.securesms.feed.net.FeedEventPayload
 import org.thoughtcrime.securesms.feed.net.FeedItemRef
@@ -43,6 +44,9 @@ interface FeedSource {
   suspend fun myPosts(before: String?): FeedMyPostsPage
 
   suspend fun deletePost(contentId: String)
+
+  /** 改正文 / 长文标题（发布后 15 分钟内）。 */
+  suspend fun editPost(contentId: String, draft: FeedDraft): FeedCreatePostResponse
 }
 
 /**
@@ -76,6 +80,8 @@ class RemoteFeedSource(private val api: FeedApi) : FeedSource {
 
   override suspend fun deletePost(contentId: String) = api.deletePost(contentId)
 
+  override suspend fun editPost(contentId: String, draft: FeedDraft): FeedCreatePostResponse = api.editPost(contentId, draft.toEditRequest())
+
   override suspend fun reportEvents(events: List<FeedEventPayload>) = api.events(events)
 
   override suspend fun publish(draft: FeedDraft, clientNonce: String): FeedCreatePostResponse {
@@ -98,6 +104,10 @@ class RemoteFeedSource(private val api: FeedApi) : FeedSource {
       }
     }
   }
+}
+
+internal fun FeedDraft.toEditRequest(): FeedEditPostRequest {
+  return FeedEditPostRequest(text = text.trim(), title = title.trim().takeIf { kind == FeedDraftKind.ARTICLE })
 }
 
 internal fun FeedDraft.toRequest(): FeedCreatePostRequest {
@@ -124,6 +134,7 @@ object EmptyFeedSource : FeedSource {
   override suspend fun publish(draft: FeedDraft, clientNonce: String): FeedCreatePostResponse = throw IllegalStateException("feed is not available")
   override suspend fun myPosts(before: String?): FeedMyPostsPage = FeedMyPostsPage()
   override suspend fun deletePost(contentId: String) = Unit
+  override suspend fun editPost(contentId: String, draft: FeedDraft): FeedCreatePostResponse = throw IllegalStateException("feed is not available")
 }
 
 object FeedSources {

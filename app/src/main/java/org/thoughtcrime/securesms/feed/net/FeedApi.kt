@@ -133,6 +133,13 @@ class FeedApi(
     return get(url, FeedMyPostsPage.serializer())
   }
 
+  /** 发布后 15 分钟内改正文 / 标题；超时 409 `edit_window_closed`，未通过的 409 `not_editable`。 */
+  suspend fun editPost(contentId: String, request: FeedEditPostRequest): FeedCreatePostResponse {
+    val url = url("v1/feed/posts").newBuilder().addPathSegment(contentId).build()
+    val body = FeedJson.encodeToString(FeedEditPostRequest.serializer(), request).toRequestBody(JSON)
+    return send(Request.Builder().url(url).patch(body), FeedCreatePostResponse.serializer())
+  }
+
   /** 删自己的帖子（204）。别人的帖子引擎回 404。 */
   suspend fun deletePost(contentId: String) {
     val url = url("v1/feed/posts").newBuilder().addPathSegment(contentId).build()

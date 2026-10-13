@@ -318,3 +318,10 @@ data class FeedMyPostsPage(
   val posts: List<FeedMyPost> = emptyList(),
   @SerialName("next_before") val nextBefore: String? = null
 )
+
+/** `PATCH /v1/feed/posts/{id}`：只带改了的字段，帖子不带标题。回包和发帖一样（`state` 是 `pending`）。 */
+@Serializable
+data class FeedEditPostRequest(
+  val text: String,
+  val title: String? = null
+)

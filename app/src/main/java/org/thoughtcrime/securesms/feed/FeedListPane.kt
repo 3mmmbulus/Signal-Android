@@ -51,8 +51,10 @@ import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -76,12 +78,15 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.launch
 import org.signal.core.ui.compose.DayNightPreviews
+import org.signal.core.ui.compose.Dialogs
 import org.signal.core.ui.compose.Previews
 import org.thoughtcrime.securesms.R
 import org.thoughtcrime.securesms.feed.compose.FeedComposeActivity
+import org.thoughtcrime.securesms.feed.compose.FeedEditTarget
 import org.thoughtcrime.securesms.feed.mine.FeedMyPostsActivity
 import org.thoughtcrime.securesms.feed.net.FeedCard
 import org.thoughtcrime.securesms.feed.net.FeedCreatePostResponse
+import org.thoughtcrime.securesms.feed.net.FeedLimits
 import org.signal.core.ui.R as CoreUiR
 
 private val TOP_BAR_HEIGHT = 48.dp
@@ -138,6 +143,20 @@ fun FeedListPane(
     if (publishState != null) viewModel.onPublished(publishState)
   }
 
+  val savedPendingMessage = stringResource(R.string.TellomiFeedCompose__edit_saved_pending)
+  val savedMessage = stringResource(R.string.TellomiFeedCompose__edit_saved)
+  LaunchedEffect(state.editNotice) {
+    val notice = state.editNotice ?: return@LaunchedEffect
+    snackbarHostState.showSnackbar(if (notice == FeedCreatePostResponse.STATE_PENDING) savedPendingMessage else savedMessage)
+    viewModel.onEditNoticeShown()
+  }
+
+  val editLauncher = rememberLauncherForActivityResult(FeedComposeActivity.Contract()) { publishState ->
+    if (publishState != null) viewModel.onEdited(publishState)
+  }
+
+  var confirmDelete by remember { mutableStateOf<FeedCard?>(null) }
+
   // 退到后台或离开动态标签：停掉曝光计时，发掉攒着的事件（契约 6.1）
   LifecycleEventEffect(Lifecycle.Event.ON_STOP) { viewModel.onFeedHidden() }
   DisposableEffect(viewModel) { onDispose { viewModel.onFeedHidden() } }
@@ -152,12 +171,14 @@ fun FeedListPane(
       onNotInterestedClick = viewModel::notInterested,
       onCardsVisible = viewModel::onCardsVisible,
       onMyPostsClick = { context.startActivity(FeedMyPostsActivity.intent(context)) },
+      onEditClick = { target -> editLauncher.launch(target) },
+      onDeleteClick = { confirmDelete = it },
       modifier = Modifier.fillMaxSize()
     )
 
     // 发布按钮只在右下角（第三节第 45 条），滑动时不动（第 46 条）
     FloatingActionButton(
-      onClick = { composeLauncher.launch(Unit) },
+      onClick = { composeLauncher.launch(null) },
       shape = CircleShape,
       containerColor = MaterialTheme.colorScheme.primaryContainer,
       contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
@@ -173,6 +194,18 @@ fun FeedListPane(
 
     SnackbarHost(hostState = snackbarHostState, modifier = Modifier.align(Alignment.BottomCenter))
   }
+
+  confirmDelete?.let { card ->
+    Dialogs.SimpleAlertDialog(
+      title = stringResource(R.string.TellomiFeedMine__delete_title),
+      body = stringResource(R.string.TellomiFeedMine__delete_body),
+      confirm = stringResource(R.string.TellomiFeedMine__delete),
+      dismiss = stringResource(android.R.string.cancel),
+      confirmColor = MaterialTheme.colorScheme.error,
+      onConfirm = { viewModel.deletePost(card) },
+      onDismiss = { confirmDelete = null }
+    )
+  }
 }
 
 @Composable
@@ -185,7 +218,9 @@ private fun FeedPager(
   onNotInterestedClick: (FeedCard) -> Unit,
   onCardsVisible: (FeedTab, Set<String>) -> Unit,
   onMyPostsClick: () -> Unit,
-  modifier: Modifier = Modifier
+  modifier: Modifier = Modifier,
+  onEditClick: (FeedEditTarget) -> Unit = {},
+  onDeleteClick: (FeedCard) -> Unit = {}
 ) {
   val tabs = state.tabs
   val pagerState = rememberPagerState(pageCount = { tabs.size })
@@ -214,6 +249,9 @@ private fun FeedPager(
         tabState = state.tab(tab),
         showIpRegion = state.config?.ipRegionVisible == true,
         mediaBaseUrl = state.config?.mediaBaseUrl,
+        editWindowSeconds = (state.config?.limits ?: FeedLimits()).editWindowSeconds,
+        onEditClick = onEditClick,
+        onDeleteClick = onDeleteClick,
         onRefresh = { onRefresh(tab) },
         onLoadMore = { onLoadMore(tab) },
         onLikeClick = onLikeClick,
@@ -232,6 +270,9 @@ private fun FeedTimeline(
   tabState: FeedTabState,
   showIpRegion: Boolean,
   mediaBaseUrl: String?,
+  editWindowSeconds: Long,
+  onEditClick: (FeedEditTarget) -> Unit,
+  onDeleteClick: (FeedCard) -> Unit,
   onRefresh: () -> Unit,
   onLoadMore: () -> Unit,
   onLikeClick: (FeedCard) -> Unit,
@@ -279,13 +320,21 @@ private fun FeedTimeline(
       tabState.cards.isEmpty() -> FeedEmptyState(tab = tab)
       else -> LazyColumn(state = listState, modifier = Modifier.fillMaxSize()) {
         items(items = tabState.cards, key = { it.id }) { card ->
+          // 自己的帖子：15 分钟内给「编辑」（第三节第 23 条），一直给「删除」
+          val editTarget = if (card.viewer.isAuthor) {
+            remember(card, editWindowSeconds) { FeedEditTarget.of(card)?.takeIf { it.isWithinWindow(System.currentTimeMillis(), editWindowSeconds) } }
+          } else {
+            null
+          }
           FeedPostCard(
             card = card,
             showIpRegion = showIpRegion,
             onLikeClick = onLikeClick,
             onNotInterestedClick = onNotInterestedClick,
             modifier = Modifier.animateItem(),
-            mediaBaseUrl = mediaBaseUrl
+            mediaBaseUrl = mediaBaseUrl,
+            onEditClick = editTarget?.let { target -> { onEditClick(target) } },
+            onDeleteClick = if (card.viewer.isAuthor) onDeleteClick else null
           )
           HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
         }

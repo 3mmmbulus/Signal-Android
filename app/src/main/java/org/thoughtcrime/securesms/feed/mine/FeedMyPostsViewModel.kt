@@ -40,6 +40,24 @@ class FeedMyPostsViewModel(
 
   init {
     refresh()
+    viewModelScope.launch {
+      try {
+        val config = withContext(ioDispatcher) { source.config() }
+        internalState.update { it.copy(editWindowSeconds = config.limits.editWindowSeconds) }
+      } catch (e: Exception) {
+        Log.w(TAG, "config failed, using the default edit window", e)
+      }
+    }
+  }
+
+  /** 编辑保存后：提示一次（大陆区是「审核通过后替换」），重新拉列表看新的状态。 */
+  fun onEdited(publishState: String) {
+    internalState.update { it.copy(editNotice = publishState) }
+    refresh()
+  }
+
+  fun onEditNoticeShown() {
+    internalState.update { it.copy(editNotice = null) }
   }
 
   fun refresh() {
@@ -106,5 +124,9 @@ data class FeedMyPostsState(
   /** 下拉刷新中（已经有内容时）；翻页不算。 */
   val refreshing: Boolean = false,
   val failed: Boolean = false,
-  val deleteFailed: Boolean = false
+  val deleteFailed: Boolean = false,
+  /** 发布后多久内能改（config `limits.edit_window_seconds`）。 */
+  val editWindowSeconds: Long = 900,
+  /** 刚保存的编辑，服务端给的 `state`；提示过就清掉。 */
+  val editNotice: String? = null
 )
