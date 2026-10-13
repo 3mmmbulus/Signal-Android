@@ -131,7 +131,13 @@
   <string name="AttachmentFilesScreen__search">Search</string>
   <string name="AttachmentFilesScreen__select_from_gallery">Select from Gallery</string>
   <string name="AttachmentFilesScreen__select_from_files">Select from Files</string>
-  <string name="AttachmentFilesScreen__coming_soon">Coming soon</string>
+  <!-- Tellomi（tellomi/tellomi#1263 F-3）「从相册中选择」整屏网格 -->
+  <string name="AttachmentFilesGallery__no_photos_or_videos">No photos or videos</string>
+  <string name="AttachmentFilesGallery__send">Send</string>
+  <plurals name="AttachmentFilesGallery__send_n">
+    <item quantity="one">Send (%d)</item>
+    <item quantity="other">Send (%d)</item>
+  </plurals>
   <string name="AttachmentFilesScreen__recently_sent_files">Recently Sent Files</string>
   <string name="AttachmentFilesScreen__empty">Send and receive files of any type, up to %1$s each.</string>
   <string name="AttachmentFilesScreen__not_on_device">No longer on this device</string>

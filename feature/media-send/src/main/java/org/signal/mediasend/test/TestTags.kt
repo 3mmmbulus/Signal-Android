@@ -65,6 +65,12 @@ object TestTags {
   const val MEDIA_PICKER_CAMERA = "media_picker_camera"
   const val MEDIA_PICKER_CAMERA_SPACER = "media_picker_camera_spacer"
 
+  // Tellomi (tellomi/tellomi#1263 F-3): the files page's "choose from gallery" grid.
+  const val FILES_GALLERY_FOLDER_TITLE = "files_gallery_folder_title"
+  const val FILES_GALLERY_CANCEL = "files_gallery_cancel"
+  const val FILES_GALLERY_SEND = "files_gallery_send"
+  fun filesGalleryTile(uri: String): String = "files_gallery_tile_$uri"
+
   /** Tag for the card of the media at [uri] in the selected-only preview. */
   fun mediaPickerPreviewCard(uri: String): String = "media_picker_preview_card_$uri"
 

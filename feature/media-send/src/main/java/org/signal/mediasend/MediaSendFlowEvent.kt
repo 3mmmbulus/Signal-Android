@@ -89,13 +89,13 @@ internal sealed interface MediaSendFlowEvent {
   /** P-1：顶栏「最近 ⌄」里换相册。 */
   data class SwitchFolder(val mediaFolder: MediaFolder) : MediaSendFlowEvent
 
+  /** Tellomi（#1263，ADR-0068 §4.7）：「···」→ 说明文字上移 / 下移。 */
+  data object ToggleCaptionAboveMedia : MediaSendFlowEvent
+
   /**
    * P-5：「···」里的立即发送。[quality] 非空时这一次用它发（D9：不写设置）；[separately] 时一张一条、说明挂最后一条。
    * [asFile]（tellomi/tellomi#1263，ADR-0068）时按文件发原图，也是一个一条；[convertHeicToJpeg] 时其中的 HEIC 先转成 JPEG。
    */
-  /** Tellomi（#1263，ADR-0068 §4.7）：「···」→ 说明文字上移 / 下移。 */
-  data object ToggleCaptionAboveMedia : MediaSendFlowEvent
-
   data class SendNow(
     val quality: SentMediaQuality? = null,
     val separately: Boolean = false,
@@ -117,6 +117,12 @@ internal sealed interface MediaSendFlowEvent {
 
   /** tellomi/tellomi#1121：「文件」页选好了要发的文件：离开流程，交给会话页去发。 */
   data class SendAttachmentFiles(val result: MediaSendFlowActivityContract.AttachmentFilesResult) : MediaSendFlowEvent
+
+  /** tellomi/tellomi#1263 F-3：「文件」页「从相册中选择」：打开整屏相册网格（文件模式）。 */
+  data object OpenFilesGallery : MediaSendFlowEvent
+
+  /** tellomi/tellomi#1263 F-3：相册网格里取消 / 返回：回到「文件」页。 */
+  data object CloseFilesGallery : MediaSendFlowEvent
 
   //endregion
   data object NavigateToFolders : MediaSendFlowEvent

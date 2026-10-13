@@ -11,6 +11,7 @@ import androidx.lifecycle.SavedStateHandle
 import androidx.test.core.app.ApplicationProvider
 import assertk.assertThat
 import assertk.assertions.isEmpty
+import assertk.assertions.isEqualTo
 import assertk.assertions.isFalse
 import assertk.assertions.isTrue
 import io.mockk.coEvery
@@ -162,6 +163,21 @@ class MediaSendFlowViewModelSendAsFileTest {
     send(viewModel, MediaSendFlowEvent.NextRequested)
 
     assertThat(requests.single().captionAboveMedia).isFalse()
+  }
+
+  @Test
+  fun `Given the files page, when select from gallery opens and is cancelled, then the gallery sits on top once and closing returns`() = runTest {
+    val viewModel = viewModel()
+    advanceUntilIdle()
+    val before = viewModel.backStack.toList()
+
+    send(viewModel, MediaSendFlowEvent.OpenFilesGallery)
+    send(viewModel, MediaSendFlowEvent.OpenFilesGallery)
+    assertThat(viewModel.backStack.toList()).isEqualTo(before + MediaSendRoute.FilesGallery)
+
+    send(viewModel, MediaSendFlowEvent.CloseFilesGallery)
+    send(viewModel, MediaSendFlowEvent.CloseFilesGallery)
+    assertThat(viewModel.backStack.toList()).isEqualTo(before)
   }
 
   private fun viewModel(): MediaSendFlowViewModel {

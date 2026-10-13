@@ -91,10 +91,10 @@ class AttachmentFilesScreenTest {
   }
 
   @Test
-  fun `Given the entries, when select from gallery is tapped, then it only asks for the coming soon hint`() {
+  fun `Given the entries, when select from gallery is tapped, then the view model is asked to open the gallery`() {
     setPage(AttachmentFilesState(files = emptyList(), dock = DOCK))
 
-    composeTestRule.onNodeWithText(context.getString(R.string.AttachmentFilesScreen__coming_soon)).assertIsDisplayed()
+    composeTestRule.onNodeWithText(context.getString(R.string.AttachmentFilesScreen__select_from_gallery)).assertIsDisplayed()
     composeTestRule.onNodeWithTag(TestTags.attachmentFilesEntry("gallery")).performClick()
 
     assertThat(events).containsExactly(AttachmentFilesEvent.SelectFromGalleryClicked)

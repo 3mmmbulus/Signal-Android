@@ -252,7 +252,7 @@ private fun FilesTopBar(
   }
 }
 
-/** F-2：两行入口，图标与文字用主题强调色；「从相册中选择」置灰、点了只提示（F-3 等 #1263）。 */
+/** F-2：两行入口，图标与文字用主题强调色；「从相册中选择」打开整屏相册网格（F-3，#1263）。 */
 private fun LazyListScope.entries(
   onEvent: (AttachmentFilesEvent) -> Unit,
   onSelectFromFiles: () -> Unit
@@ -261,7 +261,6 @@ private fun LazyListScope.entries(
     EntryRow(
       icon = SignalIcons.Photo,
       title = stringResource(R.string.AttachmentFilesScreen__select_from_gallery),
-      comingSoon = stringResource(R.string.AttachmentFilesScreen__coming_soon),
       onClick = { onEvent(AttachmentFilesEvent.SelectFromGalleryClicked) },
       modifier = Modifier.testTag(TestTags.attachmentFilesEntry("gallery"))
     )
@@ -270,7 +269,6 @@ private fun LazyListScope.entries(
     EntryRow(
       icon = SignalIcons.File,
       title = stringResource(R.string.AttachmentFilesScreen__select_from_files),
-      comingSoon = null,
       onClick = onSelectFromFiles,
       modifier = Modifier.testTag(TestTags.attachmentFilesEntry("files"))
     )
@@ -284,11 +282,9 @@ private fun LazyListScope.entries(
 private fun EntryRow(
   icon: SignalIcons,
   title: String,
-  comingSoon: String?,
   onClick: () -> Unit,
   modifier: Modifier = Modifier
 ) {
-  val alpha = if (comingSoon != null) FilesMetrics.DISABLED_ALPHA else 1f
   Row(
     verticalAlignment = Alignment.CenterVertically,
     horizontalArrangement = spacedBy(16.dp),
@@ -302,16 +298,9 @@ private fun EntryRow(
       imageVector = icon.imageVector,
       contentDescription = null,
       tint = MaterialTheme.colorScheme.primary,
-      modifier = Modifier
-        .size(24.dp)
-        .alpha(alpha)
+      modifier = Modifier.size(24.dp)
     )
-    Column(modifier = Modifier.alpha(alpha)) {
-      Text(text = title, style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.primary)
-      if (comingSoon != null) {
-        Text(text = comingSoon, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-      }
-    }
+    Text(text = title, style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.primary)
   }
 }
 

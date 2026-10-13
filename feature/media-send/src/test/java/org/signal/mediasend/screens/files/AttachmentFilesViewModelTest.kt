@@ -164,14 +164,14 @@ class AttachmentFilesViewModelTest {
   }
 
   @Test
-  fun `Given select from gallery, when tapped, then it only says it is coming soon`() = runTest {
+  fun `Given select from gallery, when tapped, then the flow opens the gallery in file mode`() = runTest {
     val vm = loaded(emptyList())
 
     vm.onEvent(AttachmentFilesEvent.SelectFromGalleryClicked)
     advanceUntilIdle()
 
     assertThat(sent()).isEmpty()
-    assertThat(toasts()).containsExactly(R.string.AttachmentFilesScreen__coming_soon)
+    assertThat(emitted).containsExactly(MediaSendFlowEvent.OpenFilesGallery)
   }
 
   // endregion

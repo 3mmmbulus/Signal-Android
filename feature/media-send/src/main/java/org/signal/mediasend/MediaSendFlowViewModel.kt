@@ -303,6 +303,8 @@ class MediaSendFlowViewModel(
       is MediaSendFlowEvent.ShowToast -> internalToastEvents.trySend(event.toast)
       is MediaSendFlowEvent.OpenAttachmentPage -> internalState.update { it.copy(attachmentPage = event.page) }
       is MediaSendFlowEvent.SendAttachmentFiles -> sendHudCommand(MediaSendFlowHudCommand.SendAttachmentFiles(event.result))
+      MediaSendFlowEvent.OpenFilesGallery -> if (backStack.lastOrNull() != MediaSendRoute.FilesGallery) backStack.add(MediaSendRoute.FilesGallery)
+      MediaSendFlowEvent.CloseFilesGallery -> if (backStack.lastOrNull() == MediaSendRoute.FilesGallery) backStack.pop()
       MediaSendFlowEvent.NavigateToEdit -> goToEditLeavingAlbum()
       MediaSendFlowEvent.NavigateToCamera -> backStack.goToCamera()
       MediaSendFlowEvent.KeepShooting -> keepShooting()

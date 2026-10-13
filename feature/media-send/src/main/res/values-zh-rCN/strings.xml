@@ -126,7 +126,12 @@
   <string name="AttachmentFilesScreen__search">搜索</string>
   <string name="AttachmentFilesScreen__select_from_gallery">从相册中选择</string>
   <string name="AttachmentFilesScreen__select_from_files">从文件中选择</string>
-  <string name="AttachmentFilesScreen__coming_soon">即将支持</string>
+  <!-- Tellomi（tellomi/tellomi#1263 F-3）「从相册中选择」整屏网格 -->
+  <string name="AttachmentFilesGallery__no_photos_or_videos">没有照片或视频</string>
+  <string name="AttachmentFilesGallery__send">发送</string>
+  <plurals name="AttachmentFilesGallery__send_n">
+    <item quantity="other">发送（%d）</item>
+  </plurals>
   <string name="AttachmentFilesScreen__recently_sent_files">最近发送的文件</string>
   <string name="AttachmentFilesScreen__empty">发送和接收任意类型的文件，每个最大 %1$s。</string>
   <string name="AttachmentFilesScreen__not_on_device">已不在本机</string>

@@ -92,7 +92,7 @@ internal class AttachmentFilesViewModel(
         _state.value.isSearching -> endSearch()
         _state.value.isSelecting -> endSelection()
       }
-      AttachmentFilesEvent.SelectFromGalleryClicked -> toast(R.string.AttachmentFilesScreen__coming_soon)
+      AttachmentFilesEvent.SelectFromGalleryClicked -> parentEventEmitter(MediaSendFlowEvent.OpenFilesGallery)
       is AttachmentFilesEvent.FilesPicked -> if (event.uris.isNotEmpty()) send(pickedUris = event.uris)
       is AttachmentFilesEvent.FileClicked -> onFileClicked(event.file)
       is AttachmentFilesEvent.FileLongClicked -> onFileLongClicked(event.file)

@@ -49,6 +49,8 @@ import org.signal.mediasend.screens.edit.MediaAlbumScreen
 import org.signal.mediasend.screens.edit.MediaEditScreen
 import org.signal.mediasend.screens.edit.MediaEditScreenDialogs
 import org.signal.mediasend.screens.edit.MediaEditViewModel
+import org.signal.mediasend.screens.files.AttachmentFilesGalleryScreen
+import org.signal.mediasend.screens.files.AttachmentFilesGalleryViewModel
 import org.signal.mediasend.screens.files.AttachmentFilesScreen
 import org.signal.mediasend.screens.files.AttachmentFilesViewModel
 import org.signal.mediasend.screens.select.AttachmentSheet
@@ -229,6 +231,17 @@ internal fun MediaSendNavigation(
           val state by viewModel.state.collectAsStateWithLifecycle()
           OpaqueInAttachmentSheet {
             sendSlot(state)
+          }
+        }
+
+        // Tellomi（tellomi/tellomi#1263 F-3）：「文件」页「从相册中选择」。
+        MediaSendRoute.FilesGallery -> NavEntry(key) {
+          val galleryViewModel: AttachmentFilesGalleryViewModel = viewModel {
+            AttachmentFilesGalleryViewModel(parentEventEmitter = viewModel::onEvent)
+          }
+          val state by galleryViewModel.state.collectAsStateWithLifecycle()
+          OpaqueInAttachmentSheet {
+            AttachmentFilesGalleryScreen(state = state, onEvent = galleryViewModel::onEvent)
           }
         }
 
