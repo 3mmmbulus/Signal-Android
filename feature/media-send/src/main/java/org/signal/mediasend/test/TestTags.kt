@@ -78,6 +78,7 @@ object TestTags {
   const val SEND_PREVIEW = "send_preview"
   const val SEND_PREVIEW_SCRIM = "send_preview_scrim"
   const val SEND_PREVIEW_BUBBLE = "send_preview_bubble"
+  const val SEND_PREVIEW_MENU = "send_preview_menu"
   const val SEND_PREVIEW_CAPTION_ABOVE = "send_preview_caption_above"
   const val SEND_PREVIEW_CAPTION_BELOW = "send_preview_caption_below"
   const val SEND_PREVIEW_SEND_BUTTON = "send_preview_send_button"

@@ -17,6 +17,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.test.assertTextEquals
 import androidx.compose.ui.test.click
+import androidx.compose.ui.test.getUnclippedBoundsInRoot
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.longClick
 import androidx.compose.ui.test.onNodeWithTag
@@ -24,6 +25,7 @@ import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performTouchInput
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.width
 import androidx.test.core.app.ApplicationProvider
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
@@ -124,11 +126,11 @@ class AddAMessageRowTest {
   }
 
   /**
-   * Tellomi (tellomi/tellomi#1519 M-5, as Telegram): with media, a long press shows the message as it will be sent above
-   * the menu, and moving the caption moves it in the preview without closing anything.
+   * Tellomi (tellomi/tellomi#1519 M-5, as Telegram): with media, a long press shows the message as it will be sent next to
+   * the send button, with the menu under it, and moving the caption moves it in the preview without closing anything.
    */
   @Test
-  fun `Given media, when the send button is long pressed, then the message is previewed above the menu and follows the caption position`() {
+  fun `Given media, when the send button is long pressed, then the message is previewed next to it and follows the caption position`() {
     var above by mutableStateOf(false)
     setPreviewContent(canScheduleSend = true, message = "Trip", sendPreviewMedia = listOf(media(1), media(2)), captionAboveMedia = { above }, onEvent = {
       if (it == MediaEditScreenEvents.ToggleCaptionAboveMedia) above = !above
@@ -136,7 +138,17 @@ class AddAMessageRowTest {
 
     composeTestRule.onNodeWithTag(TestTags.ADD_A_MESSAGE_NEXT_BUTTON).performTouchInput { longClick() }
 
-    composeTestRule.onNodeWithTag(TestTags.SEND_PREVIEW_BUBBLE).assertExists()
+    // As Telegram's MessageSendPreview: the bubble ends just before the send button's circle and level with its bottom, the
+    // menu starts under that, and both line up on the right.
+    val bubble = composeTestRule.onNodeWithTag(TestTags.SEND_PREVIEW_BUBBLE).getUnclippedBoundsInRoot()
+    val menu = composeTestRule.onNodeWithTag(TestTags.SEND_PREVIEW_MENU).getUnclippedBoundsInRoot()
+    val circle = composeTestRule.onNodeWithTag(TestTags.SEND_PREVIEW_SEND_BUTTON).getUnclippedBoundsInRoot()
+    assertEquals(40f, circle.width.value, 0.5f)
+    assertEquals((circle.left - 8.dp).value, bubble.right.value, 0.5f)
+    assertEquals(circle.bottom.value, bubble.bottom.value, 0.5f)
+    assertEquals((bubble.bottom + 8.dp).value, menu.top.value, 0.5f)
+    assertEquals(bubble.right.value, menu.right.value, 0.5f)
+
     composeTestRule.onNodeWithTag(TestTags.SEND_PREVIEW_CAPTION_BELOW, useUnmergedTree = true).assertTextEquals("Trip")
     composeTestRule.onNodeWithTag(TestTags.SEND_PREVIEW_CAPTION_ABOVE, useUnmergedTree = true).assertDoesNotExist()
 

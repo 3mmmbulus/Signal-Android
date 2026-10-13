@@ -24,6 +24,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.onGloballyPositioned
@@ -163,7 +164,12 @@ fun AddAMessageRow(
       }
     }
 
-    Box(modifier = Modifier.onGloballyPositioned { sendButtonBounds = it.boundsOnScreen() }) {
+    Box(
+      modifier = Modifier
+        .onGloballyPositioned { sendButtonBounds = it.boundsOnScreen() }
+        // 预览开着时发送键画在预览里（可能挪上去了），这里的先藏起来（同 Telegram `anchorSendButton.setAlpha(0f)`）
+        .alpha(if (previewShown) 0f else 1f)
+    ) {
       val scheduleSendMenuController = remember { DropdownMenus.MenuController() }
 
       val nextButtonColor = recipientChatColor ?: MaterialTheme.colorScheme.primaryContainer

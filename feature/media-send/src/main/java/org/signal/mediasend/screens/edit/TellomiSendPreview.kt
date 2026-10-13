@@ -24,10 +24,8 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.size
@@ -77,13 +75,15 @@ import org.signal.mediasend.test.TestTags
 import kotlin.math.roundToInt
 
 /*
- * Tellomi（tellomi/tellomi#1519 M-5，照 Telegram）：有媒体时，长按发送不再只弹一个小菜单，而是整屏压暗，发送键留在原处，
- * 它上方先是一个「发出去是什么样」的气泡，再下面是菜单；在菜单里切「说明文字上移 / 下移」，气泡当场跟着变。
+ * Tellomi（tellomi/tellomi#1519 M-5，照 Telegram）：有媒体时，长按发送不再只弹一个小菜单，而是整屏压暗：发送键左边是
+ * 「发出去是什么样」的气泡（底边和发送键对齐），发送键下面是菜单（右边和气泡对齐）；在菜单里切「说明文字上移 / 下移」，
+ * 气泡当场跟着变。点发送键就发，点气泡或空白处收起。
  *
- * 机制照 Telegram 两端（只读，代码是自己写的）：安卓 `MessageSendPreview`（独立的全屏窗口；预览和菜单贴着发送键、右边对齐，
- * 空间不够时预览限高可滚；点预览或空白处收起；发送键在原处、点了就发）；iOS `ChatSendMessageContextScreen`（说明在上 / 在下
- * 整个气泡重排，菜单不收）。不同：Telegram 的背景是对下层的模糊（安卓截图模糊、iOS 模糊加暗），这里只压暗——Compose 的
- * 对话框模糊不了下层窗口，系统的窗口模糊又不是每台机器都有，各机器表现会不一样。
+ * 机制照 Telegram 安卓 `MessageSendPreview`（只读，代码是自己写的）：独立的全屏窗口；消息列表的右边贴着发送键左边、底边是发送键底边
+ * （`chatListView.setY(pos[1] + sendButton.getHeight() - height)`），菜单从发送键底边往下（`optionsView.setY(pos[1] + sendButton.getHeight())`）；
+ * 菜单放不下时发送键连同两样一起往上挪（`pos[1] = bottom - heightdown - height`），消息太高时限高可滚。iOS
+ * `ChatSendMessageContextScreen` 同一种摆法（说明在上 / 在下整个气泡重排，菜单不收）。
+ * 不同：Telegram 的背景是对下层的模糊截图，这里只压暗——Compose 的对话框模糊不了下层窗口，系统的窗口模糊又不是每台机器都有。
  */
 
 private val BubbleMaxWidth = 260.dp
@@ -91,6 +91,10 @@ private val BubbleShape = RoundedCornerShape(18.dp)
 private val MenuShape = RoundedCornerShape(18.dp)
 private val TileGap = 2.dp
 private val Gap = 8.dp
+private val MenuGap = 8.dp
+
+/** 发送键画出来的那个圆（`AddAMessageRow` 的 NextButtonSize），触摸区比它大一圈。 */
+private val NextButtonVisualSize = 40.dp
 private const val ANIMATION_MS = 200
 
 /**
@@ -168,24 +172,30 @@ internal fun SendPreviewOverlay(
 
         Layout(
           content = {
-            Column(
-              horizontalAlignment = Alignment.End,
+            // 气泡太高时限高，从底部（挨着发送键的那头）开始看
+            Box(
+              modifier = Modifier
+                .verticalScroll(rememberScrollState(), reverseScrolling = true)
+                .animateEnterExit(
+                  enter = scaleIn(tween(ANIMATION_MS), initialScale = 0.9f, transformOrigin = TransformOrigin(1f, 1f)),
+                  exit = scaleOut(tween(ANIMATION_MS), targetScale = 0.9f, transformOrigin = TransformOrigin(1f, 1f))
+                )
+            ) {
+              PreviewBubble(
+                media = media,
+                caption = previewCaption(message, media.map { it.caption }),
+                captionAboveMedia = captionAboveMedia == true,
+                bubbleColor = bubbleColor,
+                textColor = onBubbleColor,
+                onClick = hide
+              )
+            }
+            Box(
               modifier = Modifier.animateEnterExit(
-                enter = scaleIn(tween(ANIMATION_MS), initialScale = 0.9f, transformOrigin = TransformOrigin(1f, 1f)),
-                exit = scaleOut(tween(ANIMATION_MS), targetScale = 0.9f, transformOrigin = TransformOrigin(1f, 1f))
+                enter = scaleIn(tween(ANIMATION_MS), initialScale = 0.9f, transformOrigin = TransformOrigin(1f, 0f)),
+                exit = scaleOut(tween(ANIMATION_MS), targetScale = 0.9f, transformOrigin = TransformOrigin(1f, 0f))
               )
             ) {
-              Box(modifier = Modifier.weight(1f, fill = false).verticalScroll(rememberScrollState())) {
-                PreviewBubble(
-                  media = media,
-                  caption = previewCaption(message, media.map { it.caption }),
-                  captionAboveMedia = captionAboveMedia == true,
-                  bubbleColor = bubbleColor,
-                  textColor = onBubbleColor,
-                  onClick = hide
-                )
-              }
-              Spacer(modifier = Modifier.height(Gap))
               SendMenuCard(
                 captionAboveMedia = captionAboveMedia,
                 showScheduleOptions = showScheduleOptions,
@@ -200,21 +210,36 @@ internal fun SendPreviewOverlay(
           }
         ) { measurables, constraints ->
           val anchor = sendButtonBounds.translate(-origin)
-          val gap = Gap.roundToPx()
-          val top = insets.getTop(this) + gap
-          val button = measurables[1].measure(Constraints.fixed(anchor.width.roundToInt().coerceAtLeast(0), anchor.height.roundToInt().coerceAtLeast(0)))
+          val margin = Gap.roundToPx()
           val ltr = layoutDirection == LayoutDirection.Ltr
-          val availableWidth = if (ltr) anchor.right.roundToInt() - gap else constraints.maxWidth - anchor.left.roundToInt() - gap
-          val column = measurables[0].measure(
-            Constraints(
-              maxWidth = availableWidth.coerceIn(0, constraints.maxWidth),
-              maxHeight = (anchor.top.roundToInt() - gap - top).coerceAtLeast(0)
-            )
+          val buttonWidth = anchor.width.roundToInt().coerceAtLeast(0)
+          val buttonHeight = anchor.height.roundToInt().coerceAtLeast(0)
+          val button = measurables[2].measure(Constraints.fixed(buttonWidth, buttonHeight))
+          // 圆按钮画得比触摸区小一圈（触摸区前面还有一段间距）：气泡、菜单都对着画出来的那个圆——右边离圆左边 Gap，
+          // 气泡底边是圆的底边，菜单从它下面开始
+          val buttonInset = ((buttonHeight - NextButtonVisualSize.roundToPx()) / 2).coerceAtLeast(0)
+          val circleStart = if (ltr) anchor.right.roundToInt() - buttonInset - NextButtonVisualSize.roundToPx() else anchor.left.roundToInt() + buttonInset + NextButtonVisualSize.roundToPx()
+          val edge = if (ltr) circleStart - margin else circleStart + margin
+          val room = (if (ltr) edge else constraints.maxWidth - edge) - margin
+          val menu = measurables[1].measure(Constraints(maxWidth = room.coerceIn(0, constraints.maxWidth)))
+
+          val top = insets.getTop(this) + margin
+          val bottom = constraints.maxHeight - insets.getBottom(this) - margin
+          val menuGap = MenuGap.roundToPx()
+          var buttonTop = anchor.top.roundToInt()
+          val overflow = buttonTop + buttonHeight - buttonInset + menuGap + menu.height - bottom
+          if (overflow > 0) {
+            buttonTop -= overflow
+          }
+          val bubbleBottom = buttonTop + buttonHeight - buttonInset
+          val bubble = measurables[0].measure(
+            Constraints(maxWidth = room.coerceIn(0, constraints.maxWidth), maxHeight = (bubbleBottom - top).coerceAtLeast(0))
           )
+
           layout(constraints.maxWidth, constraints.maxHeight) {
-            val x = if (ltr) anchor.right.roundToInt() - column.width else anchor.left.roundToInt()
-            column.place(x, anchor.top.roundToInt() - gap - column.height)
-            button.place(anchor.left.roundToInt(), anchor.top.roundToInt())
+            bubble.place(if (ltr) edge - bubble.width else edge, bubbleBottom - bubble.height)
+            menu.place(if (ltr) edge - menu.width else edge, bubbleBottom + menuGap)
+            button.place(anchor.left.roundToInt(), buttonTop)
           }
         }
       }
@@ -335,7 +360,9 @@ private fun SendMenuCard(
     shape = MenuShape,
     color = SignalTheme.colors.colorSurface2,
     shadowElevation = 3.dp,
-    modifier = Modifier.widthIn(min = 220.dp)
+    modifier = Modifier
+      .widthIn(min = 220.dp)
+      .testTag(TestTags.SEND_PREVIEW_MENU)
   ) {
     // 和下拉菜单一样按最宽的那一项定宽，不撑满
     Column(modifier = Modifier.width(IntrinsicSize.Max).padding(vertical = 8.dp)) {
