@@ -53,6 +53,9 @@ interface FeedSource {
 
   suspend fun deletePost(contentId: String)
 
+  /** 未通过的帖子申诉一次，进人工复核。 */
+  suspend fun appeal(contentId: String, text: String)
+
   /** 改正文 / 长文标题（发布后 15 分钟内）。 */
   suspend fun editPost(contentId: String, draft: FeedDraft): FeedCreatePostResponse
 
@@ -120,6 +123,8 @@ class RemoteFeedSource(private val api: FeedApi) : FeedSource {
 
   override suspend fun myProfile(): FeedMyProfile? = api.myProfile()
 
+  override suspend fun appeal(contentId: String, text: String) = api.appeal(contentId, text.trim())
+
   override suspend fun saveProfile(update: FeedProfileUpdate): FeedMyProfile = api.saveProfile(update)
 
   override suspend fun publish(draft: FeedDraft, clientNonce: String): FeedCreatePostResponse {
@@ -178,6 +183,7 @@ object EmptyFeedSource : FeedSource {
   override suspend fun comments(postId: String, cursor: String?): FeedCommentsPage = FeedCommentsPage()
   override suspend fun postComment(postId: String, text: String, parentId: String?): String = throw IllegalStateException("feed is not available")
   override suspend fun myProfile(): FeedMyProfile? = null
+  override suspend fun appeal(contentId: String, text: String) = throw IllegalStateException("feed is not available")
   override suspend fun saveProfile(update: FeedProfileUpdate): FeedMyProfile = throw IllegalStateException("feed is not available")
 }
 

@@ -358,4 +358,19 @@ class FeedApiTest {
 
     assertFailure { runBlocking { api.myProfile() } }.isInstanceOf(FeedApiException::class)
   }
+
+  @Test
+  fun `appeal posts the reason and reads the appeal fields`() = runBlocking {
+    server.enqueue(MockResponse().setResponseCode(202))
+
+    api.appeal("p1", "只是分享")
+
+    val request = server.takeRequest()
+    assertThat(request.method).isEqualTo("POST")
+    assertThat(request.path).isEqualTo("/v1/feed/posts/p1/appeal")
+    assertThat(request.body.readUtf8()).isEqualTo("""{"text":"只是分享"}""")
+
+    val post = FeedJson.decodeFromString(FeedMyPost.serializer(), """{"id":"p","state":"rejected","rejection_reasons":["prohibited_words"],"appealable":false,"appeal_state":"received"}""")
+    assertThat(post.appealState).isEqualTo(FeedMyPost.APPEAL_RECEIVED)
+  }
 }

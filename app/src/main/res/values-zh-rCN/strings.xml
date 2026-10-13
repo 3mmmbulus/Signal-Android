@@ -6653,6 +6653,16 @@
     <string name="TellomiFeedMine__rejected_because">未通过：%1$s。只有你看得到。</string>
     <string name="TellomiFeedMine__reason_wording">含有不适合公开发布的词语</string>
     <string name="TellomiFeedMine__reason_guidelines">不符合社区规范</string>
+    <string name="TellomiFeedMine__reason_review_unavailable">这次没能完成审核</string>
+    <string name="TellomiFeedMine__reason_account">账号受限</string>
+    <string name="TellomiFeedMine__appeal">申诉</string>
+    <string name="TellomiFeedMine__appeal_title">申诉这个决定？</string>
+    <string name="TellomiFeedMine__appeal_body">每条只能申诉一次。会有人工重新审核，审核前这条仍然不公开。</string>
+    <string name="TellomiFeedMine__appeal_hint">说说为什么这条应该通过</string>
+    <string name="TellomiFeedMine__appeal_send">提交申诉</string>
+    <string name="TellomiFeedMine__appeal_sent">已提交申诉</string>
+    <string name="TellomiFeedMine__appeal_received">已收到申诉，人工复核中。</string>
+    <string name="TellomiFeedMine__appeal_upheld">申诉已复核：维持原决定。</string>
     <string name="TellomiFeedMine__delete">删除</string>
     <string name="TellomiFeedMine__delete_title">删除这条动态？</string>
     <string name="TellomiFeedMine__delete_body">评论、点赞和投票会一起删除，删除后无法恢复。</string>

@@ -49,7 +49,9 @@ class FeedMyPostsActivity : PassphraseRequiredActivity() {
           onDeleteFailureShown = viewModel::onDeleteFailureShown,
           onEdit = { editLauncher.launch(it) },
           onEditNoticeShown = viewModel::onEditNoticeShown,
-          onProfileClick = { profileLauncher.launch(Unit) }
+          onProfileClick = { profileLauncher.launch(Unit) },
+          onAppeal = viewModel::appeal,
+          onAppealNoticeShown = viewModel::onAppealNoticeShown
         )
       }
     }

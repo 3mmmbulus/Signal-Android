@@ -305,9 +305,20 @@ data class FeedMyPost(
   val visibility: String? = null,
   @SerialName("created_at") val createdAt: String? = null,
   @SerialName("edited_at") val editedAt: String? = null,
-  @SerialName("rejection_reasons") val rejectionReasons: List<String> = emptyList()
+  @SerialName("rejection_reasons") val rejectionReasons: List<String> = emptyList(),
+  /** 未通过且还没申诉过（每条一次，R-2.1）。 */
+  val appealable: Boolean = false,
+  /** 申诉进度：`received` 复核中、`upheld` 维持原决定、`overturned` 改判通过；没申诉过是 null。 */
+  @SerialName("appeal_state") val appealState: String? = null
 ) {
   companion object {
+    const val APPEAL_RECEIVED = "received"
+    const val APPEAL_UPHELD = "upheld"
+    const val APPEAL_OVERTURNED = "overturned"
+
+    /** 申诉理由的上限（引擎 `MaxAppealChars`）。 */
+    const val MAX_APPEAL_CHARS = 500
+
     const val STATE_PENDING = FeedCreatePostResponse.STATE_PENDING
     const val STATE_PUBLISHED = FeedCreatePostResponse.STATE_PUBLISHED
     const val STATE_REJECTED = "rejected"
@@ -383,3 +394,7 @@ data class FeedProfileUpdate(
   @SerialName("display_name") val displayName: String? = null,
   val bio: String? = null
 )
+
+/** `POST /v1/feed/posts/{id}/appeal`。 */
+@Serializable
+data class FeedAppealRequest(val text: String)

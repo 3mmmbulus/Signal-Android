@@ -34,9 +34,15 @@ class FeedMyPostsViewModelTest {
 
   private class FakeSource(
     val pages: Map<String?, FeedMyPostsPage>,
-    var failDelete: Boolean = false
+    var failDelete: Boolean = false,
+    var failAppeal: Boolean = false
   ) : FeedSource by EmptyFeedSource {
     val deleted = mutableListOf<String>()
+    val appeals = mutableListOf<Pair<String, String>>()
+    override suspend fun appeal(contentId: String, text: String) {
+      if (failAppeal) throw IOException("offline")
+      appeals += contentId to text
+    }
     override suspend fun myPosts(before: String?): FeedMyPostsPage = pages[before] ?: throw IOException("no page")
     override suspend fun deletePost(contentId: String) {
       if (failDelete) throw IOException("offline")
@@ -109,5 +115,41 @@ class FeedMyPostsViewModelTest {
     assertThat(rejectionReasonLabel("lexicon")).isEqualTo(R.string.TellomiFeedMine__reason_wording)
     assertThat(rejectionReasonLabel("missing:[vendor]")).isEqualTo(R.string.TellomiFeedMine__reason_guidelines)
     assertThat(rejectionReasonLabel("")).isEqualTo(R.string.TellomiFeedMine__reason_guidelines)
+  }
+
+  @Test
+  fun `engine reason codes map to their own wording, unknown ones to the guidelines`() {
+    assertThat(rejectionReasonLabel("prohibited_words")).isEqualTo(R.string.TellomiFeedMine__reason_wording)
+    assertThat(rejectionReasonLabel("review_unavailable")).isEqualTo(R.string.TellomiFeedMine__reason_review_unavailable)
+    assertThat(rejectionReasonLabel("account_restricted")).isEqualTo(R.string.TellomiFeedMine__reason_account)
+    assertThat(rejectionReasonLabel("community_guidelines")).isEqualTo(R.string.TellomiFeedMine__reason_guidelines)
+    assertThat(rejectionReasonLabel("something_new")).isEqualTo(R.string.TellomiFeedMine__reason_guidelines)
+  }
+
+  @Test
+  fun `appeal marks the post as under review`() {
+    val rejected = post("r", FeedMyPost.STATE_REJECTED).copy(appealable = true)
+    val source = FakeSource(mapOf(null to FeedMyPostsPage(posts = listOf(rejected))))
+    val viewModel = FeedMyPostsViewModel(source, dispatcher)
+
+    viewModel.appeal(rejected, "  只是分享  ")
+
+    assertThat(source.appeals).containsExactly("r" to "只是分享")
+    val after = viewModel.state.value.posts.single()
+    assertThat(after.appealable).isFalse()
+    assertThat(after.appealState).isEqualTo(FeedMyPost.APPEAL_RECEIVED)
+    assertThat(viewModel.state.value.appealNotice).isEqualTo(AppealResult.SENT)
+  }
+
+  @Test
+  fun `a failed appeal leaves the post appealable`() {
+    val rejected = post("r", FeedMyPost.STATE_REJECTED).copy(appealable = true)
+    val source = FakeSource(mapOf(null to FeedMyPostsPage(posts = listOf(rejected))), failAppeal = true)
+    val viewModel = FeedMyPostsViewModel(source, dispatcher)
+
+    viewModel.appeal(rejected, "只是分享")
+
+    assertThat(viewModel.state.value.posts.single().appealable).isTrue()
+    assertThat(viewModel.state.value.appealNotice).isEqualTo(AppealResult.FAILED)
   }
 }

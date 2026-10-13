@@ -46,7 +46,7 @@ class FeedMyPostsScreenTest {
 
   private val posts = listOf(
     FeedMyPost(id = "p", state = FeedMyPost.STATE_PENDING, text = "周末的市集有一家卖手工皂的，味道很好闻。", createdAt = "2026-10-13T08:00:00Z"),
-    FeedMyPost(id = "r", state = FeedMyPost.STATE_REJECTED, text = "加我领福利，名额有限。", createdAt = "2026-10-12T08:00:00Z", rejectionReasons = listOf("lexicon:ad")),
+    FeedMyPost(id = "r", state = FeedMyPost.STATE_REJECTED, text = "加我领福利，名额有限。", createdAt = "2026-10-12T08:00:00Z", rejectionReasons = listOf("prohibited_words"), appealable = true),
     FeedMyPost(id = "a", kind = "article", state = FeedMyPost.STATE_PUBLISHED, title = "周末去山里住了一晚", text = "早上被鸟叫醒，比闹钟好听多了。".repeat(10))
   )
 
@@ -92,6 +92,23 @@ class FeedMyPostsScreenTest {
 
     composeTestRule.onNodeWithText("Delete").performClick()
     assertThat(deleted).containsExactly("r")
+  }
+
+  @Test
+  fun `rejected post offers an appeal`() {
+    show(FeedMyPostsState(posts = posts, loading = false, loadedOnce = true))
+
+    composeTestRule.onAllNodesWithTag(FeedMyPostsTestTags.MORE)[1].performClick()
+    composeTestRule.onNodeWithText("Appeal").assertExists()
+  }
+
+  @Test
+  fun `appeal in review is shown and not offered again`() {
+    show(FeedMyPostsState(posts = listOf(posts[1].copy(appealable = false, appealState = FeedMyPost.APPEAL_RECEIVED)), loading = false, loadedOnce = true))
+
+    composeTestRule.onNodeWithText("Appeal received. A person is reviewing it.").assertExists()
+    composeTestRule.onAllNodesWithTag(FeedMyPostsTestTags.MORE)[0].performClick()
+    composeTestRule.onNodeWithText("Appeal").assertDoesNotExist()
   }
 
   @Test

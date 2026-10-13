@@ -53,7 +53,8 @@ object SampleFeedSource : FeedSource {
       state = FeedMyPost.STATE_REJECTED,
       text = "加我领福利，名额有限。",
       createdAt = "2026-10-12T08:00:00Z",
-      rejectionReasons = listOf("lexicon:ad")
+      rejectionReasons = listOf("prohibited_words"),
+      appealable = true
     )
   )
 
@@ -174,6 +175,15 @@ object SampleFeedSource : FeedSource {
       FeedMyPost(id = card.id, kind = card.kind, state = FeedMyPost.STATE_PUBLISHED, title = card.title, text = card.text, createdAt = card.publishedAt)
     } + reviewSamples
     FeedMyPostsPage(posts = if (before == null) posts else emptyList())
+  }
+
+  override suspend fun appeal(contentId: String, text: String) {
+    synchronized(this) {
+      val index = reviewSamples.indexOfFirst { it.id == contentId }
+      if (index >= 0) {
+        reviewSamples[index] = reviewSamples[index].copy(appealable = false, appealState = FeedMyPost.APPEAL_RECEIVED)
+      }
+    }
   }
 
   /** 样例不审核：改了直接生效，标「已编辑」。 */

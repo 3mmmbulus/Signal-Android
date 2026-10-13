@@ -6653,6 +6653,16 @@
     <string name="TellomiFeedMine__rejected_because">未通過：%1$s。只有你看得到。</string>
     <string name="TellomiFeedMine__reason_wording">含有不適合公開發佈的字詞</string>
     <string name="TellomiFeedMine__reason_guidelines">不符合社區規範</string>
+    <string name="TellomiFeedMine__reason_review_unavailable">這次沒能完成審核</string>
+    <string name="TellomiFeedMine__reason_account">帳號受限</string>
+    <string name="TellomiFeedMine__appeal">申訴</string>
+    <string name="TellomiFeedMine__appeal_title">申訴這個決定？</string>
+    <string name="TellomiFeedMine__appeal_body">每則只能申訴一次。會有人工重新審核，審核前這則仍然不公開。</string>
+    <string name="TellomiFeedMine__appeal_hint">說說為什麼這則應該通過</string>
+    <string name="TellomiFeedMine__appeal_send">提交申訴</string>
+    <string name="TellomiFeedMine__appeal_sent">已提交申訴</string>
+    <string name="TellomiFeedMine__appeal_received">已收到申訴，人工複核中。</string>
+    <string name="TellomiFeedMine__appeal_upheld">申訴已複核：維持原決定。</string>
     <string name="TellomiFeedMine__delete">刪除</string>
     <string name="TellomiFeedMine__delete_title">刪除這則動態？</string>
     <string name="TellomiFeedMine__delete_body">留言、讚和投票會一起刪除，刪除後無法復原。</string>

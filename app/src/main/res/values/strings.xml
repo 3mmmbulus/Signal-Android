@@ -6871,6 +6871,16 @@
     <string name="TellomiFeedMine__rejected_because">Not approved: %1$s. Only you can see this.</string>
     <string name="TellomiFeedMine__reason_wording">contains words that can\'t be posted publicly</string>
     <string name="TellomiFeedMine__reason_guidelines">doesn\'t meet the community guidelines</string>
+    <string name="TellomiFeedMine__reason_review_unavailable">it couldn\'t be reviewed this time</string>
+    <string name="TellomiFeedMine__reason_account">your account is restricted</string>
+    <string name="TellomiFeedMine__appeal">Appeal</string>
+    <string name="TellomiFeedMine__appeal_title">Appeal this decision?</string>
+    <string name="TellomiFeedMine__appeal_body">You can appeal once. A person will review the post again; until then it stays hidden.</string>
+    <string name="TellomiFeedMine__appeal_hint">Why should this post be allowed?</string>
+    <string name="TellomiFeedMine__appeal_send">Send appeal</string>
+    <string name="TellomiFeedMine__appeal_sent">Appeal sent</string>
+    <string name="TellomiFeedMine__appeal_received">Appeal received. A person is reviewing it.</string>
+    <string name="TellomiFeedMine__appeal_upheld">Appeal reviewed: the decision stays.</string>
     <string name="TellomiFeedMine__delete">Delete</string>
     <string name="TellomiFeedMine__delete_title">Delete this post?</string>
     <string name="TellomiFeedMine__delete_body">Its comments, likes and votes are deleted too. This can\'t be undone.</string>

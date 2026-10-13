@@ -23,6 +23,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
@@ -30,6 +31,7 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -68,6 +70,7 @@ import org.signal.core.ui.R as CoreUiR
 
 object FeedMyPostsTestTags {
   const val MORE = "feed_my_posts_more"
+  const val APPEAL_TEXT = "feed_my_posts_appeal_text"
 }
 
 /**
@@ -85,6 +88,8 @@ fun FeedMyPostsScreen(
   onEdit: (FeedEditTarget) -> Unit = {},
   onEditNoticeShown: () -> Unit = {},
   onProfileClick: () -> Unit = {},
+  onAppeal: (FeedMyPost, String) -> Unit = { _, _ -> },
+  onAppealNoticeShown: () -> Unit = {},
   nowMillis: () -> Long = System::currentTimeMillis
 ) {
   val snackbarHostState = remember { SnackbarHostState() }
@@ -103,7 +108,16 @@ fun FeedMyPostsScreen(
     }
   }
 
+  val appealSent = stringResource(R.string.TellomiFeedMine__appeal_sent)
+  val appealFailed = stringResource(R.string.TellomiFeed__action_failed)
+  LaunchedEffect(state.appealNotice) {
+    val notice = state.appealNotice ?: return@LaunchedEffect
+    snackbarHostState.showSnackbar(if (notice == AppealResult.FAILED) appealFailed else appealSent)
+    onAppealNoticeShown()
+  }
+
   var confirmDelete by remember { mutableStateOf<FeedMyPost?>(null) }
+  var appealing by remember { mutableStateOf<FeedMyPost?>(null) }
 
   Scaffolds.Settings(
     title = stringResource(R.string.TellomiFeedMine__title),
@@ -137,7 +151,14 @@ fun FeedMyPostsScreen(
             textAlign = TextAlign.Center
           )
         }
-        else -> MyPostsList(state = state, onLoadMore = onLoadMore, onDeleteClick = { confirmDelete = it }, onEditClick = onEdit, nowMillis = nowMillis)
+        else -> MyPostsList(
+          state = state,
+          onLoadMore = onLoadMore,
+          onDeleteClick = { confirmDelete = it },
+          onEditClick = onEdit,
+          onAppealClick = { appealing = it },
+          nowMillis = nowMillis
+        )
       }
     }
   }
@@ -153,6 +174,49 @@ fun FeedMyPostsScreen(
       onDismiss = { confirmDelete = null }
     )
   }
+
+  appealing?.let { post ->
+    AppealDialog(
+      onSend = { text ->
+        appealing = null
+        onAppeal(post, text)
+      },
+      onDismiss = { appealing = null }
+    )
+  }
+}
+
+/** 申诉只能一次（R-2.1），所以要写理由，发之前说清楚。 */
+@Composable
+private fun AppealDialog(onSend: (String) -> Unit, onDismiss: () -> Unit) {
+  var text by remember { mutableStateOf("") }
+  AlertDialog(
+    onDismissRequest = onDismiss,
+    title = { Text(stringResource(R.string.TellomiFeedMine__appeal_title)) },
+    text = {
+      Column {
+        Text(
+          text = stringResource(R.string.TellomiFeedMine__appeal_body),
+          style = MaterialTheme.typography.bodyMedium,
+          color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+        OutlinedTextField(
+          value = text,
+          onValueChange = { text = it.take(FeedMyPost.MAX_APPEAL_CHARS) },
+          placeholder = { Text(stringResource(R.string.TellomiFeedMine__appeal_hint)) },
+          minLines = 3,
+          maxLines = 6,
+          modifier = Modifier.fillMaxWidth().padding(top = 12.dp).testTag(FeedMyPostsTestTags.APPEAL_TEXT)
+        )
+      }
+    },
+    confirmButton = {
+      TextButton(onClick = { onSend(text) }, enabled = text.isNotBlank()) { Text(stringResource(R.string.TellomiFeedMine__appeal_send)) }
+    },
+    dismissButton = {
+      TextButton(onClick = onDismiss) { Text(stringResource(android.R.string.cancel)) }
+    }
+  )
 }
 
 @Composable
@@ -161,6 +225,7 @@ private fun MyPostsList(
   onLoadMore: () -> Unit,
   onDeleteClick: (FeedMyPost) -> Unit,
   onEditClick: (FeedEditTarget) -> Unit,
+  onAppealClick: (FeedMyPost) -> Unit,
   nowMillis: () -> Long
 ) {
   val listState = rememberLazyListState()
@@ -181,7 +246,7 @@ private fun MyPostsList(
       val editTarget = remember(post, state.editWindowSeconds) {
         FeedEditTarget.of(post)?.takeIf { it.isWithinWindow(nowMillis(), state.editWindowSeconds) }
       }
-      MyPostRow(post = post, editTarget = editTarget, onDeleteClick = onDeleteClick, onEditClick = onEditClick)
+      MyPostRow(post = post, editTarget = editTarget, onDeleteClick = onDeleteClick, onEditClick = onEditClick, onAppealClick = onAppealClick)
       HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
     }
 
@@ -200,7 +265,8 @@ private fun MyPostRow(
   post: FeedMyPost,
   editTarget: FeedEditTarget?,
   onDeleteClick: (FeedMyPost) -> Unit,
-  onEditClick: (FeedEditTarget) -> Unit
+  onEditClick: (FeedEditTarget) -> Unit,
+  onAppealClick: (FeedMyPost) -> Unit
 ) {
   val context = LocalContext.current
   var menuOpen by remember { mutableStateOf(false) }
@@ -244,6 +310,15 @@ private fun MyPostRow(
               }
             )
           }
+          if (post.state == FeedMyPost.STATE_REJECTED && post.appealable && post.appealState == null) {
+            DropdownMenuItem(
+              text = { Text(stringResource(R.string.TellomiFeedMine__appeal)) },
+              onClick = {
+                menuOpen = false
+                onAppealClick(post)
+              }
+            )
+          }
           DropdownMenuItem(
             text = { Text(stringResource(R.string.TellomiFeedMine__delete)) },
             leadingIcon = { Icon(imageVector = ImageVector.vectorResource(CoreUiR.drawable.symbol_trash_24), contentDescription = null) },
@@ -284,6 +359,10 @@ private fun MyPostRow(
         val reasons = post.rejectionReasons.map { stringResource(rejectionReasonLabel(it)) }.distinct()
           .ifEmpty { listOf(stringResource(R.string.TellomiFeedMine__reason_guidelines)) }
         Note(text = stringResource(R.string.TellomiFeedMine__rejected_because, reasons.joinToString(if (Locale.getDefault().language == "zh") "、" else ", ")), isError = true)
+        when (post.appealState) {
+          FeedMyPost.APPEAL_RECEIVED -> Note(text = stringResource(R.string.TellomiFeedMine__appeal_received), isError = false)
+          FeedMyPost.APPEAL_UPHELD -> Note(text = stringResource(R.string.TellomiFeedMine__appeal_upheld), isError = false)
+        }
       }
     }
   }
@@ -334,13 +413,15 @@ private fun Centered(content: @Composable () -> Unit) {
 }
 
 /**
- * 引擎的未通过原因是规则代码（`lexicon:<类别>`、`missing:…` 等，`internal/engine/moderation`）。
- * 词表命中给一句具体的，其余一律「不符合社区规范」，不把内部规则名直接给用户看。
+ * 引擎给作者的未通过原因是固定代码，文案由客户端定（引擎 `docs/api.md`「自己的帖子」）；不认识的代码按「不符合社区规范」显示。
+ * 旧版引擎给的是规则代码（`lexicon:<类别>`），也认一下。
  */
 @StringRes
 internal fun rejectionReasonLabel(code: String): Int {
   return when (code.substringBefore(':')) {
-    "lexicon" -> R.string.TellomiFeedMine__reason_wording
+    "prohibited_words", "lexicon" -> R.string.TellomiFeedMine__reason_wording
+    "review_unavailable" -> R.string.TellomiFeedMine__reason_review_unavailable
+    "account_restricted" -> R.string.TellomiFeedMine__reason_account
     else -> R.string.TellomiFeedMine__reason_guidelines
   }
 }

@@ -175,6 +175,13 @@ class FeedApi(
     return send(Request.Builder().url(url("v1/feed/me/profile")).put(body), FeedMyProfile.serializer())
   }
 
+  /** 对未通过的帖子申诉一次（202）。409 `not_rejected` / `already_appealed`，400 `invalid_text`。 */
+  suspend fun appeal(contentId: String, text: String) {
+    val url = url("v1/feed/posts").newBuilder().addPathSegment(contentId).addPathSegment("appeal").build()
+    val body = FeedJson.encodeToString(FeedAppealRequest.serializer(), FeedAppealRequest(text)).toRequestBody(JSON)
+    sendNoContent(Request.Builder().url(url).post(body))
+  }
+
   /** 删自己的帖子（204）。别人的帖子引擎回 404。 */
   suspend fun deletePost(contentId: String) {
     val url = url("v1/feed/posts").newBuilder().addPathSegment(contentId).build()

@@ -19,6 +19,7 @@ import kotlinx.coroutines.withContext
 import org.signal.core.util.logging.Log
 import org.thoughtcrime.securesms.feed.FeedSource
 import org.thoughtcrime.securesms.feed.FeedSources
+import org.thoughtcrime.securesms.feed.net.FeedApiException
 import org.thoughtcrime.securesms.feed.net.FeedMyPost
 
 /**
@@ -111,6 +112,36 @@ class FeedMyPostsViewModel(
     }
   }
 
+  /** 申诉一次（第三节第 24 条）。成功或引擎说已经申诉过，都把这条标成「复核中」。 */
+  fun appeal(post: FeedMyPost, text: String) {
+    if (text.isBlank() || internalState.value.appealing) return
+    internalState.update { it.copy(appealing = true) }
+    viewModelScope.launch {
+      val result = try {
+        withContext(ioDispatcher) { source.appeal(post.id, text.trim().take(FeedMyPost.MAX_APPEAL_CHARS)) }
+        AppealResult.SENT
+      } catch (e: FeedApiException) {
+        Log.w(TAG, "appeal rejected: ${e.status} ${e.code}")
+        if (e.code == "already_appealed") AppealResult.ALREADY else AppealResult.FAILED
+      } catch (e: Exception) {
+        Log.w(TAG, "appeal failed", e)
+        AppealResult.FAILED
+      }
+      internalState.update { state ->
+        val posts = if (result == AppealResult.FAILED) {
+          state.posts
+        } else {
+          state.posts.map { if (it.id == post.id) it.copy(appealable = false, appealState = FeedMyPost.APPEAL_RECEIVED) else it }
+        }
+        state.copy(posts = posts, appealing = false, appealNotice = result)
+      }
+    }
+  }
+
+  fun onAppealNoticeShown() {
+    internalState.update { it.copy(appealNotice = null) }
+  }
+
   fun onDeleteFailureShown() {
     internalState.update { it.copy(deleteFailed = false) }
   }
@@ -128,5 +159,14 @@ data class FeedMyPostsState(
   /** 发布后多久内能改（config `limits.edit_window_seconds`）。 */
   val editWindowSeconds: Long = 900,
   /** 刚保存的编辑，服务端给的 `state`；提示过就清掉。 */
-  val editNotice: String? = null
+  val editNotice: String? = null,
+  val appealing: Boolean = false,
+  /** 刚发的申诉结果；提示过就清掉。 */
+  val appealNotice: AppealResult? = null
 )
+
+enum class AppealResult {
+  SENT,
+  ALREADY,
+  FAILED
+}
