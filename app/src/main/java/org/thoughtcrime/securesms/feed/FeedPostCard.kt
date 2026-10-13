@@ -91,7 +91,9 @@ fun FeedPostCard(
   /** 点卡片 / 评论按钮进详情；详情页里自己是 null。 */
   onOpen: ((FeedCard) -> Unit)? = null,
   /** 详情页：长文不截断。 */
-  expanded: Boolean = false
+  expanded: Boolean = false,
+  /** 别人的帖子：「···」里的举报（第三节第 32 条）。 */
+  onReportClick: ((FeedCard) -> Unit)? = null
 ) {
   Column(
     modifier = modifier
@@ -110,7 +112,8 @@ fun FeedPostCard(
           showIpRegion = showIpRegion,
           onNotInterestedClick = onNotInterestedClick,
           onEditClick = onEditClick,
-          onDeleteClick = onDeleteClick
+          onDeleteClick = onDeleteClick,
+          onReportClick = onReportClick
         )
 
         val title = card.title
@@ -194,7 +197,8 @@ private fun FeedPostHeader(
   showIpRegion: Boolean,
   onNotInterestedClick: ((FeedCard) -> Unit)?,
   onEditClick: ((FeedCard) -> Unit)?,
-  onDeleteClick: ((FeedCard) -> Unit)?
+  onDeleteClick: ((FeedCard) -> Unit)?,
+  onReportClick: ((FeedCard) -> Unit)?
 ) {
   val context = LocalContext.current
   val author = card.author
@@ -237,7 +241,7 @@ private fun FeedPostHeader(
     }
 
     val isAuthor = card.viewer.isAuthor
-    if ((!isAuthor && onNotInterestedClick != null) || (isAuthor && (onEditClick != null || onDeleteClick != null))) {
+    if ((!isAuthor && (onNotInterestedClick != null || onReportClick != null)) || (isAuthor && (onEditClick != null || onDeleteClick != null))) {
       Box {
         val moreLabel = stringResource(R.string.TellomiFeed__more)
         Icon(
@@ -271,14 +275,25 @@ private fun FeedPostHeader(
                 }
               )
             }
-          } else if (onNotInterestedClick != null) {
-            DropdownMenuItem(
-              text = { Text(stringResource(R.string.TellomiFeed__not_interested)) },
-              onClick = {
-                menuOpen = false
-                onNotInterestedClick(card)
-              }
-            )
+          } else {
+            if (onNotInterestedClick != null) {
+              DropdownMenuItem(
+                text = { Text(stringResource(R.string.TellomiFeed__not_interested)) },
+                onClick = {
+                  menuOpen = false
+                  onNotInterestedClick(card)
+                }
+              )
+            }
+            if (onReportClick != null) {
+              DropdownMenuItem(
+                text = { Text(stringResource(R.string.TellomiFeedReport__title)) },
+                onClick = {
+                  menuOpen = false
+                  onReportClick(card)
+                }
+              )
+            }
           }
         }
       }

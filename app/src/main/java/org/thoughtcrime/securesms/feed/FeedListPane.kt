@@ -88,6 +88,8 @@ import org.thoughtcrime.securesms.feed.mine.FeedMyPostsActivity
 import org.thoughtcrime.securesms.feed.net.FeedCard
 import org.thoughtcrime.securesms.feed.net.FeedCreatePostResponse
 import org.thoughtcrime.securesms.feed.net.FeedLimits
+import org.thoughtcrime.securesms.feed.report.FeedReportActivity
+import org.thoughtcrime.securesms.feed.report.FeedReportTarget
 import org.signal.core.ui.R as CoreUiR
 
 private val TOP_BAR_HEIGHT = 48.dp
@@ -158,6 +160,26 @@ fun FeedListPane(
 
   var confirmDelete by remember { mutableStateOf<FeedCard?>(null) }
 
+  // 举报页里选了「只是不想看到」就按不感兴趣处理（第三节第 32 条先分流）
+  var reporting by remember { mutableStateOf<FeedCard?>(null) }
+  val reportedMessage = stringResource(R.string.TellomiFeedReport__sent)
+  var reportSent by remember { mutableStateOf(false) }
+  val reportLauncher = rememberLauncherForActivityResult(FeedReportActivity.Contract()) { result ->
+    val card = reporting
+    reporting = null
+    when (result) {
+      FeedReportActivity.Result.NOT_INTERESTED -> if (card != null) viewModel.notInterested(card)
+      FeedReportActivity.Result.SENT -> reportSent = true
+      null -> Unit
+    }
+  }
+  LaunchedEffect(reportSent) {
+    if (reportSent) {
+      snackbarHostState.showSnackbar(reportedMessage)
+      reportSent = false
+    }
+  }
+
   // 退到后台或离开动态标签：停掉曝光计时，发掉攒着的事件（契约 6.1）
   LifecycleEventEffect(Lifecycle.Event.ON_STOP) { viewModel.onFeedHidden() }
   DisposableEffect(viewModel) { onDispose { viewModel.onFeedHidden() } }
@@ -175,6 +197,10 @@ fun FeedListPane(
       onEditClick = { target -> editLauncher.launch(target) },
       onDeleteClick = { confirmDelete = it },
       onOpenClick = { context.startActivity(FeedPostDetailActivity.intent(context, it)) },
+      onReportClick = { card ->
+        reporting = card
+        reportLauncher.launch(FeedReportTarget.content(card.id))
+      },
       modifier = Modifier.fillMaxSize()
     )
 
@@ -223,7 +249,8 @@ private fun FeedPager(
   modifier: Modifier = Modifier,
   onEditClick: (FeedEditTarget) -> Unit = {},
   onDeleteClick: (FeedCard) -> Unit = {},
-  onOpenClick: (FeedCard) -> Unit = {}
+  onOpenClick: (FeedCard) -> Unit = {},
+  onReportClick: (FeedCard) -> Unit = {}
 ) {
   val tabs = state.tabs
   val pagerState = rememberPagerState(pageCount = { tabs.size })
@@ -261,7 +288,8 @@ private fun FeedPager(
         onNotInterestedClick = onNotInterestedClick,
         isCurrentPage = pagerState.currentPage == page,
         onCardsVisible = { onCardsVisible(tab, it) },
-        onOpenClick = onOpenClick
+        onOpenClick = onOpenClick,
+        onReportClick = onReportClick
       )
     }
   }
@@ -283,7 +311,8 @@ private fun FeedTimeline(
   onNotInterestedClick: (FeedCard) -> Unit,
   isCurrentPage: Boolean,
   onCardsVisible: (Set<String>) -> Unit,
-  onOpenClick: (FeedCard) -> Unit = {}
+  onOpenClick: (FeedCard) -> Unit = {},
+  onReportClick: (FeedCard) -> Unit = {}
 ) {
   val listState = rememberLazyListState()
 
@@ -340,7 +369,8 @@ private fun FeedTimeline(
             mediaBaseUrl = mediaBaseUrl,
             onEditClick = editTarget?.let { target -> { onEditClick(target) } },
             onDeleteClick = if (card.viewer.isAuthor) onDeleteClick else null,
-            onOpen = onOpenClick
+            onOpen = onOpenClick,
+            onReportClick = if (card.viewer.isAuthor) null else onReportClick
           )
           HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
         }

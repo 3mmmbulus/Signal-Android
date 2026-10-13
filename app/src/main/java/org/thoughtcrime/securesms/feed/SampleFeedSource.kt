@@ -5,6 +5,7 @@
 
 package org.thoughtcrime.securesms.feed
 
+import android.net.Uri
 import org.signal.core.util.logging.Log
 import org.thoughtcrime.securesms.feed.compose.FeedDraft
 import org.thoughtcrime.securesms.feed.compose.FeedDraftKind
@@ -20,6 +21,7 @@ import org.thoughtcrime.securesms.feed.net.FeedMyPost
 import org.thoughtcrime.securesms.feed.net.FeedMyPostsPage
 import org.thoughtcrime.securesms.feed.net.FeedMyProfile
 import org.thoughtcrime.securesms.feed.net.FeedProfileUpdate
+import org.thoughtcrime.securesms.feed.net.FeedReportRequest
 import org.thoughtcrime.securesms.feed.net.FeedStats
 import org.thoughtcrime.securesms.feed.net.FeedTimelinePage
 import org.thoughtcrime.securesms.feed.net.FeedTopic
@@ -184,6 +186,14 @@ object SampleFeedSource : FeedSource {
         reviewSamples[index] = reviewSamples[index].copy(appealable = false, appealState = FeedMyPost.APPEAL_RECEIVED)
       }
     }
+  }
+
+  /** 样例：不真传，给个假 key。 */
+  override suspend fun uploadImage(uri: Uri): String = "m/sample-${uri.hashCode()}"
+
+  /** 样例：举报只记日志。 */
+  override suspend fun report(request: FeedReportRequest) {
+    Log.i(TAG, "sample report ${request.targetType} ${request.group}/${request.reason}")
   }
 
   /** 样例不审核：改了直接生效，标「已编辑」。 */

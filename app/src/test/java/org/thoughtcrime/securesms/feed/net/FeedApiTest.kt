@@ -373,4 +373,22 @@ class FeedApiTest {
     val post = FeedJson.decodeFromString(FeedMyPost.serializer(), """{"id":"p","state":"rejected","rejection_reasons":["prohibited_words"],"appealable":false,"appeal_state":"received"}""")
     assertThat(post.appealState).isEqualTo(FeedMyPost.APPEAL_RECEIVED)
   }
+
+  @Test
+  fun `report posts the target and reason, leaving out empty fields`() = runBlocking {
+    server.enqueue(MockResponse().setResponseCode(202))
+
+    api.report(FeedReportRequest(targetType = "content", targetId = "p1", group = "illegal", reason = "fraud", evidenceKeys = listOf("m/a")))
+
+    val request = server.takeRequest()
+    assertThat(request.path).isEqualTo("/v1/feed/reports")
+    assertThat(request.body.readUtf8()).isEqualTo("""{"target_type":"content","target_id":"p1","group":"illegal","reason":"fraud","evidence_keys":["m/a"]}""")
+  }
+
+  @Test
+  fun `config reads the report reasons`() {
+    val config = FeedJson.decodeFromString(FeedConfig.serializer(), """{"enabled":true,"report_reasons":{"illegal":["fraud","drugs"]}}""")
+
+    assertThat(config.reportReasons).isEqualTo(mapOf("illegal" to listOf("fraud", "drugs")))
+  }
 }

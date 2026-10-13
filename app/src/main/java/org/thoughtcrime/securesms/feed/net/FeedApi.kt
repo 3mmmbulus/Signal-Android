@@ -211,6 +211,15 @@ class FeedApi(
     return execute(builder) { it.header("Upload-Offset")?.toLongOrNull() ?: 0L }
   }
 
+  /**
+   * 举报（202）。同一个人对同一对象再报还是同一条。400 `invalid_reason` / `evidence_required` / `relationship_required`，
+   * 看不到的内容 404。
+   */
+  suspend fun report(request: FeedReportRequest) {
+    val body = FeedJson.encodeToString(FeedReportRequest.serializer(), request).toRequestBody(JSON)
+    sendNoContent(Request.Builder().url(url("v1/feed/reports")).post(body))
+  }
+
   /** 删自己的帖子（204）。别人的帖子引擎回 404。 */
   suspend fun deletePost(contentId: String) {
     val url = url("v1/feed/posts").newBuilder().addPathSegment(contentId).build()

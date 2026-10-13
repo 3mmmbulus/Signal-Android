@@ -33,7 +33,9 @@ data class FeedConfig(
   @SerialName("media_base_url") val mediaBaseUrl: String? = null,
   @SerialName("card_ttl_seconds") val cardTtlSeconds: Long = 600,
   val limits: FeedLimits = FeedLimits(),
-  @SerialName("minor_mode") val minorMode: Boolean = false
+  @SerialName("minor_mode") val minorMode: Boolean = false,
+  /** 举报原因表，按组（第三节第 32 条）；文案客户端定。 */
+  @SerialName("report_reasons") val reportReasons: Map<String, List<String>> = emptyMap()
 ) {
   companion object {
     /** 大陆算法备案之前：编辑精选 + 时间顺序（`dynamic-feed.md` R-1.5）。 */
@@ -406,3 +408,20 @@ data class FeedAppealRequest(val text: String)
 /** `POST /v1/feed/media/uploads` 的回包：[key] 发帖时放进 `media_keys`。 */
 @Serializable
 data class FeedUploadStart(val id: String, val key: String)
+
+/** `POST /v1/feed/reports`（第三节第 32 条）。[targetType] 是 `content` 或 `author`。 */
+@Serializable
+data class FeedReportRequest(
+  @SerialName("target_type") val targetType: String,
+  @SerialName("target_id") val targetId: String,
+  val group: String,
+  val reason: String,
+  val detail: String? = null,
+  @SerialName("evidence_keys") val evidenceKeys: List<String>? = null,
+  val relationship: String? = null
+) {
+  companion object {
+    const val TARGET_CONTENT = "content"
+    const val TARGET_AUTHOR = "author"
+  }
+}

@@ -29,6 +29,7 @@ import org.thoughtcrime.securesms.feed.net.FeedItemRef
 import org.thoughtcrime.securesms.feed.net.FeedMyPostsPage
 import org.thoughtcrime.securesms.feed.net.FeedMyProfile
 import org.thoughtcrime.securesms.feed.net.FeedProfileUpdate
+import org.thoughtcrime.securesms.feed.net.FeedReportRequest
 import org.thoughtcrime.securesms.feed.net.FeedTimelinePage
 import org.thoughtcrime.securesms.region.TellomiRegionProfile
 import org.thoughtcrime.securesms.region.TellomiRegions
@@ -59,6 +60,11 @@ interface FeedSource {
 
   /** 未通过的帖子申诉一次，进人工复核。 */
   suspend fun appeal(contentId: String, text: String)
+
+  /** 传一张图（举报截图等），返回 media key。 */
+  suspend fun uploadImage(uri: Uri): String
+
+  suspend fun report(request: FeedReportRequest)
 
   /** 改正文 / 长文标题（发布后 15 分钟内）。 */
   suspend fun editPost(contentId: String, draft: FeedDraft): FeedCreatePostResponse
@@ -138,6 +144,13 @@ class RemoteFeedSource(
 
   override suspend fun appeal(contentId: String, text: String) = api.appeal(contentId, text.trim())
 
+  override suspend fun uploadImage(uri: Uri): String {
+    val bytes = withContext(Dispatchers.IO) { readImage(uri) }
+    return uploader.upload(bytes)
+  }
+
+  override suspend fun report(request: FeedReportRequest) = api.report(request)
+
   override suspend fun saveProfile(update: FeedProfileUpdate): FeedMyProfile = api.saveProfile(update)
 
   override suspend fun publish(draft: FeedDraft, clientNonce: String): FeedCreatePostResponse {
@@ -206,6 +219,8 @@ object EmptyFeedSource : FeedSource {
   override suspend fun postComment(postId: String, text: String, parentId: String?): String = throw IllegalStateException("feed is not available")
   override suspend fun myProfile(): FeedMyProfile? = null
   override suspend fun appeal(contentId: String, text: String) = throw IllegalStateException("feed is not available")
+  override suspend fun uploadImage(uri: Uri): String = throw IllegalStateException("feed is not available")
+  override suspend fun report(request: FeedReportRequest) = throw IllegalStateException("feed is not available")
   override suspend fun saveProfile(update: FeedProfileUpdate): FeedMyProfile = throw IllegalStateException("feed is not available")
 }
 
