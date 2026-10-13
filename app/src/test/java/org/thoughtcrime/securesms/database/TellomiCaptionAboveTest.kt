@@ -61,6 +61,21 @@ class TellomiCaptionAboveTest {
     assertThat(no).isNull()
   }
 
+  /** ADR-0075: the caption for the whole message is kept with it; an empty one is none. */
+  @Test
+  fun `the message caption on a received message is kept`() {
+    val captioned = TellomiCaptionAbove.extrasFrom(DataMessage(body = "Trip\nSunset", tellomi = TellomiDataMessage(messageCaption = "Trip")))
+    val both = TellomiCaptionAbove.extrasFrom(DataMessage(body = "Trip", tellomi = TellomiDataMessage(captionAboveMedia = true, messageCaption = "Trip")))
+    val empty = TellomiCaptionAbove.extrasFrom(DataMessage(body = "Sunset", tellomi = TellomiDataMessage(messageCaption = "")))
+
+    assertThat(TellomiCaptionAbove.messageCaption(captioned)).isEqualTo("Trip")
+    assertThat(TellomiCaptionAbove.isCaptionAboveMedia(captioned)).isFalse()
+    assertThat(TellomiCaptionAbove.messageCaption(both)).isEqualTo("Trip")
+    assertThat(TellomiCaptionAbove.isCaptionAboveMedia(both)).isTrue()
+    assertThat(empty).isNull()
+    assertThat(TellomiCaptionAbove.messageCaption(null)).isNull()
+  }
+
   @Test
   fun `a received message keeps it in its extras`() {
     val threadId = SignalDatabase.threads.getOrCreateThreadIdFor(Recipient.resolved(recipients.createRecipient("Some Contact")))

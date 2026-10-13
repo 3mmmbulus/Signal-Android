@@ -547,6 +547,8 @@ message MessageExtras {
 message TellomiMessageExtras {
     // 说明文字画在媒体上方（默认下方）。只在「有正文 + 至少一个按媒体显示的图片 / 视频」时生效。
     bool captionAboveMedia = 1;
+    // ADR-0075：输入框里写的那一条说明（整条消息的）。逐张说明记在各附件的 caption 上；body 是兼容文本。
+    string messageCaption = 2;
 }
 
 message GV2UpdateDescription {

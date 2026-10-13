@@ -111,6 +111,27 @@ class TellomiAttachmentPointerTest {
     assertEquals("image/heic", received.contentType)
   }
 
+  /** ADR-0075: per-media caption = `TellomiAttachment.caption = 4`, message caption = `TellomiDataMessage.messageCaption = 2`. */
+  @Test
+  fun `per-media captions, golden bytes shared by the three clients`() {
+    // TellomiAttachment{caption = "a"} = 22 01 61
+    assertEquals("ca3e03220161", AttachmentPointer(tellomi = TellomiAttachment(caption = "a")).encode().toByteString().hex())
+    // TellomiDataMessage{messageCaption = "a"} = 12 01 61
+    assertEquals("c23e03120161", DataMessage(tellomi = TellomiDataMessage(messageCaption = "a")).encode().toByteString().hex())
+  }
+
+  @Test
+  fun `the per-media caption is kept where upstream keeps an attachment's caption, ahead of the legacy one`() {
+    assertEquals("Sunset", AttachmentPointerUtil.createSignalAttachmentPointer(pointer(TellomiAttachment(caption = "Sunset"))).caption.orElse(null))
+    assertEquals(
+      "Sunset",
+      AttachmentPointerUtil.createSignalAttachmentPointer(pointer(TellomiAttachment(caption = "Sunset")).copy(caption = "legacy")).caption.orElse(null)
+    )
+    // An empty one doesn't hide the legacy one; none at all is none
+    assertEquals("legacy", AttachmentPointerUtil.createSignalAttachmentPointer(pointer(TellomiAttachment(caption = "")).copy(caption = "legacy")).caption.orElse(null))
+    assertFalse(AttachmentPointerUtil.createSignalAttachmentPointer(pointer(null)).caption.isPresent)
+  }
+
   private fun live(tellomi: TellomiAttachment?, contentType: String?): Boolean {
     return AttachmentPointerUtil.createSignalAttachmentPointer(pointer(tellomi).copy(contentType = contentType)).tellomiLivePhotoVideo != null
   }

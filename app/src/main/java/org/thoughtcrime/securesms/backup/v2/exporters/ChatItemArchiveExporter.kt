@@ -1218,7 +1218,10 @@ private fun BackupMessageRecord.toRemoteStandardMessage(exportState: ExportState
     longText = longTextAttachment?.toRemoteFilePointer(backupMode = exportState.backupMode),
     reactions = reactionRecords.toRemote(exportState),
     // Tellomi (ADR-0068 §4.7)
-    tellomi = TellomiStandardMessage(captionAboveMedia = true).takeIf { TellomiCaptionAbove.isCaptionAboveMedia(this.messageExtras) }
+    tellomi = TellomiStandardMessage(
+      captionAboveMedia = TellomiCaptionAbove.isCaptionAboveMedia(this.messageExtras),
+      messageCaption = TellomiCaptionAbove.messageCaption(this.messageExtras) ?: ""
+    ).takeIf { it.captionAboveMedia || it.messageCaption.isNotEmpty() }
   )
 }
 

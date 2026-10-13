@@ -870,8 +870,11 @@ class ChatItemArchiveImporter(
       this.addQuote(quote)
     }
 
-    // Tellomi (ADR-0068 §4.7)
-    TellomiCaptionAbove.extras(standardMessage.tellomi?.captionAboveMedia == true)?.let {
+    // Tellomi (ADR-0068 §4.7, ADR-0075)
+    TellomiCaptionAbove.extras(
+      captionAboveMedia = standardMessage.tellomi?.captionAboveMedia == true,
+      messageCaption = standardMessage.tellomi?.messageCaption
+    )?.let {
       this.put(MessageTable.MESSAGE_EXTRAS, it.encode())
     }
   }

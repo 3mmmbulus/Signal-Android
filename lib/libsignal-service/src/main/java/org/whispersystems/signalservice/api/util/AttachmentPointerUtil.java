@@ -41,13 +41,24 @@ public final class AttachmentPointerUtil {
                                               ((pointer.flags != null ? pointer.flags : 0) & AttachmentPointer.Flags.VOICE_MESSAGE.getValue()) != 0,
                                               ((pointer.flags != null ? pointer.flags : 0) & AttachmentPointer.Flags.BORDERLESS.getValue()) != 0,
                                               ((pointer.flags != null ? pointer.flags : 0) & AttachmentPointer.Flags.GIF.getValue()) != 0,
-                                              pointer.caption != null && !pointer.caption.isEmpty() ? Optional.of(pointer.caption) : Optional.empty(),
+                                              caption(pointer),
                                               pointer.blurHash != null ? Optional.of(pointer.blurHash) : Optional.empty(),
                                               pointer.uploadTimestamp != null ? pointer.uploadTimestamp : 0,
                                               UuidUtil.fromByteStringOrNull(pointer.clientUuid),
                                               isTellomiAsFile(pointer),
                                               isTellomiSpoiler(pointer),
                                               tellomiLivePhotoVideo(pointer));
+  }
+
+  /**
+   * The attachment's own caption: Tellomi's per-media caption (ADR-0075, `tellomi.caption`) first, then upstream's legacy
+   * `caption`. Kept where upstream keeps per-attachment captions, so the viewer shows it.
+   */
+  private static Optional<String> caption(AttachmentPointer pointer) {
+    if (pointer.tellomi != null && pointer.tellomi.caption != null && !pointer.tellomi.caption.isEmpty()) {
+      return Optional.of(pointer.tellomi.caption);
+    }
+    return pointer.caption != null && !pointer.caption.isEmpty() ? Optional.of(pointer.caption) : Optional.empty();
   }
 
   /** Tellomi (ADR-0068 §4.1 rule 1): drawn as a file row whatever the content type. */
