@@ -6959,6 +6959,7 @@
     <string name="TellomiFeedCompose__edit_article">Edit article</string>
     <string name="TellomiFeedCompose__save">Save</string>
     <string name="TellomiFeedCompose__edit_window_closed">It\'s been more than 15 minutes since you posted, so this can\'t be edited.</string>
+    <string name="TellomiFeedCompose__quote_unavailable">The post you\'re quoting is no longer available, so the quote was removed. You can still post your text.</string>
     <string name="TellomiFeedCompose__edit_saved">Saved</string>
     <string name="TellomiFeedCompose__edit_saved_pending">Saved. Others will see the new version once it\'s reviewed.</string>
     <string name="TellomiFeedMine__edit">Edit</string>

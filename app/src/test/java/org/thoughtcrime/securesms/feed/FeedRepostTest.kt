@@ -41,13 +41,16 @@ import org.robolectric.annotation.GraphicsMode
 import org.signal.core.ui.CoreUiDependenciesRule
 import org.signal.core.ui.compose.theme.SignalTheme
 import org.thoughtcrime.securesms.feed.compose.FeedComposeViewModel
+import org.thoughtcrime.securesms.feed.compose.FeedDraft
 import org.thoughtcrime.securesms.feed.compose.FeedDraftKind
 import org.thoughtcrime.securesms.feed.compose.FeedQuoteTarget
 import org.thoughtcrime.securesms.feed.detail.FeedPostDetailState
 import org.thoughtcrime.securesms.feed.detail.FeedPostDetailViewModel
 import org.thoughtcrime.securesms.feed.net.FeedApi
+import org.thoughtcrime.securesms.feed.net.FeedApiException
 import org.thoughtcrime.securesms.feed.net.FeedAuthor
 import org.thoughtcrime.securesms.feed.net.FeedCard
+import org.thoughtcrime.securesms.feed.net.FeedCreatePostResponse
 import org.thoughtcrime.securesms.feed.net.FeedEntry
 import org.thoughtcrime.securesms.feed.net.FeedProfilePage
 import org.thoughtcrime.securesms.feed.net.FeedProfilePostsPage
@@ -214,6 +217,22 @@ class FeedRepostTest {
     assertThat(search.state.value.notice).isEqualTo(FeedSearchState.Notice.FAILED)
 
     assertThat(fake.calls).containsExactly("c1 true", "c1 true", "c1 true")
+  }
+
+  @Test
+  fun `a quote that went away is dropped and the text kept`() {
+    val gone = object : FeedSource by EmptyFeedSource {
+      override suspend fun publish(draft: FeedDraft, clientNonce: String): FeedCreatePostResponse = throw FeedApiException(400, "quote_unavailable")
+    }
+    val viewModel = FeedComposeViewModel(quoteTarget = FeedQuoteTarget.of(card), source = gone, ioDispatcher = dispatcher)
+    viewModel.onTextChanged("同感")
+
+    viewModel.publish()
+
+    assertThat(viewModel.state.value.quoteUnavailable).isTrue()
+    assertThat(viewModel.state.value.failed).isFalse()
+    assertThat(viewModel.state.value.draft.quote).isNull()
+    assertThat(viewModel.state.value.draft.text).isEqualTo("同感")
   }
 
   @Test

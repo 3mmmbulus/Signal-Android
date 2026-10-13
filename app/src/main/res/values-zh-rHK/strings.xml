@@ -6740,6 +6740,7 @@
     <string name="TellomiFeedCompose__edit_article">編輯長文</string>
     <string name="TellomiFeedCompose__save">儲存</string>
     <string name="TellomiFeedCompose__edit_window_closed">發佈已超過 15 分鐘，不能再修改</string>
+    <string name="TellomiFeedCompose__quote_unavailable">引用的動態已不可見，已移除引用，正文可以直接發佈</string>
     <string name="TellomiFeedCompose__edit_saved">已儲存</string>
     <string name="TellomiFeedCompose__edit_saved_pending">已儲存，審核通過後其他人會看到新版本</string>
     <string name="TellomiFeedMine__edit">編輯</string>

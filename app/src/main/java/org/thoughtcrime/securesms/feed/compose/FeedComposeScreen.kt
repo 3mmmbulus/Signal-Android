@@ -143,9 +143,16 @@ fun FeedComposeScreen(
   }
 
   val windowClosedMessage = stringResource(R.string.TellomiFeedCompose__edit_window_closed)
-  LaunchedEffect(state.failed, state.editWindowClosed) {
-    if (state.failed || state.editWindowClosed) {
-      snackbarHostState.showSnackbar(if (state.editWindowClosed) windowClosedMessage else failedMessage)
+  val quoteGoneMessage = stringResource(R.string.TellomiFeedCompose__quote_unavailable)
+  LaunchedEffect(state.failed, state.editWindowClosed, state.quoteUnavailable) {
+    if (state.failed || state.editWindowClosed || state.quoteUnavailable) {
+      snackbarHostState.showSnackbar(
+        when {
+          state.editWindowClosed -> windowClosedMessage
+          state.quoteUnavailable -> quoteGoneMessage
+          else -> failedMessage
+        }
+      )
       onFailureShown()
     }
   }
