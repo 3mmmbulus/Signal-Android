@@ -442,6 +442,7 @@ internal fun MediaEditScreen(
         AddAMessageRow(
           enabled = !isInteracting && !state.isSending,
           canScheduleSend = !state.isStory,
+          captionAboveMedia = state.captionAboveMediaOption,
           viewOnceAvailable = state.isViewOnceAvailable,
           viewOnce = state.isViewOnceEnabled,
           isReply = state.isReply,

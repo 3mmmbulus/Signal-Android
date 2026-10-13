@@ -35,6 +35,9 @@ sealed interface MediaEditScreenEvents {
   data object TakeMore : MediaEditScreenEvents
   data class SetMediaQuality(val quality: SentMediaQuality) : MediaEditScreenEvents
   data object ToggleViewOnce : MediaEditScreenEvents
+
+  /** Tellomi（#1263，ADR-0068 §4.7）：长按发送里的「说明文字上移 / 下移」。 */
+  data object ToggleCaptionAboveMedia : MediaEditScreenEvents
   data class BrushWidthChanged(val tool: BrushTool, val fraction: Float) : MediaEditScreenEvents
   data class ToggleBlurFaces(val enabled: Boolean) : MediaEditScreenEvents
   data object SaveMedia : MediaEditScreenEvents

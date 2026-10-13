@@ -69,6 +69,9 @@ val LocalAddAMessageRowTextField = compositionLocalOf<@Composable (CharSequence,
  * @param recipientChatColor The chat color of the single recipient this media is headed to, or null when the destination
  *   is still to be chosen. Non-null makes the trailing button a chat-color-tinted send button rather than a themed
  *   "next" arrow.
+ * @param captionAboveMedia Tellomi（tellomi/tellomi#1263，ADR-0068 §4.7 P3）：长按发送菜单顶上的「说明文字上移 / 下移」；
+ *   null = 不给，true = 说明现在在上方（显示「下移」）。照 Telegram 两端长按发送菜单的第一项（iOS
+ *   `ChatSendMessageContextScreen` 的 captionPosition、安卓 `ChatAttachAlert` 的 CaptionAbove / CaptionBelow 开关），点了菜单不收。
  */
 @Composable
 fun AddAMessageRow(
@@ -82,7 +85,8 @@ fun AddAMessageRow(
   viewOnceAvailable: Boolean = false,
   viewOnce: Boolean = false,
   isReply: Boolean = false,
-  recipientChatColor: Color? = null
+  recipientChatColor: Color? = null,
+  captionAboveMedia: Boolean? = null
 ) {
   Row(
     horizontalArrangement = Arrangement.Center,
@@ -156,7 +160,7 @@ fun AddAMessageRow(
         enabled = sendEnabled,
         onClick = onNextClick,
         size = NextButtonSize,
-        onLongClick = if (canScheduleSend) scheduleSendMenuController::show else null,
+        onLongClick = if (canScheduleSend || captionAboveMedia != null) scheduleSendMenuController::show else null,
         onLongClickLabel = stringResource(R.string.AddAMessageRow__schedule_send),
         colors = IconButtons.iconButtonColors(
           containerColor = nextButtonColor,
@@ -176,7 +180,10 @@ fun AddAMessageRow(
 
       ScheduleSendMenu(
         controller = scheduleSendMenuController,
-        onOptionClick = { onEvent(MediaEditScreenEvents.ScheduleSendClick(it)) }
+        onOptionClick = { onEvent(MediaEditScreenEvents.ScheduleSendClick(it)) },
+        showScheduleOptions = canScheduleSend,
+        captionAboveMedia = captionAboveMedia,
+        onToggleCaptionPosition = { onEvent(MediaEditScreenEvents.ToggleCaptionAboveMedia) }
       )
     }
   }

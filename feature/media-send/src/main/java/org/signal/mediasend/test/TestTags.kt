@@ -70,6 +70,9 @@ object TestTags {
   const val FILES_GALLERY_CANCEL = "files_gallery_cancel"
   const val FILES_GALLERY_SEND = "files_gallery_send"
   fun filesGalleryTile(uri: String): String = "files_gallery_tile_$uri"
+
+  // Tellomi (tellomi/tellomi#1263, ADR-0068 §4.7 P3): the caption position item at the top of the long-press send menu.
+  const val SEND_MENU_CAPTION_POSITION = "send_menu_caption_position"
   fun filesGalleryCheck(uri: String): String = "files_gallery_check_$uri"
   const val FILES_GALLERY_PREVIEW = "files_gallery_preview"
   const val FILES_GALLERY_PREVIEW_BACK = "files_gallery_preview_back"

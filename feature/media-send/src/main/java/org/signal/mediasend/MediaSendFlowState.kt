@@ -183,6 +183,20 @@ data class MediaSendFlowState(
     get() = isViewOnceAvailable && viewOnceToggleState == ViewOnceToggleState.ONCE
 
   /**
+   * Tellomi（tellomi/tellomi#1263）：发给已知的单个会话、由会话页来发（不是故事、不用先选联系人）。「单独发送」「以文件发送」
+   * 「说明文字上移 / 下移」都只在这时候有（拆条 / 文件 / 说明位置标记都由会话页带进消息）。
+   */
+  val isSentByConversation: Boolean
+    get() = recipientId != null && !isStory && !isContactSelectionRequired && mode == MediaSendFlowActivityContract.Mode.SingleRecipient
+
+  /**
+   * Tellomi（#1263，ADR-0068 §4.7）：「说明文字上移 / 下移」现在给不给（「···」和长按发送里同一个条件）：写了说明、
+   * 由会话页发、不是一次性查看。
+   */
+  val canMoveCaption: Boolean
+    get() = isSentByConversation && !message.isNullOrBlank() && !isViewOnceEnabled
+
+  /**
    * No-op parceler for flags tracking work that cannot outlive the process that started it.
    */
   private object TransientInFlightFlagParceler : Parceler<Boolean> {

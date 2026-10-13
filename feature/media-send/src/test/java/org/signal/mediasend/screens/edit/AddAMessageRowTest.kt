@@ -7,6 +7,7 @@ package org.signal.mediasend.screens.edit
 
 import android.app.Application
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.test.assertTextEquals
 import androidx.compose.ui.test.click
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.longClick
@@ -25,6 +26,7 @@ import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 import org.signal.core.ui.CoreUiDependenciesRule
 import org.signal.core.ui.compose.theme.SignalTheme
+import org.signal.mediasend.R
 import org.signal.mediasend.test.TestTags
 
 /**
@@ -41,6 +43,7 @@ class AddAMessageRowTest {
   @get:Rule
   val coreUiDependenciesRule = CoreUiDependenciesRule(ApplicationProvider.getApplicationContext())
 
+  private val context: Application = ApplicationProvider.getApplicationContext()
   private val events = mutableListOf<MediaEditScreenEvents>()
   private var nextClicks = 0
 
@@ -76,6 +79,39 @@ class AddAMessageRowTest {
 
     composeTestRule.onNodeWithTag(TestTags.SCHEDULE_SEND_PICK_TIME_OPTION).assertDoesNotExist()
     assertEquals(emptyList<MediaEditScreenEvents>(), events)
+  }
+
+  /** Tellomi（#1263，ADR-0068 §4.7 P3）：长按发送菜单最上面是「说明文字上移」；点了交出切换、菜单不收（照 Telegram）。 */
+  @Test
+  fun `Given a caption that can move, when the send button is long pressed, then moving it comes first and keeps the menu open`() {
+    setContent(canScheduleSend = true, captionAboveMedia = false)
+
+    composeTestRule.onNodeWithTag(TestTags.ADD_A_MESSAGE_NEXT_BUTTON).performTouchInput { longClick() }
+    composeTestRule.onNodeWithTag(TestTags.SEND_MENU_CAPTION_POSITION).assertTextEquals(context.getString(R.string.MediaSelectScreen__move_caption_up))
+    composeTestRule.onNodeWithTag(TestTags.SEND_MENU_CAPTION_POSITION).performClick()
+
+    assertEquals(listOf<MediaEditScreenEvents>(MediaEditScreenEvents.ToggleCaptionAboveMedia), events)
+    composeTestRule.onNodeWithTag(TestTags.SCHEDULE_SEND_PICK_TIME_OPTION).assertExists()
+    assertEquals(0, nextClicks)
+  }
+
+  @Test
+  fun `Given the caption is above, when the send menu opens, then it offers to move it down`() {
+    setContent(canScheduleSend = true, captionAboveMedia = true)
+
+    composeTestRule.onNodeWithTag(TestTags.ADD_A_MESSAGE_NEXT_BUTTON).performTouchInput { longClick() }
+
+    composeTestRule.onNodeWithTag(TestTags.SEND_MENU_CAPTION_POSITION).assertTextEquals(context.getString(R.string.MediaSelectScreen__move_caption_down))
+  }
+
+  @Test
+  fun `Given no caption to move, when the send menu opens, then only scheduling is offered`() {
+    setContent(canScheduleSend = true, captionAboveMedia = null)
+
+    composeTestRule.onNodeWithTag(TestTags.ADD_A_MESSAGE_NEXT_BUTTON).performTouchInput { longClick() }
+
+    composeTestRule.onNodeWithTag(TestTags.SEND_MENU_CAPTION_POSITION).assertDoesNotExist()
+    composeTestRule.onNodeWithTag(TestTags.SCHEDULE_SEND_PICK_TIME_OPTION).assertExists()
   }
 
   /**
@@ -121,7 +157,7 @@ class AddAMessageRowTest {
     composeTestRule.onNodeWithText("Check this out").assertExists()
   }
 
-  private fun setContent(canScheduleSend: Boolean = false, message: CharSequence? = null, isReply: Boolean = false) {
+  private fun setContent(canScheduleSend: Boolean = false, message: CharSequence? = null, isReply: Boolean = false, captionAboveMedia: Boolean? = null) {
     composeTestRule.setContent {
       SignalTheme {
         AddAMessageRow(
@@ -129,7 +165,8 @@ class AddAMessageRowTest {
           onEvent = { events += it },
           onNextClick = { nextClicks++ },
           canScheduleSend = canScheduleSend,
-          isReply = isReply
+          isReply = isReply,
+          captionAboveMedia = captionAboveMedia
         )
       }
     }

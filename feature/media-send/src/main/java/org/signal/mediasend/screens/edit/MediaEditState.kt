@@ -47,8 +47,15 @@ internal data class MediaEditState(
    * Tellomi（tellomi/tellomi#1520 C-7）：编辑页是不是直接盖在相机上面（导航的事，由放这一页的地方按返回栈填，不从流程状态来）。
    * 是的话添加键换成「再拍」。
    */
-  val isOverCamera: Boolean = false
+  val isOverCamera: Boolean = false,
+  /** Tellomi（#1263，ADR-0068 §4.7）：长按发送里给不给「说明文字上移 / 下移」（[MediaSendFlowState.canMoveCaption]）。 */
+  val canMoveCaption: Boolean = false,
+  val isCaptionAboveMedia: Boolean = false
 ) {
+
+  /** 长按发送菜单里说明那一项：null = 不给；true = 现在在上方（显示「下移」）。 */
+  val captionAboveMediaOption: Boolean?
+    get() = if (canMoveCaption && selectedMedia.isNotEmpty()) isCaptionAboveMedia else null
 
   val focusedEditorState: EditorState?
     get() = focusedMedia?.uri?.let { editorStateMap[it] }
@@ -83,6 +90,8 @@ internal data class MediaEditState(
     isViewOnceEnabled = parentState.isViewOnceEnabled,
     album = parentState.album,
     albumFocusedMedia = parentState.albumFocusedMedia,
-    isBrowsingAlbum = parentState.isBrowsingAlbum
+    isBrowsingAlbum = parentState.isBrowsingAlbum,
+    canMoveCaption = parentState.canMoveCaption,
+    isCaptionAboveMedia = parentState.isCaptionAboveMedia
   )
 }

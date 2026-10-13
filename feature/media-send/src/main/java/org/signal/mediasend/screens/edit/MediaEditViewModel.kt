@@ -74,6 +74,7 @@ internal class MediaEditViewModel(
       is MediaEditScreenEvents.ToggleBlurFaces -> parentEventEmitter(MediaSendFlowEvent.SetBlurFacesEnabled(event.enabled))
       is MediaEditScreenEvents.VideoTrimChanged -> parentEventEmitter(MediaSendFlowEvent.VideoTrimChanged(event.videoTrimData, event.editingComplete))
       MediaEditScreenEvents.ToggleViewOnce -> parentEventEmitter(MediaSendFlowEvent.ToggleViewOnce)
+      MediaEditScreenEvents.ToggleCaptionAboveMedia -> parentEventEmitter(MediaSendFlowEvent.ToggleCaptionAboveMedia)
       MediaEditScreenEvents.ToggleVideoMuted -> parentEventEmitter(MediaSendFlowEvent.ToggleVideoMuted)
       is MediaEditScreenEvents.ToggleAlbumSelected -> parentEventEmitter(MediaSendFlowEvent.ToggleAlbumSelected(event.media))
       is MediaEditScreenEvents.AlbumFocusedMediaChanged -> parentEventEmitter(MediaSendFlowEvent.SetAlbumFocusedMedia(event.media))

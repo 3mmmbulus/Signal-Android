@@ -7,6 +7,7 @@ package org.signal.mediasend.screens.edit
 
 import androidx.compose.foundation.layout.Arrangement.spacedBy
 import androidx.compose.foundation.layout.Row
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -15,8 +16,10 @@ import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.res.vectorResource
 import androidx.compose.ui.unit.dp
 import org.signal.core.ui.compose.DayNightPreviews
 import org.signal.core.ui.compose.DropdownMenus
@@ -115,26 +118,62 @@ sealed interface ScheduleSendOption {
 /**
  * Menu of times the user can schedule their send for. Options are computed each time the menu is shown, so that a menu
  * reopened after a preset hour has passed does not offer a time in the past.
+ *
+ * Tellomi（tellomi/tellomi#1263，ADR-0068 §4.7 P3）：[captionAboveMedia] 不为 null 时，最上面先是「说明文字上移 / 下移」，
+ * 再一条分隔线（照 Telegram 两端长按发送菜单）；点了切换、菜单不收，字跟着变。
  */
 @Composable
 fun ScheduleSendMenu(
   controller: DropdownMenus.MenuController,
   onOptionClick: (ScheduleSendOption) -> Unit,
-  modifier: Modifier = Modifier
+  modifier: Modifier = Modifier,
+  showScheduleOptions: Boolean = true,
+  captionAboveMedia: Boolean? = null,
+  onToggleCaptionPosition: () -> Unit = {}
 ) {
   DropdownMenus.Menu(
     controller = controller,
     offsetX = 0.dp,
     modifier = modifier
   ) {
-    ScheduleSendOptions(
-      options = remember(controller.isShown()) { ScheduleSendOption.forCurrentTime(System.currentTimeMillis()) },
-      onOptionClick = {
-        controller.hide()
-        onOptionClick(it)
+    if (captionAboveMedia != null) {
+      CaptionPositionMenuItem(captionAboveMedia = captionAboveMedia, onClick = onToggleCaptionPosition)
+      if (showScheduleOptions) {
+        HorizontalDivider()
       }
-    )
+    }
+    if (showScheduleOptions) {
+      ScheduleSendOptions(
+        options = remember(controller.isShown()) { ScheduleSendOption.forCurrentTime(System.currentTimeMillis()) },
+        onOptionClick = {
+          controller.hide()
+          onOptionClick(it)
+        }
+      )
+    }
   }
+}
+
+@Composable
+private fun CaptionPositionMenuItem(captionAboveMedia: Boolean, onClick: () -> Unit) {
+  DropdownMenus.Item(
+    modifier = Modifier.testTag(TestTags.SEND_MENU_CAPTION_POSITION),
+    text = {
+      Row(
+        horizontalArrangement = spacedBy(16.dp),
+        verticalAlignment = Alignment.CenterVertically
+      ) {
+        Icon(
+          imageVector = ImageVector.vectorResource(if (captionAboveMedia) R.drawable.tellomi_symbol_arrow_down_24 else R.drawable.tellomi_symbol_arrow_up_24),
+          contentDescription = null,
+          tint = MaterialTheme.colorScheme.onSurface
+        )
+
+        Text(text = stringResource(if (captionAboveMedia) R.string.MediaSelectScreen__move_caption_down else R.string.MediaSelectScreen__move_caption_up))
+      }
+    },
+    onClick = onClick
+  )
 }
 
 @Composable

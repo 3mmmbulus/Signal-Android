@@ -885,12 +885,15 @@ private fun PickerSendBar(
           MediaEditScreenEvents.ToggleViewOnce -> onEvent(MediaSelectScreenEvents.ToggleViewOnce)
           // owner 2026-09-28（D4）：网格的发送键长按也能定时发送（照 Telegram 长按发送的 schedule 项）。
           is MediaEditScreenEvents.ScheduleSendClick -> onEvent(MediaSelectScreenEvents.ScheduleSend(event.option))
+          // #1263（ADR-0068 §4.7 P3）：长按发送里的「说明文字上移 / 下移」，和「···」里那项同一个开关。
+          MediaEditScreenEvents.ToggleCaptionAboveMedia -> onEvent(MediaSelectScreenEvents.ToggleCaptionAboveMedia)
           else -> Unit
         }
       },
       onNextClick = { onEvent(MediaSelectScreenEvents.Send) },
       enabled = !options.isSending,
       canScheduleSend = options.canScheduleSend,
+      captionAboveMedia = if (options.canMoveCaption && !options.message.isNullOrBlank() && !options.isViewOnceEnabled) options.isCaptionAboveMedia else null,
       viewOnceAvailable = options.isViewOnceAvailable,
       viewOnce = options.isViewOnceEnabled,
       isReply = options.isReply,

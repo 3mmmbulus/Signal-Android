@@ -93,6 +93,15 @@ class MediaEditStateTest {
     assertThat(MediaEditState().getOrCreateVideoTrimData(CAPTURE.uri)).isEqualTo(VideoTrimData())
   }
 
+  /** Tellomi（#1263，ADR-0068 §4.7 P3）：长按发送里说明那一项——能移、有选中时给，显示的方向跟着现在的位置。 */
+  @Test
+  fun `Given a caption that can move, when the send menu asks, then it offers the other position`() {
+    assertThat(MediaEditState(selectedMedia = listOf(CAPTURE), canMoveCaption = true).captionAboveMediaOption).isEqualTo(false)
+    assertThat(MediaEditState(selectedMedia = listOf(CAPTURE), canMoveCaption = true, isCaptionAboveMedia = true).captionAboveMediaOption).isEqualTo(true)
+    assertThat(MediaEditState(selectedMedia = listOf(CAPTURE), canMoveCaption = false, isCaptionAboveMedia = true).captionAboveMediaOption).isNull()
+    assertThat(MediaEditState(canMoveCaption = true).captionAboveMediaOption).isNull()
+  }
+
   private companion object {
     private val CAPTURE = media("content://capture")
     private val GALLERY_ITEM = media("content://gallery/1")

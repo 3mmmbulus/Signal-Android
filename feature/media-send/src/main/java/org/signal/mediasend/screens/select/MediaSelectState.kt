@@ -112,10 +112,7 @@ sealed interface MediaSelectState {
   ) {
     companion object {
       fun from(parent: MediaSendFlowState): SendOptions {
-        val sentByConversation = parent.recipientId != null &&
-          !parent.isStory &&
-          !parent.isContactSelectionRequired &&
-          parent.mode == MediaSendFlowActivityContract.Mode.SingleRecipient
+        val sentByConversation = parent.isSentByConversation
 
         return SendOptions(
           message = parent.message,
