@@ -18,6 +18,7 @@ import androidx.lifecycle.viewmodel.viewModelFactory
 import org.signal.core.ui.compose.theme.SignalTheme
 import org.thoughtcrime.securesms.PassphraseRequiredActivity
 import org.thoughtcrime.securesms.R
+import org.thoughtcrime.securesms.feed.compose.FeedComposeActivity
 import org.thoughtcrime.securesms.feed.net.FeedCard
 import org.thoughtcrime.securesms.feed.net.FeedJson
 import org.thoughtcrime.securesms.feed.profile.FeedProfileActivity
@@ -45,6 +46,11 @@ class FeedPostDetailActivity : PassphraseRequiredActivity() {
   /** 举报页里选了「只是不想看到」就按不感兴趣处理（第三节第 32 条先分流）。 */
   private val reportLauncher = registerForActivityResult(FeedReportActivity.Contract()) { result ->
     if (result == FeedReportActivity.Result.NOT_INTERESTED) viewModel.notInterested()
+  }
+
+  /** 编辑自己的帖子，保存回来刷新这条。 */
+  private val editLauncher = registerForActivityResult(FeedComposeActivity.Contract()) { publishState ->
+    if (publishState != null) viewModel.onEdited(publishState)
   }
 
   /** 建好公开主页回来就把刚才那条评论发出去（草稿还在）。 */
@@ -83,6 +89,7 @@ class FeedPostDetailActivity : PassphraseRequiredActivity() {
           onNotInterested = viewModel::notInterested,
           onMuteAuthor = viewModel::muteAuthor,
           onBlockAuthor = viewModel::blockAuthor,
+          onEditPost = { editLauncher.launch(it) },
           onLeave = { leave ->
             // 页面马上关，提示用 Toast 带回上一页
             val message = when (leave) {

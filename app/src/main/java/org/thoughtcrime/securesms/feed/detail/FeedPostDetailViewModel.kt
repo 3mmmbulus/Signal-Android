@@ -28,6 +28,7 @@ import org.thoughtcrime.securesms.feed.net.FeedApi
 import org.thoughtcrime.securesms.feed.net.FeedApiException
 import org.thoughtcrime.securesms.feed.net.FeedCard
 import org.thoughtcrime.securesms.feed.net.FeedCreatePostResponse
+import org.thoughtcrime.securesms.feed.net.FeedLimits
 import org.thoughtcrime.securesms.feed.setSaved
 import org.thoughtcrime.securesms.feed.withLiked
 import org.thoughtcrime.securesms.feed.withPollState
@@ -60,20 +61,32 @@ class FeedPostDetailViewModel(
     viewModelScope.launch {
       try {
         val config = withContext(ioDispatcher) { source.config() }
-        internalState.update { it.copy(mediaBaseUrl = config.mediaBaseUrl, showIpRegion = config.ipRegionVisible) }
+        internalState.update { it.copy(mediaBaseUrl = config.mediaBaseUrl, showIpRegion = config.ipRegionVisible, editWindowSeconds = config.limits.editWindowSeconds) }
       } catch (e: Exception) {
         Log.w(TAG, "config failed", e)
       }
     }
+    refreshPost()
+    refreshComments()
+  }
+
+  private fun refreshPost() {
     viewModelScope.launch {
       try {
-        val fresh = withContext(ioDispatcher) { source.card(initial.id) }
+        val fresh = withContext(ioDispatcher) { source.card(internalState.value.post.id) }
         internalState.update { if (fresh == null) it.copy(postGone = true) else it.copy(post = fresh, canComment = fresh.viewer.canComment) }
       } catch (e: Exception) {
         Log.w(TAG, "card refresh failed, keeping the feed copy", e)
       }
     }
-    refreshComments()
+  }
+
+  /** 编辑页保存回来（第三节第 23 条）：重新拉这条；大陆区改完要重新审核，提示不一样。 */
+  fun onEdited(publishState: String) {
+    internalState.update {
+      it.copy(notice = if (publishState == FeedCreatePostResponse.STATE_PENDING) FeedPostDetailState.Notice.EDITED_PENDING else FeedPostDetailState.Notice.EDITED)
+    }
+    refreshPost()
   }
 
   fun refreshComments() {
@@ -352,6 +365,8 @@ data class FeedPostDetailState(
   val insights: FeedInsightsState? = null,
   /** 自己删掉了这条，页面该关了。 */
   val deleted: Boolean = false,
+  /** 发布后多久内能改（引擎 config）。 */
+  val editWindowSeconds: Long = FeedLimits().editWindowSeconds,
   /** 不感兴趣 / 不看 TA / 屏蔽成了：提示一句，页面关掉。 */
   val leaving: Leave? = null
 ) {
@@ -376,6 +391,10 @@ data class FeedPostDetailState(
 
     /** 已存进「我的收藏」。 */
     SAVED,
+
+    /** 编辑保存了；大陆区要重新审核。 */
+    EDITED,
+    EDITED_PENDING,
 
     /** 「不看 TA」要先有自己的公开主页。 */
     HIDE_PROFILE_REQUIRED,

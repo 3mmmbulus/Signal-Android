@@ -64,6 +64,7 @@ import org.thoughtcrime.securesms.feed.FeedAvatar
 import org.thoughtcrime.securesms.feed.FeedInsightsDialog
 import org.thoughtcrime.securesms.feed.FeedOwnPostAction
 import org.thoughtcrime.securesms.feed.FeedPostCard
+import org.thoughtcrime.securesms.feed.compose.FeedEditTarget
 import org.thoughtcrime.securesms.feed.net.FeedAuthor
 import org.thoughtcrime.securesms.feed.net.FeedCard
 import org.thoughtcrime.securesms.feed.parseInstantMillis
@@ -117,6 +118,7 @@ fun FeedPostDetailScreen(
   onNotInterested: () -> Unit = {},
   onMuteAuthor: () -> Unit = {},
   onBlockAuthor: () -> Unit = {},
+  onEditPost: (FeedEditTarget) -> Unit = {},
   onLeave: (FeedPostDetailState.Leave) -> Unit = { onBack() }
 ) {
   val snackbarHostState = remember { SnackbarHostState() }
@@ -174,6 +176,7 @@ fun FeedPostDetailScreen(
       onNotInterested = onNotInterested,
       onMuteAuthor = onMuteAuthor,
       onBlockAuthor = onBlockAuthor,
+      onEditPost = onEditPost,
       modifier = Modifier.padding(padding).fillMaxSize()
     )
   }
@@ -201,9 +204,13 @@ private fun CommentList(
   onNotInterested: () -> Unit,
   onMuteAuthor: () -> Unit,
   onBlockAuthor: () -> Unit,
+  onEditPost: (FeedEditTarget) -> Unit,
   modifier: Modifier = Modifier
 ) {
   val listState = rememberLazyListState()
+  val editTarget = remember(state.post, state.editWindowSeconds) {
+    FeedEditTarget.of(state.post)?.takeIf { state.post.viewer.isAuthor && it.isWithinWindow(System.currentTimeMillis(), state.editWindowSeconds) }
+  }
   var confirmBlock by rememberSaveable { mutableStateOf(false) }
   if (confirmBlock) {
     Dialogs.SimpleAlertDialog(
@@ -279,6 +286,8 @@ private fun CommentList(
         // 「···」：自己的给置顶 / 回复选项 / 隐藏点赞数 / 查看数据 / 删除，别人的给举报（第三节第 26 条）
         onOwnPostAction = { _, action -> onOwnPostAction(action) },
         onDeleteClick = if (state.post.viewer.isAuthor) { _ -> confirmDelete = true } else null,
+        // 编辑只在发布后 15 分钟内给（第三节第 23 条），最后由引擎判
+        onEditClick = editTarget?.let { target -> { _ -> onEditPost(target) } },
         onReportClick = if (state.post.viewer.isAuthor) null else { _ -> onReportPost() },
         onSaveClick = { onSaveClick() },
         // 别人的帖子：不感兴趣 / 不看 TA / 屏蔽，成了就关页（第三节第 11、26 条）
@@ -596,6 +605,8 @@ private fun FeedPostDetailState.Notice.messageRes(): Int {
     FeedPostDetailState.Notice.PIN_LIMIT -> R.string.TellomiFeed__pin_limit
     FeedPostDetailState.Notice.SAVED -> R.string.TellomiFeed__saved_done
     FeedPostDetailState.Notice.HIDE_PROFILE_REQUIRED -> R.string.TellomiFeed__hide_profile_required
+    FeedPostDetailState.Notice.EDITED -> R.string.TellomiFeedCompose__edit_saved
+    FeedPostDetailState.Notice.EDITED_PENDING -> R.string.TellomiFeedCompose__edit_saved_pending
     FeedPostDetailState.Notice.FAILED -> R.string.TellomiFeed__action_failed
   }
 }
