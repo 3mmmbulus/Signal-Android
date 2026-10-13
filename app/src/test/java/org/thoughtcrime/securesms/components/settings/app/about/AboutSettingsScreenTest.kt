@@ -54,13 +54,14 @@ class AboutSettingsScreenTest {
     override fun onOpenUrl(url: String) { events += "open:$url" }
     override fun onWriteEmail(address: String) { events += "email:$address" }
     override fun onLicensesClick() { events += "licenses" }
+    override fun onUpdateNow() { events += "update-now" }
   }
 
-  private fun setContent(): RecordingCallbacks {
+  private fun setContent(newVersion: String? = null): RecordingCallbacks {
     val callbacks = RecordingCallbacks()
     composeTestRule.setContent {
       SignalTheme {
-        AboutSettingsScreen(versionName = "0.1.2", versionCode = "175101", callbacks = callbacks)
+        AboutSettingsScreen(versionName = "0.1.2", versionCode = "175101", callbacks = callbacks, newVersion = newVersion)
       }
     }
     return callbacks
@@ -131,6 +132,23 @@ class AboutSettingsScreenTest {
       "open:https://www.tellomi.app/",
       "licenses"
     )
+  }
+
+  /** tellomi/tellomi#1491（需求 3.4「可选更新」）：有新版本时「更新」一组多一行「有新版本 x」，点了就更新。 */
+  @Test
+  fun `a newer version adds a row that starts the update`() {
+    val callbacks = setContent(newVersion = "0.1.5")
+
+    clickRow("New version 0.1.5")
+
+    assertThat(callbacks.events).containsExactly("update-now")
+  }
+
+  @Test
+  fun `without a newer version there is no such row`() {
+    setContent()
+
+    composeTestRule.onNodeWithText("Tap to update").assertDoesNotExist()
   }
 
   /** owner 2026-09-25：「源代码 github.com/tellomi」那一行去掉了，源代码的说明挪到「许可证」页最上面（见下面两条）。 */

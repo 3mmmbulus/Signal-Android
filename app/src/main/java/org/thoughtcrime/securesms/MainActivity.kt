@@ -174,6 +174,7 @@ import org.thoughtcrime.securesms.service.BackupMediaRestoreService
 import org.thoughtcrime.securesms.service.KeyCachingService
 import org.thoughtcrime.securesms.starred.StarredMessagesActivity
 import org.thoughtcrime.securesms.stories.Stories
+import org.thoughtcrime.securesms.updaterequired.TellomiUpdateRecommendedBottomSheet
 import org.thoughtcrime.securesms.util.AppStartup
 import org.thoughtcrime.securesms.util.CachedInflater
 import org.thoughtcrime.securesms.util.CommunicationActions
@@ -746,6 +747,8 @@ class MainActivity :
     } else {
       // Tellomi（#1112 / #1218 F-01）：注册流程里不再要通知权限，改在第一次进首屏时说明一次
       TellomiNotificationPrimerBottomSheet.showIfNeeded(this)
+      // Tellomi（#1491）：推荐更新的首页卡片，同一版本只弹一次；上面那张在的话这次不弹
+      TellomiUpdateRecommendedBottomSheet.showIfNeeded(this)
     }
 
     vitalsViewModel.checkSlowNotificationHeuristics()

@@ -321,6 +321,18 @@
     <string name="TellomiUpdateRequired__reason_security">此版本存在安全问题，为保护你的账号和消息，请更新后继续使用。</string>
     <string name="TellomiUpdateRequired__reason_other">此版本需要更新，更新后才能继续收发消息。</string>
     <string name="TellomiUpdateRequired__learn_more">了解更新内容</string>
+    <string name="TellomiUpdateAvailable__sheet_title">发现新版本 %1$s</string>
+    <string name="TellomiUpdateAvailable__sheet_body">更新不会影响手机上的聊天记录。</string>
+    <string name="TellomiUpdateAvailable__sheet_body_with_size">大小 %1$s · 更新不会影响手机上的聊天记录。</string>
+    <string name="TellomiUpdateAvailable__later">以后再说</string>
+    <string name="TellomiUpdateAvailable__banner">新版本 %1$s 可用</string>
+    <string name="TellomiUpdateAvailable__banner_downloaded">新版本 %1$s 已下载</string>
+    <string name="TellomiUpdateAvailable__update">更新</string>
+    <string name="TellomiUpdateAvailable__install">安装</string>
+    <string name="TellomiUpdateAvailable__downloading">正在下载更新，下载完成后会提示安装。</string>
+    <string name="TellomiUpdateAvailable__about_new_version">有新版本 %1$s</string>
+    <string name="TellomiUpdateAvailable__about_tap_to_update">点击更新</string>
+    <string name="TellomiUpdateAvailable__dot_description">有新版本</string>
 
     <!-- ClockSkewActivity -->
     <!-- Title of the full-screen dialog shown when the device clock is too far off from the real time -->

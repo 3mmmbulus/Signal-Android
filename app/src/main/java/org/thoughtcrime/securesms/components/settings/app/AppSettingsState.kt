@@ -16,7 +16,9 @@ data class AppSettingsState(
   val showInternalPreferences: Boolean = RemoteConfig.internalUser,
   val showPayments: Boolean = SignalStore.payments.paymentsAvailability.showPaymentsMenu(),
   val showAppUpdates: Boolean = Environment.IS_NIGHTLY,
-  val backupFailureState: BackupFailureState = BackupFailureState.NONE
+  val backupFailureState: BackupFailureState = BackupFailureState.NONE,
+  /** Tellomi（tellomi/tellomi#1491）：有新版本、还没在「关于」里看过——「关于 Tellomi」一行上一个小红点。 */
+  val hasUnseenUpdate: Boolean = false
 ) {
   fun isRegisteredAndUpToDate(): Boolean {
     return !userUnregistered && !clientDeprecated

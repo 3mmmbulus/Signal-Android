@@ -339,6 +339,22 @@
     <string name="TellomiUpdateRequired__reason_other">This version needs an update to keep sending and receiving messages.</string>
     <!-- Text link on the update-required screen that opens the release notes on our website -->
     <string name="TellomiUpdateRequired__learn_more">What\'s in this update</string>
+    <!-- Tellomi (tellomi/tellomi#1491): title of the card shown once on the chat list when a recommended update is available -->
+    <string name="TellomiUpdateAvailable__sheet_title">Tellomi %1$s is available</string>
+    <string name="TellomiUpdateAvailable__sheet_body">Updating keeps all the chats on this phone.</string>
+    <string name="TellomiUpdateAvailable__sheet_body_with_size">Size: %1$s. Updating keeps all the chats on this phone.</string>
+    <string name="TellomiUpdateAvailable__later">Later</string>
+    <!-- Tellomi: dismissible banner above the chat list when a recommended update is available -->
+    <string name="TellomiUpdateAvailable__banner">Tellomi %1$s is available.</string>
+    <string name="TellomiUpdateAvailable__banner_downloaded">Tellomi %1$s is downloaded and ready to install.</string>
+    <string name="TellomiUpdateAvailable__update">Update</string>
+    <string name="TellomiUpdateAvailable__install">Install</string>
+    <string name="TellomiUpdateAvailable__downloading">Downloading the update. You\'ll be asked to install it when it\'s done.</string>
+    <!-- Tellomi: row in About Tellomi when a newer version is available -->
+    <string name="TellomiUpdateAvailable__about_new_version">New version %1$s</string>
+    <string name="TellomiUpdateAvailable__about_tap_to_update">Tap to update</string>
+    <!-- Tellomi: accessibility label of the small red dot on the settings entry when a newer version is available -->
+    <string name="TellomiUpdateAvailable__dot_description">New version available</string>
 
     <!-- ClockSkewActivity -->
     <!-- Title of the full-screen dialog shown when the device clock is too far off from the real time -->

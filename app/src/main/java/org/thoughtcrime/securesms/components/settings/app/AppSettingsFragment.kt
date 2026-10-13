@@ -80,6 +80,7 @@ import org.thoughtcrime.securesms.database.model.InAppPaymentSubscriberRecord
 import org.thoughtcrime.securesms.keyvalue.SignalStore
 import org.thoughtcrime.securesms.profiles.ProfileName
 import org.thoughtcrime.securesms.recipients.Recipient
+import org.thoughtcrime.securesms.updaterequired.UpdateAvailableDot
 import org.thoughtcrime.securesms.util.CommunicationActions
 import org.thoughtcrime.securesms.util.Environment
 import org.thoughtcrime.securesms.util.SignalE164Util
@@ -533,8 +534,24 @@ private fun AppSettingsContent(
         // Tellomi（tellomi/tellomi#1165）：「关于 Tellomi」从「帮助」里拿出来，紧跟「帮助」
         item {
           Rows.TextRow(
-            text = stringResource(R.string.AboutSettings__tellomi_about_tellomi),
-            icon = SignalIcons.Info.painter,
+            text = {
+              Text(
+                text = stringResource(R.string.AboutSettings__tellomi_about_tellomi),
+                modifier = Modifier.weight(1f)
+              )
+
+              // Tellomi（tellomi/tellomi#1491，需求 3.4「可选更新」）：有新版本、还没进「关于」看过时一个小红点，进一次就消失
+              if (state.hasUnseenUpdate) {
+                UpdateAvailableDot()
+              }
+            },
+            icon = {
+              Icon(
+                painter = SignalIcons.Info.painter,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.onSurface
+              )
+            },
             onClick = {
               callbacks.navigate(AppSettingsRoute.About)
             }

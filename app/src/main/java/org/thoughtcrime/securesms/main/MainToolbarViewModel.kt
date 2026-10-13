@@ -25,6 +25,7 @@ import org.thoughtcrime.securesms.calls.log.CallLogFilter
 import org.thoughtcrime.securesms.conversationlist.model.ConversationFilter
 import org.thoughtcrime.securesms.keyvalue.SignalStore
 import org.thoughtcrime.securesms.recipients.Recipient
+import org.thoughtcrime.securesms.updaterequired.UpdateOffers
 
 class MainToolbarViewModel : ViewModel() {
   private val internalStateFlow = MutableStateFlow(MainToolbarState())
@@ -47,7 +48,8 @@ class MainToolbarViewModel : ViewModel() {
       it.copy(
         hasFailedBackups = BackupRepository.shouldDisplayBackupFailedIndicator() || BackupRepository.shouldDisplayBackupAlreadyRedeemedIndicator(),
         isOutOfRemoteStorageSpace = BackupRepository.shouldDisplayOutOfRemoteStorageSpaceUx(),
-        hasPassphrase = !SignalStore.settings.passphraseDisabled
+        hasPassphrase = !SignalStore.settings.passphraseDisabled,
+        hasUnseenUpdate = UpdateOffers.shouldShowSettingsDot(UpdateOffers.current(), SignalStore.apkUpdate.aboutSeenUpdateBuild)
       )
     }
   }

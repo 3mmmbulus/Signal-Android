@@ -13,6 +13,7 @@ import org.thoughtcrime.securesms.database.model.InAppPaymentSubscriberRecord
 import org.thoughtcrime.securesms.dependencies.AppDependencies
 import org.thoughtcrime.securesms.keyvalue.SignalStore
 import org.thoughtcrime.securesms.recipients.Recipient
+import org.thoughtcrime.securesms.updaterequired.UpdateOffers
 import org.thoughtcrime.securesms.util.TextSecurePreferences
 import org.thoughtcrime.securesms.util.livedata.Store
 
@@ -65,7 +66,8 @@ class AppSettingsViewModel : ViewModel() {
     store.update {
       it.copy(
         hasExpiredGiftBadge = SignalStore.inAppPayments.getExpiredGiftBadge() != null,
-        backupFailureState = getBackupFailureState()
+        backupFailureState = getBackupFailureState(),
+        hasUnseenUpdate = UpdateOffers.shouldShowSettingsDot(UpdateOffers.current(), SignalStore.apkUpdate.aboutSeenUpdateBuild)
       )
     }
   }

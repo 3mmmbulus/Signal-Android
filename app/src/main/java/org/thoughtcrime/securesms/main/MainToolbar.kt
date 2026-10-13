@@ -101,6 +101,7 @@ import org.thoughtcrime.securesms.conversationlist.model.ConversationFilter
 import org.thoughtcrime.securesms.keyvalue.SignalStore
 import org.thoughtcrime.securesms.recipients.Recipient
 import org.thoughtcrime.securesms.recipients.rememberRecipientField
+import org.thoughtcrime.securesms.updaterequired.UpdateAvailableDot
 import org.signal.core.ui.R as CoreUiR
 
 interface MainToolbarCallback {
@@ -194,7 +195,9 @@ data class MainToolbarState(
   @StringRes val searchHint: Int = R.string.SearchToolbar_search,
   val searchQuery: String = "",
   val hasActiveSearchFilter: Boolean = false,
-  val actionModeCount: Int = 0
+  val actionModeCount: Int = 0,
+  /** Tellomi（tellomi/tellomi#1491）：有新版本、还没在「关于」里看过——头像（设置入口）上一个小红点。 */
+  val hasUnseenUpdate: Boolean = false
 ) {
   enum class ProxyState(@DrawableRes val icon: Int) {
     NONE(-1),
@@ -607,6 +610,10 @@ private fun ProxyAction(
 @Composable
 private fun HeadsUpIndicator(state: MainToolbarState, modifier: Modifier = Modifier) {
   if (!state.hasUnreadPayments && !state.hasFailedBackups && !state.isOutOfRemoteStorageSpace) {
+    // Tellomi（tellomi/tellomi#1491，需求 3.4「可选更新」：设置入口一个小红点）：别的提醒都没有时才显示，优先级最低
+    if (state.hasUnseenUpdate) {
+      UpdateAvailableDot(modifier = modifier, size = 13.dp)
+    }
     return
   }
 

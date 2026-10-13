@@ -26,6 +26,9 @@ class ApkUpdateValues(store: KeyValueStore) : SignalStoreValues(store) {
     private const val UPDATE_MANIFEST_SERIAL = "apk_update.update_manifest_serial"
     private const val UPDATE_MANIFEST_CHECKED_AT = "apk_update.update_manifest_checked_at"
     private const val READ_ONLY_SINCE_MANIFEST_SERIAL = "apk_update.read_only_since_manifest_serial"
+    private const val RECOMMENDED_PROMPT_SHOWN_BUILD = "apk_update.recommended_prompt_shown_build"
+    private const val UPDATE_BANNER_DISMISSED_AT = "apk_update.update_banner_dismissed_at"
+    private const val ABOUT_SEEN_UPDATE_BUILD = "apk_update.about_seen_update_build"
   }
 
   public override fun onFirstEverAppLaunch() = Unit
@@ -76,6 +79,15 @@ class ApkUpdateValues(store: KeyValueStore) : SignalStoreValues(store) {
    * 之后拉到一份 serial 更大、而且不判「必须」的清单才放行——这就是「撤销」（需求 §3.2.1）。
    */
   var readOnlySinceManifestSerial: Long by longValue(READ_ONLY_SINCE_MANIFEST_SERIAL, -1)
+
+  /** Tellomi（tellomi/tellomi#1491）：推荐档的首页卡片已经为哪个最新版（latest.build）弹过；同一版本只弹一次（需求 3.4）。 */
+  var recommendedPromptShownBuild: Long by longValue(RECOMMENDED_PROMPT_SHOWN_BUILD, 0)
+
+  /** 推荐档横幅上次被关掉的时间；关掉后 3 天内不再出现（需求 3.4）。 */
+  var updateBannerDismissedAt: Long by longValue(UPDATE_BANNER_DISMISSED_AT, 0)
+
+  /** 在「关于」里看到过的最新版（latest.build）；设置入口的小红点进一次「关于」就消失（需求 3.4「可选更新」）。 */
+  var aboutSeenUpdateBuild: Long by longValue(ABOUT_SEEN_UPDATE_BUILD, 0)
 
   fun setUpdateManifest(raw: ByteArray, serial: Long) {
     store

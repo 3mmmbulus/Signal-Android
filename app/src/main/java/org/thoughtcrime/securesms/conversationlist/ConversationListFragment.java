@@ -103,6 +103,7 @@ import org.thoughtcrime.securesms.banner.banners.NotificationsDisabledBanner;
 import org.thoughtcrime.securesms.banner.banners.OutdatedBuildBanner;
 import org.thoughtcrime.securesms.banner.banners.ServiceOutageBanner;
 import org.thoughtcrime.securesms.banner.banners.UnauthorizedBanner;
+import org.thoughtcrime.securesms.banner.banners.UpdateAvailableBanner;
 import org.thoughtcrime.securesms.banner.banners.UsernameOutOfSyncBanner;
 import org.thoughtcrime.securesms.components.RatingManager;
 import org.thoughtcrime.securesms.components.SignalProgressDialog;
@@ -163,6 +164,7 @@ import org.thoughtcrime.securesms.search.SearchFilter;
 import org.thoughtcrime.securesms.search.SearchFilterBottomSheet;
 import org.thoughtcrime.securesms.search.SearchRepository;
 import org.thoughtcrime.securesms.sms.MessageSender;
+import org.thoughtcrime.securesms.updaterequired.UpdateOffers;
 import org.thoughtcrime.securesms.util.AppStartup;
 import org.thoughtcrime.securesms.util.CachedInflater;
 import org.thoughtcrime.securesms.util.ConversationUtil;
@@ -842,6 +844,10 @@ public class ConversationListFragment extends MainFragment implements Conversati
         new UnauthorizedBanner(requireContext()),
         new ServiceOutageBanner(requireContext()),
         new OutdatedBuildBanner(),
+        new UpdateAvailableBanner(requireContext(), () -> { // Tellomi（#1491）：推荐更新
+          UpdateOffers.startUpdate(requireActivity());
+          return Unit.INSTANCE;
+        }),
         new NotificationsDisabledBanner(requireContext()), // Tellomi（#1218 F-01）
         new DozeBanner(requireContext()),
         new CdsTemporaryErrorBanner(getChildFragmentManager()),

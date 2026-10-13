@@ -22,6 +22,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -50,6 +51,8 @@ import org.thoughtcrime.securesms.BuildConfig
 import org.thoughtcrime.securesms.R
 import org.thoughtcrime.securesms.dependencies.AppDependencies
 import org.thoughtcrime.securesms.jobs.ApkUpdateJob
+import org.thoughtcrime.securesms.jobs.UpdateManifestJob
+import org.thoughtcrime.securesms.updaterequired.UpdateOffers
 import org.thoughtcrime.securesms.util.CommunicationActions
 import org.thoughtcrime.securesms.util.navigation.safeNavigate
 
@@ -78,9 +81,9 @@ class AboutSettingsFragment : ComposeFragment() {
 
         override fun onCheckForUpdates() {
           if (BuildConfig.MANAGES_APP_UPDATES) {
-            // 与「App 更新」页的「检查更新」同一个动作；有新版本时 ApkUpdateJob 自己会提示。
-            // 「有新版本」红点等 #1138 暴露检查结果后再接（SignalStore.apkUpdate.availableUpdateVersionName）。
+            // 与「App 更新」页的「检查更新」同一个动作；有新版本时 ApkUpdateJob 自己会提示。顺带重拉一次更新清单（#1491）。
             AppDependencies.jobManager.add(ApkUpdateJob())
+            AppDependencies.jobManager.add(UpdateManifestJob())
             Toast.makeText(context, R.string.AboutSettings__tellomi_checking_for_updates, Toast.LENGTH_LONG).show()
           } else {
             // 应用商店装的包由商店更新，这里去下载页
@@ -100,13 +103,24 @@ class AboutSettingsFragment : ComposeFragment() {
         override fun onLicensesClick() {
           navController.safeNavigate(R.id.action_aboutSettingsFragment_to_licenseFragment)
         }
+
+        override fun onUpdateNow() {
+          UpdateOffers.startUpdate(requireActivity())
+        }
       }
+    }
+
+    // Tellomi（tellomi/tellomi#1491，需求 3.4「可选更新」）：有新版本时「更新」一组里多一行「有新版本 x」；进了这一页，设置入口的小红点就消失
+    val offer = remember { UpdateOffers.current() }
+    LaunchedEffect(offer) {
+      UpdateOffers.markSeenInAbout()
     }
 
     AboutSettingsScreen(
       versionName = BuildConfig.VERSION_NAME,
       versionCode = BuildConfig.VERSION_CODE.toString(),
-      callbacks = callbacks
+      callbacks = callbacks,
+      newVersion = offer?.version
     )
   }
 }
@@ -118,6 +132,7 @@ interface AboutSettingsCallbacks {
   fun onOpenUrl(url: String) = Unit
   fun onWriteEmail(address: String) = Unit
   fun onLicensesClick() = Unit
+  fun onUpdateNow() = Unit
 
   object Empty : AboutSettingsCallbacks
 }
@@ -158,7 +173,8 @@ object AboutSettingsTestTags {
 fun AboutSettingsScreen(
   versionName: String,
   versionCode: String,
-  callbacks: AboutSettingsCallbacks
+  callbacks: AboutSettingsCallbacks,
+  newVersion: String? = null
 ) {
   val fullVersion = "$versionName ($versionCode)"
   val openIcon = ImageVector.vectorResource(R.drawable.symbol_open_20)
@@ -183,6 +199,16 @@ fun AboutSettingsScreen(
 
       item {
         Texts.SectionHeader(text = stringResource(R.string.AboutSettings__tellomi_section_updates))
+      }
+
+      if (newVersion != null) {
+        item {
+          Rows.TextRow(
+            text = stringResource(R.string.TellomiUpdateAvailable__about_new_version, newVersion),
+            label = stringResource(R.string.TellomiUpdateAvailable__about_tap_to_update),
+            onClick = callbacks::onUpdateNow
+          )
+        }
       }
 
       item {
