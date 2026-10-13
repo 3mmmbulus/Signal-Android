@@ -80,23 +80,10 @@ class FeedProfilePageViewModel(
         internalState.update { it.copy(loading = false, gone = true, profile = null, posts = emptyList(), cursor = null) }
         return@launch
       }
-      internalState.update { it.copy(loading = false, gone = false, profile = profile, posts = emptyList(), cursor = null, postsLoadedOnce = false) }
+      // 不看 / 不让 TA 看：自己和已屏蔽的人不给这两项
+      val hideState = FeedHideState(muted = profile.me.muted, hiddenFrom = profile.me.hiddenFrom).takeUnless { profile.me.self || profile.me.blocked }
+      internalState.update { it.copy(loading = false, gone = false, profile = profile, posts = emptyList(), cursor = null, postsLoadedOnce = false, hideState = hideState) }
       if (profile.showsPosts) loadPosts(cursor = null)
-      if (!profile.me.self && !profile.me.blocked) loadHideState()
-    }
-  }
-
-  /** 主页不带「我有没有不看 / 不让 TA 看」，从两张名单里查；查不到就不给这两项菜单。 */
-  private fun loadHideState() {
-    viewModelScope.launch {
-      val lists = try {
-        withContext(ioDispatcher) { source.hideLists() }
-      } catch (e: Exception) {
-        Log.w(TAG, "hide lists failed", e)
-        return@launch
-      }
-      val state = FeedHideState(muted = lists.mute.any { it.id == profileId }, hiddenFrom = lists.hideFrom.any { it.id == profileId })
-      internalState.update { it.copy(hideState = state) }
     }
   }
 

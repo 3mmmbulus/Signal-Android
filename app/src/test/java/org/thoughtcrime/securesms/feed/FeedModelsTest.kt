@@ -19,6 +19,7 @@ import org.thoughtcrime.securesms.feed.net.FeedConfig
 import org.thoughtcrime.securesms.feed.net.FeedIdsPage
 import org.thoughtcrime.securesms.feed.net.FeedJson
 import org.thoughtcrime.securesms.feed.net.FeedMedia
+import org.thoughtcrime.securesms.feed.net.FeedProfilePage
 import org.thoughtcrime.securesms.feed.net.FeedStats
 import org.thoughtcrime.securesms.feed.net.FeedViewer
 
@@ -107,6 +108,26 @@ class FeedModelsTest {
     val card = result.toCard()!!
     assertThat(card.pinned).isEqualTo(true)
     assertThat(card.stats.likeCountHidden).isEqualTo(true)
+  }
+
+  @Test
+  fun `author comes from the outer me and is off when missing`() {
+    val mine = FeedJson.decodeFromString(FeedCardResult.serializer(), """{"id":"p","state":"ok","card":{"kind":"post"},"me":{"liked":false,"saved":false,"author":true}}""")
+    val theirs = FeedJson.decodeFromString(FeedCardResult.serializer(), """{"id":"p","state":"ok","card":{"kind":"post"},"me":{"liked":true}}""")
+
+    assertThat(mine.toCard()!!.viewer.isAuthor).isTrue()
+    assertThat(theirs.toCard()!!.viewer.isAuthor).isFalse()
+  }
+
+  @Test
+  fun `profile says whether I muted or hid from them`() {
+    val profile = FeedJson.decodeFromString(
+      FeedProfilePage.serializer(),
+      """{"id":"p1","display_name":"山风","me":{"self":false,"follow":"none","muted":true,"hidden_from":true}}"""
+    )
+
+    assertThat(profile.me.muted).isTrue()
+    assertThat(profile.me.hiddenFrom).isTrue()
   }
 
   @Test

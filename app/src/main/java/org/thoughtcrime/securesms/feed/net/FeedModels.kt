@@ -129,7 +129,11 @@ data class FeedCardResult(
       id = id,
       version = version,
       stats = stats ?: base.stats,
-      viewer = base.viewer.copy(liked = me?.liked ?: base.viewer.liked, saved = me?.saved ?: base.viewer.saved),
+      viewer = base.viewer.copy(
+        liked = me?.liked ?: base.viewer.liked,
+        saved = me?.saved ?: base.viewer.saved,
+        isAuthor = me?.author ?: base.viewer.isAuthor
+      ),
       pollState = poll,
       held = held,
       shareable = shareable,
@@ -259,11 +263,11 @@ data class FeedStats(
   @SerialName("likes_hidden") val likeCountHidden: Boolean = false
 )
 
-/** Card API 外层的 `me`。 */
+/** Card API 外层的 `me`。[author] 只在是我发的时候出现。 */
 @Serializable
-data class FeedMine(val liked: Boolean = false, val saved: Boolean = false)
+data class FeedMine(val liked: Boolean = false, val saved: Boolean = false, val author: Boolean = false)
 
-/** 界面用：我和这条的关系。[liked]、[saved] 来自 [FeedMine]，其余引擎还没给。 */
+/** 界面用：我和这条的关系。[liked]、[saved]、[isAuthor] 来自 [FeedMine]，[canComment] 引擎还没给。 */
 @Serializable
 data class FeedViewer(
   val liked: Boolean = false,
@@ -521,7 +525,11 @@ data class FeedRelation(
   @SerialName("followed_by") val followedBy: Boolean = false,
   val friend: Boolean = false,
   /** 我屏蔽了对方。 */
-  val blocked: Boolean = false
+  val blocked: Boolean = false,
+  /** 我「不看 TA 的动态」。 */
+  val muted: Boolean = false,
+  /** 我「不让 TA 看我的动态」。 */
+  @SerialName("hidden_from") val hiddenFrom: Boolean = false
 ) {
   companion object {
     const val FOLLOW_NONE = "none"

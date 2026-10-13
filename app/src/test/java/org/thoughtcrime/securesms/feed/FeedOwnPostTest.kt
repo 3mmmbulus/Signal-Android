@@ -109,14 +109,6 @@ class FeedOwnPostTest {
   }
 
   @Test
-  fun `cards are mine only when the author is my profile`() {
-    assertThat(mine.copy(viewer = FeedViewer()).markedMine("me").viewer.isAuthor).isTrue()
-    assertThat(mine.markedMine("someone-else").viewer.isAuthor).isFalse()
-    val external = mine.copy(author = me.copy(isNative = false), viewer = FeedViewer())
-    assertThat(external.markedMine("me").viewer.isAuthor).isFalse()
-  }
-
-  @Test
   fun `pin and hide likes change the card first and send only that field`() {
     val source = FakeSource(mine)
     val viewModel = viewModelWith(source)

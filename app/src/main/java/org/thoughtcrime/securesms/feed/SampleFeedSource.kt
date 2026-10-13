@@ -410,7 +410,14 @@ object SampleFeedSource : FeedSource {
       ipRegionLabel = ipLabels[index % ipLabels.size],
       followers = 120 + index * 37 + if (follow == FeedRelation.FOLLOW_APPROVED) 1 else 0,
       following = 40 + index * 11,
-      me = FeedRelation(self = self, follow = follow, followedBy = profileId == "s-1", blocked = profileId in blocked)
+      me = FeedRelation(
+        self = self,
+        follow = follow,
+        followedBy = profileId == "s-1",
+        blocked = profileId in blocked,
+        muted = !self && profileId in hideListMembers.getValue(FeedApi.HIDE_MUTE),
+        hiddenFrom = !self && profileId in hideListMembers.getValue(FeedApi.HIDE_FROM)
+      )
     )
   }
 

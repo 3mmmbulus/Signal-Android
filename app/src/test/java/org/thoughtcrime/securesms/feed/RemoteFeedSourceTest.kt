@@ -42,7 +42,7 @@ class RemoteFeedSourceTest {
     val tokens = object : FeedTokenSource {
       override suspend fun token(forceRefresh: Boolean) = "t"
     }
-    source = RemoteFeedSource(FeedApi(baseUrl = server.url("/"), client = OkHttpClient(), tokens = tokens), selfProfileId = { "me" })
+    source = RemoteFeedSource(FeedApi(baseUrl = server.url("/"), client = OkHttpClient(), tokens = tokens))
   }
 
   @After
@@ -69,11 +69,11 @@ class RemoteFeedSourceTest {
   }
 
   @Test
-  fun `my own cards are marked as mine`() = runBlocking {
+  fun `cards the engine says I wrote are marked as mine`() = runBlocking {
     server.enqueue(MockResponse().setBody("""{"items":[{"id":"a"},{"id":"b"}]}"""))
     server.enqueue(
       MockResponse().setBody(
-        """{"cards":[{"id":"a","state":"ok","card":{"kind":"post","author":{"id":"me","display_name":"我"}}},{"id":"b","state":"ok","card":{"kind":"post","author":{"id":"p2","display_name":"山风"}}}]}"""
+        """{"cards":[{"id":"a","state":"ok","me":{"author":true},"card":{"kind":"post","author":{"id":"me","display_name":"我"}}},{"id":"b","state":"ok","card":{"kind":"post","author":{"id":"p2","display_name":"山风"}}}]}"""
       )
     )
 

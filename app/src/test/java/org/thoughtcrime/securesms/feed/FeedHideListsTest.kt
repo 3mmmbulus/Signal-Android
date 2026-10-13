@@ -46,6 +46,7 @@ import org.thoughtcrime.securesms.feed.net.FeedHideLists
 import org.thoughtcrime.securesms.feed.net.FeedPersonSummary
 import org.thoughtcrime.securesms.feed.net.FeedProfilePage
 import org.thoughtcrime.securesms.feed.net.FeedProfilePostsPage
+import org.thoughtcrime.securesms.feed.net.FeedRelation
 import org.thoughtcrime.securesms.feed.net.FeedTimelinePage
 import org.thoughtcrime.securesms.feed.people.FeedPeopleMode
 import org.thoughtcrime.securesms.feed.people.FeedPeopleScreen
@@ -87,7 +88,8 @@ class FeedHideListsTest {
       error?.let { throw it }
       calls += "$list $profileId $on"
     }
-    override suspend fun profile(profileId: String) = FeedProfilePage(id = profileId, displayName = "山风")
+    var relation = FeedRelation()
+    override suspend fun profile(profileId: String) = FeedProfilePage(id = profileId, displayName = "山风", me = relation)
     override suspend fun profilePosts(profileId: String, cursor: String?) = FeedProfilePostsPage()
   }
 
@@ -154,7 +156,7 @@ class FeedHideListsTest {
 
   @Test
   fun `a profile knows whether I muted them, and a failed change turns back`() {
-    val source = FakeSource(lists = FeedHideLists(mute = listOf(FeedPersonSummary(id = "p1", displayName = "山风"))))
+    val source = FakeSource().apply { relation = FeedRelation(muted = true) }
     val viewModel = FeedProfilePageViewModel("p1", source, dispatcher)
     assertThat(viewModel.state.value.hideState).isEqualTo(FeedHideState(muted = true, hiddenFrom = false))
 
