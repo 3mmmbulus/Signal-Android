@@ -1,0 +1,373 @@
+/*
+ * Copyright 2026 重庆半格智能科技有限公司
+ * SPDX-License-Identifier: AGPL-3.0-only
+ */
+
+package org.thoughtcrime.securesms.feed
+
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.aspectRatio
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.pluralStringResource
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.res.vectorResource
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.dp
+import org.signal.core.ui.compose.Previews
+import org.thoughtcrime.securesms.R
+import org.thoughtcrime.securesms.feed.net.FeedAuthor
+import org.thoughtcrime.securesms.feed.net.FeedCard
+import org.thoughtcrime.securesms.feed.net.FeedMedia
+import org.thoughtcrime.securesms.feed.net.FeedStats
+import org.thoughtcrime.securesms.util.DateUtils
+import java.time.Instant
+import java.util.Locale
+import org.signal.core.ui.R as CoreUiR
+
+private val AVATAR_SIZE = 36.dp
+private val CONTENT_START = 16.dp + AVATAR_SIZE + 12.dp
+
+/** 点过赞的红心颜色。 */
+private val LIKED_COLOR = Color(0xFFE5484D)
+
+/**
+ * 动态里的一条帖子（`kind = post`），照 Threads 的单栏排法（`dynamic-feed.md` 第三节第 2、3 条）：
+ * 左边头像，右边名字、正文、图片、操作行。
+ *
+ * 这一刀：文字、话题、IP 属地、「已编辑」、AI 生成标记、点赞、「···」里的「不感兴趣」。
+ * 图片先画占位（按原图比例的灰块，横向滑动），真图等内容引擎的图片地址接上；评论、转发、分享随后面的 PR 加，
+ * 现在不画这几个按钮，免得点了没反应。
+ */
+@Composable
+fun FeedPostCard(
+  card: FeedCard,
+  showIpRegion: Boolean,
+  onLikeClick: (FeedCard) -> Unit,
+  onNotInterestedClick: (FeedCard) -> Unit,
+  modifier: Modifier = Modifier
+) {
+  Column(modifier = modifier.fillMaxWidth().padding(top = 12.dp, bottom = 4.dp)) {
+    Row(modifier = Modifier.padding(start = 16.dp, end = 4.dp)) {
+      FeedAvatar(author = card.author)
+
+      Spacer(modifier = Modifier.width(12.dp))
+
+      Column(modifier = Modifier.weight(1f)) {
+        FeedPostHeader(card = card, showIpRegion = showIpRegion, onNotInterestedClick = onNotInterestedClick)
+
+        val text = card.text
+        if (!text.isNullOrBlank()) {
+          Text(
+            text = text,
+            style = MaterialTheme.typography.bodyLarge,
+            color = MaterialTheme.colorScheme.onSurface,
+            modifier = Modifier.padding(end = 12.dp)
+          )
+        }
+
+        if (card.topics.isNotEmpty()) {
+          Text(
+            text = card.topics.joinToString(separator = "  ") { "#${it.label}" },
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.primary,
+            modifier = Modifier.padding(top = 4.dp, end = 12.dp)
+          )
+        }
+
+        if (card.aiGenerated) {
+          // 文字和样式等法律复核（dynamic-feed.md 第五节 Q-7），先用占位文案
+          Text(
+            text = stringResource(R.string.TellomiFeed__ai_generated),
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.padding(top = 4.dp)
+          )
+        }
+      }
+    }
+
+    if (card.media.isNotEmpty()) {
+      FeedMediaRow(media = card.media, modifier = Modifier.padding(top = 8.dp))
+    }
+
+    FeedActionRow(
+      card = card,
+      onLikeClick = onLikeClick,
+      modifier = Modifier.padding(start = CONTENT_START - 12.dp, top = 2.dp)
+    )
+  }
+}
+
+@Composable
+private fun FeedAvatar(author: FeedAuthor?) {
+  val initial = author?.displayName?.trim()?.firstOrNull()?.toString().orEmpty()
+  Box(
+    contentAlignment = Alignment.Center,
+    modifier = Modifier
+      .size(AVATAR_SIZE)
+      .clip(CircleShape)
+      .background(MaterialTheme.colorScheme.surfaceVariant)
+  ) {
+    Text(
+      text = initial,
+      style = MaterialTheme.typography.titleSmall,
+      color = MaterialTheme.colorScheme.onSurfaceVariant
+    )
+  }
+}
+
+@Composable
+private fun FeedPostHeader(
+  card: FeedCard,
+  showIpRegion: Boolean,
+  onNotInterestedClick: (FeedCard) -> Unit
+) {
+  val context = LocalContext.current
+  val author = card.author
+  var menuOpen by remember { mutableStateOf(false) }
+
+  Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
+    Column(modifier = Modifier.weight(1f)) {
+      Row(verticalAlignment = Alignment.CenterVertically) {
+        Text(
+          text = author?.displayName.orEmpty(),
+          style = MaterialTheme.typography.titleSmall,
+          fontWeight = FontWeight.SemiBold,
+          color = MaterialTheme.colorScheme.onSurface,
+          maxLines = 1,
+          overflow = TextOverflow.Ellipsis,
+          modifier = Modifier.weight(1f, fill = false)
+        )
+
+        val published = remember(card.publishedAt) { card.publishedAt?.let { parseInstantMillis(it) } }
+        if (published != null) {
+          Text(
+            text = "  " + DateUtils.getBriefRelativeTimeSpanString(context, Locale.getDefault(), published).first,
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            maxLines = 1
+          )
+        }
+      }
+
+      val subtitle = buildSubtitle(card = card, showIpRegion = showIpRegion)
+      if (subtitle.isNotEmpty()) {
+        Text(
+          text = subtitle,
+          style = MaterialTheme.typography.bodySmall,
+          color = MaterialTheme.colorScheme.onSurfaceVariant,
+          maxLines = 1,
+          overflow = TextOverflow.Ellipsis
+        )
+      }
+    }
+
+    if (!card.viewer.isAuthor) {
+      Box {
+        val moreLabel = stringResource(R.string.TellomiFeed__more)
+        Icon(
+          imageVector = ImageVector.vectorResource(CoreUiR.drawable.symbol_more_vertical_24),
+          contentDescription = moreLabel,
+          tint = MaterialTheme.colorScheme.onSurfaceVariant,
+          modifier = Modifier
+            .clip(CircleShape)
+            .clickable { menuOpen = true }
+            .padding(10.dp)
+            .size(20.dp)
+        )
+
+        DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {
+          DropdownMenuItem(
+            text = { Text(stringResource(R.string.TellomiFeed__not_interested)) },
+            onClick = {
+              menuOpen = false
+              onNotInterestedClick(card)
+            }
+          )
+        }
+      }
+    }
+  }
+}
+
+/** 「@handle · IP 属地：四川 · 已编辑」；没设 ID 的人显示「Tellomi 号：xxxx」（第三节第 8 条）。 */
+@Composable
+private fun buildSubtitle(card: FeedCard, showIpRegion: Boolean): String {
+  val author = card.author
+  val parts = buildList {
+    when {
+      !author?.handle.isNullOrBlank() -> add("@${author!!.handle}")
+      !author?.tellomiNumber.isNullOrBlank() -> add(stringResource(R.string.TellomiFeed__tellomi_number, author!!.tellomiNumber!!))
+    }
+    val ip = card.ipRegionLabel
+    if (showIpRegion && !ip.isNullOrBlank()) {
+      add(stringResource(R.string.TellomiFeed__ip_region, ip))
+    }
+    if (card.edited) {
+      add(stringResource(R.string.TellomiFeed__edited))
+    }
+  }
+  return parts.joinToString(separator = " · ")
+}
+
+/**
+ * 多图横滑，可以拖到最左、不做整张吸附（`10-feed-prototype-log.md` 第 28 行）。第一张和正文左对齐。
+ * 只有一张时按原图比例占满宽度（比例限制在 3:4 到 16:9 之间）。
+ */
+@Composable
+private fun FeedMediaRow(media: List<FeedMedia>, modifier: Modifier = Modifier) {
+  if (media.size == 1) {
+    val item = media.first()
+    Box(modifier = modifier.padding(start = CONTENT_START, end = 16.dp)) {
+      FeedMediaPlaceholder(item = item, modifier = Modifier.fillMaxWidth().aspectRatio(clampedRatio(item)))
+    }
+    return
+  }
+
+  LazyRow(
+    horizontalArrangement = Arrangement.spacedBy(6.dp),
+    contentPadding = androidx.compose.foundation.layout.PaddingValues(start = CONTENT_START, end = 16.dp),
+    modifier = modifier.fillMaxWidth()
+  ) {
+    itemsIndexed(media) { _, item ->
+      FeedMediaPlaceholder(item = item, modifier = Modifier.height(220.dp).aspectRatio(clampedRatio(item)))
+    }
+  }
+}
+
+@Composable
+private fun FeedMediaPlaceholder(item: FeedMedia, modifier: Modifier = Modifier) {
+  val description = item.alt.ifBlank { stringResource(R.string.TellomiFeed__image) }
+  Box(
+    modifier = modifier
+      .clip(RoundedCornerShape(10.dp))
+      .background(MaterialTheme.colorScheme.surfaceVariant)
+      .semantics { contentDescription = description }
+  )
+}
+
+@Composable
+private fun FeedActionRow(
+  card: FeedCard,
+  onLikeClick: (FeedCard) -> Unit,
+  modifier: Modifier = Modifier
+) {
+  val liked = card.viewer.liked
+  val likeLabel = if (liked) stringResource(R.string.TellomiFeed__unlike) else stringResource(R.string.TellomiFeed__like)
+
+  Row(verticalAlignment = Alignment.CenterVertically, modifier = modifier) {
+    Row(
+      verticalAlignment = Alignment.CenterVertically,
+      modifier = Modifier
+        .clip(RoundedCornerShape(50))
+        .clickable { onLikeClick(card) }
+        .semantics { contentDescription = likeLabel }
+        .heightIn(min = 40.dp)
+        .padding(horizontal = 12.dp)
+    ) {
+      Icon(
+        imageVector = ImageVector.vectorResource(if (liked) R.drawable.tellomi_heart_fill_24 else R.drawable.symbol_heart_24),
+        contentDescription = null,
+        tint = if (liked) LIKED_COLOR else MaterialTheme.colorScheme.onSurfaceVariant,
+        modifier = Modifier.size(20.dp)
+      )
+
+      if (!card.stats.likeCountHidden && card.stats.likes > 0) {
+        Text(
+          text = card.stats.likes.toString(),
+          style = MaterialTheme.typography.bodySmall,
+          color = MaterialTheme.colorScheme.onSurfaceVariant,
+          modifier = Modifier.padding(start = 4.dp)
+        )
+      }
+    }
+
+    if (card.stats.comments > 0) {
+      Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(horizontal = 12.dp)) {
+        Icon(
+          imageVector = ImageVector.vectorResource(R.drawable.symbol_chat_24),
+          contentDescription = null,
+          tint = MaterialTheme.colorScheme.onSurfaceVariant,
+          modifier = Modifier.size(20.dp)
+        )
+        Text(
+          text = pluralStringResource(R.plurals.TellomiFeed__comments, card.stats.comments, card.stats.comments),
+          style = MaterialTheme.typography.bodySmall,
+          color = MaterialTheme.colorScheme.onSurfaceVariant,
+          modifier = Modifier.padding(start = 4.dp)
+        )
+      }
+    }
+  }
+}
+
+/** 图片比例限制在 3:4（竖）到 16:9（横）之间，免得一张极长的图把整屏占掉。 */
+internal fun clampedRatio(item: FeedMedia): Float {
+  if (item.w <= 0 || item.h <= 0) return 1f
+  return (item.w.toFloat() / item.h.toFloat()).coerceIn(3f / 4f, 16f / 9f)
+}
+
+internal fun parseInstantMillis(value: String): Long? {
+  return try {
+    Instant.parse(value).toEpochMilli()
+  } catch (e: Exception) {
+    null
+  }
+}
+
+@Preview
+@Composable
+private fun FeedPostCardPreview() {
+  Previews.Preview {
+    FeedPostCard(
+      card = FeedCard(
+        id = "p",
+        kind = FeedCard.KIND_POST,
+        publishedAt = Instant.now().minusSeconds(600).toString(),
+        author = FeedAuthor(profileId = "a", displayName = "山风", handle = "shanfeng"),
+        text = "今天的云很低，像是伸手就能摸到。",
+        media = listOf(FeedMedia(key = "a", w = 1080, h = 1440), FeedMedia(key = "b", w = 1080, h = 1080)),
+        ipRegionLabel = "四川",
+        stats = FeedStats(likes = 12, comments = 3)
+      ),
+      showIpRegion = true,
+      onLikeClick = {},
+      onNotInterestedClick = {}
+    )
+  }
+}

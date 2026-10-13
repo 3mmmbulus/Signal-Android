@@ -26,4 +26,13 @@ object TellomiFeed {
   fun isTabEnabled(remoteEnabled: Boolean, forcedByInternalUser: Boolean): Boolean {
     return remoteEnabled || forcedByInternalUser
   }
+
+  /**
+   * 内部用户强制打开动态标签时，信息流用本机样例（[SampleFeedSource]），不连内容引擎。
+   * 内容引擎接上之后改成单独的开关。
+   */
+  @JvmStatic
+  fun isSampleDataEnabled(): Boolean {
+    return SignalStore.internal.forceFeedTab
+  }
 }

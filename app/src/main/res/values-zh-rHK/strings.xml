@@ -6593,6 +6593,24 @@
     <string name="TellomiFeed__recommend_empty_body">推薦的動態會出現在這裡。</string>
     <string name="TellomiFeed__following_empty_title">關注的人還沒有發動態</string>
     <string name="TellomiFeed__following_empty_body">好友和你關注的人、話題發的動態會出現在這裡。</string>
+    <string name="TellomiFeed__ai_generated">AI 生成</string>
+    <string name="TellomiFeed__more">更多</string>
+    <string name="TellomiFeed__not_interested">不感興趣</string>
+    <string name="TellomiFeed__tellomi_number">Tellomi 號：%1$s</string>
+    <string name="TellomiFeed__ip_region">IP 屬地：%1$s</string>
+    <string name="TellomiFeed__edited">已編輯</string>
+    <string name="TellomiFeed__image">圖片</string>
+    <string name="TellomiFeed__like">讚</string>
+    <string name="TellomiFeed__unlike">取消讚</string>
+    <string name="TellomiFeed__undo">復原</string>
+    <string name="TellomiFeed__hidden">已隱藏，會減少這類內容</string>
+    <string name="TellomiFeed__network_error">重新整理失敗，請檢查網絡</string>
+    <string name="TellomiFeed__action_failed">操作失敗，請再試</string>
+    <string name="TellomiFeed__load_failed">載入失敗</string>
+    <string name="TellomiFeed__retry">重試</string>
+    <plurals name="TellomiFeed__comments">
+        <item quantity="other">%1$d 則留言</item>
+    </plurals>
     <string name="ConversationListTabs__99p">99+</string>
     <!-- Menu item on stories landing page -->
     <string name="StoriesLandingFragment__story_privacy">快拍隱私</string>
