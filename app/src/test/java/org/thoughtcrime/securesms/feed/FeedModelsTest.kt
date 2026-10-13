@@ -14,29 +14,40 @@ import assertk.assertions.isSameInstanceAs
 import assertk.assertions.isTrue
 import org.junit.Test
 import org.thoughtcrime.securesms.feed.net.FeedCard
+import org.thoughtcrime.securesms.feed.net.FeedCardResult
 import org.thoughtcrime.securesms.feed.net.FeedConfig
+import org.thoughtcrime.securesms.feed.net.FeedIdsPage
 import org.thoughtcrime.securesms.feed.net.FeedJson
 import org.thoughtcrime.securesms.feed.net.FeedMedia
 import org.thoughtcrime.securesms.feed.net.FeedStats
-import org.thoughtcrime.securesms.feed.net.FeedTimelinePage
 import org.thoughtcrime.securesms.feed.net.FeedViewer
 
 class FeedModelsTest {
 
   @Test
-  fun `timeline page ignores unknown fields and fills missing ones`() {
-    val page = FeedJson.decodeFromString(
-      FeedTimelinePage.serializer(),
-      """{"entries":[{"id":"x","reason":"editorial","future_field":1,"card":{"id":"x","kind":"post","text":"hi","stats":{"likes":3},"brand_new":{"a":1}}}],"next_cursor":"c2"}"""
+  fun `card result ignores unknown fields and fills missing ones`() {
+    val result = FeedJson.decodeFromString(
+      FeedCardResult.serializer(),
+      """{"id":"x","state":"ok","version":1,"future_field":1,"card":{"kind":"post","display_mode":"text","source_url":null,"ai_generated":false,"edited":true,"text":"hi","brand_new":{"a":1},"author":{"id":"p1","display_name":"山风","native":true}},"stats":{"likes":3,"comments":0,"reposts":0}}"""
     )
 
-    val card = page.entries.single().card
-    assertThat(page.nextCursor).isEqualTo("c2")
+    val card = result.toCard()!!
+    assertThat(card.id).isEqualTo("x")
     assertThat(card.text).isEqualTo("hi")
+    assertThat(card.edited).isTrue()
     assertThat(card.stats.likes).isEqualTo(3)
-    assertThat(card.stats.comments).isEqualTo(0)
+    assertThat(card.viewer.liked).isFalse()
     assertThat(card.viewer.canComment).isTrue()
-    assertThat(card.author).isNull()
+    assertThat(card.author?.profileId).isEqualTo("p1")
+    assertThat(card.author?.isNative).isEqualTo(true)
+  }
+
+  @Test
+  fun `feed page is ids only`() {
+    val page = FeedJson.decodeFromString(FeedIdsPage.serializer(), """{"items":[{"id":"a","reason":"editorial"},{"id":"b"}]}""")
+
+    assertThat(page.items.map { it.id }).containsExactly("a", "b")
+    assertThat(page.cursor).isNull()
   }
 
   @Test
@@ -57,13 +68,17 @@ class FeedModelsTest {
   }
 
   @Test
-  fun `quoted card nests`() {
-    val card = FeedJson.decodeFromString(
-      FeedCard.serializer(),
-      """{"id":"r","kind":"post","quote_of":{"id":"q","state":"ok","card":{"id":"q","kind":"post","text":"orig"}}}"""
+  fun `quote is an id and poll counts sit outside the card`() {
+    val result = FeedJson.decodeFromString(
+      FeedCardResult.serializer(),
+      """{"id":"r","state":"ok","card":{"kind":"post","quote_of":"q","poll":{"options":["A","B"],"closes_at":null,"multi":false}},"poll":{"counts":[2,5],"voted":[1]}}"""
     )
 
-    assertThat(card.quoteOf?.card?.text).isEqualTo("orig")
+    val card = result.toCard()!!
+    assertThat(card.quoteOf).isEqualTo("q")
+    assertThat(card.poll?.options).isEqualTo(listOf("A", "B"))
+    assertThat(card.pollState?.counts).isEqualTo(listOf(2, 5))
+    assertThat(card.pollState?.voted).isEqualTo(listOf(1))
   }
 
   @Test

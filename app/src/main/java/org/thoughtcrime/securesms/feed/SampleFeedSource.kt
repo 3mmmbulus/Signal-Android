@@ -98,8 +98,7 @@ object SampleFeedSource : FeedSource {
 
     return FeedTimelinePage(
       entries = page,
-      nextCursor = if (end < all.size) end.toString() else null,
-      refreshedAt = Instant.now().toString()
+      nextCursor = if (end < all.size) end.toString() else null
     )
   }
 

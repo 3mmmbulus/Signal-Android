@@ -80,16 +80,16 @@ class FeedDraftTest {
   }
 
   @Test
-  fun `request matches the contract field names`() {
-    val request = FeedDraft(text = "  hi  ", visibility = FeedVisibility.ONLY_ME).toRequest(mediaKeys = listOf("m/1"), clientNonce = "n")
+  fun `request has only the fields the engine accepts`() {
+    val request = FeedDraft(text = "  hi  ", visibility = FeedVisibility.ONLY_ME).toRequest()
 
     assertThat(FeedJson.encodeToString(FeedCreatePostRequest.serializer(), request))
-      .isEqualTo("""{"kind":"post","text":"hi","media_keys":["m/1"],"topics":[],"visibility":"only_me","comments_closed":false,"reply_moderation":false,"client_nonce":"n"}""")
+      .isEqualTo("""{"kind":"post","text":"hi","visibility":"only_me","comments_closed":false}""")
   }
 
   @Test
   fun `article request carries the title`() {
-    val request = FeedDraft(kind = FeedDraftKind.ARTICLE, title = " 标题 ", text = "正文").toRequest(mediaKeys = emptyList(), clientNonce = "n")
+    val request = FeedDraft(kind = FeedDraftKind.ARTICLE, title = " 标题 ", text = "正文").toRequest()
 
     assertThat(request.kind).isEqualTo("article")
     assertThat(request.title).isEqualTo("标题")

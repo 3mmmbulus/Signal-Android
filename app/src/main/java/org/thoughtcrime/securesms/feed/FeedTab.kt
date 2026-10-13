@@ -12,7 +12,7 @@ import org.thoughtcrime.securesms.R
  * 动态页的两个分栏（`dynamic-feed.md` 第三节第 18 条：只有「推荐 / 关注」）。顺序就是空间顺序：
  * 推荐在左、关注在右，左右滑切换（`10-feed-prototype-log.md` 第 435 行）。
  *
- * [apiName] 是客户端接口契约里 `GET /v1/feed/timeline?tab=` 的取值（`docs/adr/0071/client-api-2026-10.md` 4.1）。
+ * [apiName] 是内容引擎的路由名：`GET /v1/feed/recommend`、`GET /v1/feed/following`（`docs/adr/0071/client-api-2026-10.md` 4.1）。
  */
 enum class FeedTab(
   val apiName: String,

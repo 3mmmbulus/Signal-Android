@@ -7,15 +7,20 @@ package org.thoughtcrime.securesms.feed.net
 
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.Transient
 
 /*
- * 动态客户端接口契约（`docs/adr/0071/client-api-2026-10.md`）里的 JSON 结构。字段名与契约逐字相同（snake_case）。
+ * 内容引擎（`tellomi/content-engine` `internal/engine/api`）的 JSON 结构，字段名与引擎逐字相同（snake_case）。
+ * 契约文档 `docs/adr/0071/client-api-2026-10.md` 按引擎实际的接口修订。
  *
- * 契约第一节「未知字段」：客户端必须忽略不认识的字段，所以解析统一用 [FeedJson]（ignoreUnknownKeys）。
+ * 客户端必须忽略不认识的字段，所以解析统一用 [FeedJson]（ignoreUnknownKeys）。
  * 每个可选字段都给默认值，服务端少给一个字段不会让整页解析失败。
  */
 
-/** 契约第三节 `GET /v1/feed/config`。 */
+/**
+ * 动态的配置。引擎还没有 `GET /v1/feed/config`（已请内容引擎线程补），在那之前客户端用这里的默认值，
+ * 只从 `GET /v1/feed/status` 拿「能不能看」。
+ */
 @Serializable
 data class FeedConfig(
   val enabled: Boolean = false,
@@ -45,37 +50,73 @@ data class FeedLimits(
   @SerialName("edit_window_seconds") val editWindowSeconds: Long = 900
 )
 
-/** 契约 4.1 `GET /v1/feed/timeline`。 */
+/** `GET /v1/feed/status`：H-1 内测名单和紧急开关都过了才是 true。 */
 @Serializable
-data class FeedTimelinePage(
-  val entries: List<FeedEntry> = emptyList(),
-  @SerialName("next_cursor") val nextCursor: String? = null,
-  @SerialName("refreshed_at") val refreshedAt: String? = null
+data class FeedStatus(val visible: Boolean = false)
+
+/**
+ * `GET /v1/feed/recommend`、`GET /v1/feed/following[?cursor=]`：只给 id，卡片再走 [FeedCardsRequest]。
+ * 推荐每次给新的一页、没有 cursor；关注按时间倒序，有 cursor 就还有下一页。
+ */
+@Serializable
+data class FeedIdsPage(
+  val items: List<FeedItemRef> = emptyList(),
+  val cursor: String? = null
 )
 
 @Serializable
+data class FeedItemRef(
+  val id: String,
+  val reason: String? = null
+)
+
+/** 界面用的一页：已经把 id 换成了卡片。不是线上的 JSON。 */
+data class FeedTimelinePage(
+  val entries: List<FeedEntry> = emptyList(),
+  val nextCursor: String? = null
+)
+
 data class FeedEntry(
   val id: String,
   val reason: String? = null,
   val card: FeedCard
 )
 
-/** 契约 4.2 `POST /v1/feed/cards`。 */
+/** `POST /v1/feed/cards`，一次最多 100 个 id。 */
 @Serializable
 data class FeedCardsRequest(val ids: List<String>)
 
 @Serializable
 data class FeedCardsResponse(val cards: List<FeedCardResult> = emptyList())
 
+/**
+ * 一张卡片的结果。`card` 是审核时定下的展示字段（`pool_card.card`），每个人不同的计数和「我赞过没有」在外层。
+ */
 @Serializable
 data class FeedCardResult(
   val id: String,
   val state: String,
-  val card: FeedCard? = null
+  val version: Int = 1,
+  val card: FeedCard? = null,
+  val stats: FeedStats? = null,
+  val me: FeedMine? = null,
+  val poll: FeedPollState? = null
 ) {
-  /** `unavailable` 不区分原因（契约 4.2）。不认识的 state 一律按不可用处理。 */
+  /** `unavailable` 不区分原因。不认识的 state 一律按不可用处理。 */
   val isAvailable: Boolean
     get() = state == STATE_OK && card != null
+
+  /** 把外层的计数、我的状态合进卡片，界面只看 [FeedCard]。 */
+  fun toCard(): FeedCard? {
+    val base = card?.takeIf { isAvailable } ?: return null
+    return base.copy(
+      id = id,
+      version = version,
+      stats = stats ?: base.stats,
+      viewer = base.viewer.copy(liked = me?.liked ?: base.viewer.liked, saved = me?.saved ?: base.viewer.saved),
+      pollState = poll
+    )
+  }
 
   companion object {
     const val STATE_OK = "ok"
@@ -83,10 +124,11 @@ data class FeedCardResult(
   }
 }
 
-/** 契约第五节：卡片 = `pool_card.card` + 每个人不同的 `viewer` 和计数。 */
+/** 卡片展示字段（引擎 `moderation/worker.go` 写进 `pool_card.card` 的那些）。[stats]、[viewer] 由 [FeedCardResult.toCard] 填。 */
 @Serializable
 data class FeedCard(
-  val id: String,
+  /** 引擎的 `card` 里没有 id（在 Card API 外层），由 [FeedCardResult.toCard] 填。 */
+  val id: String = "",
   val kind: String,
   @SerialName("display_mode") val displayMode: String = DISPLAY_TEXT,
   val version: Int = 1,
@@ -99,15 +141,18 @@ data class FeedCard(
   val media: List<FeedMedia> = emptyList(),
   val topics: List<FeedTopic> = emptyList(),
   val poll: FeedPoll? = null,
-  @SerialName("quote_of") val quoteOf: FeedCardResult? = null,
+  /** 被引用的帖子 id；要显示时再走一次 Card API。 */
+  @SerialName("quote_of") val quoteOf: String? = null,
   @SerialName("source_url") val sourceUrl: String? = null,
   val attribution: String? = null,
   @SerialName("ip_region_label") val ipRegionLabel: String? = null,
   @SerialName("ai_generated") val aiGenerated: Boolean = false,
   val stats: FeedStats = FeedStats(),
-  val viewer: FeedViewer = FeedViewer()
+  val viewer: FeedViewer = FeedViewer(),
+  @SerialName("parent_id") val parentId: String? = null,
+  @Transient val pollState: FeedPollState? = null
 ) {
-  /** P1 客户端只渲染这几种（契约第五节 `kind`）；别的不显示，不报错。 */
+  /** P1 客户端只渲染这几种 `kind`；别的（快拍、视频等）不显示，不报错。 */
   val isRenderable: Boolean
     get() = kind in RENDERABLE_KINDS
 
@@ -127,14 +172,18 @@ data class FeedCard(
 
 @Serializable
 data class FeedAuthor(
-  @SerialName("profile_id") val profileId: String,
+  @SerialName("id") val profileId: String,
   @SerialName("display_name") val displayName: String,
   val handle: String? = null,
+  /** 引擎的卡片还没带（已请补）；没设 handle 的人显示「Tellomi 号：xxxx」（第三节第 8 条）。 */
   @SerialName("tellomi_number") val tellomiNumber: String? = null,
   @SerialName("avatar_key") val avatarKey: String? = null,
+  /** 开放内容的作者（`native = false`）给的是外部头像地址。 */
+  @SerialName("avatar_url") val avatarUrl: String? = null,
   val badge: String? = null,
-  @SerialName("is_external") val isExternal: Boolean = false,
-  val platform: String? = null
+  /** false = 开放内容的外部作者（`external_author`）。 */
+  @SerialName("native") val isNative: Boolean = true,
+  val provider: String? = null
 )
 
 @Serializable
@@ -149,16 +198,20 @@ data class FeedMedia(
 @Serializable
 data class FeedTopic(val slug: String, val label: String)
 
+/** 投票的题面（卡片里，审核时定下）。 */
 @Serializable
 data class FeedPoll(
-  val options: List<FeedPollOption> = emptyList(),
+  val options: List<String> = emptyList(),
   @SerialName("closes_at") val closesAt: String? = null,
-  val multi: Boolean = false,
-  @SerialName("my_choice") val myChoice: List<Int> = emptyList()
+  val multi: Boolean = false
 )
 
+/** 投票的票数和我的选择（Card API 外层，每个人不同）。 */
 @Serializable
-data class FeedPollOption(val text: String, val votes: Int = 0)
+data class FeedPollState(
+  val counts: List<Int> = emptyList(),
+  val voted: List<Int> = emptyList()
+)
 
 @Serializable
 data class FeedStats(
@@ -168,6 +221,11 @@ data class FeedStats(
   @SerialName("like_count_hidden") val likeCountHidden: Boolean = false
 )
 
+/** Card API 外层的 `me`。 */
+@Serializable
+data class FeedMine(val liked: Boolean = false, val saved: Boolean = false)
+
+/** 界面用：我和这条的关系。[liked]、[saved] 来自 [FeedMine]，其余引擎还没给。 */
 @Serializable
 data class FeedViewer(
   val liked: Boolean = false,
@@ -176,7 +234,7 @@ data class FeedViewer(
   @SerialName("can_comment") val canComment: Boolean = true
 )
 
-/** 契约 6.1 `POST /v1/feed/events`：只报日志类事件。 */
+/** `POST /v1/feed/events`：只报日志类事件（曝光、打开、停留、快速退出、分享）。 */
 @Serializable
 data class FeedEventsRequest(val events: List<FeedEventPayload>)
 
@@ -189,33 +247,29 @@ data class FeedEventPayload(
   @SerialName("occurred_at") val occurredAt: String
 )
 
-/** 契约 6 不感兴趣。 */
+/** `POST /v1/feed/not-interested`。原因最多 40 字。 */
 @Serializable
 data class FeedNotInterestedRequest(
-  @SerialName("target_type") val targetType: String,
-  @SerialName("target_id") val targetId: String,
+  @SerialName("content_id") val contentId: String,
   val reason: String? = null
 )
 
-/** 契约 1.1 错误体。 */
+/** 错误体 `{"error": "…"}`。 */
 @Serializable
 data class FeedErrorBody(val error: String? = null, val message: String? = null)
 
 /**
- * 契约 7.2 `POST /v1/feed/posts`。`audience` 只放 Signal-Server 签的 `audience_token`（7.3），这里还不发。
- * 除了 `title` 都不给默认值：[FeedJson] 不编码默认值，这样每个字段都会明着发出去。
+ * `POST /v1/feed/posts`。引擎按 `DisallowUnknownFields` 解析，多一个字段就 400，所以这里只放引擎认的字段；
+ * `client_nonce`（重试去重）和 `media_keys`（图片）已请引擎补，补上之前带图的帖子发不了。
+ * `audience`（部分可见 / 不给谁看的假名名单）等选人组件接上再加。
  */
 @Serializable
 data class FeedCreatePostRequest(
   val kind: String,
   val title: String? = null,
   val text: String,
-  @SerialName("media_keys") val mediaKeys: List<String>,
-  val topics: List<String>,
   val visibility: String,
-  @SerialName("comments_closed") val commentsClosed: Boolean,
-  @SerialName("reply_moderation") val replyModeration: Boolean,
-  @SerialName("client_nonce") val clientNonce: String
+  @SerialName("comments_closed") val commentsClosed: Boolean
 )
 
 @Serializable

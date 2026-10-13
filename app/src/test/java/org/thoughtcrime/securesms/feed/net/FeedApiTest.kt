@@ -23,7 +23,7 @@ import org.junit.Before
 import org.junit.Test
 
 /**
- * 客户端接口契约（`docs/adr/0071/client-api-2026-10.md`）的请求形状与错误处理。全部在本机 MockWebServer 上。
+ * 内容引擎接口（`tellomi/content-engine` `internal/engine/api`）的请求形状与错误处理。全部在本机 MockWebServer 上。
  */
 class FeedApiTest {
 
@@ -55,35 +55,47 @@ class FeedApiTest {
   }
 
   @Test
-  fun `timeline sends tab, cursor, clamped limit and bearer token`() = runBlocking {
-    server.enqueue(MockResponse().setBody("""{"entries":[],"next_cursor":null}"""))
+  fun `following sends cursor and bearer token`() = runBlocking {
+    server.enqueue(MockResponse().setBody("""{"items":[{"id":"a","reason":"following"}],"cursor":"c2"}"""))
 
-    api.timeline("following", cursor = "abc", limit = 500)
+    val page = api.feed("following", cursor = "abc")
 
     val request = server.takeRequest()
     assertThat(request.method).isEqualTo("GET")
-    assertThat(request.requestUrl!!.encodedPath).isEqualTo("/v1/feed/timeline")
-    assertThat(request.requestUrl!!.queryParameter("tab")).isEqualTo("following")
+    assertThat(request.requestUrl!!.encodedPath).isEqualTo("/v1/feed/following")
     assertThat(request.requestUrl!!.queryParameter("cursor")).isEqualTo("abc")
-    assertThat(request.requestUrl!!.queryParameter("limit")).isEqualTo("50")
     assertThat(request.getHeader("Authorization")).isEqualTo("Bearer t1")
+    assertThat(page.items.map { it.id }).containsExactly("a")
+    assertThat(page.cursor).isEqualTo("c2")
   }
 
   @Test
-  fun `first page has no cursor parameter`() = runBlocking {
-    server.enqueue(MockResponse().setBody("""{"entries":[]}"""))
+  fun `recommend has no cursor and can turn personalization off`() = runBlocking {
+    server.enqueue(MockResponse().setBody("""{"items":[]}"""))
+    server.enqueue(MockResponse().setBody("""{"items":[]}"""))
 
-    api.timeline("recommend", cursor = null)
+    api.feed("recommend", cursor = null)
+    api.feed("recommend", cursor = null, personalized = false)
 
-    assertThat(server.takeRequest().requestUrl!!.queryParameter("cursor")).isNull()
+    val first = server.takeRequest().requestUrl!!
+    assertThat(first.encodedPath).isEqualTo("/v1/feed/recommend")
+    assertThat(first.queryParameter("cursor")).isNull()
+    assertThat(first.queryParameter("personalized")).isNull()
+    assertThat(server.takeRequest().requestUrl!!.queryParameter("personalized")).isEqualTo("false")
+  }
+
+  @Test
+  fun `unknown tab is refused`() {
+    assertFailure { runBlocking { api.feed("hot", cursor = null) } }.isInstanceOf(IllegalArgumentException::class)
+    assertThat(server.requestCount).isEqualTo(0)
   }
 
   @Test
   fun `401 refreshes the token and retries exactly once`() = runBlocking {
     server.enqueue(MockResponse().setResponseCode(401))
-    server.enqueue(MockResponse().setBody("""{"entries":[]}"""))
+    server.enqueue(MockResponse().setBody("""{"items":[]}"""))
 
-    api.timeline("recommend", cursor = null)
+    api.feed("recommend", cursor = null)
 
     assertThat(server.requestCount).isEqualTo(2)
     assertThat(tokens.refreshes).isEqualTo(1)
@@ -96,17 +108,17 @@ class FeedApiTest {
     server.enqueue(MockResponse().setResponseCode(401))
     server.enqueue(MockResponse().setResponseCode(401))
 
-    assertFailure { runBlocking { api.timeline("recommend", cursor = null) } }
+    assertFailure { runBlocking { api.feed("recommend", cursor = null) } }
       .isInstanceOf(FeedApiException::class)
       .prop(FeedApiException::status).isEqualTo(401)
     assertThat(server.requestCount).isEqualTo(2)
   }
 
   @Test
-  fun `403 feed_disabled is recognised`() {
-    server.enqueue(MockResponse().setResponseCode(403).setBody("""{"error":"feed_disabled","message":"x"}"""))
+  fun `404 feed_hidden is recognised`() {
+    server.enqueue(MockResponse().setResponseCode(404).setBody("""{"error":"feed_hidden"}"""))
 
-    assertFailure { runBlocking { api.config() } }
+    assertFailure { runBlocking { api.status() } }
       .isInstanceOf(FeedApiException::class)
       .prop(FeedApiException::isFeedDisabled).isTrue()
   }
@@ -130,7 +142,7 @@ class FeedApiTest {
 
     val put = server.takeRequest()
     assertThat(put.method).isEqualTo("PUT")
-    assertThat(put.requestUrl!!.encodedPath).isEqualTo("/v1/feed/content/c-1/reactions/like")
+    assertThat(put.requestUrl!!.encodedPath).isEqualTo("/v1/feed/posts/c-1/like")
     assertThat(server.takeRequest().method).isEqualTo("DELETE")
   }
 
@@ -140,14 +152,14 @@ class FeedApiTest {
 
     api.setReaction("../../admin", FeedApi.REACTION_SAVE, on = true)
 
-    assertThat(server.takeRequest().requestUrl!!.encodedPath).isEqualTo("/v1/feed/content/..%2F..%2Fadmin/reactions/save")
+    assertThat(server.takeRequest().requestUrl!!.encodedPath).isEqualTo("/v1/feed/posts/..%2F..%2Fadmin/save")
   }
 
   @Test
   fun `cards posts ids and reads ok and unavailable alike`() = runBlocking {
     server.enqueue(
       MockResponse().setBody(
-        """{"cards":[{"id":"a","state":"ok","card":{"id":"a","kind":"post","text":"hi"}},{"id":"b","state":"unavailable"},{"id":"c","state":"something_new"}]}"""
+        """{"cards":[{"id":"a","state":"ok","version":2,"card":{"kind":"post","text":"hi"},"stats":{"likes":3,"comments":1,"reposts":0},"me":{"liked":true,"saved":false}},{"id":"b","state":"unavailable"},{"id":"c","state":"something_new"}]}"""
       )
     )
 
@@ -157,6 +169,12 @@ class FeedApiTest {
     assertThat(request.method).isEqualTo("POST")
     assertThat(request.body.readUtf8()).isEqualTo("""{"ids":["a","b","c"]}""")
     assertThat(response.cards.map { it.isAvailable }).containsExactly(true, false, false)
+    val card = response.cards.first().toCard()!!
+    assertThat(card.id).isEqualTo("a")
+    assertThat(card.version).isEqualTo(2)
+    assertThat(card.stats.likes).isEqualTo(3)
+    assertThat(card.viewer.liked).isTrue()
+    assertThat(response.cards[1].toCard()).isNull()
   }
 
   @Test
@@ -169,10 +187,10 @@ class FeedApiTest {
 
     val post = server.takeRequest()
     assertThat(post.requestUrl!!.encodedPath).isEqualTo("/v1/feed/not-interested")
-    assertThat(post.body.readUtf8()).isEqualTo("""{"target_type":"content","target_id":"c-9"}""")
+    assertThat(post.body.readUtf8()).isEqualTo("""{"content_id":"c-9"}""")
     val delete = server.takeRequest()
     assertThat(delete.method).isEqualTo("DELETE")
-    assertThat(delete.requestUrl!!.encodedPath).isEqualTo("/v1/feed/not-interested/content/c-9")
+    assertThat(delete.requestUrl!!.encodedPath).isEqualTo("/v1/feed/not-interested/c-9")
   }
 
   @Test
@@ -191,7 +209,7 @@ class FeedApiTest {
   fun `error without a json body still reports the status`() {
     server.enqueue(MockResponse().setResponseCode(503).setBody("<html>busy</html>"))
 
-    assertFailure { runBlocking { api.config() } }
+    assertFailure { runBlocking { api.status() } }
       .isInstanceOf(FeedApiException::class)
       .given { e ->
         assertThat(e.status).isEqualTo(503)
@@ -205,21 +223,14 @@ class FeedApiTest {
     server.enqueue(MockResponse().setResponseCode(201).setBody("""{"id":"p1","state":"pending","version":1}"""))
 
     val response = api.createPost(
-      FeedCreatePostRequest(
-        kind = "post",
-        text = "hi",
-        mediaKeys = emptyList(),
-        topics = emptyList(),
-        visibility = "friends",
-        commentsClosed = false,
-        replyModeration = false,
-        clientNonce = "n"
-      )
+      FeedCreatePostRequest(kind = "post", text = "hi", visibility = "friends", commentsClosed = false)
     )
 
     val request = server.takeRequest()
     assertThat(request.method).isEqualTo("POST")
     assertThat(request.requestUrl!!.encodedPath).isEqualTo("/v1/feed/posts")
+    // 引擎 DisallowUnknownFields：只能有它认的字段
+    assertThat(request.body.readUtf8()).isEqualTo("""{"kind":"post","text":"hi","visibility":"friends","comments_closed":false}""")
     assertThat(response.state).isEqualTo(FeedCreatePostResponse.STATE_PENDING)
   }
 }

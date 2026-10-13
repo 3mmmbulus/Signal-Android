@@ -18,7 +18,7 @@ import okhttp3.RequestBody.Companion.toRequestBody
 import okhttp3.Response
 import java.io.IOException
 
-/** 契约第一节：解析时忽略不认识的字段，缺的字段用默认值。 */
+/** 解析时忽略不认识的字段，缺的字段用默认值，服务端加字段不会让旧客户端解析失败。 */
 val FeedJson: Json = Json {
   ignoreUnknownKeys = true
   explicitNulls = false
@@ -26,30 +26,32 @@ val FeedJson: Json = Json {
 }
 
 /**
- * feed token 的来源（契约第二节）。token 只在内存里，不落盘。
+ * feed token 的来源：Signal-Server 签的短期 JWT（内容引擎 `internal/engine/auth`）。token 只在内存里，不落盘。
  *
- * 正式实现从 Signal-Server `GET /v1/tellomi/feed/auth` 取（服务端接口还没写，契约第十一节第 1 条）。
+ * 正式实现从 Signal-Server `GET /v1/tellomi/feed/auth` 取（Signal-Server 这边还没写）。
  */
 interface FeedTokenSource {
   /** 当前可用的 token；[forceRefresh] 为真时丢掉缓存重新取。 */
   suspend fun token(forceRefresh: Boolean = false): String
 }
 
-/** 内容引擎返回的错误（契约 1.1）。[code] 是错误体里机器可读的 `error`。 */
+/** 内容引擎返回的错误。[code] 是错误体 `{"error": "…"}` 里的机器可读代码。 */
 class FeedApiException(
   val status: Int,
   val code: String?,
   val retryAfterSeconds: Long? = null
 ) : IOException("feed api $status ${code.orEmpty()}") {
-  /** 403 `feed_disabled`：这个区域的动态被关了，或账号不在内测名单。客户端隐藏入口。 */
+  /**
+   * 引擎对每个接口都回 404 `feed_hidden`：不在内测名单，或这个区域的紧急开关关了。客户端隐藏入口，不显示空列表。
+   */
   val isFeedDisabled: Boolean
-    get() = status == 403 && code == "feed_disabled"
+    get() = status == 404 && code == "feed_hidden"
 }
 
 /**
- * 内容引擎的 HTTP 客户端，只做契约里 P1 列表页要用的那几个接口。
+ * 内容引擎的 HTTP 客户端，只做动态列表页和发帖要用的那几个接口。
  *
- * - 401 时换一次 token 再试，**只重试一次**（契约 1.1）；
+ * - 401（`credential_expired` 等）时换一次 token 再试，**只重试一次**；
  * - 不在这里重试别的错误，也不缓存：缓存是调用方的事。
  */
 class FeedApi(
@@ -58,17 +60,25 @@ class FeedApi(
   private val tokens: FeedTokenSource
 ) {
 
-  suspend fun config(): FeedConfig {
-    return get(url("v1/feed/config"), FeedConfig.serializer())
+  /** 能不能看动态：不在内测名单或者紧急开关关了是 false。 */
+  suspend fun status(): FeedStatus {
+    return get(url("v1/feed/status"), FeedStatus.serializer())
   }
 
-  suspend fun timeline(tabApiName: String, cursor: String?, limit: Int = DEFAULT_PAGE_SIZE): FeedTimelinePage {
-    val url = url("v1/feed/timeline").newBuilder()
-      .addQueryParameter("tab", tabApiName)
-      .apply { if (cursor != null) addQueryParameter("cursor", cursor) }
-      .addQueryParameter("limit", limit.coerceIn(1, MAX_PAGE_SIZE).toString())
+  /**
+   * 一栏的一页 id：[tabApiName] 是 `recommend` 或 `following`。推荐不收 cursor（每次给新的一页）；
+   * [personalized] 只对推荐有用，个性化开关关掉时传 false（第三节第 47 条）。
+   */
+  suspend fun feed(tabApiName: String, cursor: String?, personalized: Boolean = true): FeedIdsPage {
+    require(tabApiName == TAB_RECOMMEND || tabApiName == TAB_FOLLOWING) { "unknown tab $tabApiName" }
+    val url = url("v1/feed").newBuilder()
+      .addPathSegment(tabApiName)
+      .apply {
+        if (cursor != null) addQueryParameter("cursor", cursor)
+        if (tabApiName == TAB_RECOMMEND && !personalized) addQueryParameter("personalized", "false")
+      }
       .build()
-    return get(url, FeedTimelinePage.serializer())
+    return get(url, FeedIdsPage.serializer())
   }
 
   suspend fun cards(ids: List<String>): FeedCardsResponse {
@@ -77,10 +87,10 @@ class FeedApi(
     return send(Request.Builder().url(url("v1/feed/cards")).post(body), FeedCardsResponse.serializer())
   }
 
-  /** 契约第六节：点赞 / 收藏，PUT 加、DELETE 去，幂等。 */
+  /** 点赞 / 收藏：PUT 加、DELETE 去，幂等。 */
   suspend fun setReaction(contentId: String, reaction: String, on: Boolean) {
     require(reaction == REACTION_LIKE || reaction == REACTION_SAVE) { "unknown reaction $reaction" }
-    val url = url("v1/feed/content").newBuilder().addPathSegment(contentId).addPathSegment("reactions").addPathSegment(reaction).build()
+    val url = url("v1/feed/posts").newBuilder().addPathSegment(contentId).addPathSegment(reaction).build()
     val builder = Request.Builder().url(url)
     if (on) builder.put(EMPTY_BODY) else builder.delete()
     sendNoContent(builder)
@@ -89,24 +99,24 @@ class FeedApi(
   suspend fun notInterested(contentId: String, reason: String?) {
     val body = FeedJson.encodeToString(
       FeedNotInterestedRequest.serializer(),
-      FeedNotInterestedRequest(targetType = "content", targetId = contentId, reason = reason)
+      FeedNotInterestedRequest(contentId = contentId, reason = reason)
     ).toRequestBody(JSON)
     sendNoContent(Request.Builder().url(url("v1/feed/not-interested")).post(body))
   }
 
   suspend fun undoNotInterested(contentId: String) {
-    val url = url("v1/feed/not-interested").newBuilder().addPathSegment("content").addPathSegment(contentId).build()
+    val url = url("v1/feed/not-interested").newBuilder().addPathSegment(contentId).build()
     sendNoContent(Request.Builder().url(url).delete())
   }
 
-  /** 契约 6.1：一批最多 100 条；失败由调用方丢弃，不重试。 */
+  /** 日志类事件，一批最多 100 条；失败由调用方丢弃，不重试。 */
   suspend fun events(events: List<FeedEventPayload>) {
     require(events.size <= MAX_EVENTS) { "at most $MAX_EVENTS events per call" }
     val body = FeedJson.encodeToString(FeedEventsRequest.serializer(), FeedEventsRequest(events)).toRequestBody(JSON)
     sendNoContent(Request.Builder().url(url("v1/feed/events")).post(body))
   }
 
-  /** 契约 7.2：发帖。[FeedCreatePostRequest.clientNonce] 让服务端对重试去重，重试时用同一个。 */
+  /** 发帖。大陆区返回 `pending`（先审后发，R-2.2）；没建过主页返回 409 `profile_required`。 */
   suspend fun createPost(request: FeedCreatePostRequest): FeedCreatePostResponse {
     val body = FeedJson.encodeToString(FeedCreatePostRequest.serializer(), request).toRequestBody(JSON)
     return send(Request.Builder().url(url("v1/feed/posts")).post(body), FeedCreatePostResponse.serializer())
@@ -165,8 +175,9 @@ class FeedApi(
   }
 
   companion object {
-    const val DEFAULT_PAGE_SIZE = 20
-    const val MAX_PAGE_SIZE = 50
+    const val TAB_RECOMMEND = "recommend"
+    const val TAB_FOLLOWING = "following"
+
     const val MAX_CARD_IDS = 100
     const val MAX_EVENTS = 100
 
