@@ -5,6 +5,7 @@ import org.whispersystems.signalservice.api.InvalidMessageStructureException;
 import org.whispersystems.signalservice.api.messages.SignalServiceAttachmentPointer;
 import org.whispersystems.signalservice.api.messages.SignalServiceAttachmentRemoteId;
 import org.whispersystems.signalservice.internal.push.AttachmentPointer;
+import org.whispersystems.signalservice.internal.push.TellomiAttachment;
 
 import java.io.IOException;
 import java.util.Optional;
@@ -43,7 +44,8 @@ public final class AttachmentPointerUtil {
                                               pointer.caption != null && !pointer.caption.isEmpty() ? Optional.of(pointer.caption) : Optional.empty(),
                                               pointer.blurHash != null ? Optional.of(pointer.blurHash) : Optional.empty(),
                                               pointer.uploadTimestamp != null ? pointer.uploadTimestamp : 0,
-                                              UuidUtil.fromByteStringOrNull(pointer.clientUuid));
+                                              UuidUtil.fromByteStringOrNull(pointer.clientUuid),
+                                              pointer.tellomi != null && Boolean.TRUE.equals(pointer.tellomi.asFile));
   }
 
   public static AttachmentPointer createAttachmentPointer(SignalServiceAttachmentPointer attachment) {
@@ -113,6 +115,11 @@ public final class AttachmentPointerUtil {
 
     if (attachment.getUuid() != null) {
       builder.clientUuid(UuidUtil.toByteString(attachment.getUuid()));
+    }
+
+    // Tellomi (ADR-0068): only set when true, so ordinary attachments stay byte-identical to upstream.
+    if (attachment.getTellomiAsFile()) {
+      builder.tellomi(new TellomiAttachment.Builder().asFile(true).build());
     }
 
     return builder.build();

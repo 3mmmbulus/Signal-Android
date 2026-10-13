@@ -14,11 +14,31 @@
         android:gravity="center_vertical"
         android:orientation="horizontal">
 
+        <FrameLayout
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="center_vertical"
+            android:clickable="false"
+            android:focusable="false">
+
+        <!-- Tellomi (ADR-0068): an image / video sent as a file shows its thumbnail here, under the transfer controls, instead of the file icon -->
+        <ImageView
+            android:id="@+id/tellomi_thumbnail"
+            android:layout_width="48dp"
+            android:layout_height="48dp"
+            android:layout_gravity="center_vertical|start"
+            android:layout_marginEnd="8dp"
+            android:background="@drawable/tellomi_document_thumbnail_background"
+            android:importantForAccessibility="no"
+            android:scaleType="centerCrop"
+            android:visibility="gone"
+            tools:visibility="visible" />
+
         <org.thoughtcrime.securesms.components.AnimatingToggle
             android:id="@+id/control_toggle"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_gravity="center"
+            android:layout_gravity="center_vertical|start"
             android:clickable="false"
             android:focusable="false"
             android:gravity="center">
@@ -121,6 +141,8 @@
                 android:visibility="gone" />
 
         </org.thoughtcrime.securesms.components.AnimatingToggle>
+
+        </FrameLayout>
 
         <LinearLayout
             android:layout_width="match_parent"

@@ -6,6 +6,7 @@ import android.content.res.ColorStateList;
 import android.content.res.TypedArray;
 import android.graphics.Color;
 import android.graphics.PorterDuff;
+import android.net.Uri;
 import android.util.AttributeSet;
 import android.view.View;
 import android.view.ViewGroup;
@@ -17,13 +18,17 @@ import androidx.annotation.AttrRes;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 
+import com.bumptech.glide.Glide;
+import com.bumptech.glide.load.engine.DiskCacheStrategy;
 import com.pnikosis.materialishprogress.ProgressWheel;
 
 import org.greenrobot.eventbus.EventBus;
 import org.greenrobot.eventbus.Subscribe;
 import org.greenrobot.eventbus.ThreadMode;
+import org.signal.blurhash.BlurHash;
 import org.signal.core.util.ByteSize;
 import org.signal.core.util.logging.Log;
+import org.signal.glide.decryptableuri.DecryptableUri;
 import org.thoughtcrime.securesms.R;
 import org.thoughtcrime.securesms.attachments.DatabaseAttachment;
 import org.thoughtcrime.securesms.database.AttachmentTable;
@@ -33,6 +38,7 @@ import org.thoughtcrime.securesms.keyvalue.SignalStore;
 import org.thoughtcrime.securesms.mms.Slide;
 import org.thoughtcrime.securesms.mms.SlideClickListener;
 import org.thoughtcrime.securesms.mms.SlidesClickedListener;
+import org.thoughtcrime.securesms.util.MediaUtil;
 import org.whispersystems.signalservice.api.util.OptionalUtil;
 
 import java.util.Collections;
@@ -44,6 +50,9 @@ public class DocumentView extends FrameLayout {
 
   private static final String TAG = Log.tag(DocumentView.class);
 
+  /** Tellomi (ADR-0068): black at 40%, laid over a file row's thumbnail under the transfer controls. */
+  private static final int THUMBNAIL_UNDER_CONTROLS = 0x66000000;
+
   private final @NonNull AnimatingToggle controlToggle;
   private final @NonNull ImageView       downloadButton;
   private final @NonNull ImageView       uploadButton;
@@ -53,6 +62,8 @@ public class DocumentView extends FrameLayout {
   private final @NonNull TextView        fileName;
   private final @NonNull TextView        fileSize;
   private final @NonNull TextView        document;
+  private final @NonNull View            icon;
+  private final @NonNull ImageView       tellomiThumbnail;
 
   private @Nullable SlideClickListener    downloadListener;
   private @Nullable SlideClickListener    viewListener;
@@ -84,6 +95,10 @@ public class DocumentView extends FrameLayout {
     this.fileName         = findViewById(R.id.file_name);
     this.fileSize         = findViewById(R.id.file_size);
     this.document         = findViewById(R.id.document);
+    this.icon             = findViewById(R.id.icon);
+    this.tellomiThumbnail = findViewById(R.id.tellomi_thumbnail);
+
+    tellomiThumbnail.setClipToOutline(true);
 
     if (attrs != null) {
       TypedArray typedArray   = getContext().getTheme().obtainStyledAttributes(attrs, R.styleable.DocumentView, 0, 0);
@@ -141,6 +156,7 @@ public class DocumentView extends FrameLayout {
                           final boolean showSingleLineFilename)
   {
     this.showControls = showControls;
+    presentTellomiThumbnail(documentSlide);
     presentTransferControls(documentSlide, showControls);
 
     this.documentSlide = documentSlide;
@@ -196,6 +212,43 @@ public class DocumentView extends FrameLayout {
     } else {
       controlToggle.displayQuick(iconContainer);
       if (downloadProgress.isSpinning()) downloadProgress.stopSpinning();
+    }
+
+    // Tellomi (ADR-0068): darken the thumbnail while transfer controls sit on it, so they stay readable
+    if (iconContainer.getVisibility() == View.VISIBLE) {
+      tellomiThumbnail.clearColorFilter();
+    } else {
+      tellomiThumbnail.setColorFilter(THUMBNAIL_UNDER_CONTROLS, PorterDuff.Mode.SRC_ATOP);
+    }
+  }
+
+  /**
+   * Tellomi (ADR-0068, R-3): an image / video sent as a file is a file row with its thumbnail on the
+   * left — the picture once it is here, its blur hash before that — instead of the generic file icon.
+   */
+  private void presentTellomiThumbnail(@NonNull Slide documentSlide) {
+    if (!MediaUtil.isTellomiAsFile(documentSlide.asAttachment()) || !MediaUtil.isImageOrVideoType(documentSlide.getContentType())) {
+      if (tellomiThumbnail.getVisibility() == View.VISIBLE) {
+        Glide.with(this).clear(tellomiThumbnail);
+      }
+      tellomiThumbnail.setVisibility(View.GONE);
+      icon.setVisibility(View.VISIBLE);
+      document.setVisibility(View.VISIBLE);
+      return;
+    }
+
+    icon.setVisibility(View.GONE);
+    document.setVisibility(View.GONE);
+    tellomiThumbnail.setVisibility(View.VISIBLE);
+
+    Uri      displayUri = documentSlide.getDisplayUri();
+    BlurHash blurHash   = documentSlide.getPlaceholderBlur();
+    if (displayUri != null) {
+      Glide.with(this).load(new DecryptableUri(displayUri)).centerCrop().diskCacheStrategy(DiskCacheStrategy.NONE).into(tellomiThumbnail);
+    } else if (blurHash != null) {
+      Glide.with(this).asBitmap().load(blurHash).centerCrop().diskCacheStrategy(DiskCacheStrategy.NONE).into(tellomiThumbnail);
+    } else {
+      Glide.with(this).clear(tellomiThumbnail);
     }
   }
 

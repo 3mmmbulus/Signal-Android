@@ -6,6 +6,7 @@
 package org.signal.core.models.media
 
 import android.os.Parcelable
+import com.fasterxml.jackson.annotation.JsonInclude
 import com.fasterxml.jackson.annotation.JsonProperty
 import kotlinx.parcelize.IgnoredOnParcel
 import kotlinx.parcelize.Parcelize
@@ -61,7 +62,19 @@ data class TransformProperties(
   @JsonProperty("videoMuted")
   @SerialName("videoMuted")
   @JvmField
-  val videoMuted: Boolean = false
+  val videoMuted: Boolean = false,
+
+  /**
+   * Tellomi (ADR-0068): drawn as a file row on both ends (`AttachmentPointer.tellomi.asFile`), sent as
+   * the original bytes. Lives here, not in a new column, so there is no schema migration to renumber
+   * against upstream. No [EncodeDefault] (and NON_DEFAULT for Jackson): it is only written when true,
+   * so every other attachment's JSON stays exactly as upstream writes it.
+   */
+  @JsonProperty("tellomiAsFile")
+  @field:JsonInclude(JsonInclude.Include.NON_DEFAULT)
+  @SerialName("tellomiAsFile")
+  @JvmField
+  val tellomiAsFile: Boolean = false
 ) : Parcelable {
   fun shouldSkipTransform(): Boolean {
     return skipTransform
@@ -127,6 +140,12 @@ data class TransformProperties(
     @JvmStatic
     fun forSentMediaQuality(sentMediaQuality: Int): TransformProperties {
       return TransformProperties(sentMediaQuality = sentMediaQuality)
+    }
+
+    /** Tellomi (ADR-0068): send the original bytes, drawn as a file row on both ends. */
+    @JvmStatic
+    fun forTellomiAsFile(): TransformProperties {
+      return TransformProperties(skipTransform = true, tellomiAsFile = true)
     }
   }
 }

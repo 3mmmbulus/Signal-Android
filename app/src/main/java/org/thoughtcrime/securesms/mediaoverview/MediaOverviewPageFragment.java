@@ -356,7 +356,8 @@ public final class MediaOverviewPageFragment extends LoggingFragment
       return;
     }
 
-    if (MediaUtil.isVideo(attachment) || MediaUtil.isImage(attachment)) {
+    // Tellomi (ADR-0068): a photo / video sent as a file opens like any other file
+    if ((MediaUtil.isVideo(attachment) || MediaUtil.isImage(attachment)) && !MediaUtil.isTellomiAsFile(attachment)) {
       if (attachment.transferState != AttachmentTable.TRANSFER_PROGRESS_DONE && attachment.transferState != AttachmentTable.TRANSFER_RESTORE_OFFLOADED) {
         Toast.makeText(context, R.string.MediaOverviewActivity_this_media_is_not_sent_yet, Toast.LENGTH_LONG).show();
         return;

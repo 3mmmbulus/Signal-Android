@@ -2131,7 +2131,8 @@ class AttachmentTable(
 
       values.put(TRANSFER_STATE, TRANSFER_PROGRESS_DONE)
       values.put(TRANSFER_FILE, null as String?)
-      values.put(TRANSFORM_PROPERTIES, TransformProperties.forSkipTransform().serialize())
+      // Tellomi (ADR-0068): keep tellomiAsFile from the received pointer
+      values.put(TRANSFORM_PROPERTIES, TransformProperties.forSkipTransform().copy(tellomiAsFile = existingPlaceholder.transformProperties?.tellomiAsFile == true).serialize())
       values.put(REMOTE_LOCATION, existingPlaceholder.remoteLocation)
       values.put(CDN_NUMBER, existingPlaceholder.cdn.serialize())
       values.put(REMOTE_KEY, existingPlaceholder.remoteKey!!)
@@ -3172,6 +3173,11 @@ class AttachmentTable(
       return false
     }
 
+    // Tellomi (ADR-0068): sending the original as a file must not pick up a compressed copy of it, and vice versa
+    if (newProperties.tellomiAsFile != potentialMatchProperties.tellomiAsFile) {
+      return false
+    }
+
     return true
   }
 
@@ -3209,6 +3215,9 @@ class AttachmentTable(
         put(UPLOAD_TIMESTAMP, attachment.uploadTimestamp)
         put(BLUR_HASH, attachment.blurHash?.hash)
         put(ATTACHMENT_UUID, attachment.uuid?.toString())
+
+        // Tellomi (ADR-0068): the only thing a received attachment carries in here is tellomiAsFile
+        attachment.transformProperties?.takeIf { it.tellomiAsFile }?.let { put(TRANSFORM_PROPERTIES, it.serialize()) }
 
         attachment.stickerLocator?.let { sticker ->
           put(STICKER_PACK_ID, sticker.packId)
@@ -3553,6 +3562,10 @@ class AttachmentTable(
     val (attachmentId: AttachmentId, foundDuplicate: Boolean) = writableDatabase.withinTransaction { db ->
       val contentValues = ContentValues()
       var transformProperties = attachment.transformProperties ?: TransformProperties.empty()
+      if (quote && transformProperties.tellomiAsFile) {
+        // Tellomi (ADR-0068): a quote thumbnail is only ever drawn as a thumbnail
+        transformProperties = transformProperties.copy(tellomiAsFile = false)
+      }
 
       // First we'll check if our file hash matches the starting or ending hash of any other attachments and has compatible transform properties.
       // We'll prefer the match with the most recent upload timestamp.
@@ -3628,7 +3641,8 @@ class AttachmentTable(
           TAG,
           "[insertAttachmentWithData] Found a valid template we could use to skip upload. Template: ${uploadTemplate.attachmentId}, TemplateUploadTimestamp: ${hashMatch?.uploadTimestamp}, CurrentTime: ${System.currentTimeMillis()}, InsertingAttachment: (MessageId: $messageId, ${attachment.uri})"
         )
-        transformProperties = (uploadTemplate.transformProperties ?: transformProperties).copy(skipTransform = true)
+        // Tellomi (ADR-0068): how this send is drawn is this send's choice, not the template's
+        transformProperties = (uploadTemplate.transformProperties ?: transformProperties).copy(skipTransform = true, tellomiAsFile = transformProperties.tellomiAsFile)
 
         contentValues.put(ARCHIVE_CDN, hashMatch!!.archiveCdn)
         contentValues.put(ARCHIVE_TRANSFER_STATE, hashMatch.archiveTransferState)

@@ -21,6 +21,10 @@ class MediaTable internal constructor(context: Context?, databaseHelper: SignalD
     const val ALL_THREADS = -1
     private const val THREAD_RECIPIENT_ID = "THREAD_RECIPIENT_ID"
     private const val MEDIA_MESSAGE_ID = "media_message_id"
+
+    /** Tellomi (ADR-0068): sent as a file → listed with files, not with photos / videos. Only ever written as true, see TransformProperties. */
+    private const val TELLOMI_AS_FILE = """${AttachmentTable.TRANSFORM_PROPERTIES} LIKE '%"tellomiAsFile":true%'"""
+
     private val BASE_MEDIA_QUERY = """
       SELECT
         ${AttachmentTable.TABLE_NAME}.${AttachmentTable.ID} AS ${AttachmentTable.ID},
@@ -103,6 +107,7 @@ class MediaTable internal constructor(context: Context?, databaseHelper: SignalD
         (${AttachmentTable.DATA_FILE} IS NOT NULL OR (${AttachmentTable.CONTENT_TYPE} LIKE 'video/%' AND ${AttachmentTable.REMOTE_INCREMENTAL_DIGEST} IS NOT NULL) OR ${AttachmentTable.THUMBNAIL_FILE} IS NOT NULL OR ${AttachmentTable.TRANSFER_STATE} = ${AttachmentTable.TRANSFER_RESTORE_OFFLOADED}) AND
         ${AttachmentTable.CONTENT_TYPE} NOT LIKE 'image/svg%' AND
         (${AttachmentTable.CONTENT_TYPE} LIKE 'image/%' OR ${AttachmentTable.CONTENT_TYPE} LIKE 'video/%') AND
+        (${AttachmentTable.TRANSFORM_PROPERTIES} IS NULL OR NOT $TELLOMI_AS_FILE) AND
         ${MessageTable.LINK_PREVIEWS} IS NULL AND
         ${MessageTable.SCHEDULED_DATE} < 0
       """
@@ -198,6 +203,7 @@ class MediaTable internal constructor(context: Context?, databaseHelper: SignalD
         (${AttachmentTable.DATA_FILE} IS NOT NULL OR ${AttachmentTable.TRANSFER_STATE} = ${AttachmentTable.TRANSFER_RESTORE_OFFLOADED}) AND
         (
           ${AttachmentTable.CONTENT_TYPE} LIKE 'image/svg%' OR
+          ($TELLOMI_AS_FILE AND ${MessageTable.SCHEDULED_DATE} < 0) OR
           (
             ${AttachmentTable.CONTENT_TYPE} NOT LIKE 'image/%' AND
             ${AttachmentTable.CONTENT_TYPE} NOT LIKE 'video/%' AND

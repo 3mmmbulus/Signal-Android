@@ -99,9 +99,22 @@ public class MediaUtil {
     }
   }
 
+  /**
+   * Tellomi (ADR-0068): sent as a file ({@code AttachmentPointer.tellomi.asFile}). It is a file row
+   * that opens the original in another app, never Signal's media viewer, whatever its content type.
+   */
+  public static boolean isTellomiAsFile(@Nullable Attachment attachment) {
+    return attachment != null && attachment.transformProperties != null && attachment.transformProperties.tellomiAsFile;
+  }
+
   public static @NonNull Slide getSlideForAttachment(Attachment attachment) {
     if (attachment.isSticker()) {
       return new StickerSlide(attachment);
+    }
+
+    // Tellomi (ADR-0068): sent as a file → a file row, whatever the content type
+    if (isTellomiAsFile(attachment)) {
+      return new DocumentSlide(attachment);
     }
 
     switch (getSlideTypeFromContentType(attachment.contentType)) {

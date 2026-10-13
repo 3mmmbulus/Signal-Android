@@ -315,7 +315,8 @@ abstract class PushSendJob protected constructor(parameters: Parameters) : BaseJ
         caption = Optional.ofNullable(attachment.caption),
         blurHash = Optional.ofNullable(attachment.blurHash).map(BlurHash::hash),
         uploadTimestamp = attachment.uploadTimestamp,
-        uuid = attachment.uuid
+        uuid = attachment.uuid,
+        tellomiAsFile = attachment.transformProperties?.tellomiAsFile == true
       )
     } catch (e: IOException) {
       Log.w(TAG, e)

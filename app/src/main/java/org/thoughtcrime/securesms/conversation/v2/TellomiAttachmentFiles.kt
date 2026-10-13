@@ -22,6 +22,9 @@ import org.thoughtcrime.securesms.util.MediaUtil
  * Tellomi（tellomi/tellomi#1121）：附件 Sheet「文件」页选好的文件 → 要发的附件，每个一条（都按「文件」发，不压缩、不转码，
  * 同附件键盘的「文件」）。
  *
+ * 图片、视频要带上 ADR-0068 的 asFile（[DocumentSlide.tellomiAsFile]）：不带的话 contentType 是 image / video，
+ * 上传前照样被压缩，两边都画成普通照片（tellomi/tellomi#1263 之前就是这样）。
+ *
  * - 最近发过的（F-7、F-8）：从本机那一行附件读（落库时按内容哈希认出是同一份，不会多存一份；刚传过的还复用 CDN）。
  *   本机已经没有文件的算发不了。
  * - 系统选择器挑的（F-4）：文件名、大小从系统拿；超过上限的不发，名字交给调用方提示「文件太大」。
@@ -52,13 +55,13 @@ object TellomiAttachmentFiles {
         unavailable++
         continue
       }
-      slides += DocumentSlide(
-        context,
-        PartAuthority.getAttachmentDataUri(attachment.attachmentId),
-        attachment.contentType ?: MediaUtil.OCTET,
-        attachment.size,
-        attachment.fileName
-      )
+      val uri = PartAuthority.getAttachmentDataUri(attachment.attachmentId)
+      val contentType = attachment.contentType ?: MediaUtil.OCTET
+      slides += if (MediaUtil.isImageOrVideoType(contentType)) {
+        DocumentSlide.tellomiAsFile(context, uri, contentType, attachment.size, attachment.width, attachment.height, attachment.fileName)
+      } else {
+        DocumentSlide(context, uri, contentType, attachment.size, attachment.fileName)
+      }
     }
 
     for (uri in result.pickedUris) {
@@ -72,7 +75,12 @@ object TellomiAttachmentFiles {
         tooLarge += slide.fileName.orNull() ?: uri.lastPathSegment.orEmpty()
         continue
       }
-      slides += slide
+      slides += if (MediaUtil.isImageOrVideoType(slide.contentType)) {
+        val (width, height) = MediaUtil.getDimensions(context, slide.contentType, uri)
+        DocumentSlide.tellomiAsFile(context, slide.uri ?: uri, slide.contentType, slide.fileSize, width, height, slide.fileName.orNull())
+      } else {
+        slide
+      }
     }
 
     return Prepared(slides, tooLarge, unavailable)

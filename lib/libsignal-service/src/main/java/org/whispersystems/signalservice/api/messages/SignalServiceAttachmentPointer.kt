@@ -15,7 +15,7 @@ import java.util.UUID
  *
  * @author Moxie Marlinspike
  */
-class SignalServiceAttachmentPointer(
+class SignalServiceAttachmentPointer @JvmOverloads constructor(
   val cdnNumber: Int,
   val remoteId: SignalServiceAttachmentRemoteId,
   contentType: String?,
@@ -34,7 +34,9 @@ class SignalServiceAttachmentPointer(
   val caption: Optional<String>,
   val blurHash: Optional<String>,
   val uploadTimestamp: Long,
-  val uuid: UUID?
+  val uuid: UUID?,
+  /** Tellomi (ADR-0068): `AttachmentPointer.tellomi.asFile` — draw as a file row whatever the content type. */
+  val tellomiAsFile: Boolean = false
 ) : SignalServiceAttachment(contentType) {
   override fun isStream() = false
   override fun isPointer() = true

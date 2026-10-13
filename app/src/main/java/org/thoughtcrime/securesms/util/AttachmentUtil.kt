@@ -77,6 +77,8 @@ object AttachmentUtil {
       attachment.isSticker -> ciphertextSize <= SMALL_ATTACHMENT_SIZE || allowedForType(allowedTypes, "image", "sticker")
       attachment.voiceNote -> ciphertextSize <= SMALL_ATTACHMENT_SIZE || allowedForType(allowedTypes, "audio", "voice message")
       attachment.videoGif -> allowedForType(allowedTypes, "image", "video gif")
+      // Tellomi (ADR-0068): sent as a file → the original, often large; follows the "documents" setting
+      MediaUtil.isTellomiAsFile(attachment) -> allowedForType(allowedTypes, "documents", "document")
       contentType != null && isNonDocumentType(contentType) -> allowedForType(allowedTypes, MediaUtil.getDiscreteMimeType(contentType), contentType)
       else -> allowedForType(allowedTypes, "documents", "document")
     }

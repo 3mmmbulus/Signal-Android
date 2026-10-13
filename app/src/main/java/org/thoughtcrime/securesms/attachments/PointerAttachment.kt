@@ -4,6 +4,7 @@ import android.net.Uri
 import android.os.Parcel
 import androidx.annotation.VisibleForTesting
 import org.signal.blurhash.BlurHash
+import org.signal.core.models.media.TransformProperties
 import org.signal.core.util.Base64
 import org.signal.core.util.logging.Log
 import org.thoughtcrime.securesms.database.AttachmentTable
@@ -41,7 +42,8 @@ class PointerAttachment : Attachment {
     blurHash: BlurHash?,
     uuid: UUID?,
     quote: Boolean,
-    quoteTargetContentType: String? = null
+    quoteTargetContentType: String? = null,
+    transformProperties: TransformProperties? = null
   ) : super(
     contentType = contentType,
     transferState = transferState,
@@ -66,7 +68,7 @@ class PointerAttachment : Attachment {
     stickerLocator = stickerLocator,
     blurHash = blurHash,
     audioHash = null,
-    transformProperties = null,
+    transformProperties = transformProperties,
     uuid = uuid
   )
 
@@ -139,7 +141,9 @@ class PointerAttachment : Attachment {
           blurHash = BlurHash.parseOrNull(pointer.get().asPointer().blurHash.orElse(null)),
           uuid = pointer.get().asPointer().uuid,
           quote = quote,
-          quoteTargetContentType = quoteTargetContentType
+          quoteTargetContentType = quoteTargetContentType,
+          // Tellomi (ADR-0068): a quote thumbnail is only ever drawn as a thumbnail
+          transformProperties = if (!quote && pointer.get().asPointer().tellomiAsFile) TransformProperties(tellomiAsFile = true) else null
         )
       )
     }

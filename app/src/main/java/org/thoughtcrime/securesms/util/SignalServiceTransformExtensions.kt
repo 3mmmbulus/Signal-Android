@@ -42,6 +42,7 @@ import org.whispersystems.signalservice.internal.push.Content
 import org.whispersystems.signalservice.internal.push.DataMessage
 import org.whispersystems.signalservice.internal.push.Preview
 import org.whispersystems.signalservice.internal.push.SyncMessage
+import org.whispersystems.signalservice.internal.push.TellomiAttachment
 import java.io.IOException
 
 private const val TAG = "DataMessageTransforms"
@@ -266,6 +267,10 @@ private fun Attachment.toAttachmentPointerProto(): Either<DataMessageError, Atta
   caption?.let { builder.caption(it) }
   blurHash?.let { builder.blurHash(it.hash) }
   uuid?.let { builder.clientUuid(UuidUtil.toByteString(it)) }
+  // Tellomi (ADR-0068): same as AttachmentPointerUtil on the legacy path
+  if (transformProperties?.tellomiAsFile == true) {
+    builder.tellomi(TellomiAttachment(asFile = true))
+  }
 
   builder.build()
 }
