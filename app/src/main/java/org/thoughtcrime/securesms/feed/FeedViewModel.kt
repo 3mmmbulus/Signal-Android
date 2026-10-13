@@ -29,7 +29,7 @@ import java.time.Instant
  *
  * - 下拉刷新 = 不带 cursor 重新取，新结果放最上面，按 id 去重（契约 4.1）；
  * - 点赞先改界面，失败再改回来（契约第六节「先改界面、失败再回滚」）；
- * - 不感兴趣：先把这条从两个分栏里拿掉，留一个可以撤销的记录（第三节第 11 条的反馈卡在后面的 PR 做）。
+ * - 不感兴趣：这条原地换成小反馈卡（第三节第 11 条：撤销 / 管理内容偏好 / 这条让我不舒服），刷新后就不在了。
  */
 class FeedViewModel(
   private val source: FeedSource = FeedSources.current(),
@@ -78,7 +78,10 @@ class FeedViewModel(
    * 列表每次布局变化时调：[visibleIds] 是这一栏现在露出过半的卡片。满 1 秒的记一次曝光；
    * 停着不动时由这里自己约下一次检查，不靠界面再来调。
    */
-  fun onCardsVisible(tab: FeedTab, visibleIds: Set<String>) {
+  fun onCardsVisible(tab: FeedTab, shownIds: Set<String>) {
+    // 换成反馈卡的不算曝光
+    val hidden = internalState.value.hidden
+    val visibleIds = if (hidden.isEmpty()) shownIds else shownIds - hidden
     lastVisible[tab] = visibleIds
     val tracker = impressionTrackers.getOrPut(tab) { FeedImpressionTracker() }
     val now = clock()
@@ -170,12 +173,8 @@ class FeedViewModel(
   }
 
   fun notInterested(card: FeedCard) {
-    internalState.update { state ->
-      state.copy(
-        tabStates = state.tabStates.mapValues { (_, tabState) -> tabState.copy(cards = tabState.cards.filterNot { it.id == card.id }) },
-        lastHidden = card
-      )
-    }
+    if (card.id in internalState.value.hidden) return
+    internalState.update { it.copy(hidden = it.hidden + card.id) }
 
     viewModelScope.launch {
       try {
@@ -186,22 +185,23 @@ class FeedViewModel(
     }
   }
 
-  fun undoNotInterested() {
-    val card = internalState.value.lastHidden ?: return
-    internalState.update { it.copy(lastHidden = null) }
+  /** 反馈卡上的「撤销」：卡片原样回来。 */
+  fun undoNotInterested(card: FeedCard) {
+    if (card.id !in internalState.value.hidden) return
+    internalState.update { it.copy(hidden = it.hidden - card.id) }
 
     viewModelScope.launch {
       try {
         withContext(ioDispatcher) { source.undoNotInterested(card.id) }
       } catch (e: Exception) {
         Log.w(TAG, "undo not interested failed", e)
+        internalState.update { it.copy(hidden = it.hidden + card.id, transientError = FeedState.TransientError.ACTION_FAILED) }
       }
-      FeedTab.entries.forEach { refresh(it) }
     }
   }
 
   fun onTransientErrorShown() {
-    internalState.update { it.copy(transientError = null, lastHidden = null) }
+    internalState.update { it.copy(transientError = null) }
   }
 
   /** 发布页带回服务端给的 `state`：两栏都刷新，提示「已发布」或「审核中」（R-2.2）。 */
@@ -313,7 +313,8 @@ data class FeedState(
   val config: FeedConfig? = null,
   val tabs: List<FeedTab> = FeedTab.entries,
   val tabStates: Map<FeedTab, FeedTabState> = emptyMap(),
-  val lastHidden: FeedCard? = null,
+  /** 点了「不感兴趣」、正显示成反馈卡的。 */
+  val hidden: Set<String> = emptySet(),
   val transientError: TransientError? = null,
   val publishNotice: String? = null,
   /** 刚保存的编辑，服务端给的 `state`。 */

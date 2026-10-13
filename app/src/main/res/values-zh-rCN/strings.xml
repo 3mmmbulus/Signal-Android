@@ -6607,6 +6607,8 @@
     <string name="TellomiFeed__unlike">取消赞</string>
     <string name="TellomiFeed__undo">撤销</string>
     <string name="TellomiFeed__hidden">已隐藏，会减少这类内容</string>
+    <string name="TellomiFeedNotInterested__preferences">管理内容偏好</string>
+    <string name="TellomiFeedNotInterested__uncomfortable">这条让我不舒服</string>
     <string name="TellomiFeed__network_error">刷新失败，请检查网络</string>
     <string name="TellomiFeed__action_failed">操作失败，请重试</string>
     <string name="TellomiFeed__load_failed">加载失败</string>

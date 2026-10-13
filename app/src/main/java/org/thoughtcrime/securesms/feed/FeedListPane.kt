@@ -43,10 +43,8 @@ import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.SnackbarDuration
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
-import androidx.compose.material3.SnackbarResult
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
@@ -103,6 +101,7 @@ import org.thoughtcrime.securesms.feed.profile.FeedProfilePageActivity
 import org.thoughtcrime.securesms.feed.report.FeedReportActivity
 import org.thoughtcrime.securesms.feed.report.FeedReportTarget
 import org.thoughtcrime.securesms.feed.search.FeedSearchActivity
+import org.thoughtcrime.securesms.feed.settings.FeedRecommendationSettingsActivity
 import org.signal.core.ui.R as CoreUiR
 
 private val TOP_BAR_HEIGHT = 48.dp
@@ -128,23 +127,13 @@ fun FeedListPane(
   val state by viewModel.state.collectAsStateWithLifecycle()
   val context = LocalContext.current
   val snackbarHostState = remember { SnackbarHostState() }
-  val undoLabel = stringResource(R.string.TellomiFeed__undo)
-  val hiddenMessage = stringResource(R.string.TellomiFeed__hidden)
   val networkMessage = stringResource(R.string.TellomiFeed__network_error)
   val actionMessage = stringResource(R.string.TellomiFeed__action_failed)
 
-  LaunchedEffect(state.lastHidden, state.transientError) {
-    val error = state.transientError
-    when {
-      error != null -> {
-        snackbarHostState.showSnackbar(if (error == FeedState.TransientError.NETWORK) networkMessage else actionMessage)
-        viewModel.onTransientErrorShown()
-      }
-      state.lastHidden != null -> {
-        val result = snackbarHostState.showSnackbar(message = hiddenMessage, actionLabel = undoLabel, duration = SnackbarDuration.Short)
-        if (result == SnackbarResult.ActionPerformed) viewModel.undoNotInterested() else viewModel.onTransientErrorShown()
-      }
-    }
+  LaunchedEffect(state.transientError) {
+    val error = state.transientError ?: return@LaunchedEffect
+    snackbarHostState.showSnackbar(if (error == FeedState.TransientError.NETWORK) networkMessage else actionMessage)
+    viewModel.onTransientErrorShown()
   }
 
   val publishedMessage = stringResource(R.string.TellomiFeedCompose__published)
@@ -218,6 +207,8 @@ fun FeedListPane(
       onLoadMore = viewModel::loadMore,
       onLikeClick = viewModel::toggleLike,
       onNotInterestedClick = viewModel::notInterested,
+      onUndoNotInterested = viewModel::undoNotInterested,
+      onManagePreferences = { context.startActivity(FeedRecommendationSettingsActivity.intent(context)) },
       onCardsVisible = viewModel::onCardsVisible,
       onMyPostsClick = { context.startActivity(FeedMyPostsActivity.intent(context)) },
       onNotificationsClick = { context.startActivity(FeedNotificationsActivity.intent(context)) },
@@ -276,6 +267,8 @@ private fun FeedPager(
   onLikeClick: (FeedCard) -> Unit,
   onNotInterestedClick: (FeedCard) -> Unit,
   onCardsVisible: (FeedTab, Set<String>) -> Unit,
+  onUndoNotInterested: (FeedCard) -> Unit = {},
+  onManagePreferences: () -> Unit = {},
   onMyPostsClick: () -> Unit,
   modifier: Modifier = Modifier,
   onEditClick: (FeedEditTarget) -> Unit = {},
@@ -344,6 +337,9 @@ private fun FeedPager(
         onLoadMore = { onLoadMore(tab) },
         onLikeClick = onLikeClick,
         onNotInterestedClick = onNotInterestedClick,
+        hidden = state.hidden,
+        onUndoNotInterested = onUndoNotInterested,
+        onManagePreferences = onManagePreferences,
         isCurrentPage = pagerState.currentPage == page,
         onNearTopChanged = chrome::onNearTopChanged,
         onCardsVisible = { onCardsVisible(tab, it) },
@@ -370,6 +366,9 @@ private fun FeedTimeline(
   onLoadMore: () -> Unit,
   onLikeClick: (FeedCard) -> Unit,
   onNotInterestedClick: (FeedCard) -> Unit,
+  hidden: Set<String>,
+  onUndoNotInterested: (FeedCard) -> Unit,
+  onManagePreferences: () -> Unit,
   isCurrentPage: Boolean,
   onCardsVisible: (Set<String>) -> Unit,
   onNearTopChanged: (Boolean) -> Unit = {},
@@ -427,6 +426,16 @@ private fun FeedTimeline(
       tabState.cards.isEmpty() -> FeedEmptyState(tab = tab)
       else -> LazyColumn(state = listState, modifier = Modifier.fillMaxSize()) {
         items(items = tabState.cards, key = { it.id }) { card ->
+          if (card.id in hidden) {
+            FeedNotInterestedCard(
+              onUndo = { onUndoNotInterested(card) },
+              onManagePreferences = onManagePreferences,
+              onUncomfortable = { onReportClick(card) },
+              modifier = Modifier.animateItem()
+            )
+            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
+            return@items
+          }
           // 自己的帖子：15 分钟内给「编辑」（第三节第 23 条），一直给「删除」
           val editTarget = if (card.viewer.isAuthor) {
             remember(card, editWindowSeconds) { FeedEditTarget.of(card)?.takeIf { it.isWithinWindow(System.currentTimeMillis(), editWindowSeconds) } }

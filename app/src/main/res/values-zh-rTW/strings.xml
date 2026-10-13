@@ -6607,6 +6607,8 @@
     <string name="TellomiFeed__unlike">收回讚</string>
     <string name="TellomiFeed__undo">復原</string>
     <string name="TellomiFeed__hidden">已隱藏，會減少這類內容</string>
+    <string name="TellomiFeedNotInterested__preferences">管理內容偏好</string>
+    <string name="TellomiFeedNotInterested__uncomfortable">這則讓我不舒服</string>
     <string name="TellomiFeed__network_error">重新整理失敗，請檢查網路</string>
     <string name="TellomiFeed__action_failed">操作失敗，請再試一次</string>
     <string name="TellomiFeed__load_failed">載入失敗</string>

@@ -6824,6 +6824,8 @@
     <string name="TellomiFeed__unlike">Unlike</string>
     <string name="TellomiFeed__undo">Undo</string>
     <string name="TellomiFeed__hidden">Post hidden. You\'ll see fewer posts like this.</string>
+    <string name="TellomiFeedNotInterested__preferences">Manage content preferences</string>
+    <string name="TellomiFeedNotInterested__uncomfortable">This made me uncomfortable</string>
     <string name="TellomiFeed__network_error">Couldn\'t refresh. Check your connection.</string>
     <string name="TellomiFeed__action_failed">Couldn\'t complete that. Try again.</string>
     <string name="TellomiFeed__load_failed">Couldn\'t load posts</string>
