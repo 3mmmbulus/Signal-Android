@@ -5,6 +5,7 @@
 
 package org.thoughtcrime.securesms.feed
 
+import org.signal.core.util.logging.Log
 import org.thoughtcrime.securesms.feed.compose.FeedDraft
 import org.thoughtcrime.securesms.feed.compose.FeedDraftKind
 import org.thoughtcrime.securesms.feed.net.FeedAuthor
@@ -12,6 +13,7 @@ import org.thoughtcrime.securesms.feed.net.FeedCard
 import org.thoughtcrime.securesms.feed.net.FeedConfig
 import org.thoughtcrime.securesms.feed.net.FeedCreatePostResponse
 import org.thoughtcrime.securesms.feed.net.FeedEntry
+import org.thoughtcrime.securesms.feed.net.FeedEventPayload
 import org.thoughtcrime.securesms.feed.net.FeedMedia
 import org.thoughtcrime.securesms.feed.net.FeedStats
 import org.thoughtcrime.securesms.feed.net.FeedTimelinePage
@@ -25,6 +27,8 @@ import java.time.temporal.ChronoUnit
  * （不涉政、不点名真人与品牌、不编造新闻）。只在内存里，点赞和不感兴趣重启 App 就没了。
  */
 object SampleFeedSource : FeedSource {
+
+  private val TAG = Log.tag(SampleFeedSource::class)
 
   private const val PAGE_SIZE = 8
 
@@ -112,6 +116,11 @@ object SampleFeedSource : FeedSource {
 
   override suspend fun undoNotInterested(contentId: String) {
     hidden -= contentId
+  }
+
+  /** 样例不连网：事件只记个数，方便内部用户在日志里看曝光有没有在算。 */
+  override suspend fun reportEvents(events: List<FeedEventPayload>) {
+    Log.d(TAG, "events: ${events.size} (${events.groupingBy { it.type }.eachCount()})")
   }
 
   /** 同一个 [clientNonce] 重复发只算一次（契约 7.2 的去重）。 */

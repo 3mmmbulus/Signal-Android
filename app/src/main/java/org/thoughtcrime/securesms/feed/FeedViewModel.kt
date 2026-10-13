@@ -10,15 +10,18 @@ import androidx.lifecycle.viewModelScope
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import org.signal.core.util.logging.Log
 import org.thoughtcrime.securesms.feed.net.FeedCard
 import org.thoughtcrime.securesms.feed.net.FeedConfig
+import java.time.Instant
 
 /**
  * 动态页的状态：两个分栏各自一份列表、翻页位置和加载状态。
@@ -29,7 +32,8 @@ import org.thoughtcrime.securesms.feed.net.FeedConfig
  */
 class FeedViewModel(
   private val source: FeedSource = FeedSources.current(),
-  private val ioDispatcher: CoroutineDispatcher = Dispatchers.IO
+  private val ioDispatcher: CoroutineDispatcher = Dispatchers.IO,
+  private val clock: () -> Long = System::currentTimeMillis
 ) : ViewModel() {
 
   companion object {
@@ -40,6 +44,11 @@ class FeedViewModel(
   val state: StateFlow<FeedState> = internalState.asStateFlow()
 
   private val loadJobs = mutableMapOf<FeedTab, Job>()
+
+  private val impressionTrackers = mutableMapOf<FeedTab, FeedImpressionTracker>()
+  private val lastVisible = mutableMapOf<FeedTab, Set<String>>()
+  private val impressionRechecks = mutableMapOf<FeedTab, Job>()
+  private val events = FeedEventBuffer()
 
   init {
     viewModelScope.launch {
@@ -52,6 +61,55 @@ class FeedViewModel(
 
       if (config != null) {
         internalState.update { it.copy(config = config, tabs = FeedTab.fromApiNames(config.tabs)) }
+      }
+    }
+
+    viewModelScope.launch {
+      while (isActive) {
+        delay(FeedEventBuffer.FLUSH_INTERVAL_MILLIS)
+        flushEvents()
+      }
+    }
+  }
+
+  /**
+   * 列表每次布局变化时调：[visibleIds] 是这一栏现在露出过半的卡片。满 1 秒的记一次曝光；
+   * 停着不动时由这里自己约下一次检查，不靠界面再来调。
+   */
+  fun onCardsVisible(tab: FeedTab, visibleIds: Set<String>) {
+    lastVisible[tab] = visibleIds
+    val tracker = impressionTrackers.getOrPut(tab) { FeedImpressionTracker() }
+    val now = clock()
+    var full = false
+    for (id in tracker.update(visibleIds, now)) {
+      full = events.add(impressionEvent(id, tab, Instant.ofEpochMilli(now))) || full
+    }
+    if (full) flushEvents()
+
+    impressionRechecks[tab]?.cancel()
+    val nextAt = tracker.nextCheckAt() ?: return
+    impressionRechecks[tab] = viewModelScope.launch {
+      delay((nextAt - clock()).coerceAtLeast(0))
+      onCardsVisible(tab, lastVisible[tab].orEmpty())
+    }
+  }
+
+  /** 页面看不见了（切到别的标签、退到后台）：停掉计时，发掉攒着的事件。 */
+  fun onFeedHidden() {
+    FeedTab.entries.forEach { onCardsVisible(it, emptySet()) }
+    flushEvents()
+  }
+
+  private fun flushEvents() {
+    val batches = events.drain()
+    if (batches.isEmpty()) return
+    viewModelScope.launch {
+      for (batch in batches) {
+        try {
+          withContext(ioDispatcher) { source.reportEvents(batch) }
+        } catch (e: Exception) {
+          Log.w(TAG, "events dropped: ${batch.size}", e)
+        }
       }
     }
   }

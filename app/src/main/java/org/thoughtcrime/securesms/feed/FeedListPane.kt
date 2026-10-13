@@ -47,11 +47,13 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -66,8 +68,11 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.compose.LifecycleEventEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.launch
 import org.signal.core.ui.compose.DayNightPreviews
 import org.signal.core.ui.compose.Previews
@@ -130,6 +135,10 @@ fun FeedListPane(
     if (publishState != null) viewModel.onPublished(publishState)
   }
 
+  // 退到后台或离开动态标签：停掉曝光计时，发掉攒着的事件（契约 6.1）
+  LifecycleEventEffect(Lifecycle.Event.ON_STOP) { viewModel.onFeedHidden() }
+  DisposableEffect(viewModel) { onDispose { viewModel.onFeedHidden() } }
+
   Box(modifier = modifier) {
     FeedPager(
       state = state,
@@ -138,6 +147,7 @@ fun FeedListPane(
       onLoadMore = viewModel::loadMore,
       onLikeClick = viewModel::toggleLike,
       onNotInterestedClick = viewModel::notInterested,
+      onCardsVisible = viewModel::onCardsVisible,
       modifier = Modifier.fillMaxSize()
     )
 
@@ -169,6 +179,7 @@ private fun FeedPager(
   onLoadMore: (FeedTab) -> Unit,
   onLikeClick: (FeedCard) -> Unit,
   onNotInterestedClick: (FeedCard) -> Unit,
+  onCardsVisible: (FeedTab, Set<String>) -> Unit,
   modifier: Modifier = Modifier
 ) {
   val tabs = state.tabs
@@ -199,7 +210,9 @@ private fun FeedPager(
         onRefresh = { onRefresh(tab) },
         onLoadMore = { onLoadMore(tab) },
         onLikeClick = onLikeClick,
-        onNotInterestedClick = onNotInterestedClick
+        onNotInterestedClick = onNotInterestedClick,
+        isCurrentPage = pagerState.currentPage == page,
+        onCardsVisible = { onCardsVisible(tab, it) }
       )
     }
   }
@@ -214,9 +227,26 @@ private fun FeedTimeline(
   onRefresh: () -> Unit,
   onLoadMore: () -> Unit,
   onLikeClick: (FeedCard) -> Unit,
-  onNotInterestedClick: (FeedCard) -> Unit
+  onNotInterestedClick: (FeedCard) -> Unit,
+  isCurrentPage: Boolean,
+  onCardsVisible: (Set<String>) -> Unit
 ) {
   val listState = rememberLazyListState()
+
+  // 曝光：露出过半的卡片交给 ViewModel 计时（契约 6.1）；不是当前这一栏时报空
+  val cardIds = tabState.cards.mapTo(HashSet()) { it.id }
+  LaunchedEffect(listState, isCurrentPage, cardIds) {
+    snapshotFlow {
+      if (!isCurrentPage) {
+        emptySet()
+      } else {
+        val info = listState.layoutInfo
+        info.visibleItemsInfo
+          .filter { visibleFraction(it.offset, it.size, info.viewportStartOffset, info.viewportEndOffset) >= FeedImpressionTracker.MIN_VISIBLE_FRACTION }
+          .mapNotNullTo(HashSet()) { (it.key as? String)?.takeIf { key -> key in cardIds } }
+      }
+    }.distinctUntilChanged().collect { onCardsVisible(it) }
+  }
 
   val nearEnd by remember {
     derivedStateOf {
@@ -405,6 +435,7 @@ private fun FeedPagerEmptyPreview() {
       onLoadMore = {},
       onLikeClick = {},
       onNotInterestedClick = {},
+      onCardsVisible = { _, _ -> },
       modifier = Modifier.fillMaxSize()
     )
   }
