@@ -7099,6 +7099,26 @@
     <string name="TellomiFeedNotificationSettings__retry">Tap to try again</string>
     <string name="TellomiFeedNotificationSettings__profile_required">Set up your public profile first to get Feed notifications.</string>
     <string name="TellomiFeedNotificationSettings__save_failed">Couldn\'t save. Try again.</string>
+    <string name="TellomiFeedClosePeople__title">Close people</string>
+    <string name="TellomiFeedClosePeople__entry_hint">Show up to 3 people on your public profile</string>
+    <string name="TellomiFeedClosePeople__explain">Pick up to %1$d people to show on your public profile. They\'ll only show after they agree.</string>
+    <string name="TellomiFeedClosePeople__mine">Your close people (%1$d/%2$d)</string>
+    <string name="TellomiFeedClosePeople__mine_empty">You haven\'t picked anyone yet.</string>
+    <string name="TellomiFeedClosePeople__pending">Waiting for them to agree</string>
+    <string name="TellomiFeedClosePeople__accepted">Agreed</string>
+    <string name="TellomiFeedClosePeople__remove">Remove</string>
+    <string name="TellomiFeedClosePeople__search_hint">Search by ID or name to add</string>
+    <string name="TellomiFeedClosePeople__no_results">No one found</string>
+    <string name="TellomiFeedClosePeople__add">Add</string>
+    <string name="TellomiFeedClosePeople__added">Request sent. They\'ll show once they agree.</string>
+    <string name="TellomiFeedClosePeople__full">You can pick up to %1$d people.</string>
+    <string name="TellomiFeedClosePeople__not_allowed">You can\'t add this person.</string>
+    <string name="TellomiFeedClosePeople__requests">People who picked you</string>
+    <string name="TellomiFeedClosePeople__requests_empty">No one yet.</string>
+    <string name="TellomiFeedClosePeople__request_pending">Wants to show you on their profile</string>
+    <string name="TellomiFeedClosePeople__request_accepted">Showing you on their profile</string>
+    <string name="TellomiFeedClosePeople__accept">Agree</string>
+    <string name="TellomiFeedClosePeople__withdraw">Withdraw</string>
     <string name="ConversationListTabs__99p">99+</string>
     <!-- Menu item on stories landing page -->
     <string name="StoriesLandingFragment__story_privacy">Story privacy</string>

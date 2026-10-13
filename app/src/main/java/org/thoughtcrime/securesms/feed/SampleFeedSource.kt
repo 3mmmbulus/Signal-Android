@@ -12,9 +12,12 @@ import org.signal.core.util.logging.Log
 import org.thoughtcrime.securesms.feed.compose.FeedDraft
 import org.thoughtcrime.securesms.feed.compose.FeedDraftKind
 import org.thoughtcrime.securesms.feed.net.FeedApi
+import org.thoughtcrime.securesms.feed.net.FeedApiException
 import org.thoughtcrime.securesms.feed.net.FeedAuthor
 import org.thoughtcrime.securesms.feed.net.FeedBlockEntry
 import org.thoughtcrime.securesms.feed.net.FeedCard
+import org.thoughtcrime.securesms.feed.net.FeedClosePeopleResponse
+import org.thoughtcrime.securesms.feed.net.FeedClosePersonEntry
 import org.thoughtcrime.securesms.feed.net.FeedCommentsPage
 import org.thoughtcrime.securesms.feed.net.FeedConfig
 import org.thoughtcrime.securesms.feed.net.FeedCreatePostResponse
@@ -425,6 +428,37 @@ object SampleFeedSource : FeedSource {
       (mine + recommend).filter { it.id !in hidden && ((it.text?.contains(q, ignoreCase = true) == true) || (it.title?.contains(q, ignoreCase = true) == true)) }.take(10)
     }
     FeedSearchPage(users = users, posts = posts)
+  }
+
+  /** 关心的人：我设的（id → state）和设了我的（样例里 s-3 在等我同意）。 */
+  private val closeMine = linkedMapOf<String, String>()
+  private val closeRequests = linkedMapOf("s-3" to FeedClosePersonEntry.STATE_PENDING)
+
+  private fun closeEntry(id: String, state: String): FeedClosePersonEntry? {
+    return summaryOf(id)?.let { FeedClosePersonEntry(id = it.id, displayName = it.displayName, avatarKey = it.avatarKey, state = state) }
+  }
+
+  override suspend fun closePeople(): FeedClosePeopleResponse = synchronized(this) {
+    FeedClosePeopleResponse(
+      mine = closeMine.mapNotNull { (id, state) -> closeEntry(id, state) },
+      requests = closeRequests.mapNotNull { (id, state) -> closeEntry(id, state) }
+    )
+  }
+
+  override suspend fun addClosePerson(profileId: String): String = synchronized(this) {
+    if (summaryOf(profileId) == null || profileId in blocked) throw FeedApiException(404, code = "not_found")
+    closeMine[profileId]?.let { return it }
+    if (closeMine.size >= FeedClosePersonEntry.MAX) throw FeedApiException(409, code = "close_people_full")
+    closeMine[profileId] = FeedClosePersonEntry.STATE_PENDING
+    FeedClosePersonEntry.STATE_PENDING
+  }
+
+  override suspend fun removeClosePerson(profileId: String): Unit = synchronized(this) {
+    closeMine -= profileId
+  }
+
+  override suspend fun answerClosePerson(ownerProfileId: String, accept: Boolean): Unit = synchronized(this) {
+    if (accept) closeRequests[ownerProfileId] = FeedClosePersonEntry.STATE_ACCEPTED else closeRequests -= ownerProfileId
   }
 
   private var notificationSettings = FeedNotificationSettings()

@@ -968,6 +968,12 @@
             android:theme="@style/TextSecure.LightTheme" />
 
         <activity
+            android:name=".feed.closepeople.FeedClosePeopleActivity"
+            android:exported="false"
+            android:theme="@style/TextSecure.LightTheme"
+            android:windowSoftInputMode="adjustResize" />
+
+        <activity
             android:name=".feed.notifications.FeedNotificationsActivity"
             android:exported="false"
             android:theme="@style/TextSecure.LightTheme" />

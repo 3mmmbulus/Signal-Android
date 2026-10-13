@@ -19,6 +19,7 @@ import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
 import org.signal.core.ui.compose.theme.SignalTheme
 import org.thoughtcrime.securesms.PassphraseRequiredActivity
+import org.thoughtcrime.securesms.feed.closepeople.FeedClosePeopleActivity
 import org.thoughtcrime.securesms.recipients.Recipient
 import org.thoughtcrime.securesms.util.DynamicNoActionBarTheme
 
@@ -56,7 +57,8 @@ class FeedProfileActivity : PassphraseRequiredActivity() {
           onBioChanged = viewModel::onBioChanged,
           onSave = viewModel::save,
           onRetry = viewModel::load,
-          onErrorShown = viewModel::onErrorShown
+          onErrorShown = viewModel::onErrorShown,
+          onClosePeopleClick = { startActivity(FeedClosePeopleActivity.intent(this)) }
         )
       }
     }

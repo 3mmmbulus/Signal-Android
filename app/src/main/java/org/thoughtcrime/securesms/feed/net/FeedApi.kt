@@ -300,6 +300,29 @@ class FeedApi(
     sendNoContent(Request.Builder().url(url).put(body))
   }
 
+  /** 关心的人：我设的和设了我的。 */
+  suspend fun closePeople(): FeedClosePeopleResponse {
+    return get(url("v1/feed/me/close-people"), FeedClosePeopleResponse.serializer())
+  }
+
+  /** 设一个人，对方同意前是 `pending`。满 3 个 409 `close_people_full`；不能设的人 404。 */
+  suspend fun addClosePerson(profileId: String): FeedClosePersonState {
+    val url = url("v1/feed/me/close-people").newBuilder().addPathSegment(profileId).build()
+    return send(Request.Builder().url(url).put(EMPTY_BODY), FeedClosePersonState.serializer())
+  }
+
+  suspend fun removeClosePerson(profileId: String) {
+    val url = url("v1/feed/me/close-people").newBuilder().addPathSegment(profileId).build()
+    sendNoContent(Request.Builder().url(url).delete())
+  }
+
+  /** 回应设了我的人：同意，或者拒绝（同意过的也能这样撤回）。 */
+  suspend fun answerClosePerson(ownerProfileId: String, accept: Boolean) {
+    val url = url("v1/feed/me/close-people/requests").newBuilder().addPathSegment(ownerProfileId).build()
+    val body = FeedJson.encodeToString(FeedClosePersonAnswer.serializer(), FeedClosePersonAnswer(accept)).toRequestBody(JSON)
+    sendNoContent(Request.Builder().url(url).post(body))
+  }
+
   /** 动态通知的来源和类别。没设置过给默认值（所有人、全开）。 */
   suspend fun notificationSettings(): FeedNotificationSettings {
     return get(url("v1/feed/me/notification-settings"), FeedNotificationSettings.serializer())

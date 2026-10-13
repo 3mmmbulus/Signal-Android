@@ -580,4 +580,23 @@ class FeedApiTest {
     assertThat(put.method).isEqualTo("PUT")
     assertThat(put.body.readUtf8()).isEqualTo("""{"from_whom":"none","likes":false,"comments":true,"follows":true}""")
   }
+
+  @Test
+  fun `close people calls`() = runBlocking {
+    server.enqueue(MockResponse().setBody("""{"mine":[{"id":"p1","display_name":"Anan","avatar_key":null,"state":"accepted"}],"requests":[]}"""))
+    server.enqueue(MockResponse().setBody("""{"state":"pending"}"""))
+    server.enqueue(MockResponse().setResponseCode(204))
+
+    assertThat(api.closePeople().mine.single().accepted).isEqualTo(true)
+    assertThat(api.addClosePerson("p 2").state).isEqualTo("pending")
+    api.answerClosePerson("r1", accept = false)
+
+    assertThat(server.takeRequest().path).isEqualTo("/v1/feed/me/close-people")
+    val put = server.takeRequest()
+    assertThat(put.method).isEqualTo("PUT")
+    assertThat(put.path).isEqualTo("/v1/feed/me/close-people/p%202")
+    val answer = server.takeRequest()
+    assertThat(answer.path).isEqualTo("/v1/feed/me/close-people/requests/r1")
+    assertThat(answer.body.readUtf8()).isEqualTo("""{"accept":false}""")
+  }
 }

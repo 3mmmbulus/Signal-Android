@@ -15,6 +15,7 @@ import androidx.compose.runtime.getValue
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import org.signal.core.ui.compose.theme.SignalTheme
 import org.thoughtcrime.securesms.PassphraseRequiredActivity
+import org.thoughtcrime.securesms.feed.closepeople.FeedClosePeopleActivity
 import org.thoughtcrime.securesms.feed.detail.FeedPostDetailActivity
 import org.thoughtcrime.securesms.feed.mine.FeedMyPostsActivity
 import org.thoughtcrime.securesms.feed.net.FeedNotification
@@ -63,7 +64,8 @@ class FeedNotificationsActivity : PassphraseRequiredActivity() {
       FeedNotification.KIND_FOLLOW -> row.actorIds.firstOrNull()?.let { startActivity(FeedProfilePageActivity.intent(this, it)) }
       FeedNotification.KIND_FOLLOW_REQUEST -> startActivity(FeedPeopleActivity.intent(this, FeedPeopleMode.FOLLOW_REQUESTS))
       FeedNotification.KIND_SYSTEM -> if (row.systemType == FeedNotification.SYSTEM_CLOSE_PERSON_REQUEST) {
-        row.profileId?.let { startActivity(FeedProfilePageActivity.intent(this, it)) }
+        // 同意 / 拒绝在「关心的人」页
+        startActivity(FeedClosePeopleActivity.intent(this))
       } else {
         // 审核结果、申诉都在「我的动态」里看原因、改了再提交
         startActivity(FeedMyPostsActivity.intent(this))

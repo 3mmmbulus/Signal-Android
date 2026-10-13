@@ -20,6 +20,7 @@ import org.thoughtcrime.securesms.feed.net.FeedAudienceToken
 import org.thoughtcrime.securesms.feed.net.FeedAuthApi
 import org.thoughtcrime.securesms.feed.net.FeedBlockEntry
 import org.thoughtcrime.securesms.feed.net.FeedCard
+import org.thoughtcrime.securesms.feed.net.FeedClosePeopleResponse
 import org.thoughtcrime.securesms.feed.net.FeedCommentsPage
 import org.thoughtcrime.securesms.feed.net.FeedConfig
 import org.thoughtcrime.securesms.feed.net.FeedCreateCommentRequest
@@ -132,6 +133,13 @@ interface FeedSource {
   /** 把 Signal-Server 签的好友声明交给引擎（[org.thoughtcrime.securesms.feed.friends.FeedFriendSync]）；返回两边是否都报了。 */
   suspend fun reportFriend(assertion: String): Boolean
 
+  suspend fun closePeople(): FeedClosePeopleResponse
+
+  /** 返回 `pending` / `accepted`。 */
+  suspend fun addClosePerson(profileId: String): String
+  suspend fun removeClosePerson(profileId: String)
+  suspend fun answerClosePerson(ownerProfileId: String, accept: Boolean)
+
   suspend fun notificationSettings(): FeedNotificationSettings
 
   /** 返回引擎存下的设置；没有公开主页时 409 `profile_required`。 */
@@ -238,6 +246,10 @@ class RemoteFeedSource(
   override suspend fun muteNotifications(contentId: String, likesOnly: Boolean) = api.muteNotifications(contentId, likesOnly)
 
   override suspend fun reportFriend(assertion: String): Boolean = api.reportFriend(assertion).confirmed
+  override suspend fun closePeople(): FeedClosePeopleResponse = api.closePeople()
+  override suspend fun addClosePerson(profileId: String): String = api.addClosePerson(profileId).state
+  override suspend fun removeClosePerson(profileId: String) = api.removeClosePerson(profileId)
+  override suspend fun answerClosePerson(ownerProfileId: String, accept: Boolean) = api.answerClosePerson(ownerProfileId, accept)
   override suspend fun notificationSettings(): FeedNotificationSettings = api.notificationSettings()
   override suspend fun saveNotificationSettings(settings: FeedNotificationSettings): FeedNotificationSettings = api.putNotificationSettings(settings)
 
@@ -335,6 +347,10 @@ object EmptyFeedSource : FeedSource {
   override suspend fun muteNotifications(contentId: String, likesOnly: Boolean) = throw IllegalStateException("feed is not available")
   override suspend fun search(query: String, scope: String, cursor: String?): FeedSearchPage = FeedSearchPage()
   override suspend fun reportFriend(assertion: String): Boolean = throw IllegalStateException("feed is not available")
+  override suspend fun closePeople(): FeedClosePeopleResponse = throw IllegalStateException("feed is not available")
+  override suspend fun addClosePerson(profileId: String): String = throw IllegalStateException("feed is not available")
+  override suspend fun removeClosePerson(profileId: String) = throw IllegalStateException("feed is not available")
+  override suspend fun answerClosePerson(ownerProfileId: String, accept: Boolean) = throw IllegalStateException("feed is not available")
   override suspend fun notificationSettings(): FeedNotificationSettings = throw IllegalStateException("feed is not available")
   override suspend fun saveNotificationSettings(settings: FeedNotificationSettings): FeedNotificationSettings = throw IllegalStateException("feed is not available")
 }

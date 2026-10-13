@@ -6876,6 +6876,26 @@
     <string name="TellomiFeedNotificationSettings__retry">点按重试</string>
     <string name="TellomiFeedNotificationSettings__profile_required">先建好公开主页，才能收到动态通知。</string>
     <string name="TellomiFeedNotificationSettings__save_failed">没能保存，请重试。</string>
+    <string name="TellomiFeedClosePeople__title">关心的人</string>
+    <string name="TellomiFeedClosePeople__entry_hint">在公开主页上展示最多 3 个人</string>
+    <string name="TellomiFeedClosePeople__explain">最多设 %1$d 个人展示在你的公开主页上，对方同意后才会显示。</string>
+    <string name="TellomiFeedClosePeople__mine">我设的人（%1$d/%2$d）</string>
+    <string name="TellomiFeedClosePeople__mine_empty">还没有设任何人。</string>
+    <string name="TellomiFeedClosePeople__pending">等对方同意</string>
+    <string name="TellomiFeedClosePeople__accepted">已同意</string>
+    <string name="TellomiFeedClosePeople__remove">移除</string>
+    <string name="TellomiFeedClosePeople__search_hint">搜索 ID 或名字添加</string>
+    <string name="TellomiFeedClosePeople__no_results">没有找到</string>
+    <string name="TellomiFeedClosePeople__add">添加</string>
+    <string name="TellomiFeedClosePeople__added">已发送，对方同意后显示。</string>
+    <string name="TellomiFeedClosePeople__full">最多设 %1$d 个人。</string>
+    <string name="TellomiFeedClosePeople__not_allowed">不能设这个人。</string>
+    <string name="TellomiFeedClosePeople__requests">设我为关心的人</string>
+    <string name="TellomiFeedClosePeople__requests_empty">还没有人。</string>
+    <string name="TellomiFeedClosePeople__request_pending">想在主页上展示你</string>
+    <string name="TellomiFeedClosePeople__request_accepted">已在对方主页上展示</string>
+    <string name="TellomiFeedClosePeople__accept">同意</string>
+    <string name="TellomiFeedClosePeople__withdraw">撤回</string>
     <string name="ConversationListTabs__99p">99+</string>
     <!-- Menu item on stories landing page -->
     <string name="StoriesLandingFragment__story_privacy">快拍隐私</string>

@@ -5,9 +5,11 @@
 
 package org.thoughtcrime.securesms.feed.profile
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.imePadding
@@ -16,6 +18,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.SnackbarHostState
@@ -42,6 +45,7 @@ object FeedProfileTestTags {
   const val NAME = "feed_profile_name"
   const val BIO = "feed_profile_bio"
   const val SAVE = "feed_profile_save"
+  const val CLOSE_PEOPLE = "feed_profile_close_people"
 }
 
 /**
@@ -55,7 +59,9 @@ fun FeedProfileScreen(
   onBioChanged: (String) -> Unit,
   onSave: () -> Unit,
   onRetry: () -> Unit,
-  onErrorShown: () -> Unit
+  onErrorShown: () -> Unit,
+  /** 「关心的人」（第三节第 42 条），建好主页之后才有。 */
+  onClosePeopleClick: () -> Unit = {}
 ) {
   val snackbarHostState = remember { SnackbarHostState() }
   val invalid = stringResource(R.string.TellomiFeedProfile__invalid)
@@ -128,6 +134,27 @@ fun FeedProfileScreen(
         }
         if (idLine != null) {
           Text(text = idLine, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
+
+        if (!state.isNew) {
+          Row(
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier
+              .fillMaxWidth()
+              .clickable(onClick = onClosePeopleClick)
+              .padding(vertical = 8.dp)
+              .testTag(FeedProfileTestTags.CLOSE_PEOPLE)
+          ) {
+            Column(modifier = Modifier.weight(1f)) {
+              Text(text = stringResource(R.string.TellomiFeedClosePeople__title), style = MaterialTheme.typography.bodyLarge)
+              Text(
+                text = stringResource(R.string.TellomiFeedClosePeople__entry_hint),
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+              )
+            }
+            Icon(imageVector = ImageVector.vectorResource(CoreUiR.drawable.symbol_chevron_right_24), contentDescription = null)
+          }
         }
 
         Buttons.LargeTonal(

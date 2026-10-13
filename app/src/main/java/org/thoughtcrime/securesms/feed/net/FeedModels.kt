@@ -662,3 +662,35 @@ data class FeedNotificationSettings(
     val FROM_VALUES = listOf(FROM_EVERYONE, FROM_FOLLOWING, FROM_FRIENDS, FROM_NONE)
   }
 }
+
+/** `GET /v1/feed/me/close-people`（第三节第 42 条）：我设的人，和设了我的人。 */
+@Serializable
+data class FeedClosePeopleResponse(
+  val mine: List<FeedClosePersonEntry> = emptyList(),
+  val requests: List<FeedClosePersonEntry> = emptyList()
+)
+
+@Serializable
+data class FeedClosePersonEntry(
+  val id: String,
+  @SerialName("display_name") val displayName: String,
+  @SerialName("avatar_key") val avatarKey: String? = null,
+  val state: String = STATE_PENDING
+) {
+  val accepted: Boolean
+    get() = state == STATE_ACCEPTED
+
+  companion object {
+    const val STATE_PENDING = "pending"
+    const val STATE_ACCEPTED = "accepted"
+
+    /** 最多设 3 个（含待同意）。 */
+    const val MAX = 3
+  }
+}
+
+@Serializable
+data class FeedClosePersonState(val state: String = FeedClosePersonEntry.STATE_PENDING)
+
+@Serializable
+data class FeedClosePersonAnswer(val accept: Boolean)
