@@ -6756,6 +6756,42 @@
     <string name="TellomiFeedReport__evidence_note">最多 9 张。提交后截图不能撤回。</string>
     <string name="TellomiFeedReport__submit">提交举报</string>
     <string name="TellomiFeedReport__hotline">也可以向违法和不良信息举报中心举报：12377.cn</string>
+    <string name="TellomiFeedPage__follow">关注</string>
+    <string name="TellomiFeedPage__follow_back">回关</string>
+    <string name="TellomiFeedPage__following_button">已关注</string>
+    <string name="TellomiFeedPage__requested">已请求</string>
+    <string name="TellomiFeedPage__edit_profile">编辑公开主页</string>
+    <string name="TellomiFeedPage__followed">已关注</string>
+    <string name="TellomiFeedPage__requested_sent">已发送关注请求</string>
+    <string name="TellomiFeedPage__blocked_done">已屏蔽</string>
+    <string name="TellomiFeedPage__unblocked_done">已取消屏蔽</string>
+    <string name="TellomiFeedPage__block">屏蔽</string>
+    <string name="TellomiFeedPage__unblock">取消屏蔽</string>
+    <string name="TellomiFeedPage__block_title">屏蔽 %1$s？</string>
+    <string name="TellomiFeedPage__block_body">屏蔽后你们在动态里互相看不到对方的主页和帖子，互相的关注也会取消。</string>
+    <string name="TellomiFeedPage__unfollow">取消关注</string>
+    <string name="TellomiFeedPage__unfollow_title">取消关注 %1$s？</string>
+    <string name="TellomiFeedPage__unfollow_body">对方的帖子不会再出现在你的「关注」栏里。</string>
+    <string name="TellomiFeedPage__withdraw">撤回</string>
+    <string name="TellomiFeedPage__withdraw_title">撤回关注请求？</string>
+    <string name="TellomiFeedPage__withdraw_body">对方还没批准。撤回后可以再申请。</string>
+    <string name="TellomiFeedPage__gone">看不到这个主页</string>
+    <string name="TellomiFeedPage__no_posts">还没有动态</string>
+    <string name="TellomiFeedPage__private_notice">这是私密账号。对方批准你的关注请求后，才能看到对方的动态。</string>
+    <string name="TellomiFeedPage__region_unavailable">该内容在你所在地区不可见</string>
+    <string name="TellomiFeedPage__blocked_notice">你已屏蔽对方，对方的动态不会出现在你这里。</string>
+    <string name="TellomiFeedPage__follows_you">关注了你</string>
+    <string name="TellomiFeedPage__close_people">关心的人：%1$s</string>
+    <string name="TellomiFeedPage__badge_official">官方账号</string>
+    <string name="TellomiFeedPage__badge_verified">已认证</string>
+    <string name="TellomiFeedPage__badge_org">机构</string>
+    <string name="TellomiFeedPage__badge_channel">自动内容频道</string>
+    <plurals name="TellomiFeedPage__followers">
+        <item quantity="other">%1$d 粉丝</item>
+    </plurals>
+    <plurals name="TellomiFeedPage__following">
+        <item quantity="other">%1$d 关注</item>
+    </plurals>
     <string name="ConversationListTabs__99p">99+</string>
     <!-- Menu item on stories landing page -->
     <string name="StoriesLandingFragment__story_privacy">快拍隐私</string>

@@ -85,9 +85,11 @@ import org.thoughtcrime.securesms.feed.compose.FeedComposeActivity
 import org.thoughtcrime.securesms.feed.compose.FeedEditTarget
 import org.thoughtcrime.securesms.feed.detail.FeedPostDetailActivity
 import org.thoughtcrime.securesms.feed.mine.FeedMyPostsActivity
+import org.thoughtcrime.securesms.feed.net.FeedAuthor
 import org.thoughtcrime.securesms.feed.net.FeedCard
 import org.thoughtcrime.securesms.feed.net.FeedCreatePostResponse
 import org.thoughtcrime.securesms.feed.net.FeedLimits
+import org.thoughtcrime.securesms.feed.profile.FeedProfilePageActivity
 import org.thoughtcrime.securesms.feed.report.FeedReportActivity
 import org.thoughtcrime.securesms.feed.report.FeedReportTarget
 import org.signal.core.ui.R as CoreUiR
@@ -197,6 +199,7 @@ fun FeedListPane(
       onEditClick = { target -> editLauncher.launch(target) },
       onDeleteClick = { confirmDelete = it },
       onOpenClick = { context.startActivity(FeedPostDetailActivity.intent(context, it)) },
+      onAuthorClick = { context.startActivity(FeedProfilePageActivity.intent(context, it.profileId)) },
       onReportClick = { card ->
         reporting = card
         reportLauncher.launch(FeedReportTarget.content(card.id))
@@ -250,7 +253,8 @@ private fun FeedPager(
   onEditClick: (FeedEditTarget) -> Unit = {},
   onDeleteClick: (FeedCard) -> Unit = {},
   onOpenClick: (FeedCard) -> Unit = {},
-  onReportClick: (FeedCard) -> Unit = {}
+  onReportClick: (FeedCard) -> Unit = {},
+  onAuthorClick: (FeedAuthor) -> Unit = {}
 ) {
   val tabs = state.tabs
   val pagerState = rememberPagerState(pageCount = { tabs.size })
@@ -289,7 +293,8 @@ private fun FeedPager(
         isCurrentPage = pagerState.currentPage == page,
         onCardsVisible = { onCardsVisible(tab, it) },
         onOpenClick = onOpenClick,
-        onReportClick = onReportClick
+        onReportClick = onReportClick,
+        onAuthorClick = onAuthorClick
       )
     }
   }
@@ -312,7 +317,8 @@ private fun FeedTimeline(
   isCurrentPage: Boolean,
   onCardsVisible: (Set<String>) -> Unit,
   onOpenClick: (FeedCard) -> Unit = {},
-  onReportClick: (FeedCard) -> Unit = {}
+  onReportClick: (FeedCard) -> Unit = {},
+  onAuthorClick: (FeedAuthor) -> Unit = {}
 ) {
   val listState = rememberLazyListState()
 
@@ -370,7 +376,8 @@ private fun FeedTimeline(
             onEditClick = editTarget?.let { target -> { onEditClick(target) } },
             onDeleteClick = if (card.viewer.isAuthor) onDeleteClick else null,
             onOpen = onOpenClick,
-            onReportClick = if (card.viewer.isAuthor) null else onReportClick
+            onReportClick = if (card.viewer.isAuthor) null else onReportClick,
+            onAuthorClick = onAuthorClick
           )
           HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
         }

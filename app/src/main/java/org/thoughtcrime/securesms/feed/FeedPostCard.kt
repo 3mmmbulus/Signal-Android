@@ -93,8 +93,17 @@ fun FeedPostCard(
   /** 详情页：长文不截断。 */
   expanded: Boolean = false,
   /** 别人的帖子：「···」里的举报（第三节第 32 条）。 */
-  onReportClick: ((FeedCard) -> Unit)? = null
+  onReportClick: ((FeedCard) -> Unit)? = null,
+  /** 点头像或名字进主页；开放内容的外部作者没有主页。 */
+  onAuthorClick: ((FeedAuthor) -> Unit)? = null
 ) {
+  val author = card.author
+  val openAuthor: (() -> Unit)? = if (author != null && author.isNative && onAuthorClick != null) {
+    { onAuthorClick(author) }
+  } else {
+    null
+  }
+
   Column(
     modifier = modifier
       .fillMaxWidth()
@@ -102,7 +111,7 @@ fun FeedPostCard(
       .padding(top = 12.dp, bottom = 4.dp)
   ) {
     Row(modifier = Modifier.padding(start = 16.dp, end = 4.dp)) {
-      FeedAvatar(author = card.author)
+      FeedAvatar(author = card.author, modifier = if (openAuthor != null) Modifier.clip(CircleShape).clickable(onClick = openAuthor) else Modifier)
 
       Spacer(modifier = Modifier.width(12.dp))
 
@@ -113,7 +122,8 @@ fun FeedPostCard(
           onNotInterestedClick = onNotInterestedClick,
           onEditClick = onEditClick,
           onDeleteClick = onDeleteClick,
-          onReportClick = onReportClick
+          onReportClick = onReportClick,
+          onAuthorClick = openAuthor
         )
 
         val title = card.title
@@ -174,11 +184,11 @@ fun FeedPostCard(
 }
 
 @Composable
-internal fun FeedAvatar(author: FeedAuthor?, size: Dp = AVATAR_SIZE) {
+internal fun FeedAvatar(author: FeedAuthor?, size: Dp = AVATAR_SIZE, modifier: Modifier = Modifier) {
   val initial = author?.displayName?.trim()?.firstOrNull()?.toString().orEmpty()
   Box(
     contentAlignment = Alignment.Center,
-    modifier = Modifier
+    modifier = modifier
       .size(size)
       .clip(CircleShape)
       .background(MaterialTheme.colorScheme.surfaceVariant)
@@ -198,7 +208,8 @@ private fun FeedPostHeader(
   onNotInterestedClick: ((FeedCard) -> Unit)?,
   onEditClick: ((FeedCard) -> Unit)?,
   onDeleteClick: ((FeedCard) -> Unit)?,
-  onReportClick: ((FeedCard) -> Unit)?
+  onReportClick: ((FeedCard) -> Unit)?,
+  onAuthorClick: (() -> Unit)? = null
 ) {
   val context = LocalContext.current
   val author = card.author
@@ -214,7 +225,9 @@ private fun FeedPostHeader(
           color = MaterialTheme.colorScheme.onSurface,
           maxLines = 1,
           overflow = TextOverflow.Ellipsis,
-          modifier = Modifier.weight(1f, fill = false)
+          modifier = Modifier
+            .weight(1f, fill = false)
+            .then(if (onAuthorClick != null) Modifier.clickable(onClick = onAuthorClick) else Modifier)
         )
 
         val published = remember(card.publishedAt) { card.publishedAt?.let { parseInstantMillis(it) } }

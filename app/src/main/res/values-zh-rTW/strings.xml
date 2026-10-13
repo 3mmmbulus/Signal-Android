@@ -6756,6 +6756,42 @@
     <string name="TellomiFeedReport__evidence_note">最多 9 張。送出後截圖無法撤回。</string>
     <string name="TellomiFeedReport__submit">送出檢舉</string>
     <string name="TellomiFeedReport__hotline">也可以向違法和不良信息舉報中心舉報：12377.cn</string>
+    <string name="TellomiFeedPage__follow">關注</string>
+    <string name="TellomiFeedPage__follow_back">回關</string>
+    <string name="TellomiFeedPage__following_button">已關注</string>
+    <string name="TellomiFeedPage__requested">已請求</string>
+    <string name="TellomiFeedPage__edit_profile">編輯公開主頁</string>
+    <string name="TellomiFeedPage__followed">已關注</string>
+    <string name="TellomiFeedPage__requested_sent">已送出關注請求</string>
+    <string name="TellomiFeedPage__blocked_done">已封鎖</string>
+    <string name="TellomiFeedPage__unblocked_done">已解除封鎖</string>
+    <string name="TellomiFeedPage__block">封鎖</string>
+    <string name="TellomiFeedPage__unblock">解除封鎖</string>
+    <string name="TellomiFeedPage__block_title">封鎖 %1$s？</string>
+    <string name="TellomiFeedPage__block_body">封鎖後你們在動態裡互相看不到對方的主頁和貼文，互相的關注也會取消。</string>
+    <string name="TellomiFeedPage__unfollow">取消關注</string>
+    <string name="TellomiFeedPage__unfollow_title">取消關注 %1$s？</string>
+    <string name="TellomiFeedPage__unfollow_body">對方的貼文不會再出現在你的「關注」欄裡。</string>
+    <string name="TellomiFeedPage__withdraw">撤回</string>
+    <string name="TellomiFeedPage__withdraw_title">撤回關蹤請求？</string>
+    <string name="TellomiFeedPage__withdraw_body">對方還沒核准。撤回後可以再申請。</string>
+    <string name="TellomiFeedPage__gone">無法查看這個主頁</string>
+    <string name="TellomiFeedPage__no_posts">還沒有動態</string>
+    <string name="TellomiFeedPage__private_notice">這是私密帳號。對方核准你的關注請求後，才能看到對方的動態。</string>
+    <string name="TellomiFeedPage__region_unavailable">此內容在你所在的地區無法查看</string>
+    <string name="TellomiFeedPage__blocked_notice">你已封鎖對方，對方的動態不會出現在你這裡。</string>
+    <string name="TellomiFeedPage__follows_you">關注了你</string>
+    <string name="TellomiFeedPage__close_people">關心的人：%1$s</string>
+    <string name="TellomiFeedPage__badge_official">官方帳號</string>
+    <string name="TellomiFeedPage__badge_verified">已認證</string>
+    <string name="TellomiFeedPage__badge_org">機構</string>
+    <string name="TellomiFeedPage__badge_channel">自動內容頻道</string>
+    <plurals name="TellomiFeedPage__followers">
+        <item quantity="other">%1$d 位粉絲</item>
+    </plurals>
+    <plurals name="TellomiFeedPage__following">
+        <item quantity="other">%1$d 已關注</item>
+    </plurals>
     <string name="ConversationListTabs__99p">99+</string>
     <!-- Menu item on stories landing page -->
     <string name="StoriesLandingFragment__story_privacy">快拍隱私</string>

@@ -405,4 +405,70 @@ class FeedApiTest {
     assertThat(cards.map { it.id }).containsExactly("a", "b")
     assertThat(cards.first().attribution.toString().contains("某站")).isTrue()
   }
+
+  @Test
+  fun `profile page reads the relation and hidden profiles are null`() = runBlocking {
+    server.enqueue(
+      MockResponse().setBody(
+        """{"id":"p1","handle":null,"tellomi_number":"3820145967","display_name":"小满","avatar_key":null,"bio":"慢慢来","shown_interests":["读书"],"badge":"official","is_private":true,"ip_region_label":"四川","followers":12,"following":3,"region_unavailable":false,"me":{"self":false,"follow":"pending","followed_by":true,"friend":false,"blocked":false},"close_people":[{"id":"p2","display_name":"山风"}]}"""
+      )
+    )
+    server.enqueue(MockResponse().setResponseCode(404).setBody("""{"error":"not_found"}"""))
+
+    val page = api.profile("p1")!!
+    val hidden = api.profile("p9")
+
+    assertThat(server.takeRequest().path).isEqualTo("/v1/feed/profiles/p1")
+    assertThat(page.tellomiNumber).isEqualTo("3820145967")
+    assertThat(page.me.follow).isEqualTo(FeedRelation.FOLLOW_PENDING)
+    assertThat(page.me.followedBy).isTrue()
+    assertThat(page.canSeePosts).isFalse()
+    assertThat(page.closePeople.map { it.displayName }).containsExactly("山风")
+    assertThat(hidden).isNull()
+  }
+
+  @Test
+  fun `profile posts pass the cursor and keep only available cards`() = runBlocking {
+    server.enqueue(
+      MockResponse().setBody(
+        """{"posts":[{"id":"a","state":"ok","card":{"kind":"post","text":"hi"}},{"id":"b","state":"unavailable"}],"cursor":"c2"}"""
+      )
+    )
+
+    val response = api.profilePosts("p1", cursor = "c1")
+
+    val url = server.takeRequest().requestUrl!!
+    assertThat(url.encodedPath).isEqualTo("/v1/feed/profiles/p1/posts")
+    assertThat(url.queryParameter("cursor")).isEqualTo("c1")
+    assertThat(response.posts.mapNotNull { it.toCard() }.map { it.id }).containsExactly("a")
+    assertThat(response.cursor).isEqualTo("c2")
+  }
+
+  @Test
+  fun `follow and unfollow return the new state, block has no body`() = runBlocking {
+    server.enqueue(MockResponse().setBody("""{"state":"pending"}"""))
+    server.enqueue(MockResponse().setBody("""{"state":"none"}"""))
+    server.enqueue(MockResponse().setResponseCode(204))
+
+    assertThat(api.follow("author", "p1", on = true)).isEqualTo("pending")
+    assertThat(api.follow("author", "p1", on = false)).isEqualTo("none")
+    api.block("author", "p1", on = true)
+
+    val put = server.takeRequest()
+    assertThat(put.method).isEqualTo("PUT")
+    assertThat(put.path).isEqualTo("/v1/feed/follow/author/p1")
+    assertThat(server.takeRequest().method).isEqualTo("DELETE")
+    val block = server.takeRequest()
+    assertThat(block.method).isEqualTo("PUT")
+    assertThat(block.path).isEqualTo("/v1/feed/blocks/author/p1")
+  }
+
+  @Test
+  fun `following someone without a public profile is a conflict`() {
+    server.enqueue(MockResponse().setResponseCode(409).setBody("""{"error":"profile_required"}"""))
+
+    assertFailure { runBlocking { api.follow("author", "p1", on = true) } }
+      .isInstanceOf(FeedApiException::class)
+      .prop(FeedApiException::code).isEqualTo("profile_required")
+  }
 }

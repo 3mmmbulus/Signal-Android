@@ -428,3 +428,78 @@ data class FeedReportRequest(
     const val TARGET_AUTHOR = "author"
   }
 }
+
+/**
+ * `GET /v1/feed/profiles/{id}`：别人的（或自己的）公开主页（第三节第 8–10、29、33、42 条；引擎 `profilePage`）。
+ * 屏蔽、删了、未成年人主页对非好友都是 404 `not_found`，不区分原因。
+ */
+@Serializable
+data class FeedProfilePage(
+  val id: String,
+  val handle: String? = null,
+  /** 只在没设 handle 时给（第三节第 8 条）。 */
+  @SerialName("tellomi_number") val tellomiNumber: String? = null,
+  @SerialName("display_name") val displayName: String,
+  @SerialName("avatar_key") val avatarKey: String? = null,
+  val bio: String? = null,
+  @SerialName("shown_interests") val shownInterests: List<String> = emptyList(),
+  /** 不是个人账号时的类别（官方账号等）。 */
+  val badge: String? = null,
+  @SerialName("is_private") val isPrivate: Boolean = false,
+  /** 只有大陆区看大陆区的人才给（第三节第 10 条）。 */
+  @SerialName("ip_region_label") val ipRegionLabel: String? = null,
+  val followers: Int = 0,
+  val following: Int = 0,
+  /** 对方在另一个内容区域发帖，帖子到不了这里（R-1.4）。 */
+  @SerialName("region_unavailable") val regionUnavailable: Boolean = false,
+  val me: FeedRelation = FeedRelation(),
+  /** 「关心的人」，对方同意了的才有（第三节第 42 条）。 */
+  @SerialName("close_people") val closePeople: List<FeedClosePerson> = emptyList()
+) {
+  /** 能不能看这个人的帖子：私密账号要是好友或者关注被批准（第三节第 29 条）。 */
+  val canSeePosts: Boolean
+    get() = me.self || !isPrivate || me.friend || me.follow == FeedRelation.FOLLOW_APPROVED
+
+  /** 主页上的「作者」，给卡片头像这类只认 [FeedAuthor] 的地方用。 */
+  fun asAuthor(): FeedAuthor = FeedAuthor(profileId = id, displayName = displayName, handle = handle, tellomiNumber = tellomiNumber, avatarKey = avatarKey, badge = badge)
+}
+
+/** 我和这个主页的关系。[follow] 是 `none` / `pending` / `approved`。 */
+@Serializable
+data class FeedRelation(
+  val self: Boolean = false,
+  val follow: String = FOLLOW_NONE,
+  @SerialName("followed_by") val followedBy: Boolean = false,
+  val friend: Boolean = false,
+  /** 我屏蔽了对方。 */
+  val blocked: Boolean = false
+) {
+  companion object {
+    const val FOLLOW_NONE = "none"
+    const val FOLLOW_PENDING = "pending"
+    const val FOLLOW_APPROVED = "approved"
+  }
+}
+
+@Serializable
+data class FeedClosePerson(
+  val id: String,
+  @SerialName("display_name") val displayName: String,
+  @SerialName("avatar_key") val avatarKey: String? = null
+)
+
+/** `GET /v1/feed/profiles/{id}/posts`：一页 20 条，满一页才有 [cursor]。 */
+@Serializable
+data class FeedProfilePostsResponse(
+  val posts: List<FeedCardResult> = emptyList(),
+  val cursor: String? = null
+)
+
+data class FeedProfilePostsPage(
+  val posts: List<FeedCard> = emptyList(),
+  val cursor: String? = null
+)
+
+/** `PUT` / `DELETE /v1/feed/follow/{type}/{id}` 的回包：私密账号是 `pending`，取消后是 `none`。 */
+@Serializable
+data class FeedFollowResponse(val state: String = FeedRelation.FOLLOW_NONE)

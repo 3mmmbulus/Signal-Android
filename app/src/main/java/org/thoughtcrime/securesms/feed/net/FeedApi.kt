@@ -28,7 +28,7 @@ val FeedJson: Json = Json {
 /**
  * feed token 的来源：Signal-Server 签的短期 JWT（内容引擎 `internal/engine/auth`）。token 只在内存里，不落盘。
  *
- * 正式实现从 Signal-Server `GET /v1/tellomi/feed/auth` 取（Signal-Server 这边还没写）。
+ * 正式实现从 Signal-Server `GET /v1/tellomi/feed/auth` 取（tellomi/Signal-Server#13；服务端部署时才启用）。
  */
 interface FeedTokenSource {
   /** 当前可用的 token；[forceRefresh] 为真时丢掉缓存重新取。 */
@@ -220,6 +220,45 @@ class FeedApi(
     sendNoContent(Request.Builder().url(url("v1/feed/reports")).post(body))
   }
 
+  /** 一个公开主页。看不到（删了、互相屏蔽、未成年人对非好友）时引擎回 404 `not_found`，这里给 null。 */
+  suspend fun profile(profileId: String): FeedProfilePage? {
+    val url = url("v1/feed/profiles").newBuilder().addPathSegment(profileId).build()
+    return try {
+      get(url, FeedProfilePage.serializer())
+    } catch (e: FeedApiException) {
+      if (e.status == 404 && e.code == NOT_FOUND) null else throw e
+    }
+  }
+
+  /** 主页上的帖子，新的在前，一页 [PROFILE_PAGE] 条。看不到这个主页时 404 `not_found`。 */
+  suspend fun profilePosts(profileId: String, cursor: String?): FeedProfilePostsResponse {
+    val url = url("v1/feed/profiles").newBuilder()
+      .addPathSegment(profileId)
+      .addPathSegment("posts")
+      .apply { if (cursor != null) addQueryParameter("cursor", cursor) }
+      .build()
+    return get(url, FeedProfilePostsResponse.serializer())
+  }
+
+  /**
+   * 关注 / 取消关注（[type] 是 `author`、`topic` 或 `source`），返回新的状态：私密账号对非好友是 `pending`，
+   * 取消后是 `none`。关注人之前要先有公开主页（409 `profile_required`）；看不到的人 404 `not_found`。
+   */
+  suspend fun follow(type: String, id: String, on: Boolean): String {
+    val url = url("v1/feed/follow").newBuilder().addPathSegment(type).addPathSegment(id).build()
+    val builder = Request.Builder().url(url)
+    if (on) builder.put(EMPTY_BODY) else builder.delete()
+    return send(builder, FeedFollowResponse.serializer()).state
+  }
+
+  /** 在动态里屏蔽 / 取消屏蔽（204）。屏蔽作者会把双方的关注一起删掉。不能屏蔽自己（400 `invalid_target`）。 */
+  suspend fun block(type: String, id: String, on: Boolean) {
+    val url = url("v1/feed/blocks").newBuilder().addPathSegment(type).addPathSegment(id).build()
+    val builder = Request.Builder().url(url)
+    if (on) builder.put(EMPTY_BODY) else builder.delete()
+    sendNoContent(builder)
+  }
+
   /** 删自己的帖子（204）。别人的帖子引擎回 404。 */
   suspend fun deletePost(contentId: String) {
     val url = url("v1/feed/posts").newBuilder().addPathSegment(contentId).build()
@@ -288,6 +327,10 @@ class FeedApi(
     const val TAB_FOLLOWING = "following"
 
     const val MAX_CARD_IDS = 100
+    const val PROFILE_PAGE = 20
+
+    const val TARGET_AUTHOR = "author"
+    const val NOT_FOUND = "not_found"
     const val MAX_EVENTS = 100
 
     const val REACTION_LIKE = "like"

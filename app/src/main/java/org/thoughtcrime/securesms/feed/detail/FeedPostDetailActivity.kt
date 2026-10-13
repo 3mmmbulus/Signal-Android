@@ -19,6 +19,7 @@ import org.thoughtcrime.securesms.PassphraseRequiredActivity
 import org.thoughtcrime.securesms.feed.net.FeedCard
 import org.thoughtcrime.securesms.feed.net.FeedJson
 import org.thoughtcrime.securesms.feed.profile.FeedProfileActivity
+import org.thoughtcrime.securesms.feed.profile.FeedProfilePageActivity
 import org.thoughtcrime.securesms.util.DynamicNoActionBarTheme
 
 /**
@@ -60,7 +61,8 @@ class FeedPostDetailActivity : PassphraseRequiredActivity() {
           onDraftChanged = viewModel::onDraftChanged,
           onSend = viewModel::send,
           onNoticeShown = viewModel::onNoticeShown,
-          onProfileRequired = { profileLauncher.launch(Unit) }
+          onProfileRequired = { profileLauncher.launch(Unit) },
+          onAuthorClick = { startActivity(FeedProfilePageActivity.intent(this, it.profileId)) }
         )
       }
     }

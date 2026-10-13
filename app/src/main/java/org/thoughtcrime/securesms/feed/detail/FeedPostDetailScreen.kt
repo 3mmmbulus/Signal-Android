@@ -21,6 +21,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.HorizontalDivider
@@ -59,6 +60,7 @@ import org.signal.core.ui.compose.Snackbars
 import org.thoughtcrime.securesms.R
 import org.thoughtcrime.securesms.feed.FeedAvatar
 import org.thoughtcrime.securesms.feed.FeedPostCard
+import org.thoughtcrime.securesms.feed.net.FeedAuthor
 import org.thoughtcrime.securesms.feed.net.FeedCard
 import org.thoughtcrime.securesms.feed.parseInstantMillis
 import org.thoughtcrime.securesms.util.DateUtils
@@ -96,7 +98,8 @@ fun FeedPostDetailScreen(
   onDraftChanged: (String) -> Unit,
   onSend: () -> Unit,
   onNoticeShown: () -> Unit,
-  onProfileRequired: () -> Unit = {}
+  onProfileRequired: () -> Unit = {},
+  onAuthorClick: (FeedAuthor) -> Unit = {}
 ) {
   val snackbarHostState = remember { SnackbarHostState() }
   val noticeText = state.notice?.let { stringResource(it.messageRes()) }
@@ -140,6 +143,7 @@ fun FeedPostDetailScreen(
       onRetryComments = onRetryComments,
       onLoadMoreComments = onLoadMoreComments,
       onReplyClick = onReplyClick,
+      onAuthorClick = onAuthorClick,
       modifier = Modifier.padding(padding).fillMaxSize()
     )
   }
@@ -152,6 +156,7 @@ private fun CommentList(
   onRetryComments: () -> Unit,
   onLoadMoreComments: () -> Unit,
   onReplyClick: (FeedCard) -> Unit,
+  onAuthorClick: (FeedAuthor) -> Unit,
   modifier: Modifier = Modifier
 ) {
   val listState = rememberLazyListState()
@@ -177,7 +182,8 @@ private fun CommentList(
         onLikeClick = { onLikeClick() },
         onNotInterestedClick = null,
         mediaBaseUrl = state.mediaBaseUrl,
-        expanded = true
+        expanded = true,
+        onAuthorClick = onAuthorClick
       )
       HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
     }
@@ -195,7 +201,8 @@ private fun CommentList(
           showIpRegion = state.showIpRegion,
           canReply = state.canComment,
           onReplyClick = onReplyClick,
-          isReply = false
+          isReply = false,
+          onAuthorClick = onAuthorClick
         )
       }
 
@@ -210,7 +217,8 @@ private fun CommentList(
             showIpRegion = state.showIpRegion,
             canReply = state.canComment,
             onReplyClick = onReplyClick,
-            isReply = true
+            isReply = true,
+            onAuthorClick = onAuthorClick
           )
         }
       }
@@ -282,13 +290,19 @@ private fun CommentBubble(
   showIpRegion: Boolean,
   canReply: Boolean,
   onReplyClick: (FeedCard) -> Unit,
-  isReply: Boolean
+  isReply: Boolean,
+  onAuthorClick: (FeedAuthor) -> Unit = {}
 ) {
   val context = LocalContext.current
   val start = if (isReply) 16.dp + COMMENT_AVATAR + 12.dp else 16.dp
 
   Row(modifier = Modifier.fillMaxWidth().padding(start = start, end = 16.dp, bottom = 8.dp)) {
-    FeedAvatar(author = comment.author, size = if (isReply) REPLY_AVATAR else COMMENT_AVATAR)
+    val author = comment.author
+    FeedAvatar(
+      author = author,
+      size = if (isReply) REPLY_AVATAR else COMMENT_AVATAR,
+      modifier = if (author != null && author.isNative) Modifier.clip(CircleShape).clickable { onAuthorClick(author) } else Modifier
+    )
     Spacer(modifier = Modifier.width(8.dp))
 
     Column(modifier = Modifier.weight(1f)) {

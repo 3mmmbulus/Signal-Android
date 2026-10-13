@@ -28,6 +28,8 @@ import org.thoughtcrime.securesms.feed.net.FeedImageUploader
 import org.thoughtcrime.securesms.feed.net.FeedItemRef
 import org.thoughtcrime.securesms.feed.net.FeedMyPostsPage
 import org.thoughtcrime.securesms.feed.net.FeedMyProfile
+import org.thoughtcrime.securesms.feed.net.FeedProfilePage
+import org.thoughtcrime.securesms.feed.net.FeedProfilePostsPage
 import org.thoughtcrime.securesms.feed.net.FeedProfileUpdate
 import org.thoughtcrime.securesms.feed.net.FeedReportRequest
 import org.thoughtcrime.securesms.feed.net.FeedTimelinePage
@@ -81,6 +83,17 @@ interface FeedSource {
   suspend fun myProfile(): FeedMyProfile?
 
   suspend fun saveProfile(update: FeedProfileUpdate): FeedMyProfile
+
+  /** 一个公开主页；看不到（删了、互相屏蔽、未成年人对非好友）是 null。 */
+  suspend fun profile(profileId: String): FeedProfilePage?
+
+  suspend fun profilePosts(profileId: String, cursor: String?): FeedProfilePostsPage
+
+  /** 关注 / 取消关注一个人，返回新的状态（`none` / `pending` / `approved`）。 */
+  suspend fun setFollowing(profileId: String, following: Boolean): String
+
+  /** 在动态里屏蔽 / 取消屏蔽一个人（第三节第 32 条「屏蔽作者」）。 */
+  suspend fun setBlocked(profileId: String, blocked: Boolean)
 }
 
 /**
@@ -153,6 +166,17 @@ class RemoteFeedSource(
 
   override suspend fun saveProfile(update: FeedProfileUpdate): FeedMyProfile = api.saveProfile(update)
 
+  override suspend fun profile(profileId: String): FeedProfilePage? = api.profile(profileId)
+
+  override suspend fun profilePosts(profileId: String, cursor: String?): FeedProfilePostsPage {
+    val response = api.profilePosts(profileId, cursor)
+    return FeedProfilePostsPage(posts = response.posts.mapNotNull { it.toCard() }, cursor = response.cursor)
+  }
+
+  override suspend fun setFollowing(profileId: String, following: Boolean): String = api.follow(FeedApi.TARGET_AUTHOR, profileId, following)
+
+  override suspend fun setBlocked(profileId: String, blocked: Boolean) = api.block(FeedApi.TARGET_AUTHOR, profileId, blocked)
+
   override suspend fun publish(draft: FeedDraft, clientNonce: String): FeedCreatePostResponse {
     val keys = draft.attachedImages.map { uri -> uploadOnce(clientNonce, uri) }
     val response = api.createPost(draft.toRequest().copy(clientNonce = clientNonce, mediaKeys = keys.ifEmpty { null }))
@@ -222,6 +246,10 @@ object EmptyFeedSource : FeedSource {
   override suspend fun uploadImage(uri: Uri): String = throw IllegalStateException("feed is not available")
   override suspend fun report(request: FeedReportRequest) = throw IllegalStateException("feed is not available")
   override suspend fun saveProfile(update: FeedProfileUpdate): FeedMyProfile = throw IllegalStateException("feed is not available")
+  override suspend fun profile(profileId: String): FeedProfilePage? = null
+  override suspend fun profilePosts(profileId: String, cursor: String?): FeedProfilePostsPage = FeedProfilePostsPage()
+  override suspend fun setFollowing(profileId: String, following: Boolean): String = throw IllegalStateException("feed is not available")
+  override suspend fun setBlocked(profileId: String, blocked: Boolean) = throw IllegalStateException("feed is not available")
 }
 
 object FeedSources {

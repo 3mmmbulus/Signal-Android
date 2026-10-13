@@ -20,7 +20,10 @@ import org.thoughtcrime.securesms.feed.net.FeedMedia
 import org.thoughtcrime.securesms.feed.net.FeedMyPost
 import org.thoughtcrime.securesms.feed.net.FeedMyPostsPage
 import org.thoughtcrime.securesms.feed.net.FeedMyProfile
+import org.thoughtcrime.securesms.feed.net.FeedProfilePage
+import org.thoughtcrime.securesms.feed.net.FeedProfilePostsPage
 import org.thoughtcrime.securesms.feed.net.FeedProfileUpdate
+import org.thoughtcrime.securesms.feed.net.FeedRelation
 import org.thoughtcrime.securesms.feed.net.FeedReportRequest
 import org.thoughtcrime.securesms.feed.net.FeedStats
 import org.thoughtcrime.securesms.feed.net.FeedTimelinePage
@@ -255,6 +258,66 @@ object SampleFeedSource : FeedSource {
   override suspend fun saveProfile(update: FeedProfileUpdate): FeedMyProfile = synchronized(this) {
     val current = profile ?: FeedMyProfile(id = "s-me", tellomiNumber = me.tellomiNumber, displayName = update.displayName ?: throw IllegalArgumentException("name required"))
     current.copy(displayName = update.displayName ?: current.displayName, bio = update.bio ?: current.bio).also { profile = it }
+  }
+
+  /** 样例里关注着「关注」栏那两位；「周末烘焙」是私密账号，关注要等批准（样例里一直是待批准）。 */
+  private val follows = mutableMapOf("s-1" to FeedRelation.FOLLOW_APPROVED, "s-3" to FeedRelation.FOLLOW_APPROVED)
+  private val blocked = mutableSetOf<String>()
+  private const val PRIVATE_SAMPLE = "s-4"
+
+  private val bios = mapOf(
+    "s-1" to "喜欢看云，也喜欢走路。",
+    "s-2" to "慢慢来。",
+    "s-3" to "背包走过一些地方，还想走更多。",
+    "s-4" to "周末烤点面包，偶尔成功。",
+    "s-5" to "夜里跑步，白天睡觉的猫。"
+  )
+
+  override suspend fun profile(profileId: String): FeedProfilePage? = synchronized(this) { profileOf(profileId) }
+
+  private fun profileOf(profileId: String): FeedProfilePage? {
+    val self = profileId == me.profileId
+    val author = if (self) me.copy(displayName = profile?.displayName ?: me.displayName) else authors.firstOrNull { it.profileId == profileId } ?: return null
+    val index = authors.indexOf(author).coerceAtLeast(0)
+    val follow = follows[profileId] ?: FeedRelation.FOLLOW_NONE
+    return FeedProfilePage(
+      id = profileId,
+      handle = author.handle,
+      tellomiNumber = author.tellomiNumber,
+      displayName = author.displayName,
+      bio = if (self) profile?.bio else bios[profileId],
+      shownInterests = if (self) emptyList() else listOf(topics[index % topics.size].label),
+      isPrivate = profileId == PRIVATE_SAMPLE,
+      ipRegionLabel = ipLabels[index % ipLabels.size],
+      followers = 120 + index * 37 + if (follow == FeedRelation.FOLLOW_APPROVED) 1 else 0,
+      following = 40 + index * 11,
+      me = FeedRelation(self = self, follow = follow, followedBy = profileId == "s-1", blocked = profileId in blocked)
+    )
+  }
+
+  override suspend fun profilePosts(profileId: String, cursor: String?): FeedProfilePostsPage = synchronized(this) {
+    val page = profileOf(profileId) ?: return FeedProfilePostsPage()
+    if (!page.canSeePosts || page.me.blocked) return FeedProfilePostsPage()
+    FeedProfilePostsPage(posts = (mine + recommend).filter { it.author?.profileId == profileId && it.id !in hidden })
+  }
+
+  override suspend fun setFollowing(profileId: String, following: Boolean): String = synchronized(this) {
+    val state = when {
+      !following -> FeedRelation.FOLLOW_NONE
+      profileId == PRIVATE_SAMPLE -> FeedRelation.FOLLOW_PENDING
+      else -> FeedRelation.FOLLOW_APPROVED
+    }
+    if (state == FeedRelation.FOLLOW_NONE) follows -= profileId else follows[profileId] = state
+    state
+  }
+
+  override suspend fun setBlocked(profileId: String, blocked: Boolean): Unit = synchronized(this) {
+    if (blocked) {
+      this.blocked += profileId
+      follows -= profileId
+    } else {
+      this.blocked -= profileId
+    }
   }
 
   private val commentTexts = listOf(

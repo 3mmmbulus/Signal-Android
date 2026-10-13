@@ -6975,6 +6975,44 @@
     <string name="TellomiFeedReport__evidence_note">Up to 9. Once sent, screenshots can\'t be withdrawn.</string>
     <string name="TellomiFeedReport__submit">Send report</string>
     <string name="TellomiFeedReport__hotline">You can also report to the Illegal and Harmful Information Reporting Center at 12377.cn</string>
+    <string name="TellomiFeedPage__follow">Follow</string>
+    <string name="TellomiFeedPage__follow_back">Follow back</string>
+    <string name="TellomiFeedPage__following_button">Following</string>
+    <string name="TellomiFeedPage__requested">Requested</string>
+    <string name="TellomiFeedPage__edit_profile">Edit public profile</string>
+    <string name="TellomiFeedPage__followed">Following</string>
+    <string name="TellomiFeedPage__requested_sent">Follow request sent</string>
+    <string name="TellomiFeedPage__blocked_done">Blocked</string>
+    <string name="TellomiFeedPage__unblocked_done">Unblocked</string>
+    <string name="TellomiFeedPage__block">Block</string>
+    <string name="TellomiFeedPage__unblock">Unblock</string>
+    <string name="TellomiFeedPage__block_title">Block %1$s?</string>
+    <string name="TellomiFeedPage__block_body">You won\'t see each other\'s profile or posts in Feed, and you\'ll stop following each other.</string>
+    <string name="TellomiFeedPage__unfollow">Unfollow</string>
+    <string name="TellomiFeedPage__unfollow_title">Unfollow %1$s?</string>
+    <string name="TellomiFeedPage__unfollow_body">Their posts will stop showing in your Following tab.</string>
+    <string name="TellomiFeedPage__withdraw">Withdraw</string>
+    <string name="TellomiFeedPage__withdraw_title">Withdraw follow request?</string>
+    <string name="TellomiFeedPage__withdraw_body">They haven\'t approved it yet. You can ask again later.</string>
+    <string name="TellomiFeedPage__gone">This profile isn\'t available</string>
+    <string name="TellomiFeedPage__no_posts">No posts yet</string>
+    <string name="TellomiFeedPage__private_notice">This account is private. You\'ll see their posts once they approve your follow request.</string>
+    <string name="TellomiFeedPage__region_unavailable">This content isn\'t available in your region</string>
+    <string name="TellomiFeedPage__blocked_notice">You blocked this account. Their posts won\'t show up for you.</string>
+    <string name="TellomiFeedPage__follows_you">Follows you</string>
+    <string name="TellomiFeedPage__close_people">Close people: %1$s</string>
+    <string name="TellomiFeedPage__badge_official">Official</string>
+    <string name="TellomiFeedPage__badge_verified">Verified</string>
+    <string name="TellomiFeedPage__badge_org">Organization</string>
+    <string name="TellomiFeedPage__badge_channel">Auto content channel</string>
+    <plurals name="TellomiFeedPage__followers">
+        <item quantity="one">%1$d follower</item>
+        <item quantity="other">%1$d followers</item>
+    </plurals>
+    <plurals name="TellomiFeedPage__following">
+        <item quantity="one">%1$d following</item>
+        <item quantity="other">%1$d following</item>
+    </plurals>
     <string name="ConversationListTabs__99p">99+</string>
     <!-- Menu item on stories landing page -->
     <string name="StoriesLandingFragment__story_privacy">Story privacy</string>
