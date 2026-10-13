@@ -3052,6 +3052,9 @@
     <string name="ThreadRecord_voice_message">Voice Message</string>
     <string name="ThreadRecord_file">File</string>
     <string name="ThreadRecord_video">Video</string>
+    <!-- Tellomi (tellomi/tellomi#1263, spec R-2): a live photo in the chat list / notifications, the viewer's live button -->
+    <string name="ThreadRecord_tellomi_live_photo">Live Photo</string>
+    <string name="TellomiLivePhoto__live">LIVE</string>
     <string name="ThreadRecord_chat_session_refreshed">Chat session refreshed</string>
     <!-- Displayed in the notification when the user is sent a gift -->
     <string name="ThreadRecord__s_donated_for_you">%1$s donated for you</string>

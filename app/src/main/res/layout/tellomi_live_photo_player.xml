@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  ~ Copyright 2026 重庆半格智能科技有限公司
+  ~ SPDX-License-Identifier: AGPL-3.0-only
+  -->
+<!-- Tellomi (tellomi/tellomi#1263, spec R-2): the moving half of a live photo, over its still -->
+<merge xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    tools:parentTag="android.widget.FrameLayout"
+    tools:viewBindingIgnore="true">
+
+    <androidx.media3.ui.PlayerView
+        android:id="@+id/live_photo_video"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:layout_gravity="center"
+        app:keep_content_on_player_reset="false"
+        app:player_layout_id="@layout/media_preview_exoplayer_layout"
+        app:shutter_background_color="@android:color/transparent"
+        app:surface_type="texture_view"
+        app:use_controller="false" />
+
+</merge>

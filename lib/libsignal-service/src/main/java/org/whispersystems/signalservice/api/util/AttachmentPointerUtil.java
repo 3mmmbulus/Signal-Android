@@ -46,7 +46,8 @@ public final class AttachmentPointerUtil {
                                               pointer.uploadTimestamp != null ? pointer.uploadTimestamp : 0,
                                               UuidUtil.fromByteStringOrNull(pointer.clientUuid),
                                               isTellomiAsFile(pointer),
-                                              isTellomiSpoiler(pointer));
+                                              isTellomiSpoiler(pointer),
+                                              tellomiLivePhotoVideo(pointer));
   }
 
   /** Tellomi (ADR-0068 §4.1 rule 1): drawn as a file row whatever the content type. */
@@ -64,6 +65,35 @@ public final class AttachmentPointerUtil {
     }
     String contentType = pointer.contentType != null ? pointer.contentType.toLowerCase(java.util.Locale.ROOT) : "";
     return contentType.startsWith("image/") || contentType.startsWith("video/");
+  }
+
+  /**
+   * Tellomi (ADR-0068 §4.1 rules 1–3, spec R-2): the moving half of a live photo. Only on a still image and never with
+   * asFile; the nested pointer must be a video with CDN info and a key, one level only (it can't carry its own
+   * livePhotoVideo). Anything else ignores the field: the still shows as an ordinary picture.
+   */
+  static byte[] tellomiLivePhotoVideo(AttachmentPointer pointer) {
+    if (pointer.tellomi == null || pointer.tellomi.livePhotoVideo == null || isTellomiAsFile(pointer)) {
+      return null;
+    }
+    if (!lowerCase(pointer.contentType).startsWith("image/")) {
+      return null;
+    }
+    AttachmentPointer video = pointer.tellomi.livePhotoVideo;
+    if (!lowerCase(video.contentType).startsWith("video/")) {
+      return null;
+    }
+    if (video.tellomi != null && video.tellomi.livePhotoVideo != null) {
+      return null;
+    }
+    if (video.cdnNumber == null || video.key == null || (video.cdnKey == null && video.cdnId == null)) {
+      return null;
+    }
+    return video.encode();
+  }
+
+  private static String lowerCase(String contentType) {
+    return contentType != null ? contentType.toLowerCase(java.util.Locale.ROOT) : "";
   }
 
   public static AttachmentPointer createAttachmentPointer(SignalServiceAttachmentPointer attachment) {

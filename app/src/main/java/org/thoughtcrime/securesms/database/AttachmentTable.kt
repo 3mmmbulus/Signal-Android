@@ -2138,7 +2138,8 @@ class AttachmentTable(
         TransformProperties.forSkipTransform().copy(
           tellomiAsFile = tellomi?.tellomiAsFile == true,
           tellomiSpoiler = tellomi?.tellomiSpoiler == true,
-          tellomiSpoilerRevealed = tellomi?.tellomiSpoilerRevealed == true
+          tellomiSpoilerRevealed = tellomi?.tellomiSpoilerRevealed == true,
+          tellomiLivePhotoVideo = tellomi?.tellomiLivePhotoVideo
         ).serialize()
       )
       values.put(REMOTE_LOCATION, existingPlaceholder.remoteLocation)
@@ -3679,7 +3680,8 @@ class AttachmentTable(
           skipTransform = true,
           tellomiAsFile = transformProperties.tellomiAsFile,
           tellomiSpoiler = transformProperties.tellomiSpoiler,
-          tellomiSpoilerRevealed = transformProperties.tellomiSpoilerRevealed
+          tellomiSpoilerRevealed = transformProperties.tellomiSpoilerRevealed,
+          tellomiLivePhotoVideo = transformProperties.tellomiLivePhotoVideo
         )
 
         contentValues.put(ARCHIVE_CDN, hashMatch!!.archiveCdn)

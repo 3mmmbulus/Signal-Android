@@ -21,6 +21,8 @@ public abstract class MediaPreviewPageFragment extends Fragment {
   static final String DATA_CONTENT_TYPE = "DATA_CONTENT_TYPE";
   static final String AUTO_PLAY         = "AUTO_PLAY";
   static final String VIDEO_GIF         = "VIDEO_GIF";
+  /** Tellomi (spec R-2): the attachment, when it is a live photo. */
+  static final String DATA_LIVE_PHOTO   = "DATA_LIVE_PHOTO";
 
   private   AttachmentId attachmentId;
   protected Events       events;
@@ -69,5 +71,7 @@ public abstract class MediaPreviewPageFragment extends Fragment {
     default @Nullable VideoControlsDelegate getVideoControlsDelegate() {
       return null;
     }
+    /** Tellomi (spec R-2): [page]'s live photo started or stopped playing with sound. */
+    default void onLivePhotoActiveChanged(@NonNull MediaPreviewPageFragment page, boolean active) {}
   }
 }

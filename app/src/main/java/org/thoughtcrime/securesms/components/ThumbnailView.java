@@ -40,7 +40,10 @@ import com.bumptech.glide.request.RequestOptions;
 import com.bumptech.glide.request.target.CustomTarget;
 
 import org.signal.core.models.media.TransformProperties;
+import org.signal.core.models.database.AttachmentId;
+import org.signal.core.util.ThreadUtil;
 import org.signal.core.util.concurrent.ListenableFuture;
+import org.signal.core.util.concurrent.SignalExecutors;
 import org.signal.core.util.concurrent.SettableFuture;
 import org.signal.core.util.logging.Log;
 import org.signal.blurhash.BlurHash;
@@ -66,6 +69,7 @@ import org.thoughtcrime.securesms.stories.StoryTextPostModel;
 import org.thoughtcrime.securesms.util.AttachmentUtil;
 import org.thoughtcrime.securesms.util.BlurTransformation;
 import org.thoughtcrime.securesms.util.MediaUtil;
+import org.thoughtcrime.securesms.util.TellomiLivePhoto;
 import org.thoughtcrime.securesms.util.TellomiSpoiler;
 import org.signal.core.util.Util;
 
@@ -91,6 +95,10 @@ public class ThumbnailView extends FrameLayout {
   private final ImageView          image;
   private final ImageView          blurHash;
   private final TellomiSpoilerView spoiler;
+  /** Tellomi (spec R-2): a live photo's badge and its moving half. */
+  private final TellomiLivePhotoPlayerView liveVideo;
+  private final View                       liveBadge;
+  private       AttachmentId               liveAttachmentId;
   private final View               playOverlay;
   private final View               captionIcon;
   private final AppCompatImageView errorImage;
@@ -134,6 +142,9 @@ public class ThumbnailView extends FrameLayout {
     this.image                   = findViewById(R.id.thumbnail_image);
     this.blurHash                = findViewById(R.id.thumbnail_blurhash);
     this.spoiler                 = findViewById(R.id.thumbnail_spoiler);
+    this.liveVideo               = findViewById(R.id.thumbnail_live_video);
+    this.liveBadge               = findViewById(R.id.thumbnail_live_badge);
+    this.liveVideo.setCropToFill(true);
     this.playOverlay             = findViewById(R.id.play_overlay);
     this.captionIcon             = findViewById(R.id.thumbnail_caption_icon);
     this.errorImage              = findViewById(R.id.thumbnail_error);
@@ -372,6 +383,7 @@ public class ThumbnailView extends FrameLayout {
     if (slide.asAttachment().isPermanentlyFailed()) {
       this.slide = slide;
       clearSpoiler(requestManager);
+      clearLivePhoto();
 
       transferControlViewStub.setVisibility(View.GONE);
       playOverlay.setVisibility(View.GONE);
@@ -428,6 +440,7 @@ public class ThumbnailView extends FrameLayout {
     // Tellomi (spec R-1): decided before the "same contents" shortcut, since uncovering doesn't change the contents
     updateSpoiler(requestManager, slide);
     this.playOverlay.setVisibility(playOverlayWanted && !spoiler.isCovering() ? View.VISIBLE : View.GONE);
+    updateLivePhoto(slide);
 
     if (hasSameContents(this.slide, slide)) {
       Log.i(TAG, "Not re-loading slide " + slide.asAttachment().getDisplayUri());
@@ -659,6 +672,7 @@ public class ThumbnailView extends FrameLayout {
     requestManager.clear(image);
     image.setImageDrawable(null);
     clearSpoiler(requestManager);
+    clearLivePhoto();
 
     if (transferControlViewStub.resolved()) {
       transferControlViewStub.get().clear();
@@ -825,6 +839,51 @@ public class ThumbnailView extends FrameLayout {
     }
   }
 
+  /**
+   * Tellomi (tellomi/tellomi#1263, spec R-2): a live photo has the live badge top-left and plays its moving half once,
+   * muted, the first time it shows in this run, then fades back to the still (Telegram: `ChatMessageInteractiveMediaNode`
+   * autoplays without sound when the bubble appears; `playbackCompleted` fades the video out over 0.3 s). Not while it is
+   * covered, and not before the still is here. A tap still opens the viewer.
+   */
+  private void updateLivePhoto(@NonNull Slide slide) {
+    Attachment attachment = slide.asAttachment();
+    boolean    live       = TellomiLivePhoto.isLivePhoto(attachment);
+    boolean    covered    = spoiler.isCovering();
+
+    if (!(attachment instanceof DatabaseAttachment) || !((DatabaseAttachment) attachment).attachmentId.equals(liveAttachmentId)) {
+      liveVideo.stop(false);
+      liveAttachmentId = null;
+    }
+
+    liveBadge.setVisibility(live && !covered ? View.VISIBLE : View.GONE);
+
+    if (!live || covered || slide.getTransferState() != AttachmentTable.TRANSFER_PROGRESS_DONE || !(attachment instanceof DatabaseAttachment)) {
+      return;
+    }
+
+    DatabaseAttachment databaseAttachment = (DatabaseAttachment) attachment;
+    liveAttachmentId = databaseAttachment.attachmentId;
+    if (!TellomiLivePhoto.claimAutoplay(databaseAttachment.attachmentId)) {
+      return;
+    }
+
+    Context context = getContext().getApplicationContext();
+    SignalExecutors.BOUNDED_IO.execute(() -> {
+      Uri video = TellomiLivePhoto.fetchVideo(context, databaseAttachment);
+      ThreadUtil.runOnMain(() -> {
+        if (video != null && isAttachedToWindow() && databaseAttachment.attachmentId.equals(liveAttachmentId) && !spoiler.isCovering()) {
+          liveVideo.play(video, false);
+        }
+      });
+    });
+  }
+
+  private void clearLivePhoto() {
+    liveVideo.stop(false);
+    liveBadge.setVisibility(View.GONE);
+    liveAttachmentId = null;
+  }
+
   /** Tellomi (spec R-1): still covered here (tests and accessibility read this). */
   public boolean isTellomiSpoilerCovering() {
     return spoiler.isCovering();
@@ -839,6 +898,7 @@ public class ThumbnailView extends FrameLayout {
         spoiler.reveal(lastTouchX, lastTouchY, () -> {
           if (revealing != null) {
             TellomiSpoiler.reveal(revealing.asAttachment());
+            updateLivePhoto(revealing);
           }
           playOverlay.setVisibility(playOverlayWanted ? View.VISIBLE : View.GONE);
           return kotlin.Unit.INSTANCE;

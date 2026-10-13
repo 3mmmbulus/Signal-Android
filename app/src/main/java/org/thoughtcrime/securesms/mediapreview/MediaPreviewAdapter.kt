@@ -9,6 +9,7 @@ import org.thoughtcrime.securesms.attachments.Attachment
 import org.thoughtcrime.securesms.attachments.DatabaseAttachment
 import org.thoughtcrime.securesms.jobs.AttachmentDownloadJob
 import org.thoughtcrime.securesms.util.MediaUtil
+import org.thoughtcrime.securesms.util.TellomiLivePhoto
 import org.thoughtcrime.securesms.util.adapter.StableIdGenerator
 
 class MediaPreviewAdapter(fragment: Fragment) : FragmentStateAdapter(fragment) {
@@ -34,7 +35,9 @@ class MediaPreviewAdapter(fragment: Fragment) : FragmentStateAdapter(fragment) {
       MediaPreviewPageFragment.DATA_CONTENT_TYPE to contentType,
       MediaPreviewPageFragment.DATA_SIZE to attachment.size,
       MediaPreviewPageFragment.AUTO_PLAY to attachment.videoGif,
-      MediaPreviewPageFragment.VIDEO_GIF to attachment.videoGif
+      MediaPreviewPageFragment.VIDEO_GIF to attachment.videoGif,
+      // Tellomi (spec R-2): a live photo's page plays its moving half
+      MediaPreviewPageFragment.DATA_LIVE_PHOTO to (attachment as? DatabaseAttachment)?.takeIf { TellomiLivePhoto.isLivePhoto(it) }
     )
     val fragment = if (MediaUtil.isVideo(contentType)) {
       VideoMediaPreviewPageFragment()

@@ -41,7 +41,13 @@ class SignalServiceAttachmentPointer @JvmOverloads constructor(
    * Tellomi (ADR-0068 §4.1): `AttachmentPointer.tellomi.spoiler` — cover until tapped. Already checked against the rules:
    * only on an image / video, and never alongside [tellomiAsFile] (which wins).
    */
-  val tellomiSpoiler: Boolean = false
+  val tellomiSpoiler: Boolean = false,
+  /**
+   * Tellomi (ADR-0068 §4.1, spec R-2): `AttachmentPointer.tellomi.livePhotoVideo` — the moving half of a live photo, as the
+   * nested `AttachmentPointer`'s bytes. Already checked against the rules: only on a still image, never alongside
+   * [tellomiAsFile], the nested one a video with CDN info and a key, one level only.
+   */
+  val tellomiLivePhotoVideo: ByteArray? = null
 ) : SignalServiceAttachment(contentType) {
   override fun isStream() = false
   override fun isPointer() = true

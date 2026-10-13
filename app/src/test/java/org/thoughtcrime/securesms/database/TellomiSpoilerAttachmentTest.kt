@@ -29,6 +29,7 @@ import org.thoughtcrime.securesms.mms.IncomingMessage
 import org.thoughtcrime.securesms.recipients.Recipient
 import org.thoughtcrime.securesms.testutil.RecipientTestRule
 import org.thoughtcrime.securesms.testutil.SystemOutLogger
+import org.thoughtcrime.securesms.util.TellomiLivePhoto
 import org.thoughtcrime.securesms.util.TellomiSpoiler
 import java.io.ByteArrayInputStream
 import kotlin.random.Random
@@ -102,7 +103,20 @@ class TellomiSpoilerAttachmentTest {
     assertThat(SignalDatabase.threads.getThreadRecord(threadId)!!.snippetUri).isNotNull()
   }
 
-  private fun receive(spoiler: Boolean, threadOf: Long? = null): Pair<Long, AttachmentId> {
+  /** spec R-2 (#1263): a live photo's moving half is kept with the still through the download, not as its own attachment. */
+  @Test
+  fun `a live photo keeps its video pointer through the download, as one attachment`() {
+    val (messageId, attachmentId) = receive(spoiler = false, livePhotoVideo = "Cgp2aWRlby9tcDQ=")
+    assertThat(TellomiLivePhoto.isLivePhoto(SignalDatabase.attachments.getAttachment(attachmentId))).isTrue()
+
+    SignalDatabase.attachments.finalizeAttachmentAfterDownload(messageId, attachmentId, ByteArrayInputStream(Random.nextBytes(2048)))
+
+    val downloaded = SignalDatabase.attachments.getAttachment(attachmentId)!!
+    assertThat(downloaded.transformProperties!!.tellomiLivePhotoVideo).isEqualTo("Cgp2aWRlby9tcDQ=")
+    assertThat(SignalDatabase.attachments.getAttachmentsForMessage(messageId).size).isEqualTo(1)
+  }
+
+  private fun receive(spoiler: Boolean, threadOf: Long? = null, livePhotoVideo: String? = null): Pair<Long, AttachmentId> {
     val threadId = threadOf?.let { SignalDatabase.messages.getThreadIdForMessage(it) }
       ?: SignalDatabase.threads.getOrCreateThreadIdFor(Recipient.resolved(recipients.createRecipient("Some Contact")))
     val from = SignalDatabase.threads.getRecipientIdForThreadId(threadId)!!
@@ -114,14 +128,14 @@ class TellomiSpoilerAttachmentTest {
       sentTimeMillis = System.nanoTime(),
       serverTimeMillis = 100L,
       receivedTimeMillis = 200L,
-      attachments = listOf(pointer(spoiler))
+      attachments = listOf(pointer(spoiler, livePhotoVideo))
     )
 
     val messageId = SignalDatabase.messages.insertMessageInbox(message, threadId).get().messageId
     return messageId to SignalDatabase.attachments.getAttachmentsForMessage(messageId).first().attachmentId
   }
 
-  private fun pointer(spoiler: Boolean): Attachment {
+  private fun pointer(spoiler: Boolean, livePhotoVideo: String? = null): Attachment {
     return PointerAttachment(
       contentType = "image/jpeg",
       transferState = AttachmentTable.TRANSFER_PROGRESS_PENDING,
@@ -146,7 +160,7 @@ class TellomiSpoilerAttachmentTest {
       blurHash = null,
       uuid = null,
       quote = false,
-      transformProperties = if (spoiler) TransformProperties(tellomiSpoiler = true) else null
+      transformProperties = if (spoiler || livePhotoVideo != null) TransformProperties(tellomiSpoiler = spoiler, tellomiLivePhotoVideo = livePhotoVideo) else null
     )
   }
 }

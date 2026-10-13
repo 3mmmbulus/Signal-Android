@@ -84,6 +84,7 @@ import org.thoughtcrime.securesms.util.MessageConstraintsUtil
 import org.thoughtcrime.securesms.util.OffloadedMediaDialogUtil
 import org.thoughtcrime.securesms.util.SaveAttachmentUtil
 import org.thoughtcrime.securesms.util.SpanUtil
+import org.thoughtcrime.securesms.util.TellomiLivePhoto
 import org.thoughtcrime.securesms.util.ViewUtil
 import org.thoughtcrime.securesms.util.visible
 import java.util.Locale
@@ -281,6 +282,7 @@ class MediaPreviewFragment :
     val currentItem: MediaTable.MediaRecord = currentState.mediaRecords[currentPosition]
     bindTextViews(currentItem, currentState.showThread, currentState.messageBodies)
     bindMenuItems(currentItem)
+    bindLivePhotoButton(currentItem)
   }
 
   /**
@@ -306,6 +308,7 @@ class MediaPreviewFragment :
 
     bindTextViews(currentItem, currentState.showThread, currentState.messageBodies)
     bindMenuItems(currentItem)
+    bindLivePhotoButton(currentItem)
     tryBindMediaPreviewPlaybackControls(currentItem, currentPosition)
 
     bindAlbumRail(currentState.currentAlbum, currentItem)
@@ -750,6 +753,25 @@ class MediaPreviewFragment :
 
   override fun onMediaReady() {
     viewModel.setMediaReady()
+  }
+
+  /**
+   * Tellomi (tellomi/tellomi#1263, spec R-2): on a live photo, the live button top-left (Telegram iOS gallery's LIVE: tap to play
+   * looping with sound, tap again to stop). Holding the picture does the same on the page itself.
+   */
+  private fun bindLivePhotoButton(item: MediaTable.MediaRecord) {
+    val button = binding.tellomiLivePhotoButton
+    button.isVisible = TellomiLivePhoto.isLivePhoto(item.attachment)
+    button.isSelected = (getMediaPreviewFragmentFromChildFragmentManager(binding.mediaPager.currentItem) as? ImageMediaPreviewPageFragment)?.isLiveActive == true
+    button.setOnClickListener {
+      (getMediaPreviewFragmentFromChildFragmentManager(binding.mediaPager.currentItem) as? ImageMediaPreviewPageFragment)?.toggleLive()
+    }
+  }
+
+  override fun onLivePhotoActiveChanged(page: MediaPreviewPageFragment, active: Boolean) {
+    if (page === getMediaPreviewFragmentFromChildFragmentManager(binding.mediaPager.currentItem)) {
+      binding.tellomiLivePhotoButton.isSelected = active
+    }
   }
 
   override fun onPlaying() {

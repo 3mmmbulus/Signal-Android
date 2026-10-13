@@ -155,7 +155,13 @@ class PointerAttachment : Attachment {
     private fun tellomiTransformProperties(pointer: SignalServiceAttachmentPointer, quote: Boolean): TransformProperties? {
       val asFile = !quote && pointer.tellomiAsFile
       val spoiler = pointer.tellomiSpoiler
-      return if (asFile || spoiler) TransformProperties(tellomiAsFile = asFile, tellomiSpoiler = spoiler) else null
+      // A quote thumbnail is only ever a still (spec R-2)
+      val livePhotoVideo = if (quote) null else pointer.tellomiLivePhotoVideo?.let { Base64.encodeWithPadding(it) }
+      return if (asFile || spoiler || livePhotoVideo != null) {
+        TransformProperties(tellomiAsFile = asFile, tellomiSpoiler = spoiler, tellomiLivePhotoVideo = livePhotoVideo)
+      } else {
+        null
+      }
     }
 
     fun forPointer(quotedAttachment: DataMessage.Quote.QuotedAttachment): Optional<Attachment> {

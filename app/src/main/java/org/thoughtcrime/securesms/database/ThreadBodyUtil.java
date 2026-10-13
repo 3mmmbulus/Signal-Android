@@ -19,6 +19,7 @@ import org.thoughtcrime.securesms.mms.GifSlide;
 import org.thoughtcrime.securesms.mms.Slide;
 import org.thoughtcrime.securesms.mms.StickerSlide;
 import org.thoughtcrime.securesms.util.MessageRecordUtil;
+import org.thoughtcrime.securesms.util.TellomiLivePhoto;
 import org.signal.core.util.Util;
 
 import java.util.ArrayList;
@@ -81,20 +82,25 @@ public final class ThreadBodyUtil {
                                                 : new ThreadBody(context.getString(R.string.PinnedMessage__s_pinned_a_message, record.getFromRecipient().getDisplayName(context)));
     }
 
-    boolean hasImage = false;
-    boolean hasVideo = false;
-    boolean hasGif   = false;
+    boolean hasImage     = false;
+    boolean hasVideo     = false;
+    boolean hasGif       = false;
+    boolean hasLivePhoto = false;
 
     for (Slide slide : record.getSlideDeck().getSlides()) {
-      hasVideo |= slide.hasVideo();
-      hasImage |= slide.hasImage();
-      hasGif   |= slide instanceof GifSlide || slide.isVideoGif();
+      hasVideo     |= slide.hasVideo();
+      hasImage     |= slide.hasImage();
+      hasGif       |= slide instanceof GifSlide || slide.isVideoGif();
+      hasLivePhoto |= TellomiLivePhoto.isLivePhoto(slide);
     }
 
     if (hasGif) {
       return format(context, record, EmojiStrings.GIF, R.string.ThreadRecord_gif, bodyOverride);
     } else if (hasVideo) {
       return format(context, record, EmojiStrings.VIDEO, R.string.ThreadRecord_video, bodyOverride);
+    } else if (hasLivePhoto) {
+      // Tellomi (tellomi/tellomi#1263, spec R-2): "Live Photo" in the chat list and notifications (Telegram: Message.LivePhoto)
+      return format(context, record, EmojiStrings.PHOTO, R.string.ThreadRecord_tellomi_live_photo, bodyOverride);
     } else if (hasImage) {
       return format(context, record, EmojiStrings.PHOTO, R.string.ThreadRecord_photo, bodyOverride);
     } else if (TextUtils.isEmpty(record.getBody())) {

@@ -94,7 +94,19 @@ data class TransformProperties(
   @field:JsonInclude(JsonInclude.Include.NON_DEFAULT)
   @SerialName("tellomiSpoilerRevealed")
   @JvmField
-  val tellomiSpoilerRevealed: Boolean = false
+  val tellomiSpoilerRevealed: Boolean = false,
+
+  /**
+   * Tellomi (ADR-0068 §4.1, spec R-2): this still is a live photo; the moving half's `AttachmentPointer`, base64 of its
+   * bytes (`AttachmentPointer.tellomi.livePhotoVideo`, already checked against the receive rules). The video itself isn't
+   * stored as an attachment: it is downloaded when it first plays and kept for the app session (`TellomiLivePhoto`).
+   * Only written when there is one.
+   */
+  @JsonProperty("tellomiLivePhotoVideo")
+  @field:JsonInclude(JsonInclude.Include.NON_NULL)
+  @SerialName("tellomiLivePhotoVideo")
+  @JvmField
+  val tellomiLivePhotoVideo: String? = null
 ) : Parcelable {
   fun shouldSkipTransform(): Boolean {
     return skipTransform
@@ -123,8 +135,13 @@ data class TransformProperties(
 
   /** Tellomi (ADR-0068): just the Tellomi flags a received attachment carries, for the places that rewrite this column. */
   fun tellomiOnly(): TransformProperties? {
-    return if (tellomiAsFile || tellomiSpoiler) {
-      TransformProperties(tellomiAsFile = tellomiAsFile, tellomiSpoiler = tellomiSpoiler, tellomiSpoilerRevealed = tellomiSpoilerRevealed)
+    return if (tellomiAsFile || tellomiSpoiler || tellomiLivePhotoVideo != null) {
+      TransformProperties(
+        tellomiAsFile = tellomiAsFile,
+        tellomiSpoiler = tellomiSpoiler,
+        tellomiSpoilerRevealed = tellomiSpoilerRevealed,
+        tellomiLivePhotoVideo = tellomiLivePhotoVideo
+      )
     } else {
       null
     }

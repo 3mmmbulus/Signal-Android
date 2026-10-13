@@ -30,6 +30,15 @@
         android:longClickable="false"
         android:scaleType="centerCrop" />
 
+    <!-- Tellomi (tellomi/tellomi#1263, spec R-2): a live photo's moving half, played over the still -->
+    <org.thoughtcrime.securesms.components.TellomiLivePhotoPlayerView
+        android:id="@+id/thumbnail_live_video"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:clickable="false"
+        android:longClickable="false"
+        android:visibility="gone" />
+
     <!-- Tellomi (tellomi/tellomi#1263, spec R-1): the cover over an image / video the sender covered -->
     <org.thoughtcrime.securesms.components.TellomiSpoilerView
         android:id="@+id/thumbnail_spoiler"
@@ -48,6 +57,21 @@
         android:src="@drawable/symbol_caption_24"
         android:visibility="gone"
         app:tint="@color/core_white"
+        tools:visibility="visible" />
+
+    <!-- Tellomi (tellomi/tellomi#1263, spec R-2): the live photo badge, top-left (Telegram: 8 from the corner) -->
+    <androidx.appcompat.widget.AppCompatImageView
+        android:id="@+id/thumbnail_live_badge"
+        android:layout_width="22dp"
+        android:layout_height="22dp"
+        android:layout_gravity="top|start"
+        android:layout_margin="8dp"
+        android:background="@drawable/circle_tintable"
+        android:backgroundTint="#59000000"
+        android:contentDescription="@string/ThreadRecord_tellomi_live_photo"
+        android:padding="3dp"
+        android:visibility="gone"
+        app:srcCompat="@drawable/symbol_tellomi_live_photo_24"
         tools:visibility="visible" />
 
     <androidx.appcompat.widget.AppCompatImageView

@@ -80,6 +80,21 @@ class TellomiTransformPropertiesTest {
     assertEquals(null, TransformProperties.empty().tellomiOnly())
   }
 
+  /** spec R-2 (#1263): the live photo's moving half rides here too, only when there is one. */
+  @Test
+  fun `the live photo pointer is only written when there is one, and survives both parsers and tellomiOnly`() {
+    assertFalse(Json.encodeToString(TransformProperties.empty()).contains("tellomiLivePhotoVideo"))
+    assertFalse(jackson.writeValueAsString(TransformProperties.empty()).contains("tellomiLivePhotoVideo"))
+
+    val live = TransformProperties(tellomiLivePhotoVideo = "Cgp2aWRlby9tcDQ=")
+    for (json in listOf(Json.encodeToString(live), jackson.writeValueAsString(live))) {
+      for (parsed in listOf(Json.decodeFromString<TransformProperties>(json), jackson.readValue(json, TransformProperties::class.java))) {
+        assertEquals("Cgp2aWRlby9tcDQ=", parsed.tellomiLivePhotoVideo)
+      }
+    }
+    assertEquals(live, TransformProperties(skipTransform = true, tellomiLivePhotoVideo = "Cgp2aWRlby9tcDQ=").tellomiOnly())
+  }
+
   @Test
   fun `json written before this field reads as not as file`() {
     val legacy = "{\"skipTransform\":true,\"videoTrim\":false,\"videoTrimStartTimeUs\":0,\"videoTrimEndTimeUs\":0,\"sentMediaQuality\":0,\"mp4Faststart\":false,\"videoMuted\":false,\"videoEdited\":false}"

@@ -88,6 +88,28 @@
             android:theme="?actionBarStyle"
             app:navigationIcon="@drawable/symbol_arrow_start_24" />
 
+        <!-- Tellomi (tellomi/tellomi#1263, spec R-2): a live photo's button, top-left under the bar; shows and hides with it -->
+        <TextView
+            android:id="@+id/tellomi_live_photo_button"
+            android:layout_width="wrap_content"
+            android:layout_height="30dp"
+            android:layout_gravity="start"
+            android:layout_marginStart="16dp"
+            android:layout_marginBottom="8dp"
+            android:background="@drawable/tellomi_live_photo_pill"
+            android:drawablePadding="4dp"
+            android:gravity="center_vertical"
+            android:minWidth="48dp"
+            android:paddingStart="8dp"
+            android:paddingEnd="10dp"
+            android:text="@string/TellomiLivePhoto__live"
+            android:textAllCaps="true"
+            android:textColor="@color/tellomi_live_photo_pill_content"
+            android:textSize="12sp"
+            android:visibility="gone"
+            app:drawableStartCompat="@drawable/symbol_tellomi_live_photo_18"
+            app:drawableTint="@color/tellomi_live_photo_pill_content" />
+
     </com.google.android.material.appbar.AppBarLayout>
 
 </androidx.coordinatorlayout.widget.CoordinatorLayout>

@@ -85,6 +85,45 @@ class TellomiAttachmentPointerTest {
     assertEquals(9, DataMessage.ProtocolVersion.CURRENT.value)
   }
 
+  /** ADR-0068 §4.1 rules 2–3, spec R-2: the moving half of a live photo, on a still only, one level, a playable pointer. */
+  @Test
+  fun `a live photo's video is kept with the still, and only when it is valid`() {
+    val video = video()
+    val received = AttachmentPointerUtil.createSignalAttachmentPointer(pointer(TellomiAttachment(livePhotoVideo = video)).copy(contentType = "image/jpeg"))
+    assertEquals(video, AttachmentPointer.ADAPTER.decode(received.tellomiLivePhotoVideo!!))
+
+    // The still and the spoiler together are fine (a covered live photo)
+    assertTrue(live(TellomiAttachment(spoiler = true, livePhotoVideo = video), "image/heic"))
+
+    assertFalse("asFile wins", live(TellomiAttachment(asFile = true, livePhotoVideo = video), "image/heic"))
+    assertFalse("only on a still", live(TellomiAttachment(livePhotoVideo = video), "video/mp4"))
+    assertFalse("the moving half is a video", live(TellomiAttachment(livePhotoVideo = video.copy(contentType = "image/jpeg")), "image/heic"))
+    assertFalse("one level only", live(TellomiAttachment(livePhotoVideo = video.copy(tellomi = TellomiAttachment(livePhotoVideo = video()))), "image/heic"))
+    assertFalse("needs a key", live(TellomiAttachment(livePhotoVideo = video.copy(key = null)), "image/heic"))
+    assertFalse("needs where it is", live(TellomiAttachment(livePhotoVideo = video.copy(cdnKey = null)), "image/heic"))
+    assertFalse(live(null, "image/heic"))
+  }
+
+  @Test
+  fun `a live photo with a bad video is still received, as an ordinary picture`() {
+    val received = AttachmentPointerUtil.createSignalAttachmentPointer(pointer(TellomiAttachment(livePhotoVideo = AttachmentPointer())))
+    assertNull(received.tellomiLivePhotoVideo)
+    assertEquals("image/heic", received.contentType)
+  }
+
+  private fun live(tellomi: TellomiAttachment?, contentType: String?): Boolean {
+    return AttachmentPointerUtil.createSignalAttachmentPointer(pointer(tellomi).copy(contentType = contentType)).tellomiLivePhotoVideo != null
+  }
+
+  private fun video() = AttachmentPointer(
+    cdnNumber = 3,
+    cdnKey = "cdn-key-video",
+    contentType = "video/mp4",
+    key = ByteArray(64) { 7 }.toByteString(),
+    size = 456789,
+    digest = ByteArray(32) { 9 }.toByteString()
+  )
+
   private fun spoiler(tellomi: TellomiAttachment?, contentType: String?): Boolean {
     return AttachmentPointerUtil.createSignalAttachmentPointer(pointer(tellomi).copy(contentType = contentType)).tellomiSpoiler
   }

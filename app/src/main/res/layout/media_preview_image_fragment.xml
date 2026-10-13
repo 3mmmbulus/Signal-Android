@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
-<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<org.thoughtcrime.securesms.components.TellomiReleaseObservingFrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools"
+    android:id="@+id/media_preview_image_root"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     tools:viewBindingIgnore="true">
@@ -13,4 +14,12 @@
         android:clickable="false"
         android:contentDescription="@string/media_preview_activity__media_content_description" />
 
-</FrameLayout>
+    <!-- Tellomi (tellomi/tellomi#1263, spec R-2): a live photo's moving half, over the still -->
+    <org.thoughtcrime.securesms.components.TellomiLivePhotoPlayerView
+        android:id="@+id/live_photo_video_view"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:clickable="false"
+        android:visibility="gone" />
+
+</org.thoughtcrime.securesms.components.TellomiReleaseObservingFrameLayout>

@@ -2928,6 +2928,9 @@
     <string name="ThreadRecord_voice_message">语音消息</string>
     <string name="ThreadRecord_file">文件</string>
     <string name="ThreadRecord_video">视频</string>
+    <!-- Tellomi (tellomi/tellomi#1263, spec R-2): a live photo in the chat list / notifications, the viewer's live button -->
+    <string name="ThreadRecord_tellomi_live_photo">实况照片</string>
+    <string name="TellomiLivePhoto__live">实况</string>
     <string name="ThreadRecord_chat_session_refreshed">聊天会话已刷新</string>
     <!-- Displayed in the notification when the user is sent a gift -->
     <string name="ThreadRecord__s_donated_for_you">%1$s代您捐了款</string>
