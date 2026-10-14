@@ -161,6 +161,8 @@
   <string name="DrawModeColorBar__highlighter">高亮笔</string>
   <!-- Content description for button to enable brush mode -->
   <string name="DrawModeColorBar__brush">笔刷</string>
+  <!-- Tellomi (tellomi/tellomi#1522 E-2): content description of the eyedropper button next to the color bar; it picks a color from the photo. -->
+  <string name="DrawModeColorBar__eyedropper">从图片里取色</string>
 
   <!-- Content description for the crop toggle when the crop area is currently constrained to a fixed aspect ratio. Tapping it removes the constraint. -->
   <string name="ImageEditorToolbar__aspect_ratio_locked">宽高比已锁定</string>

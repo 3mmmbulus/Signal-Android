@@ -51,6 +51,7 @@ internal fun TextModeColorBar(
         verticalAlignment = Alignment.CenterVertically
       ) {
         TextColorBar(imageEditorController, orientation, Modifier.weight(1f, fill = false))
+        EyedropperButton(imageEditorController)
         TextFontToggle(imageEditorController)
         TextStyleToggle(imageEditorController)
         TextAlignToggle(imageEditorController)
@@ -63,6 +64,7 @@ internal fun TextModeColorBar(
         horizontalAlignment = Alignment.CenterHorizontally
       ) {
         TextColorBar(imageEditorController, orientation, Modifier.weight(1f, fill = false))
+        EyedropperButton(imageEditorController)
         TextFontToggle(imageEditorController)
         TextStyleToggle(imageEditorController)
         TextAlignToggle(imageEditorController)

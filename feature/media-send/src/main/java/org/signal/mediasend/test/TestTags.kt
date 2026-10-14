@@ -52,6 +52,8 @@ object TestTags {
   const val IMAGE_EDITOR_FLIP = "image_editor_flip"
   const val IMAGE_EDITOR_TEXT_ALIGN = "image_editor_text_align"
   const val IMAGE_EDITOR_TEXT_FONT = "image_editor_text_font"
+  const val IMAGE_EDITOR_EYEDROPPER = "image_editor_eyedropper"
+  const val IMAGE_EDITOR_EYEDROPPER_BUTTON = "image_editor_eyedropper_button"
   const val MEDIA_PICKER_NO_ACCESS_CAMERA = "media_picker_no_access_camera"
   const val MEDIA_PICKER_SEND_BAR = "media_picker_send_bar"
 

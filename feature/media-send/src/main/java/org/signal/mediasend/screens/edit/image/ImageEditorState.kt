@@ -6,12 +6,14 @@
 package org.signal.mediasend.screens.edit.image
 
 import android.content.Context
+import android.graphics.Bitmap
 import android.graphics.Canvas
 import android.graphics.Matrix
 import android.graphics.Paint
 import android.graphics.Point
 import android.graphics.RectF
 import android.graphics.Typeface
+import androidx.annotation.ColorInt
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.animate
 import androidx.compose.animation.core.tween
@@ -269,6 +271,28 @@ internal class ImageEditorState(
   }
 
   /** Returns a cached [RendererContext], recreating it only when the canvas instance changes. */
+  /**
+   * Tellomi（tellomi/tellomi#1522 E-2）：把现在屏幕上画的样子画进一张位图（和编辑器画布同一段画法、同一个视图矩阵），吸管从里面取色。
+   * 用自己的 [RendererContext]，不动画布缓存的那一个。
+   */
+  fun snapshot(context: Context, @ColorInt blackoutColor: Int, @ColorInt decorationColor: Int): Bitmap? {
+    val width = canvasWidth.toInt()
+    val height = canvasHeight.toInt()
+    if (width <= 0 || height <= 0) return null
+    val bitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
+    val rendererContext = RendererContext(context, Canvas(bitmap), rendererReady, rendererInvalidate, typefaceProvider)
+    rendererContext.setBlackoutColor(blackoutColor)
+    rendererContext.setDecorationColor(decorationColor)
+    rendererContext.save()
+    try {
+      rendererContext.canvasMatrix.initial(viewMatrix)
+      editorModel.draw(rendererContext, textEditingElement)
+    } finally {
+      rendererContext.restore()
+    }
+    return bitmap
+  }
+
   fun getOrCreateRendererContext(context: Context, canvas: Canvas): RendererContext {
     val current = rendererContext
     if (current != null && current.canvas === canvas) return current

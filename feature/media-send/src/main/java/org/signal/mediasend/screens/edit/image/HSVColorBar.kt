@@ -18,6 +18,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Stable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
@@ -51,6 +52,7 @@ fun HSVColorBar(
     modifier = modifier.then(orientation.barModifier)
       .pointerInput(Unit) {
         detectTapGestures { offset ->
+          state.customColor = null
           state.fraction = orientation.fractionAt(
             offset = offset,
             width = size.width.toFloat(),
@@ -62,6 +64,7 @@ fun HSVColorBar(
       .pointerInput(Unit) {
         detectDragGestures { change, _ ->
           change.consume()
+          state.customColor = null
           state.fraction = orientation.fractionAt(
             offset = change.position,
             width = size.width.toFloat(),
@@ -176,8 +179,13 @@ private fun DrawScope.drawThumb(
 class HSVColorBarState {
   var fraction: Float by mutableFloatStateOf(DEFAULT_FRACTION)
 
+  /**
+   * Tellomi（tellomi/tellomi#1522 E-2）：吸管取的颜色不一定在色条上，取到以后就用它；再拖色条就回到色条上的颜色。
+   */
+  var customColor: Int? by mutableStateOf(null)
+
   val color: Int
-    get() = HSVColors.colorAt(fraction)
+    get() = customColor ?: HSVColors.colorAt(fraction)
 }
 
 @Composable

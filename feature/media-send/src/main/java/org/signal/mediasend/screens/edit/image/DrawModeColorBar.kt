@@ -12,7 +12,10 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.res.vectorResource
 import androidx.compose.ui.unit.dp
 import org.signal.core.ui.compose.DayNightPreviews
 import org.signal.core.ui.compose.IconButtons
@@ -22,6 +25,7 @@ import org.signal.core.ui.compose.theme.SignalTheme
 import org.signal.imageeditor.core.model.EditorModel
 import org.signal.mediasend.R
 import org.signal.mediasend.screens.edit.ImageController
+import org.signal.mediasend.test.TestTags
 
 /**
  * Color bar that allows the user to change between highlighter and brush.
@@ -39,6 +43,8 @@ internal fun DrawModeColorBar(
       orientation = ColorBarOrientation.HORIZONTAL,
       modifier = Modifier.weight(1f, fill = false)
     )
+
+    EyedropperButton(imageEditorController)
 
     IconButtons.IconButton(
       onClick = {
@@ -68,6 +74,26 @@ internal fun DrawModeColorBar(
         )
       )
     }
+  }
+}
+
+/**
+ * Tellomi（tellomi/tellomi#1522 E-2，照 Telegram 两端颜色面板里的吸管键）：点了打开吸管，在画布上取一个颜色。画笔、文字的色条旁边都有。
+ */
+@Composable
+internal fun EyedropperButton(imageEditorController: ImageController) {
+  IconButtons.IconButton(
+    onClick = imageEditorController::startColorPicking,
+    colors = IconButtons.iconButtonColors(
+      containerColor = SignalTheme.colors.colorSurface5
+    ),
+    size = 40.dp,
+    modifier = Modifier.testTag(TestTags.IMAGE_EDITOR_EYEDROPPER_BUTTON)
+  ) {
+    Icon(
+      imageVector = ImageVector.vectorResource(R.drawable.tellomi_symbol_eyedropper_24),
+      contentDescription = stringResource(R.string.DrawModeColorBar__eyedropper)
+    )
   }
 }
 

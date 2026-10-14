@@ -8,6 +8,7 @@ package org.signal.mediasend.screens.edit
 import android.content.Context
 import android.graphics.Paint
 import android.net.Uri
+import androidx.annotation.ColorInt
 import androidx.compose.runtime.Stable
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
@@ -92,6 +93,10 @@ internal class ImageController(
 
   /** Tellomi（tellomi/tellomi#1522 E-4）：正在编辑 / 选中的那段文字的对齐，对齐键的图标跟着它。 */
   var textAlign: MultiLineTextRenderer.Align by mutableStateOf(MultiLineTextRenderer.Align.CENTER)
+    private set
+
+  /** Tellomi（tellomi/tellomi#1522 E-2）：吸管开着（画布上出放大镜，松手取色）。 */
+  var isPickingColor: Boolean by mutableStateOf(false)
     private set
 
   /** Tellomi（tellomi/tellomi#1522 E-4）：正在编辑 / 选中的那段文字的字体，字体键跟着它。 */
@@ -573,6 +578,32 @@ internal class ImageController(
   }
 
   /** Tellomi（tellomi/tellomi#1522 E-4）：对齐按 左 → 中 → 右 循环（照 Telegram 安卓 `PaintTextOptionsView` 的 `(currentAlign + 1) % 3`）。 */
+  /** Tellomi（tellomi/tellomi#1522 E-2，照 Telegram 两端颜色面板的吸管）：打开吸管。 */
+  fun startColorPicking() {
+    isPickingColor = true
+  }
+
+  fun cancelColorPicking() {
+    isPickingColor = false
+  }
+
+  /**
+   * 吸管取到颜色：在写文字（或选中了文字）就给文字，否则给画笔 / 荧光笔；对应的色条记住这个颜色。
+   */
+  fun pickColor(@ColorInt color: Int) {
+    isPickingColor = false
+    val opaque = color or 0xFF000000.toInt()
+    val element = textEditingElement ?: selectedElement
+    if (mode == Mode.TEXT || element?.renderer is MultiLineTextRenderer) {
+      textColorBarState.customColor = opaque
+      setTextColor(opaque)
+    } else {
+      drawColorBarState.customColor = opaque
+      setDrawColor(opaque)
+    }
+    imageEditorState.invalidate()
+  }
+
   /** Tellomi（tellomi/tellomi#1522 E-4）：换下一个字体（照 Telegram 两端文字工具的字体列表）。 */
   fun nextTextFont() {
     val element = textEditingElement ?: selectedElement

@@ -112,6 +112,19 @@ internal fun ImageEditor(
     if (controller.textEditingElement != null) {
       HiddenTextInput(controller = controller)
     }
+
+    // Tellomi（tellomi/tellomi#1522 E-2）：吸管开着时，画布上盖一层放大镜，从画布现在的样子里取色。
+    if (controller.isPickingColor) {
+      val snapshot = remember { state.snapshot(context, blackoutColor, decorationColor) }
+      if (snapshot != null) {
+        EyedropperOverlay(
+          snapshot = snapshot,
+          onPicked = controller::pickColor,
+          onCancel = controller::cancelColorPicking,
+          modifier = Modifier.matchParentSize()
+        )
+      }
+    }
   }
 }
 
