@@ -50,6 +50,7 @@ object TestTags {
   const val MEDIA_PICKER_LIMITED_ACCESS = "media_picker_limited_access"
   const val MEDIA_PICKER_VIDEO_BADGE = "media_picker_video_badge"
   const val IMAGE_EDITOR_FLIP = "image_editor_flip"
+  const val IMAGE_EDITOR_TEXT_ALIGN = "image_editor_text_align"
   const val MEDIA_PICKER_NO_ACCESS_CAMERA = "media_picker_no_access_camera"
   const val MEDIA_PICKER_SEND_BAR = "media_picker_send_bar"
 

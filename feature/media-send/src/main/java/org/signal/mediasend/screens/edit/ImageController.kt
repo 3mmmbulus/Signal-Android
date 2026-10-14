@@ -90,6 +90,10 @@ internal class ImageController(
   var selectedElement: EditorElement? by mutableStateOf(null)
     private set
 
+  /** Tellomi（tellomi/tellomi#1522 E-4）：正在编辑 / 选中的那段文字的对齐，对齐键的图标跟着它。 */
+  var textAlign: MultiLineTextRenderer.Align by mutableStateOf(MultiLineTextRenderer.Align.CENTER)
+    private set
+
   val textColorBarState = HSVColorBarState()
   val drawColorBarState = HSVColorBarState()
 
@@ -484,7 +488,7 @@ internal class ImageController(
 
   fun enterTextMode() {
     snapshotIfNewDrawSession()
-    val renderer = MultiLineTextRenderer("", textColorBarState.color, MultiLineTextRenderer.Mode.REGULAR)
+    val renderer = MultiLineTextRenderer("", textColorBarState.color, MultiLineTextRenderer.Mode.REGULAR, MultiLineTextRenderer.Align.CENTER)
     val element = EditorElement(renderer, EditorModel.Z_TEXT)
     editorModel.addElementCentered(element, 1f)
     beginTextEditing(element)
@@ -494,6 +498,7 @@ internal class ImageController(
     transitionTo(Mode.TEXT)
     textEditingElement = element
     imageEditorState.textEditingElement = element
+    (element.renderer as? MultiLineTextRenderer)?.let { textAlign = it.align }
     editorModel.addFade()
     editorModel.setSelectionVisible(false)
     (element.renderer as? MultiLineTextRenderer)?.setFocused(true)
@@ -552,11 +557,20 @@ internal class ImageController(
     imageEditorState.invalidate()
   }
 
-  /** Cycles the text element through regular, highlight, underline, and outline. */
+  /** Cycles the text element through regular, highlight, semi-transparent (Tellomi), underline, and outline. */
   fun nextTextStyle() {
     val element = textEditingElement ?: selectedElement
     val renderer = element?.renderer as? MultiLineTextRenderer ?: return
     renderer.nextMode()
+    imageEditorState.invalidate()
+  }
+
+  /** Tellomi（tellomi/tellomi#1522 E-4）：对齐按 左 → 中 → 右 循环（照 Telegram 安卓 `PaintTextOptionsView` 的 `(currentAlign + 1) % 3`）。 */
+  fun nextTextAlign() {
+    val element = textEditingElement ?: selectedElement
+    val renderer = element?.renderer as? MultiLineTextRenderer ?: return
+    renderer.align = renderer.align.next()
+    textAlign = renderer.align
     imageEditorState.invalidate()
   }
 
@@ -599,6 +613,7 @@ internal class ImageController(
     (element.renderer as? SelectableRenderer)?.onSelected(true)
     editorModel.setSelected(element)
     selectedElement = element
+    (element.renderer as? MultiLineTextRenderer)?.let { textAlign = it.align }
 
     if (isPaintMode) {
       syncDrawingState()

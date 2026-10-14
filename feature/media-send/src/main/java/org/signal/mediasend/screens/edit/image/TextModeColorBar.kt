@@ -12,7 +12,10 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.res.vectorResource
 import androidx.compose.ui.unit.dp
 import org.signal.core.ui.compose.DayNightPreviews
 import org.signal.core.ui.compose.IconButtons
@@ -20,8 +23,10 @@ import org.signal.core.ui.compose.Previews
 import org.signal.core.ui.compose.SignalIcons
 import org.signal.core.ui.compose.theme.SignalTheme
 import org.signal.imageeditor.core.model.EditorModel
+import org.signal.imageeditor.core.renderers.MultiLineTextRenderer
 import org.signal.mediasend.R
 import org.signal.mediasend.screens.edit.ImageController
+import org.signal.mediasend.test.TestTags
 
 /**
  * Color bar for the text element being edited or moved, with a toggle that cycles its style. Laid out along whichever
@@ -41,6 +46,7 @@ internal fun TextModeColorBar(
       ) {
         TextColorBar(imageEditorController, orientation, Modifier.weight(1f, fill = false))
         TextStyleToggle(imageEditorController)
+        TextAlignToggle(imageEditorController)
       }
     }
 
@@ -51,6 +57,7 @@ internal fun TextModeColorBar(
       ) {
         TextColorBar(imageEditorController, orientation, Modifier.weight(1f, fill = false))
         TextStyleToggle(imageEditorController)
+        TextAlignToggle(imageEditorController)
       }
     }
   }
@@ -82,6 +89,29 @@ private fun TextStyleToggle(imageEditorController: ImageController) {
     Icon(
       imageVector = SignalIcons.TextSquare.imageVector,
       contentDescription = stringResource(R.string.TextModeColorBar__toggle_between_text_styles)
+    )
+  }
+}
+
+/** Tellomi（tellomi/tellomi#1522 E-4）：对齐键，图标是现在的对齐（照 Telegram 两端文字工具的对齐键）。 */
+@Composable
+private fun TextAlignToggle(imageEditorController: ImageController) {
+  val icon = when (imageEditorController.textAlign) {
+    MultiLineTextRenderer.Align.LEFT -> R.drawable.tellomi_symbol_text_align_left_24
+    MultiLineTextRenderer.Align.CENTER -> R.drawable.tellomi_symbol_text_align_center_24
+    MultiLineTextRenderer.Align.RIGHT -> R.drawable.tellomi_symbol_text_align_right_24
+  }
+  IconButtons.IconButton(
+    onClick = imageEditorController::nextTextAlign,
+    colors = IconButtons.iconButtonColors(
+      containerColor = SignalTheme.colors.colorSurface5
+    ),
+    size = 40.dp,
+    modifier = Modifier.testTag(TestTags.IMAGE_EDITOR_TEXT_ALIGN)
+  ) {
+    Icon(
+      imageVector = ImageVector.vectorResource(icon),
+      contentDescription = stringResource(R.string.TextModeColorBar__text_alignment)
     )
   }
 }

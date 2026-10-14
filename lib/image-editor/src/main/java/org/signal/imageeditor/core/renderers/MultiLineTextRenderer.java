@@ -14,6 +14,7 @@ import android.view.animation.Interpolator;
 import androidx.annotation.ColorInt;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
+import androidx.annotation.VisibleForTesting;
 
 import org.signal.core.util.DimensionUnit;
 import org.signal.imageeditor.core.Bounds;
@@ -57,6 +58,7 @@ public final class MultiLineTextRenderer extends InvalidateableRenderer implemen
   private int     selEnd;
   private boolean hasFocus;
   private Mode    mode;
+  private Align   align = Align.CENTER;
 
   private List<Line> lines = emptyList();
 
@@ -68,7 +70,12 @@ public final class MultiLineTextRenderer extends InvalidateableRenderer implemen
   private final RectF textBounds = new RectF();
 
   public MultiLineTextRenderer(@Nullable String text, @ColorInt int color, @NonNull Mode mode) {
-    this.mode = mode;
+    this(text, color, mode, Align.CENTER);
+  }
+
+  public MultiLineTextRenderer(@Nullable String text, @ColorInt int color, @NonNull Mode mode, @NonNull Align align) {
+    this.mode  = mode;
+    this.align = align;
 
     modePaint.setAntiAlias(true);
     modePaint.setTextSize(100);
@@ -119,11 +126,49 @@ public final class MultiLineTextRenderer extends InvalidateableRenderer implemen
   }
 
   public void nextMode() {
-    setMode(Mode.fromCode(mode.code + 1));
+    setMode(mode.next());
   }
 
   public @NonNull Mode getMode() {
     return mode;
+  }
+
+  /**
+   * Tellomi (tellomi/tellomi#1522 E-4, as Telegram's text alignment button): lines line up on the left, in the middle or on
+   * the right of the widest line.
+   */
+  public @NonNull Align getAlign() {
+    return align;
+  }
+
+  public void setAlign(@NonNull Align align) {
+    if (this.align != align) {
+      this.align = align;
+      updateAlignment();
+    }
+  }
+
+  /** How far line {@code index} is moved sideways for {@link #align}, in bounds units. */
+  @VisibleForTesting
+  float getLineAlignOffset(int index) {
+    return lines.get(index).alignOffset;
+  }
+
+  /** Moves each line sideways so that it lines up with the widest one, per {@link #align}. */
+  private void updateAlignment() {
+    float widest = 0;
+    for (Line line : lines) {
+      widest = Math.max(widest, line.widthInBounds);
+    }
+    for (Line line : lines) {
+      float offset;
+      switch (align) {
+        case LEFT:  offset = (line.widthInBounds - widest) / 2f; break;
+        case RIGHT: offset = (widest - line.widthInBounds) / 2f; break;
+        default:    offset = 0;
+      }
+      line.setAlignOffset(offset);
+    }
   }
 
   /**
@@ -172,6 +217,7 @@ public final class MultiLineTextRenderer extends InvalidateableRenderer implemen
       }
     }
     setSelection(selStart, selEnd);
+    updateAlignment();
   }
 
   private class Line {
@@ -192,6 +238,8 @@ public final class MultiLineTextRenderer extends InvalidateableRenderer implemen
     private float  descentInBounds;
     private float  scale = 1f;
     private float  heightInBounds;
+    private float  widthInBounds;
+    private float  alignOffset;
 
     Line(String text) {
       this.text = text;
@@ -252,7 +300,10 @@ public final class MultiLineTextRenderer extends InvalidateableRenderer implemen
       descentInBounds = pts[3];
       heightInBounds  = descentInBounds - ascentInBounds;
 
+      widthInBounds = projectionMatrix.mapRadius(textBounds.width() / 2f) * 2f;
+
       projectionMatrix.preTranslate(-textBounds.centerX(), 0);
+      projectionMatrix.postTranslate(alignOffset, 0);
       projectionMatrix.invert(inverseProjectionMatrix);
 
       ascentMatrix.setTranslate(0, -ascentInBounds);
@@ -311,6 +362,13 @@ public final class MultiLineTextRenderer extends InvalidateableRenderer implemen
       }
     }
 
+    void setAlignOffset(float alignOffset) {
+      if (this.alignOffset != alignOffset) {
+        this.alignOffset = alignOffset;
+        recalculate();
+      }
+    }
+
     public void render(@NonNull RendererContext rendererContext) {
       // add our ascent for ourselves and the next lines
       rendererContext.canvasMatrix.concat(ascentMatrix);
@@ -319,7 +377,7 @@ public final class MultiLineTextRenderer extends InvalidateableRenderer implemen
 
       rendererContext.canvasMatrix.concat(projectionMatrix);
 
-      if (mode == Mode.HIGHLIGHT) {
+      if (mode == Mode.HIGHLIGHT || mode == Mode.SEMI) {
         if (text.isEmpty()) {
           modeBounds.setEmpty();
         } else {
@@ -469,7 +527,7 @@ public final class MultiLineTextRenderer extends InvalidateableRenderer implemen
   private void setColorInternal(@ColorInt int color) {
     this.color = color;
 
-    if (mode == Mode.REGULAR) {
+    if (mode == Mode.REGULAR || mode == Mode.SEMI) {
       paint.setColor(color);
       selectionPaint.setColor(color);
     } else {
@@ -484,14 +542,28 @@ public final class MultiLineTextRenderer extends InvalidateableRenderer implemen
       modePaint.setStyle(Paint.Style.FILL);
     }
 
-    modePaint.setColor(color);
+    modePaint.setColor(mode == Mode.SEMI ? semiBackgroundColor(color) : color);
     invalidate();
+  }
+
+  /**
+   * Tellomi (tellomi/tellomi#1522 E-4, as Telegram Android's semi-transparent text style): a 60% black frame behind light
+   * text and a 60% white one behind dark text.
+   */
+  static @ColorInt int semiBackgroundColor(@ColorInt int textColor) {
+    double luminance = (0.2126 * Color.red(textColor) + 0.7152 * Color.green(textColor) + 0.0722 * Color.blue(textColor)) / 255d;
+    return luminance >= 0.25 ? 0x99000000 : 0x99ffffff;
   }
 
   public static final Creator<MultiLineTextRenderer> CREATOR = new Creator<MultiLineTextRenderer>() {
     @Override
     public MultiLineTextRenderer createFromParcel(Parcel in) {
-      return new MultiLineTextRenderer(in.readString(), in.readInt(), Mode.fromCode(in.readInt()));
+      String text  = in.readString();
+      int    color = in.readInt();
+      Mode   mode  = Mode.fromCode(in.readInt());
+      // Tellomi (tellomi/tellomi#1522 E-4): written last, so state saved before it existed still reads.
+      Align  align = in.dataAvail() > 0 ? Align.fromCode(in.readInt()) : Align.CENTER;
+      return new MultiLineTextRenderer(text, color, mode, align);
     }
 
     @Override
@@ -510,6 +582,7 @@ public final class MultiLineTextRenderer extends InvalidateableRenderer implemen
     dest.writeString(text);
     dest.writeInt(color);
     dest.writeInt(mode.code);
+    dest.writeInt(align.code);
   }
 
   private static Interpolator pulseInterpolator() {
@@ -526,12 +599,26 @@ public final class MultiLineTextRenderer extends InvalidateableRenderer implemen
     REGULAR(0),
     HIGHLIGHT(1),
     UNDERLINE(2),
-    OUTLINE(3);
+    OUTLINE(3),
+    /** Tellomi (tellomi/tellomi#1522 E-4): the text in its color on a translucent frame, as Telegram's semi style. */
+    SEMI(4);
+
+    /** The order the style toggle goes through; the new style sits after the solid frame it resembles. */
+    private static final Mode[] CYCLE = { REGULAR, HIGHLIGHT, SEMI, UNDERLINE, OUTLINE };
 
     private final int code;
 
     Mode(int code) {
       this.code = code;
+    }
+
+    @NonNull Mode next() {
+      for (int i = 0; i < CYCLE.length; i++) {
+        if (CYCLE[i] == this) {
+          return CYCLE[(i + 1) % CYCLE.length];
+        }
+      }
+      return REGULAR;
     }
 
     private static Mode fromCode(int code) {
@@ -542,6 +629,36 @@ public final class MultiLineTextRenderer extends InvalidateableRenderer implemen
       }
 
       return REGULAR;
+    }
+  }
+
+  /** Tellomi (tellomi/tellomi#1522 E-4): text alignment, cycled left, center, right as Telegram does. */
+  public enum Align {
+    LEFT(0),
+    CENTER(1),
+    RIGHT(2);
+
+    private final int code;
+
+    Align(int code) {
+      this.code = code;
+    }
+
+    public @NonNull Align next() {
+      switch (this) {
+        case LEFT:   return CENTER;
+        case CENTER: return RIGHT;
+        default:     return LEFT;
+      }
+    }
+
+    private static Align fromCode(int code) {
+      for (final Align value : Align.values()) {
+        if (value.code == code) {
+          return value;
+        }
+      }
+      return CENTER;
     }
   }
 }
