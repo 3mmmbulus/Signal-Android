@@ -48,6 +48,8 @@ object TestTags {
   const val MEDIA_PICKER_COUNT_PILL = "media_picker_count_pill"
   const val MEDIA_PICKER_FOLDER_TITLE = "media_picker_folder_title"
   const val MEDIA_PICKER_LIMITED_ACCESS = "media_picker_limited_access"
+  const val MEDIA_PICKER_VIDEO_BADGE = "media_picker_video_badge"
+  const val MEDIA_PICKER_NO_ACCESS_CAMERA = "media_picker_no_access_camera"
   const val MEDIA_PICKER_SEND_BAR = "media_picker_send_bar"
 
   /** Tag for the grid tile of the media at [uri]. */

@@ -65,7 +65,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.Shadow
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.layout
 import androidx.compose.ui.platform.LocalInspectionMode
@@ -281,7 +280,8 @@ internal fun MediaPickerFilesScreen(
             MediaAccessCallToAction(
               mediaPermissions = state.mediaPermissions,
               onEvent = onEvent,
-              modifier = Modifier.align(Alignment.Center)
+              modifier = Modifier.align(Alignment.Center),
+              showCamera = state.cameraAccess != PickerCameraAccess.NONE
             )
           }
         }
@@ -745,13 +745,11 @@ private fun PickerTile(
     }
 
     if (ContentTypeUtil.isVideo(media.contentType) && !media.isVideoGif) {
-      Text(
-        text = remember(media.duration) { media.duration.milliseconds.formatAsClock() },
-        color = Color.White,
-        style = MaterialTheme.typography.labelMedium.copy(shadow = Shadow(color = Color.Black.copy(alpha = 0.5f), blurRadius = 4f)),
+      PickerVideoBadge(
+        duration = remember(media.duration) { media.duration.milliseconds.formatAsClock() },
         modifier = Modifier
-          .align(Alignment.BottomEnd)
-          .padding(end = 6.dp, bottom = 4.dp)
+          .align(Alignment.BottomStart)
+          .padding(start = 4.dp, bottom = 4.dp)
       )
     }
 
@@ -764,6 +762,38 @@ private fun PickerTile(
       modifier = Modifier
         .align(Alignment.TopEnd)
         .testTag(TestTags.mediaPickerCheck(media.uri.toString()))
+    )
+  }
+}
+
+/**
+ * 视频角标：左下角半透明黑底圆角条，实心播放三角 + 时长（tellomi/tellomi#1521 G-4，照 Telegram 安卓 `PhotoAttachPhotoCell` 的
+ * `videoInfoContainer`：高 17、离左下 4、圆角 4、左右内边距 5、白色粗体 12）。图标是自己画的三角。
+ */
+@Composable
+private fun PickerVideoBadge(duration: String, modifier: Modifier = Modifier) {
+  Row(
+    verticalAlignment = Alignment.CenterVertically,
+    modifier = modifier
+      .testTag(TestTags.MEDIA_PICKER_VIDEO_BADGE)
+      .height(17.dp)
+      .background(color = Color.Black.copy(alpha = 0.4f), shape = RoundedCornerShape(4.dp))
+      .padding(horizontal = 5.dp)
+  ) {
+    Icon(
+      imageVector = ImageVector.vectorResource(R.drawable.tellomi_symbol_play_fill_8),
+      contentDescription = null,
+      tint = Color.White,
+      modifier = Modifier.size(8.dp)
+    )
+    Text(
+      text = duration,
+      color = Color.White,
+      fontSize = 12.sp,
+      lineHeight = 14.sp,
+      fontWeight = FontWeight.Bold,
+      maxLines = 1,
+      modifier = Modifier.padding(start = 5.dp)
     )
   }
 }

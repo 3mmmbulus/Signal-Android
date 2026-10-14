@@ -6,6 +6,7 @@
 package org.signal.mediasend.screens.select
 
 import android.content.res.Configuration
+import android.net.Uri
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.LocalOnBackPressedDispatcherOwner
 import androidx.compose.animation.AnimatedVisibility
@@ -46,6 +47,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.adaptive.currentWindowAdaptiveInfo
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -113,6 +115,7 @@ import org.signal.mediasend.screens.shared.chatColorFor
 import org.signal.mediasend.test.TestTags
 import org.signal.mediasend.util.formatAsClock
 import kotlin.time.Duration.Companion.milliseconds
+import org.signal.core.ui.R as CoreUiR
 import org.signal.core.ui.permissions.Permissions as PermissionsUtil
 
 /** How many empty tiles stand in for the gallery we are not allowed to show. Matches the v2 gallery. */
@@ -318,38 +321,57 @@ private fun rememberDragToSelectMediaState(
   gridState: LazyGridState,
   gridEntries: List<Media?>
 ): DragToSelectState {
-  return rememberDragToSelectState(gridState) { event ->
+  val drag = remember { DragSelectDirection() }
+  return rememberDragToSelectState(gridState, autoScrollHotZone = DRAG_SELECT_AUTO_SCROLL_HOT_ZONE) { event ->
     if (state !is MediaSelectState.Files) return@rememberDragToSelectState
     // Tellomi（#1261 P-7、P-8）：格子下标 → 媒体；横幅、相机格与它下面的占位是 null。
     val items = gridEntries
 
+    // Tellomi（tellomi/tellomi#1521 G-8，照 Telegram 安卓 `ChatAttachAlertPhotoLayout` 长按 → `RecyclerViewItemRangeSelector`）：
+    // 长按那格没选 → 这一次拖过的都选上；已选 → 拖过的都取消（`shouldSelect = !cell.isChecked()`）。本来就是那个状态的格子不动；
+    // 拖回去时只把这一次改过的格子放回原样（Telegram 不放回；这里保留上游的回缩，但不碰拖之前就选了的）。
+    fun isSelected(media: Media) = state.selectedMedia.any { it.uri == media.uri }
+
     when (event) {
       is DragSelectEvent.Started -> {
-        // A range only ever grows out from an unselected tile. Long pressing one that is already selected unselects it
-        // and stops there, which is how the v2 gallery behaved.
         val media = items.getOrNull(event.index)
-        if (media != null && state.selectedMedia.any { it.uri == media.uri }) {
-          onEvent(MediaSelectScreenEvents.MediaUnselected(setOf(media)))
-          cancel()
-        }
+        drag.select = media == null || !isSelected(media)
+        drag.changed.clear()
       }
 
       is DragSelectEvent.RangeSelected -> {
-        val media = event.indices.mapNotNullTo(mutableSetOf()) { items.getOrNull(it) }
+        val media = event.indices
+          .mapNotNull { items.getOrNull(it) }
+          .filter { it.uri !in drag.changed && isSelected(it) != drag.select }
+          .toSet()
         if (media.isNotEmpty()) {
-          onEvent(MediaSelectScreenEvents.MediaSelected(media))
+          drag.changed += media.map { it.uri }
+          onEvent(if (drag.select) MediaSelectScreenEvents.MediaSelected(media) else MediaSelectScreenEvents.MediaUnselected(media))
         }
       }
 
       is DragSelectEvent.RangeUnselected -> {
-        val media = event.indices.mapNotNullTo(mutableSetOf()) { items.getOrNull(it) }
+        val media = event.indices
+          .mapNotNull { items.getOrNull(it) }
+          .filter { it.uri in drag.changed }
+          .toSet()
         if (media.isNotEmpty()) {
-          onEvent(MediaSelectScreenEvents.MediaUnselected(media))
+          drag.changed -= media.map { it.uri }.toSet()
+          onEvent(if (drag.select) MediaSelectScreenEvents.MediaUnselected(media) else MediaSelectScreenEvents.MediaSelected(media))
         }
       }
     }
   }
 }
+
+/** 一次长按拖动：选还是取消，和这一次改过的格子。 */
+private class DragSelectDirection {
+  var select = true
+  val changed = mutableSetOf<Uri>()
+}
+
+/** 拖到离上下边多近开始自动滚（Telegram 安卓 `RecyclerViewItemRangeSelector.hotspotHeight`）。 */
+private val DRAG_SELECT_AUTO_SCROLL_HOT_ZONE = 80.dp
 
 @Composable
 private fun rememberGridConfiguration(isRootGrid: Boolean): GridConfiguration {
@@ -469,7 +491,8 @@ private fun LimitedAccessBar(onEvent: (MediaSelectScreenEvents) -> Unit) {
 internal fun MediaAccessCallToAction(
   mediaPermissions: MediaPermissions,
   onEvent: (MediaSelectScreenEvents) -> Unit,
-  modifier: Modifier = Modifier
+  modifier: Modifier = Modifier,
+  showCamera: Boolean = false
 ) {
   val menuController = remember { DropdownMenus.MenuController() }
   val hasNoAccess = mediaPermissions == MediaPermissions.NONE
@@ -507,6 +530,24 @@ internal fun MediaAccessCallToAction(
         }
 
         ManageAccessMenu(menuController = menuController, onEvent = onEvent)
+      }
+    }
+
+    // Tellomi（tellomi/tellomi#1521 G-1）：没有照片权限时「允许访问」下面再给一个「打开相机」，不用照片权限也能直接拍了发
+    // （照 Telegram 安卓 `GalleryEmptyView` 的 cameraAccessButton、iOS `MediaPickerPlaceholderNode` 的相机按钮）。
+    if (hasNoAccess && showCamera) {
+      TextButton(
+        onClick = { onEvent(MediaSelectScreenEvents.NavigateToCamera) },
+        modifier = Modifier
+          .padding(top = 8.dp)
+          .testTag(TestTags.MEDIA_PICKER_NO_ACCESS_CAMERA)
+      ) {
+        Icon(
+          imageVector = ImageVector.vectorResource(CoreUiR.drawable.symbol_camera_24),
+          contentDescription = null,
+          modifier = Modifier.size(20.dp)
+        )
+        Text(text = stringResource(R.string.MediaSelectScreen__open_camera), modifier = Modifier.padding(start = 8.dp))
       }
     }
   }

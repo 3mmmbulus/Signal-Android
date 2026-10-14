@@ -135,7 +135,7 @@ class MediaPickerSelectedPreviewTest {
   }
 
   @Test
-  fun `When a card is long pressed for 300ms and dragged past the next one, then that is the new order`() {
+  fun `When a card is long pressed for the system long press time and dragged past the next one, then that is the new order`() {
     // 三张竖图都在视口里（9:16 宽 135、9:16 宽 135、3:4 宽 180），拖动不碰两端的自动滚。
     selection = listOf(MEDIA[4], MEDIA[10], MEDIA[1])
     setContent()
@@ -146,7 +146,7 @@ class MediaPickerSelectedPreviewTest {
     val second = cardCenterInRow(MEDIA[10])
     composeTestRule.onNodeWithTag(TestTags.MEDIA_PICKER_PREVIEW_ROW).performTouchInput {
       down(first)
-      advanceEventTime(350)
+      advanceEventTime(viewConfiguration.longPressTimeoutMillis + 50)
       moveTo(Offset(first.x + 40f, first.y))
       moveTo(Offset(second.x + 30f, first.y))
       up()
@@ -159,7 +159,7 @@ class MediaPickerSelectedPreviewTest {
   }
 
   @Test
-  fun `When a card is dragged before 300ms, then it scrolls the row instead of reordering`() {
+  fun `When a card is dragged before the system long press time, then it scrolls the row instead of reordering`() {
     selection = listOf(MEDIA[3], MEDIA[0], MEDIA[5])
     setContent()
     composeTestRule.onNodeWithTag(TestTags.MEDIA_PICKER_COUNT_PILL).performClick()
@@ -189,7 +189,7 @@ class MediaPickerSelectedPreviewTest {
     val first = cardCenterInRow(MEDIA[3])
     composeTestRule.onNodeWithTag(TestTags.MEDIA_PICKER_PREVIEW_ROW).performTouchInput {
       down(first)
-      advanceEventTime(350)
+      advanceEventTime(viewConfiguration.longPressTimeoutMillis + 50)
       moveTo(Offset(GRID_WIDTH - 6f, first.y))
       advanceEventTime(3_000)
       moveBy(Offset(1f, 0f))

@@ -25,6 +25,7 @@ import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.distinctUntilChanged
@@ -51,17 +52,18 @@ private val MIN_AUTO_SCROLL_SPEED = 10.dp
 @Composable
 fun rememberDragToSelectState(
   lazyGridState: LazyGridState,
+  autoScrollHotZone: Dp = AUTO_SCROLL_HOT_ZONE,
   onEvent: DragToSelectState.(DragSelectEvent) -> Unit
 ): DragToSelectState {
   val hapticFeedback = LocalHapticFeedback.current
   val density = LocalDensity.current
   val currentOnEvent by rememberUpdatedState(onEvent)
 
-  val state = remember(lazyGridState, hapticFeedback, density) {
+  val state = remember(lazyGridState, hapticFeedback, density, autoScrollHotZone) {
     DragToSelectState(
       state = lazyGridState,
       hapticFeedback = hapticFeedback,
-      autoScrollHotZone = with(density) { AUTO_SCROLL_HOT_ZONE.toPx() },
+      autoScrollHotZone = with(density) { autoScrollHotZone.toPx() },
       onEvent = { dragToSelectState, event -> currentOnEvent(dragToSelectState, event) }
     )
   }

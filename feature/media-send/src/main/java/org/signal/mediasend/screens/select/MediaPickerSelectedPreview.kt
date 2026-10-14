@@ -95,7 +95,8 @@ import kotlin.time.Duration.Companion.milliseconds
  * 聊天里的横滑已撤回、改回宫格，这一行不再是「发出去的样子」；它在选图面板里面，不挡返回手势）：
  * [AlbumCarouselGeometry] 的行高、按原比例的宽、间距 8、圆角 18、放得下时靠右，松手吸附也照它；
  * 有说明时下面一个发出方向的气泡。
- * - 长按 0.3 秒（同 Telegram iOS）拖动排序，排序 = 发出去的顺序：拿起的那张跟着手指走，其它卡片实时让位，贴近两端时整行自动滚；
+ * - 长按（系统的长按时长，同 Telegram 安卓 `ChatAttachAlertPhotoLayoutPreview` 用 `ViewConfiguration.getLongPressTimeout()`；
+ *   无障碍里调过「触摸和按住延迟」的跟着变，tellomi/tellomi#1521 G-9）拖动排序，排序 = 发出去的顺序：拿起的那张跟着手指走，其它卡片实时让位，贴近两端时整行自动滚；
  *   松手时报一次 from → to。
  * - 每张右上角的编号勾：点了取消选择（撤销条由外面弹）；点卡片本身进编辑器、定位到这一张。
  *
@@ -302,8 +303,8 @@ private fun PreviewRow(
               val index = PreviewReorder.indexAt(startLayout, down.position.x)
               if (startOrder.size < 2 || index == null) return@awaitEachGesture
 
-              // 0.3 秒内抬起或挪开：是点按或横滑，交给卡片和这一行。
-              val released = withTimeoutOrNull(REORDER_PRESS_MS) { awaitLiftOrMove(down, viewConfiguration.touchSlop) }
+              // 长按时长内抬起或挪开：是点按或横滑，交给卡片和这一行。
+              val released = withTimeoutOrNull(viewConfiguration.longPressTimeoutMillis) { awaitLiftOrMove(down, viewConfiguration.touchSlop) }
               if (released != null) return@awaitEachGesture
 
               val media = startOrder[index]
@@ -364,7 +365,7 @@ private fun PreviewRow(
   }
 }
 
-/** 在 0.3 秒到之前：抬起或挪出触摸容差就返回 true（不是长按）。 */
+/** 在长按时长到之前：抬起或挪出触摸容差就返回 true（不是长按）。 */
 private suspend fun AwaitPointerEventScope.awaitLiftOrMove(down: PointerInputChange, touchSlop: Float): Boolean {
   while (true) {
     val event = awaitPointerEvent()
@@ -519,7 +520,6 @@ internal object PreviewReorder {
 }
 
 private const val PREVIEW_START_INSET_DP = 16f
-private const val REORDER_PRESS_MS = 300L
 private const val AUTO_SCROLL_ZONE_DP = 56f
 private const val AUTO_SCROLL_MAX_SPEED_DP = 12f
 private const val LIFT_SCALE = 1.05f

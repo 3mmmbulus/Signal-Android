@@ -1,0 +1,13 @@
+<!--
+  Copyright 2026 重庆半格智能科技有限公司
+  SPDX-License-Identifier: AGPL-3.0-only
+-->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="8dp"
+    android:height="8dp"
+    android:viewportWidth="8"
+    android:viewportHeight="8">
+    <path
+        android:fillColor="#FF000000"
+        android:pathData="M1.5 0.9c0-0.4 0.4-0.6 0.75-0.4l5 3.1c0.3 0.2 0.3 0.6 0 0.8l-5 3.1c-0.35 0.2-0.75 0-0.75-0.4Z"/>
+</vector>

@@ -10,12 +10,17 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.size
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.test.assert
+import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertTextContains
 import androidx.compose.ui.test.click
+import androidx.compose.ui.test.hasAnyDescendant
 import androidx.compose.ui.test.hasContentDescription
+import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.longClick
+import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
@@ -30,6 +35,7 @@ import assertk.assertions.isEmpty
 import assertk.assertions.isEqualTo
 import assertk.assertions.isFalse
 import assertk.assertions.isTrue
+import org.junit.Assert.assertEquals
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -81,6 +87,43 @@ class MediaPickerGridTest {
 
     composeTestRule.onNodeWithTag(TestTags.MEDIA_PICKER_COUNT_PILL).assertIsDisplayed().assertTextContains("1")
     composeTestRule.onNode(hasContentDescription("More options")).assertIsDisplayed()
+  }
+
+  // G-4：视频格子左下角一条深色角标，播放三角 + 时长（照 Telegram 安卓 `PhotoAttachPhotoCell` 的 videoInfoContainer）；照片没有。
+
+  @Test
+  fun `Given a video, when displayed, then its tile has a duration badge in the bottom left corner`() {
+    val video = MEDIA[2].copy(uri = "content://media/video".toUri(), contentType = "video/mp4", duration = 75_000)
+    setContent(selectedMedia = emptyList(), items = MEDIA.take(2) + video)
+
+    val badges = composeTestRule.onAllNodesWithTag(TestTags.MEDIA_PICKER_VIDEO_BADGE, useUnmergedTree = true)
+    badges.assertCountEquals(1)
+    val badge = badges[0].assert(hasAnyDescendant(hasText("1:15"))).fetchSemanticsNode().boundsInRoot
+    val tile = composeTestRule.onNodeWithTag(TestTags.mediaPickerTile(video.uri.toString())).fetchSemanticsNode().boundsInRoot
+    val density = composeTestRule.density.density
+    assertEquals("离左边 4", 4f, (badge.left - tile.left) / density, 0.5f)
+    assertEquals("离下边 4", 4f, (tile.bottom - badge.bottom) / density, 0.5f)
+    assertEquals("高 17", 17f, badge.height / density, 0.5f)
+  }
+
+  // G-1：没有照片权限时「允许访问」下面有「打开相机」（照 Telegram 安卓 GalleryEmptyView 的 cameraAccessButton），没有相机就不给。
+
+  @Test
+  fun `Given no photo access and a camera, when Open Camera is clicked, then the camera is opened`() {
+    setContent(selectedMedia = emptyList(), mediaPermissions = MediaPermissions.NONE, cameraAccess = PickerCameraAccess.NOT_GRANTED)
+
+    composeTestRule.onNodeWithText("Allow Access").assertIsDisplayed()
+    composeTestRule.onNodeWithTag(TestTags.MEDIA_PICKER_NO_ACCESS_CAMERA).assertIsDisplayed().assertTextContains("Open Camera").performClick()
+
+    assertEquals(listOf(MediaSelectScreenEvents.NavigateToCamera), events.filterIsInstance<MediaSelectScreenEvents.NavigateToCamera>())
+  }
+
+  @Test
+  fun `Given no photo access and no camera, when displayed, then there is no Open Camera`() {
+    setContent(selectedMedia = emptyList(), mediaPermissions = MediaPermissions.NONE)
+
+    composeTestRule.onNodeWithText("Allow Access").assertIsDisplayed()
+    composeTestRule.onNodeWithTag(TestTags.MEDIA_PICKER_NO_ACCESS_CAMERA).assertDoesNotExist()
   }
 
   // P-8：编号勾显示第几张；点勾选上 / 取消，点照片本身进单张预览 / 编辑（P-10）。
@@ -342,7 +385,10 @@ class MediaPickerGridTest {
 
   private fun setContent(
     selectedMedia: List<Media>,
-    sendOptions: MediaSelectState.SendOptions = MediaSelectState.SendOptions()
+    sendOptions: MediaSelectState.SendOptions = MediaSelectState.SendOptions(),
+    items: List<Media> = MEDIA,
+    mediaPermissions: MediaPermissions = MediaPermissions.FULL,
+    cameraAccess: PickerCameraAccess = PickerCameraAccess.NONE
   ) {
     composeTestRule.setContent {
       SignalTheme {
@@ -350,10 +396,12 @@ class MediaPickerGridTest {
           MediaSelectScreen(
             state = MediaSelectState.Files(
               selectedMediaFolder = RECENTS,
-              selectedMediaFolderItems = MEDIA,
+              selectedMediaFolderItems = items,
               selectedMedia = selectedMedia,
               mediaFolders = listOf(RECENTS, CAMERA),
-              sendOptions = sendOptions
+              sendOptions = sendOptions,
+              mediaPermissions = mediaPermissions,
+              cameraAccess = cameraAccess
             ),
             onEvent = { events += it }
           )

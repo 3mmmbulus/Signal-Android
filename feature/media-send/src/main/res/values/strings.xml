@@ -68,6 +68,8 @@
   <string name="MediaSelectScreen__signal_needs_permission_to_show_your_photos_and_videos">Tellomi needs permission to show your photos and videos</string>
   <!-- Label for the button that asks the system for permission to read the user\'s photos and videos. -->
   <string name="MediaSelectScreen__allow_access">Allow Access</string>
+  <!-- Tellomi (tellomi/tellomi#1521 G-1): button under "Allow Access" in the photo picker without photo access; opens the in-app camera. -->
+  <string name="MediaSelectScreen__open_camera">Open Camera</string>
   <!-- Message shown in place of the gallery when the user only shared selected photos with Signal and none of them can be shown. -->
   <string name="MediaSelectScreen__no_photos_or_videos_found">No photos or videos found. Tellomi only has access to photos and videos you selected.</string>
   <!-- Reminder shown above the gallery when the user only shared selected photos with Signal. -->
