@@ -10,7 +10,7 @@ import kotlin.math.pow
 import kotlin.math.roundToInt
 
 /**
- * Tellomi（tellomi/tellomi#1592 E5-2、#1594 E5-4，Epic #1523）：调色里逐像素的那几项（曝光、对比度、高光、阴影、饱和度、色温、褪色）的数学，
+ * Tellomi（tellomi/tellomi#1592 E5-2、#1594 E5-4、#1596 E5-6，Epic #1523）：调色里逐像素的那几项（曝光、对比度、高光、阴影、饱和度、色温、色调、褪色）的数学，
  * 以及把它们合成的 3D 查找表。
  *
  * 和 iOS `TellomiImageAdjustmentsRenderer.adjust` 是同一套公式（`docs/product/specs/media-editor-adjustments-e5.md`
@@ -21,9 +21,11 @@ import kotlin.math.roundToInt
  * - 色温：线性光里红、蓝反向增益（暖 = 红多蓝少），再把亮度拉回原来。
  * - 高光 / 阴影：只改亮度（按比例缩放三个通道，色相不变）；阴影在亮度 0.25 附近、高光在 0.75 附近各一个鼓包，
  *   y' = y + k·(值/100)·b(y)，b_阴影(y) = y(1−y)³·256/27，b_高光(y) = b_阴影(1−y)；k = 0.08，提亮高光时 0.14（TG 提亮高光推向白更狠）。
+ * - 色调：暗部 / 亮部各一个颜色，往那个颜色的色相偏（加上「颜色 − 它自己的亮度」，亮度不变），暗部按 (1−y)²、亮部按 y² 加权，
+ *   强度固定 50%（O8），c' = c + (T − luma(T))·0.6·(强度/100)·w。
  * - 褪色：往一条「哑光」曲线 t(c) = 0.24 + 0.42c + 0.24c² 混（黑抬到 0.24、白压到 0.9、中灰几乎不动），混的比例 = 值/100。
  *
- * 后面的逐像素工具（色调、曲线）往 [adjust] 里加；暗角、颗粒、锐化、模糊这些和位置有关的另走 pass。
+ * 后面的逐像素工具（曲线）往 [adjust] 里加；暗角、颗粒、锐化、模糊这些和位置有关的另走 pass。
  */
 object ImageAdjustmentsColor {
 
@@ -36,7 +38,7 @@ object ImageAdjustmentsColor {
 
   /**
    * 一个编码值（0…1，sRGB / Display P3 用同一条传递曲线）的颜色调色后的样子，写回 [rgb]。
-   * 顺序：曝光 → 对比度 → 高光 / 阴影 → 饱和度 → 色温 → 褪色，每一步后夹回 0…1。
+   * 顺序：曝光 → 对比度 → 高光 / 阴影 → 饱和度 → 色温 → 色调 → 褪色，每一步后夹回 0…1。
    */
   fun adjust(rgb: FloatArray, adjustments: ImageAdjustments) {
     if (adjustments.exposure != 0f) {
@@ -100,6 +102,13 @@ object ImageAdjustmentsColor {
       rgb[2] = clamp01(toEncoded(clamp01(b)))
     }
 
+    if (adjustments.tintShadowsColor != ImageAdjustments.NO_TINT || adjustments.tintHighlightsColor != ImageAdjustments.NO_TINT) {
+      val y = luma(rgb[0], rgb[1], rgb[2])
+      val strength = ImageAdjustments.TINT_INTENSITY / 100f * 0.6f
+      tint(rgb, adjustments.tintShadowsColor, strength * (1f - y) * (1f - y))
+      tint(rgb, adjustments.tintHighlightsColor, strength * y * y)
+    }
+
     if (adjustments.fade != 0f) {
       val amount = adjustments.fade / 100f
       for (i in 0..2) {
@@ -107,6 +116,20 @@ object ImageAdjustmentsColor {
         rgb[i] = clamp01(c + (0.24f + 0.42f * c + 0.24f * c * c - c) * amount)
       }
     }
+  }
+
+  /** 往 [color] 的色相偏 [weight]：加上「颜色 − 它自己的亮度」，所以亮度基本不变。 */
+  private fun tint(rgb: FloatArray, color: Int, weight: Float) {
+    if (color == ImageAdjustments.NO_TINT) {
+      return
+    }
+    val r = ((color shr 16) and 0xFF) / 255f
+    val g = ((color shr 8) and 0xFF) / 255f
+    val b = (color and 0xFF) / 255f
+    val y = luma(r, g, b)
+    rgb[0] = clamp01(rgb[0] + (r - y) * weight)
+    rgb[1] = clamp01(rgb[1] + (g - y) * weight)
+    rgb[2] = clamp01(rgb[2] + (b - y) * weight)
   }
 
   /** 在亮度 0.25 处最高（= 1）的鼓包，0 和 1 处为 0。 */

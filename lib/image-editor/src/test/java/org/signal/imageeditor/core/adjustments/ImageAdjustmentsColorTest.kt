@@ -45,7 +45,11 @@ class ImageAdjustmentsColorTest {
       Triple(floatArrayOf(0.2f, 0.2f, 0.2f), ImageAdjustments(shadows = -100f), floatArrayOf(0.12233f, 0.12233f, 0.12233f)),
       Triple(floatArrayOf(0.8f, 0.8f, 0.8f), ImageAdjustments(highlights = 100f), floatArrayOf(0.93593f, 0.93593f, 0.93593f)),
       Triple(floatArrayOf(0.8f, 0.8f, 0.8f), ImageAdjustments(highlights = -100f), floatArrayOf(0.72233f, 0.72233f, 0.72233f)),
-      Triple(floatArrayOf(0.3f, 0.5f, 0.7f), ImageAdjustments(exposure = 10f, fade = 40f, highlights = -50f, shadows = 60f), floatArrayOf(0.35348f, 0.52817f, 0.70425f))
+      Triple(floatArrayOf(0.3f, 0.5f, 0.7f), ImageAdjustments(exposure = 10f, fade = 40f, highlights = -50f, shadows = 60f), floatArrayOf(0.35348f, 0.52817f, 0.70425f)),
+      // E5-6
+      Triple(floatArrayOf(0.2f, 0.2f, 0.2f), ImageAdjustments(tintShadowsColor = 0xFFD14B3F.toInt()), floatArrayOf(0.2801f, 0.1792f, 0.17017f)),
+      Triple(floatArrayOf(0.8f, 0.8f, 0.8f), ImageAdjustments(tintHighlightsColor = 0xFF8CB4FF.toInt()), floatArrayOf(0.77221f, 0.80233f, 0.8588f)),
+      Triple(floatArrayOf(0.3f, 0.5f, 0.7f), ImageAdjustments(warmth = 20f, tintShadowsColor = 0xFF2E8FA8.toInt(), tintHighlightsColor = 0xFFFFB870.toInt()), floatArrayOf(0.3001f, 0.50469f, 0.67501f))
     )
     cases.forEach { (input, adjustments, expected) ->
       assertArrayEquals(expected, adjusted(input, adjustments), 1e-4f)
@@ -106,6 +110,25 @@ class ImageAdjustmentsColorTest {
       assertTrue("step $step", output >= previous - 1e-6f)
       previous = output
     }
+  }
+
+  /** 色调：暗部色只动暗部、亮部色只动亮部，往那个颜色的色相偏；两个色板各 8 个，第一个是「不加」。 */
+  @Test
+  fun tint() {
+    assertEquals(8, ImageAdjustments.TINT_SHADOWS_PALETTE.size)
+    assertEquals(8, ImageAdjustments.TINT_HIGHLIGHTS_PALETTE.size)
+    assertEquals(ImageAdjustments.NO_TINT, ImageAdjustments.TINT_SHADOWS_PALETTE[0])
+    assertEquals(ImageAdjustments.NO_TINT, ImageAdjustments.TINT_HIGHLIGHTS_PALETTE[0])
+
+    val red = 0xFFD14B3F.toInt()
+    val darkened = adjusted(gray(0.15f), ImageAdjustments(tintShadowsColor = red))
+    assertTrue("暗部偏红", darkened[0] > darkened[2])
+    assertArrayEquals(gray(1f), adjusted(gray(1f), ImageAdjustments(tintShadowsColor = red)), 1e-5f)
+
+    val blue = 0xFF8CB4FF.toInt()
+    val brightened = adjusted(gray(0.85f), ImageAdjustments(tintHighlightsColor = blue))
+    assertTrue("亮部偏蓝", brightened[2] > brightened[0])
+    assertArrayEquals(gray(0f), adjusted(gray(0f), ImageAdjustments(tintHighlightsColor = blue)), 1e-5f)
   }
 
   /** 表的排布：第 (b·n + r, g) 格是 (r, g, b)/(n − 1) 调色后的值。 */

@@ -358,4 +358,8 @@
   <string name="ImageEditor_tellomi_adjust_vignette">暈影</string>
   <string name="ImageEditor_tellomi_adjust_grain">顆粒</string>
   <string name="ImageEditor_tellomi_adjust_sharpen">銳利化</string>
+  <!-- Tellomi（tellomi/tellomi#1596 E5-6）调色页色调两行 -->
+  <string name="ImageEditor_tellomi_adjust_tint_shadows">暗部色調</string>
+  <string name="ImageEditor_tellomi_adjust_tint_highlights">亮部色調</string>
+  <string name="ImageEditor_tellomi_adjust_tint_none">不加</string>
 </resources>

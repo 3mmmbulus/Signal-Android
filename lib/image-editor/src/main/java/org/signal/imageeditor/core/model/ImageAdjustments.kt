@@ -164,6 +164,17 @@ data class ImageAdjustments(
     /** 色调强度：两端固定 50%（O8）。 */
     const val TINT_INTENSITY = 50f
 
+    /**
+     * Tellomi（tellomi/tellomi#1596 E5-6）：暗部色调的色板，第一个是「不加」。颜色是自己挑的（偏深），个数和 Telegram 两端一样（8 个）；
+     * iOS `TellomiImageAdjustments.TintColor.shadowsPalette` 是同一组。
+     */
+    @JvmField
+    val TINT_SHADOWS_PALETTE = intArrayOf(NO_TINT, 0xFFD14B3F.toInt(), 0xFFD9822B.toInt(), 0xFFC9A227.toInt(), 0xFF3F9E5B.toInt(), 0xFF2E8FA8.toInt(), 0xFF2F5FD0.toInt(), 0xFF7A45C2.toInt())
+
+    /** 亮部色调的色板（偏浅），同上。 */
+    @JvmField
+    val TINT_HIGHLIGHTS_PALETTE = intArrayOf(NO_TINT, 0xFFFF8A80.toInt(), 0xFFFFB870.toInt(), 0xFFFFE27A.toInt(), 0xFF9EE6A8.toInt(), 0xFF8EDDF0.toInt(), 0xFF8CB4FF.toInt(), 0xFFC9A2FF.toInt())
+
     @JvmField
     val DEFAULT = ImageAdjustments()
   }

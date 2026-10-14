@@ -8,6 +8,7 @@ import androidx.compose.animation.Crossfade
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -17,8 +18,11 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.selection.selectable
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Text
@@ -32,18 +36,22 @@ import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.ProgressBarRangeInfo
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.progressBarRangeInfo
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.setProgress
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import kotlinx.coroutines.delay
@@ -76,6 +84,85 @@ internal fun AdjustmentsPanel(controller: ImageController, modifier: Modifier = 
         value = controller.adjustments[tool],
         onValueChange = { controller.setAdjustment(tool, it) }
       )
+    }
+    // Tellomi（tellomi/tellomi#1596 E5-6）：色调两行放在最后（照 Telegram 安卓 `PhotoFilterView` 的 tintShadowsTool / tintHighlightsTool）。
+    TintRow(
+      name = stringResource(R.string.ImageEditor_tellomi_adjust_tint_shadows),
+      palette = ImageAdjustments.TINT_SHADOWS_PALETTE,
+      selected = controller.adjustments.tintShadowsColor,
+      onSelect = { controller.setTint(shadows = true, color = it) },
+      testTag = "adjustment-tint-shadows"
+    )
+    TintRow(
+      name = stringResource(R.string.ImageEditor_tellomi_adjust_tint_highlights),
+      palette = ImageAdjustments.TINT_HIGHLIGHTS_PALETTE,
+      selected = controller.adjustments.tintHighlightsColor,
+      onSelect = { controller.setTint(shadows = false, color = it) },
+      testTag = "adjustment-tint-highlights"
+    )
+  }
+}
+
+/**
+ * 色调一行（照 Telegram 安卓 `PhotoEditRadioCell`）：左边 80dp 的名字，右边一排 8 个色块，第一个是「不加」（白色）；没选的是一个圈，
+ * 选中的圈里多一个实心点。色值是自己挑的，个数和 Telegram 一样。强度固定 50%，没有强度滑杆（O8）。
+ */
+@Composable
+private fun TintRow(name: String, palette: IntArray, selected: Int, onSelect: (Int) -> Unit, testTag: String) {
+  val noneLabel = stringResource(R.string.ImageEditor_tellomi_adjust_tint_none)
+  Row(
+    modifier = Modifier
+      .fillMaxWidth()
+      .height(40.dp)
+      .testTag(testTag),
+    verticalAlignment = Alignment.CenterVertically
+  ) {
+    Text(
+      text = name,
+      color = Color.White,
+      fontSize = 12.sp,
+      maxLines = 1,
+      overflow = TextOverflow.Ellipsis,
+      textAlign = TextAlign.End,
+      modifier = Modifier.width(80.dp)
+    )
+    Spacer(modifier = Modifier.width(16.dp))
+    Row(
+      modifier = Modifier.weight(1f),
+      horizontalArrangement = Arrangement.SpaceBetween,
+      verticalAlignment = Alignment.CenterVertically
+    ) {
+      palette.forEachIndexed { index, color ->
+        TintSwatch(
+          color = color,
+          isSelected = color == selected,
+          description = if (index == 0) noneLabel else "$name $index",
+          onClick = { onSelect(color) },
+          modifier = Modifier.testTag("$testTag-$index")
+        )
+      }
+    }
+    Spacer(modifier = Modifier.width(24.dp))
+  }
+}
+
+@Composable
+private fun TintSwatch(color: Int, isSelected: Boolean, description: String, onClick: () -> Unit, modifier: Modifier = Modifier) {
+  val swatchColor = if (color == ImageAdjustments.NO_TINT) Color.White else Color(color)
+  Box(
+    modifier = modifier
+      .size(28.dp)
+      .clip(CircleShape)
+      .selectable(selected = isSelected, role = Role.RadioButton, onClick = onClick)
+      .semantics { contentDescription = description },
+    contentAlignment = Alignment.Center
+  ) {
+    Canvas(modifier = Modifier.size(20.dp)) {
+      val ring = 2.dp.toPx()
+      drawCircle(swatchColor, radius = size.minDimension / 2 - ring / 2, style = Stroke(width = ring))
+      if (isSelected) {
+        drawCircle(swatchColor, radius = size.minDimension / 2 - ring * 2.5f)
+      }
     }
   }
 }

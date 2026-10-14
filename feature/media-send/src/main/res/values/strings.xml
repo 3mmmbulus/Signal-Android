@@ -377,4 +377,8 @@
   <string name="ImageEditor_tellomi_adjust_vignette">Vignette</string>
   <string name="ImageEditor_tellomi_adjust_grain">Grain</string>
   <string name="ImageEditor_tellomi_adjust_sharpen">Sharpen</string>
+  <!-- Tellomi（tellomi/tellomi#1596 E5-6）调色页色调两行 -->
+  <string name="ImageEditor_tellomi_adjust_tint_shadows">Shadows tint</string>
+  <string name="ImageEditor_tellomi_adjust_tint_highlights">Highlights tint</string>
+  <string name="ImageEditor_tellomi_adjust_tint_none">None</string>
 </resources>

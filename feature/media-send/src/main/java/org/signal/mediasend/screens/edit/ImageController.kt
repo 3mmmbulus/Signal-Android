@@ -276,6 +276,16 @@ internal class ImageController(
     editorModel.setAdjustments(updated, false)
   }
 
+  /** Tellomi（tellomi/tellomi#1596 E5-6）：点色调色块（[ImageAdjustments.NO_TINT] = 不加）。和拖滑杆一样，只改预览、完成时记一步撤销。 */
+  fun setTint(shadows: Boolean, color: Int) {
+    val updated = if (shadows) adjustments.copy(tintShadowsColor = color) else adjustments.copy(tintHighlightsColor = color)
+    if (updated == adjustments) {
+      return
+    }
+    adjustments = updated
+    editorModel.setAdjustments(updated, false)
+  }
+
   /** Tellomi（tellomi/tellomi#1593 E5-3）：按住画面看原图（照 Telegram 安卓 `PhotoFilterView.onTouch` → `setShowOriginal`）。 */
   fun setShowsOriginal(showsOriginal: Boolean) {
     isShowingOriginal = showsOriginal

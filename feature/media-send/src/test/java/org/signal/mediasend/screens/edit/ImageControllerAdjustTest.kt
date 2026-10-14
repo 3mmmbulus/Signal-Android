@@ -102,6 +102,22 @@ class ImageControllerAdjustTest {
   }
 
   @Test
+  fun `tint swatches change the preview and done is one undo step`() {
+    controller.beginAdjustEdit()
+    val red = ImageAdjustments.TINT_SHADOWS_PALETTE[1]
+    val blue = ImageAdjustments.TINT_HIGHLIGHTS_PALETTE[6]
+
+    controller.setTint(shadows = true, color = red)
+    controller.setTint(shadows = false, color = blue)
+    assertEquals(red, model.adjustments.tintShadowsColor)
+    assertEquals(blue, model.adjustments.tintHighlightsColor)
+
+    controller.commitEdit()
+    model.undo()
+    assertTrue(model.adjustments.isDefault)
+  }
+
+  @Test
   fun `back leaves the panel like cancel`() {
     controller.beginAdjustEdit()
     controller.setAdjustment(ImageAdjustments.Tool.EXPOSURE, 50f)
