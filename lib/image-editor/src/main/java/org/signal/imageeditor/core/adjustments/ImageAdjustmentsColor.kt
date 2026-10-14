@@ -10,7 +10,7 @@ import kotlin.math.pow
 import kotlin.math.roundToInt
 
 /**
- * Tellomi（tellomi/tellomi#1592 E5-2，Epic #1523）：调色里逐像素的那几项（这一刀：曝光、对比度、饱和度、色温）的数学，
+ * Tellomi（tellomi/tellomi#1592 E5-2、#1594 E5-4，Epic #1523）：调色里逐像素的那几项（曝光、对比度、高光、阴影、饱和度、色温、褪色）的数学，
  * 以及把它们合成的 3D 查找表。
  *
  * 和 iOS `TellomiImageAdjustmentsRenderer.adjust` 是同一套公式（`docs/product/specs/media-editor-adjustments-e5.md`
@@ -19,8 +19,11 @@ import kotlin.math.roundToInt
  * - 对比度：绕中灰拉开 / 收拢，系数 1.4^(值/100)。
  * - 饱和度：和同亮度的灰按比例混（Rec. 709 亮度），0…2 倍。
  * - 色温：线性光里红、蓝反向增益（暖 = 红多蓝少），再把亮度拉回原来。
+ * - 高光 / 阴影：只改亮度（按比例缩放三个通道，色相不变）；阴影在亮度 0.25 附近、高光在 0.75 附近各一个鼓包，
+ *   y' = y + k·(值/100)·b(y)，b_阴影(y) = y(1−y)³·256/27，b_高光(y) = b_阴影(1−y)；k = 0.08，提亮高光时 0.14（TG 提亮高光推向白更狠）。
+ * - 褪色：往一条「哑光」曲线 t(c) = 0.24 + 0.42c + 0.24c² 混（黑抬到 0.24、白压到 0.9、中灰几乎不动），混的比例 = 值/100。
  *
- * 后面的逐像素工具（褪色、高光 / 阴影、色调、曲线）往 [adjust] 里加；暗角、颗粒、锐化、模糊这些和位置有关的另走 pass。
+ * 后面的逐像素工具（色调、曲线）往 [adjust] 里加；暗角、颗粒、锐化、模糊这些和位置有关的另走 pass。
  */
 object ImageAdjustmentsColor {
 
@@ -33,7 +36,7 @@ object ImageAdjustmentsColor {
 
   /**
    * 一个编码值（0…1，sRGB / Display P3 用同一条传递曲线）的颜色调色后的样子，写回 [rgb]。
-   * 顺序：曝光 → 对比度 → 饱和度 → 色温，每一步后夹回 0…1。
+   * 顺序：曝光 → 对比度 → 高光 / 阴影 → 饱和度 → 色温 → 褪色，每一步后夹回 0…1。
    */
   fun adjust(rgb: FloatArray, adjustments: ImageAdjustments) {
     if (adjustments.exposure != 0f) {
@@ -56,6 +59,16 @@ object ImageAdjustmentsColor {
       val factor = 1.4f.pow(adjustments.contrast / 100f)
       for (i in 0..2) {
         rgb[i] = clamp01((rgb[i] - 0.5f) * factor + 0.5f)
+      }
+    }
+
+    if (adjustments.highlights != 0f || adjustments.shadows != 0f) {
+      val y = luma(rgb[0], rgb[1], rgb[2])
+      val shadows = adjustments.shadows / 100f
+      val highlights = adjustments.highlights / 100f
+      val target = clamp01(y + 0.08f * shadows * shadowBump(y) + (if (highlights > 0f) 0.14f else 0.08f) * highlights * shadowBump(1f - y))
+      for (i in 0..2) {
+        rgb[i] = clamp01(if (y > 1e-4f) rgb[i] * target / y else rgb[i] + (target - y))
       }
     }
 
@@ -86,6 +99,20 @@ object ImageAdjustmentsColor {
       rgb[1] = clamp01(toEncoded(clamp01(g)))
       rgb[2] = clamp01(toEncoded(clamp01(b)))
     }
+
+    if (adjustments.fade != 0f) {
+      val amount = adjustments.fade / 100f
+      for (i in 0..2) {
+        val c = rgb[i]
+        rgb[i] = clamp01(c + (0.24f + 0.42f * c + 0.24f * c * c - c) * amount)
+      }
+    }
+  }
+
+  /** 在亮度 0.25 处最高（= 1）的鼓包，0 和 1 处为 0。 */
+  private fun shadowBump(y: Float): Float {
+    val inverse = 1f - y
+    return y * inverse * inverse * inverse * (256f / 27f)
   }
 
   /**

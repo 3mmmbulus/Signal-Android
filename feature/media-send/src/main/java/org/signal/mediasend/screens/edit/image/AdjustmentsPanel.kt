@@ -15,9 +15,12 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -58,11 +61,14 @@ import kotlin.math.roundToInt
  */
 @Composable
 internal fun AdjustmentsPanel(controller: ImageController, modifier: Modifier = Modifier) {
+  // 照 Telegram 安卓：列表区高度固定（约四行半），工具多了在里面上下滚，不往上盖住照片。
   Column(
     modifier = modifier
       .fillMaxWidth()
       .background(Color.Black.copy(alpha = 0.6f), RoundedCornerShape(16.dp))
       .padding(vertical = 4.dp)
+      .heightIn(max = 180.dp)
+      .verticalScroll(rememberScrollState())
   ) {
     AVAILABLE_TOOLS.forEach { tool ->
       AdjustmentRow(
@@ -79,7 +85,10 @@ internal val AVAILABLE_TOOLS = listOf(
   ImageAdjustments.Tool.EXPOSURE,
   ImageAdjustments.Tool.CONTRAST,
   ImageAdjustments.Tool.SATURATION,
-  ImageAdjustments.Tool.WARMTH
+  ImageAdjustments.Tool.WARMTH,
+  ImageAdjustments.Tool.FADE,
+  ImageAdjustments.Tool.HIGHLIGHTS,
+  ImageAdjustments.Tool.SHADOWS
 )
 
 /** 行里显示的数值：照 Telegram 安卓，整数，正的带 +。 */

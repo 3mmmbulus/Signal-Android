@@ -37,7 +37,15 @@ class ImageAdjustmentsColorTest {
       Triple(floatArrayOf(0.25f, 0.25f, 0.25f), ImageAdjustments(contrast = 60f), floatArrayOf(0.19407f, 0.19407f, 0.19407f)),
       Triple(floatArrayOf(0.6f, 0.4f, 0.4f), ImageAdjustments(saturation = 50f), floatArrayOf(0.67874f, 0.37874f, 0.37874f)),
       Triple(floatArrayOf(0.5f, 0.5f, 0.5f), ImageAdjustments(warmth = 100f), floatArrayOf(0.55356f, 0.49054f, 0.4152f)),
-      Triple(floatArrayOf(0.2f, 0.5f, 0.8f), ImageAdjustments(exposure = 35f, contrast = 25f, saturation = -30f, warmth = 40f), floatArrayOf(0.34061f, 0.5699f, 0.73056f))
+      Triple(floatArrayOf(0.2f, 0.5f, 0.8f), ImageAdjustments(exposure = 35f, contrast = 25f, saturation = -30f, warmth = 40f), floatArrayOf(0.34061f, 0.5699f, 0.73056f)),
+      // E5-4
+      Triple(floatArrayOf(0f, 0f, 0f), ImageAdjustments(fade = 100f), floatArrayOf(0.24f, 0.24f, 0.24f)),
+      Triple(floatArrayOf(1f, 1f, 1f), ImageAdjustments(fade = 100f), floatArrayOf(0.9f, 0.9f, 0.9f)),
+      Triple(floatArrayOf(0.2f, 0.2f, 0.2f), ImageAdjustments(shadows = 100f), floatArrayOf(0.27767f, 0.27767f, 0.27767f)),
+      Triple(floatArrayOf(0.2f, 0.2f, 0.2f), ImageAdjustments(shadows = -100f), floatArrayOf(0.12233f, 0.12233f, 0.12233f)),
+      Triple(floatArrayOf(0.8f, 0.8f, 0.8f), ImageAdjustments(highlights = 100f), floatArrayOf(0.93593f, 0.93593f, 0.93593f)),
+      Triple(floatArrayOf(0.8f, 0.8f, 0.8f), ImageAdjustments(highlights = -100f), floatArrayOf(0.72233f, 0.72233f, 0.72233f)),
+      Triple(floatArrayOf(0.3f, 0.5f, 0.7f), ImageAdjustments(exposure = 10f, fade = 40f, highlights = -50f, shadows = 60f), floatArrayOf(0.35348f, 0.52817f, 0.70425f))
     )
     cases.forEach { (input, adjustments, expected) ->
       assertArrayEquals(expected, adjusted(input, adjustments), 1e-4f)
@@ -74,6 +82,30 @@ class ImageAdjustmentsColorTest {
     val cool = adjusted(gray(0.5f), ImageAdjustments(warmth = -100f))
     assertTrue(warm[0] > warm[2])
     assertTrue(cool[2] > cool[0])
+  }
+
+  /** 褪色抬黑压白、中灰几乎不动；阴影只动暗部、高光只动亮部，方向照 TG（正 = 提亮）；色相不变。 */
+  @Test
+  fun fadeHighlightsShadows() {
+    val fadedMid = adjusted(gray(0.5f), ImageAdjustments(fade = 100f))[0]
+    assertEquals(0.51f, fadedMid, 0.01f)
+
+    val lifted = adjusted(gray(0.2f), ImageAdjustments(shadows = 60f))[0]
+    assertTrue(lifted > 0.2f)
+    assertEquals("阴影不动亮部", 0.9f, adjusted(gray(0.9f), ImageAdjustments(shadows = 100f))[0], 0.02f)
+    assertTrue(adjusted(gray(0.8f), ImageAdjustments(highlights = -60f))[0] < 0.8f)
+    assertEquals("高光不动暗部", 0.1f, adjusted(gray(0.1f), ImageAdjustments(highlights = 100f))[0], 0.02f)
+
+    val reddish = adjusted(floatArrayOf(0.3f, 0.15f, 0.1f), ImageAdjustments(shadows = 80f))
+    assertEquals("按比例缩放，色相不变", 0.3f / 0.15f, reddish[0] / reddish[1], 0.01f)
+
+    // 亮度单调：高光拉满时更亮的输入不会变得更暗。
+    var previous = 0f
+    for (step in 0..100) {
+      val output = adjusted(gray(step / 100f), ImageAdjustments(highlights = 100f, shadows = -100f))[0]
+      assertTrue("step $step", output >= previous - 1e-6f)
+      previous = output
+    }
   }
 
   /** 表的排布：第 (b·n + r, g) 格是 (r, g, b)/(n − 1) 调色后的值。 */
