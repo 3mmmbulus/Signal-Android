@@ -6,6 +6,11 @@ plugins {
 android {
     namespace = "org.signal.imageeditor"
 
+    defaultConfig {
+        // Tellomi（tellomi/tellomi#1592 E5-2）：调色的 GL 路径只能在有 GPU 的设备 / 模拟器上测。
+        testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+    }
+
     testOptions {
         unitTests {
             includeAndroidResources = true
@@ -16,4 +21,7 @@ android {
 dependencies {
     implementation(project(":core:util"))
     implementation(project(":lib:glide"))
+
+    androidTestImplementation(testLibs.androidx.test.ext.junit)
+    androidTestImplementation(testLibs.androidx.test.runner)
 }

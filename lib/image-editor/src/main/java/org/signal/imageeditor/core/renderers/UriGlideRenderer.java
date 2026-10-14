@@ -38,6 +38,7 @@ import org.signal.imageeditor.core.PaintStrokeRenderer;
 import org.signal.imageeditor.core.Renderer;
 import org.signal.imageeditor.core.RendererContext;
 import org.signal.imageeditor.core.SelectableRenderer;
+import org.signal.imageeditor.core.adjustments.ImageAdjustmentsRenderer;
 import org.signal.imageeditor.core.model.EditorElement;
 import org.signal.imageeditor.core.model.EditorModel;
 import org.signal.imageeditor.core.model.ImageAdjustments;
@@ -81,6 +82,16 @@ public final class UriGlideRenderer implements SelectableRenderer {
 
   @Nullable private Bitmap bitmap;
   @Nullable private Bitmap blurredBitmap;
+
+  // Tellomi（tellomi/tellomi#1592 E5-2）：调色后的底图和打码小图，记着是从哪张图、按哪组调色画的。
+  @Nullable private Bitmap           adjustedBitmap;
+  @Nullable private Bitmap           adjustedSource;
+  @Nullable private ImageAdjustments adjustedFor;
+  @Nullable private ImageAdjustments adjustingFor;
+  @Nullable private ImageAdjustments failedFor;
+  @Nullable private Bitmap           adjustedBlurredBitmap;
+  @Nullable private Bitmap           adjustedBlurredSource;
+  @Nullable private ImageAdjustments adjustedBlurredFor;
   @Nullable private Paint  blurPaint;
   private final Paint maskLayerPaint = new Paint();
   private final Paint maskDrawPaint  = new Paint(Paint.ANTI_ALIAS_FLAG);
@@ -146,7 +157,7 @@ public final class UriGlideRenderer implements SelectableRenderer {
       int alpha = paint.getAlpha();
       paint.setAlpha(rendererContext.getAlpha(alpha));
 
-      rendererContext.canvas.drawBitmap(bitmap, 0, 0, rendererContext.getMaskPaint() != null ? rendererContext.getMaskPaint() : paint);
+      rendererContext.canvas.drawBitmap(adjustedBaseBitmap(rendererContext, bitmap), 0, 0, rendererContext.getMaskPaint() != null ? rendererContext.getMaskPaint() : paint);
 
       paint.setAlpha(alpha);
 
@@ -198,11 +209,69 @@ public final class UriGlideRenderer implements SelectableRenderer {
       }
 
       rendererContext.canvas.concat(blurScaleMatrix);
-      rendererContext.canvas.drawBitmap(blurredBitmap, 0, 0, blurPaint);
+      rendererContext.canvas.drawBitmap(adjustedBlurredBitmap(blurredBitmap), 0, 0, blurPaint);
       blurPaint.setXfermode(null);
 
       rendererContext.restore();
     }
+  }
+
+  /**
+   * Tellomi（tellomi/tellomi#1592 E5-2）：画出来的底图。没调色是原图；发出时（阻塞渲染）当场烘焙；
+   * 画布上异步画，画好之前先用上一张调色图（同一张原图的话）或原图，一次只画一张，画完发现调色又变了就再画最新的。
+   */
+  private @NonNull Bitmap adjustedBaseBitmap(@NonNull RendererContext rendererContext, @NonNull Bitmap bitmap) {
+    if (adjustments.isDefault()) {
+      adjustedBitmap = null;
+      adjustedSource = null;
+      adjustedFor    = null;
+      return bitmap;
+    }
+
+    if (adjustedBitmap != null && adjustedSource == bitmap && adjustments.equals(adjustedFor)) {
+      return adjustedBitmap;
+    }
+
+    if (rendererContext.isBlockingLoad()) {
+      adjustedBitmap = ImageAdjustmentsRenderer.apply(bitmap, adjustments);
+      adjustedSource = bitmap;
+      adjustedFor    = adjustments;
+      return adjustedBitmap;
+    }
+
+    if (adjustingFor == null && !adjustments.equals(failedFor)) {
+      ImageAdjustments requested = adjustments;
+      adjustingFor = requested;
+      ImageAdjustmentsRenderer.applyAsync(bitmap, requested, result -> {
+        adjustingFor = null;
+        if (result == null) {
+          failedFor = requested;
+        } else if (getBitmap() == bitmap) {
+          adjustedBitmap = result;
+          adjustedSource = bitmap;
+          adjustedFor    = requested;
+        }
+        rendererContext.invalidate.onInvalidate(UriGlideRenderer.this);
+      });
+    }
+
+    return adjustedBitmap != null && adjustedSource == bitmap ? adjustedBitmap : bitmap;
+  }
+
+  /**
+   * Tellomi（tellomi/tellomi#1592 E5-2）：打码从调色后的底图取样。调色是逐像素的，先模糊再调色和先调色再模糊看起来一样，
+   * 而打码的小图（长边 ≤ 300）当场画只要一下。
+   */
+  private @NonNull Bitmap adjustedBlurredBitmap(@NonNull Bitmap blurred) {
+    if (adjustments.isDefault()) {
+      return blurred;
+    }
+    if (adjustedBlurredBitmap == null || adjustedBlurredSource != blurred || !adjustments.equals(adjustedBlurredFor)) {
+      adjustedBlurredBitmap = ImageAdjustmentsRenderer.apply(blurred, adjustments);
+      adjustedBlurredSource = blurred;
+      adjustedBlurredFor    = adjustments;
+    }
+    return adjustedBlurredBitmap;
   }
 
   /**
