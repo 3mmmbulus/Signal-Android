@@ -80,6 +80,36 @@ class DrawBrushTest {
   }
 
   @Test
+  fun `each brush keeps its own color and starts from Telegram's default`() {
+    val controller = ImageController(EditorModel.create(0))
+    controller.enterDrawMode()
+    val penColor = controller.drawColorBarState.color
+
+    controller.selectBrush(DrawBrush.ARROW)
+    assertEquals(0xFFFF8A00.toInt(), controller.drawColorBarState.color)
+    assertEquals(0xFFFF8A00.toInt(), controller.imageEditorState.drawColor)
+
+    controller.drawColorBarState.show(0xFF3366FF.toInt())
+    controller.setDrawColor(controller.drawColorBarState.color)
+
+    controller.selectBrush(DrawBrush.NEON)
+    assertEquals(0xFF34C759.toInt(), controller.drawColorBarState.color)
+
+    controller.selectBrush(DrawBrush.HIGHLIGHTER)
+    assertEquals(0xFFFFD60A.toInt(), controller.drawColorBarState.color)
+
+    // The eraser has no color: the bar stays as it was.
+    controller.selectBrush(DrawBrush.ERASER)
+    assertEquals(0xFFFFD60A.toInt(), controller.drawColorBarState.color)
+
+    controller.selectBrush(DrawBrush.ARROW)
+    assertEquals(0xFF3366FF.toInt(), controller.drawColorBarState.color)
+
+    controller.selectBrush(DrawBrush.PEN)
+    assertEquals(penColor, controller.drawColorBarState.color)
+  }
+
+  @Test
   fun `each new brush keeps its own width`() {
     val widths = BrushWidths()
     assertEquals(0f, widths[BrushTool.ARROW], 0f)

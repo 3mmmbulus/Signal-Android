@@ -376,11 +376,38 @@ internal class ImageController(
 
   /** Tellomi (tellomi/tellomi#1522 E-2): picks a brush from the brush menu. */
   fun selectBrush(brush: DrawBrush) {
+    val previous = currentBrush
+    if (brush != previous) {
+      swapBrushColor(from = previous, to = brush)
+    }
     if (brush == DrawBrush.HIGHLIGHTER) {
       enterHighlightMode()
     } else {
       drawBrush = brush
       enterDrawMode()
+    }
+  }
+
+  /** Tellomi (tellomi/tellomi#1522 E-2): the color bar position and picked color each brush was last left with. */
+  private val brushColors = mutableMapOf<DrawBrush, Pair<Float, Int?>>()
+
+  /**
+   * Tellomi (tellomi/tellomi#1522 E-2, as both Telegram clients): every brush keeps its own color. The color bar is
+   * put away for the brush being left and brought back (or set to the brush's default) for the next one; the eraser
+   * has no color and leaves the bar alone.
+   */
+  private fun swapBrushColor(from: DrawBrush, to: DrawBrush) {
+    if (from != DrawBrush.ERASER) {
+      brushColors[from] = drawColorBarState.fraction to drawColorBarState.customColor
+    }
+    if (to == DrawBrush.ERASER) return
+
+    val saved = brushColors[to]
+    if (saved != null) {
+      drawColorBarState.fraction = saved.first
+      drawColorBarState.customColor = saved.second
+    } else {
+      to.defaultColor?.let(drawColorBarState::show)
     }
   }
 

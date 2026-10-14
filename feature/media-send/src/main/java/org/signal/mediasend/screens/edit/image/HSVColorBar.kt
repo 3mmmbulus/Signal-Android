@@ -186,6 +186,14 @@ class HSVColorBarState {
 
   val color: Int
     get() = customColor ?: HSVColors.colorAt(fraction)
+
+  /**
+   * Tellomi（tellomi/tellomi#1522 E-2，照 Telegram 两端每支笔各记颜色）：显示 [color]——滑块挪到色条上最接近的位置，颜色用它本身。
+   */
+  fun show(color: Int) {
+    fraction = HSVColors.nearestFraction(color)
+    customColor = color
+  }
 }
 
 @Composable
@@ -218,6 +226,23 @@ private object HSVColors {
   fun colorAt(fraction: Float): Int {
     val index = (fraction * (intColors.size - 1)).toInt().coerceIn(0, intColors.size - 1)
     return intColors[index]
+  }
+
+  fun nearestFraction(color: Int): Float {
+    var best = 0
+    var bestDistance = Int.MAX_VALUE
+    for (i in intColors.indices) {
+      val c = intColors[i]
+      val dr = ((c shr 16) and 0xFF) - ((color shr 16) and 0xFF)
+      val dg = ((c shr 8) and 0xFF) - ((color shr 8) and 0xFF)
+      val db = (c and 0xFF) - (color and 0xFF)
+      val distance = dr * dr + dg * dg + db * db
+      if (distance < bestDistance) {
+        bestDistance = distance
+        best = i
+      }
+    }
+    return best.toFloat() / (intColors.size - 1)
   }
 
   private fun buildColors(): IntArray {
