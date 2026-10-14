@@ -340,4 +340,6 @@
   <string name="MediaCaptureScreen__captured_video">第 %1$d 段视频</string>
   <!-- Tellomi (tellomi/tellomi#1518 V-7): title of the sheet that picks one video's quality level -->
   <string name="VideoQualitySheet__video_quality">视频画质</string>
+  <!-- Tellomi (tellomi/tellomi#1518 V-6): toast when a video is muted, which sends it as a GIF -->
+  <string name="MediaSendViewModel__tellomi_video_will_be_sent_as_gif">已关闭声音，视频会像 GIF 一样循环播放。</string>
 </resources>

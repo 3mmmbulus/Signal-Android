@@ -80,7 +80,13 @@ internal data class MediaEditState(
    */
   val focusedVideoTranscodingTiers: List<TranscodingConfig.QualityTier>
     get() {
-      val shortEdge = (focusedEditorState as? EditorState.VideoTrim)?.videoTrimData?.tellomiShortEdge ?: 0
+      val trim = (focusedEditorState as? EditorState.VideoTrim)?.videoTrimData
+      if (trim?.isMuted == true) {
+        // Tellomi (tellomi/tellomi#1518 V-6): a muted video goes as a GIF at 480p.
+        val source = focusedMedia?.let { minOf(it.width, it.height) } ?: 0
+        return TellomiVideoQuality.mutedTiers(source, videoMaxUploadBytes)
+      }
+      val shortEdge = trim?.tellomiShortEdge ?: 0
       return if (shortEdge > 0) {
         TellomiVideoQuality.tiersFor(shortEdge, videoMaxUploadBytes) ?: videoTranscodingTiers
       } else {

@@ -151,7 +151,8 @@ internal fun MediaEditorToolbarSharedButtons(
         SignalIcons.QualityHighSlash.imageVector
       },
       onClick = { isSelectingQuality = true },
-      enabled = enabled,
+      // Tellomi（tellomi/tellomi#1518 V-6，照 TG 两端）：静音的视频当 GIF 发，画质固定，画质键变灰。
+      enabled = enabled && !(editorState is EditorState.VideoTrim && editorState.videoTrimData.isMuted),
       modifier = Modifier.testTag(TestTags.MEDIA_EDITOR_TOOLBAR_QUALITY_BUTTON)
     )
   }

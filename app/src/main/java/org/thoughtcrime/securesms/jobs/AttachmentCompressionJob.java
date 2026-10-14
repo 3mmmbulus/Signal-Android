@@ -80,9 +80,17 @@ public final class AttachmentCompressionJob extends BaseJob {
                                                         int mmsSubscriptionId)
   {
     return new AttachmentCompressionJob(databaseAttachment.attachmentId,
-                                        MediaUtil.isVideo(databaseAttachment) && !databaseAttachment.videoGif && MediaConstraints.isVideoTranscodeAvailable(),
+                                        MediaUtil.isVideo(databaseAttachment) && (!databaseAttachment.videoGif || isTellomiMutedVideo(databaseAttachment)) && MediaConstraints.isVideoTranscodeAvailable(),
                                         mms,
                                         mmsSubscriptionId);
+  }
+
+  /**
+   * Tellomi (tellomi/tellomi#1518 V-6): a video the sender muted is marked as a GIF, but unlike a GIF from a keyboard it
+   * still has its audio and full size, so it is transcoded like any other video.
+   */
+  private static boolean isTellomiMutedVideo(@NonNull DatabaseAttachment attachment) {
+    return attachment.transformProperties != null && attachment.transformProperties.videoMuted;
   }
 
   private AttachmentCompressionJob(@NonNull AttachmentId attachmentId,
@@ -267,7 +275,10 @@ public final class AttachmentCompressionJob extends BaseJob {
 
         // Tellomi (tellomi/tellomi#1518 V-7 ②): a level picked for this one video replaces the batch quality's tiers.
         List<TranscodingConfig.QualityTier> tiers = constraints.getVideoTranscodingSettings();
-        if (transformProperties != null && transformProperties.tellomiVideoShortEdge > 0) {
+        if (transformProperties != null && transformProperties.videoMuted) {
+          // Tellomi (tellomi/tellomi#1518 V-6, owner 2026-10-14, as Telegram): a muted video goes as a GIF, at 480p.
+          tiers = TellomiVideoQuality.INSTANCE.mutedTiers(Math.min(attachment.width, attachment.height), AttachmentUploadJob.getMaxPlaintextSize());
+        } else if (transformProperties != null && transformProperties.tellomiVideoShortEdge > 0) {
           List<TranscodingConfig.QualityTier> levelTiers = TellomiVideoQuality.INSTANCE.tiersFor(transformProperties.tellomiVideoShortEdge, AttachmentUploadJob.getMaxPlaintextSize());
           if (levelTiers != null) {
             tiers = levelTiers;

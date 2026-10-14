@@ -34,6 +34,7 @@ import org.thoughtcrime.securesms.mediasend.MediaTransform
 import org.thoughtcrime.securesms.mediasend.MediaUploadRepository
 import org.thoughtcrime.securesms.mediasend.SentMediaQualityTransform
 import org.thoughtcrime.securesms.mediasend.TellomiMediaAsFiles
+import org.thoughtcrime.securesms.mediasend.TellomiMutedVideos
 import org.thoughtcrime.securesms.mediasend.VideoTrimTransform
 import org.thoughtcrime.securesms.mms.GifSlide
 import org.thoughtcrime.securesms.mms.ImageSlide
@@ -314,6 +315,27 @@ class MediaSelectionRepository(context: Context) {
     isViewOnce: Boolean,
     scheduledDate: Long
   ) {
+    // Tellomi（tellomi/tellomi#1518 V-6）：定时发送同样把静音当 GIF 发的视频拆成单独一条，说明跟着其余那组。
+    val tellomiSplit = TellomiMutedVideos.split(nonUploadedMedia)
+    if (tellomiSplit != null) {
+      tellomiSplit.groups.forEachIndexed { index, group ->
+        val withBody = index == tellomiSplit.bodyIndex
+        scheduleMessages(
+          sendType = sendType,
+          recipientIds = recipientIds,
+          body = if (withBody) body else "",
+          nonUploadedMedia = group.map { nonUploadedMedia[it] },
+          mentions = if (withBody) mentions else emptyList(),
+          bodyRanges = if (withBody) bodyRanges else null,
+          isViewOnce = isViewOnce,
+          scheduledDate = scheduledDate
+        )
+        // No two messages to one recipient with the same sent timestamp.
+        ThreadUtil.sleep(5)
+      }
+      return
+    }
+
     val slideDeck = SlideDeck()
     val context: Context = AppDependencies.application
 
@@ -442,13 +464,36 @@ class MediaSelectionRepository(context: Context) {
     }
 
     if (nonStoryMessages.isNotEmpty()) {
-      Log.d(TAG, "Sending ${nonStoryMessages.size} preupload messages to chats")
-      MessageSender.sendMediaBroadcast(
-        context,
-        nonStoryMessages,
-        preUploadResults,
-        true
-      )
+      // Tellomi（tellomi/tellomi#1518 V-6，owner 2026-10-14 照 TG）：静音当 GIF 发的视频单独成一条，其余照常成组；说明跟着其余那组
+      // （全是静音视频时跟着最后一条）。
+      val results = preUploadResults.toList()
+      val split = TellomiMutedVideos.split(results.map { it.media })
+      if (split == null) {
+        Log.d(TAG, "Sending ${nonStoryMessages.size} preupload messages to chats")
+        MessageSender.sendMediaBroadcast(
+          context,
+          nonStoryMessages,
+          preUploadResults,
+          true
+        )
+      } else {
+        split.groups.forEachIndexed { index, group ->
+          val messages = nonStoryMessages.map { message ->
+            val withBody = index == split.bodyIndex
+            message.copy(
+              body = if (withBody) message.body else "",
+              mentions = if (withBody) message.mentions else emptyList(),
+              bodyRanges = if (withBody) message.bodyRanges else null,
+              sentTimeMillis = System.currentTimeMillis()
+            ).also {
+              // Same reason as above: no two messages to one recipient with the same sent timestamp.
+              ThreadUtil.sleep(5)
+            }
+          }
+          Log.d(TAG, "Sending ${messages.size} preupload messages to chats (part ${index + 1} of ${split.groups.size})")
+          MessageSender.sendMediaBroadcast(context, messages, group.map { results[it] }, true)
+        }
+      }
     }
 
     if (storyPreUploadMessages.isNotEmpty()) {

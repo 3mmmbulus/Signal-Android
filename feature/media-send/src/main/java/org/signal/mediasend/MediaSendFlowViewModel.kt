@@ -978,7 +978,10 @@ class MediaSendFlowViewModel(
     val uri = snapshot.focusedMedia?.uri ?: return
     val existing = snapshot.editorStateMap[uri] as? EditorState.VideoTrim ?: return
     val isNowMuted = !existing.videoTrimData.isMuted
-    val updated = existing.copy(videoTrimData = existing.videoTrimData.copy(isMuted = isNowMuted))
+    // Tellomi（tellomi/tellomi#1518 V-6，owner 2026-10-14 照 TG）：静音 = 当 GIF 发，画质固定在 480p，选过的档作废；剪辑上限跟着变。
+    val data = existing.videoTrimData.copy(isMuted = isNowMuted, tellomiShortEdge = if (isNowMuted) 0 else existing.videoTrimData.tellomiShortEdge)
+    val maxDurationUs = if (repository.isVideoTranscodeAvailable()) getMaxVideoDurationUs(data.totalInputDurationUs.microseconds, data.tellomiShortEdge, data.isMuted) else existing.maxDurationUs
+    val updated = EditorState.VideoTrim(data, maxDurationUs).clampToMaxDuration(maxDurationUs, preserveStartTime = true)
 
     updateState { copy(editorStateMap = editorStateMap + (uri to updated)) }
 
@@ -986,7 +989,7 @@ class MediaSendFlowViewModel(
       internalToastEvents.trySend(
         ToastEvent(
           icon = SignalIcons.SpeakerSlash,
-          message = ToastMessage.Text(R.string.MediaSendViewModel__video_will_be_sent_without_audio)
+          message = ToastMessage.Text(R.string.MediaSendViewModel__tellomi_video_will_be_sent_as_gif)
         )
       )
     }
@@ -1016,7 +1019,7 @@ class MediaSendFlowViewModel(
     val durationEdited = clampedStartTime > 0 || endTimeUs < totalDurationUs
     val isEntireDuration = startTimeUs == 0L && endTimeUs == totalDurationUs
     val endMoved = !isEntireDuration && existingData.videoTrimData.endTimeUs != endTimeUs
-    val maxVideoDurationUs = getMaxVideoDurationUs(existingData.videoTrimData.totalInputDurationUs.microseconds, existingData.videoTrimData.tellomiShortEdge)
+    val maxVideoDurationUs = getMaxVideoDurationUs(existingData.videoTrimData.totalInputDurationUs.microseconds, existingData.videoTrimData.tellomiShortEdge, existingData.videoTrimData.isMuted)
     val preserveStartTime = unedited || !endMoved
 
     val newData = existingData.videoTrimData.copy(
@@ -1046,10 +1049,11 @@ class MediaSendFlowViewModel(
     }
   }
 
-  private fun getMaxVideoDurationUs(duration: Duration, tellomiShortEdge: Int = 0): Long {
+  private fun getMaxVideoDurationUs(duration: Duration, tellomiShortEdge: Int = 0, isMuted: Boolean = false): Long {
     val snapshot = state.value
-    // Tellomi (tellomi/tellomi#1518 V-7 ②): a video with its own quality level may last as long as that level fits.
-    TellomiVideoQuality.level(tellomiShortEdge)?.let { level ->
+    // Tellomi (tellomi/tellomi#1518 V-7 ②): a video with its own quality level may last as long as that level fits; a
+    // muted one (V-6, sent as a GIF) as long as 480p fits.
+    TellomiVideoQuality.level(if (isMuted) TellomiVideoQuality.MUTED_SHORT_EDGE else tellomiShortEdge)?.let { level ->
       return TellomiVideoQuality.maxDurationSeconds(level, snapshot.tellomiVideoMaxUploadBytes).seconds.inWholeMicroseconds
     }
     return repository.getMaxVideoDurationUs(
@@ -1068,6 +1072,8 @@ class MediaSendFlowViewModel(
     val snapshot = state.value
     val uri = snapshot.focusedMedia?.uri ?: return
     val existing = snapshot.editorStateMap[uri] as? EditorState.VideoTrim ?: return
+    // A muted video goes as a GIF at a fixed size (V-6): no level to pick, as in Telegram.
+    if (existing.videoTrimData.isMuted) return
     if (existing.videoTrimData.tellomiShortEdge == shortEdge) return
 
     val data = existing.videoTrimData.copy(tellomiShortEdge = shortEdge)

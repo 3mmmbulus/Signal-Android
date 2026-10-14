@@ -357,4 +357,6 @@
   <string name="MediaCaptureScreen__captured_video">Video %1$d</string>
   <!-- Tellomi (tellomi/tellomi#1518 V-7): title of the sheet that picks one video's quality level -->
   <string name="VideoQualitySheet__video_quality">Video quality</string>
+  <!-- Tellomi (tellomi/tellomi#1518 V-6): toast when a video is muted, which sends it as a GIF -->
+  <string name="MediaSendViewModel__tellomi_video_will_be_sent_as_gif">Sound off. The video will be sent like a GIF and play on a loop.</string>
 </resources>

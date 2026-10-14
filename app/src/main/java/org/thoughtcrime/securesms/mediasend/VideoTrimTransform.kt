@@ -19,7 +19,8 @@ class VideoTrimTransform(private val data: VideoTrimData) : MediaTransform {
       size = media.size,
       duration = media.duration,
       isBorderless = media.isBorderless,
-      isVideoGif = media.isVideoGif,
+      // Tellomi（tellomi/tellomi#1518 V-6，owner 2026-10-14 照 TG）：静音的视频当 GIF 发（自动播放、循环、无声）。
+      isVideoGif = media.isVideoGif || data.isMuted,
       bucketId = media.bucketId,
       caption = media.caption,
       transformProperties = TransformProperties(

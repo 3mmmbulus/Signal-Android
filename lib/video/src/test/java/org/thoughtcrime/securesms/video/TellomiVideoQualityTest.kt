@@ -55,6 +55,15 @@ class TellomiVideoQualityTest {
   }
 
   @Test
+  fun `a muted video is sent at 480p, never above the source`() {
+    assertEquals(480, TellomiVideoQuality.mutedTiers(1080, limit).single().resolution)
+    assertEquals(480, TellomiVideoQuality.mutedTiers(0, limit).single().resolution)
+    assertEquals(360, TellomiVideoQuality.mutedTiers(360, limit).single().resolution)
+    assertEquals(270, TellomiVideoQuality.mutedTiers(271, limit).single().resolution)
+    assertEquals(1.0f, TellomiVideoQuality.mutedTiers(1080, limit).single().videoBitrateMbps, 0f)
+  }
+
+  @Test
   fun `the sizes match Telegram's long edges for 16 by 9`() {
     // TG: long edges 480 / 854 / 1280 / 1920.
     assertEquals(listOf(270, 480, 720, 1080), TellomiVideoQuality.LEVELS.map { it.shortEdge })

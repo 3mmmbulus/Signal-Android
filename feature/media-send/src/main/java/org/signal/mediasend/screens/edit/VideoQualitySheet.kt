@@ -110,6 +110,8 @@ internal fun MediaEditState.focusedVideoLevelOptions(): List<VideoLevelOption> {
   if (!MediaConstraints.isVideoTranscodeAvailable()) return emptyList()
   val media = focusedMedia ?: return emptyList()
   val trim = (focusedEditorState as? EditorState.VideoTrim)?.videoTrimData ?: return emptyList()
+  // A muted video goes as a GIF at a fixed size (V-6).
+  if (trim.isMuted) return emptyList()
   val shortEdge = minOf(media.width, media.height)
   val duration = if (trim.endTimeUs > trim.startTimeUs) trim.getDuration() else return emptyList()
   return videoLevelOptions(

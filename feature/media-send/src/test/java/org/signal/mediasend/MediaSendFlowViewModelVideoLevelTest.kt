@@ -182,6 +182,41 @@ class MediaSendFlowViewModelVideoLevelTest {
     assertThat(options.single { it.shortEdge == 720 }.storedShortEdge).isEqualTo(0)
   }
 
+  @Test
+  fun `Given a level, when the video is muted, then it goes as a GIF at 480p and no level can be picked`() = runTest {
+    val viewModel = viewModel(video(durationSeconds = 60))
+    advanceUntilIdle()
+    viewModel.onEvent(MediaSendFlowEvent.SetVideoLevel(1080))
+
+    viewModel.onEvent(MediaSendFlowEvent.ToggleVideoMuted)
+
+    val muted = trimOf(viewModel)
+    assertThat(muted.videoTrimData.isMuted).isTrue()
+    assertThat(muted.videoTrimData.tellomiShortEdge).isEqualTo(0)
+    assertThat(muted.maxDurationUs).isEqualTo(MAX_480.inWholeMicroseconds)
+
+    viewModel.onEvent(MediaSendFlowEvent.SetVideoLevel(720))
+    assertThat(trimOf(viewModel).videoTrimData.tellomiShortEdge).isEqualTo(0)
+
+    val edit = MediaEditState(videoMaxUploadBytes = LIMIT).withParentState(viewModel.state.value)
+    assertThat(edit.focusedVideoLevelOptions()).isEmpty()
+    assertThat(edit.focusedVideoTranscodingTiers.single().resolution).isEqualTo(480)
+  }
+
+  @Test
+  fun `Given a muted 20 minute video, then it is trimmed to what 480p fits`() = runTest {
+    // The batch quality allows the whole 20 minutes here; 480p does not.
+    for (each in listOf(repository, MediaSendDependencies.mediaSendRepository)) {
+      every { each.getMaxVideoDurationUs(any(), any()) } returns 2000.seconds.inWholeMicroseconds
+    }
+    val viewModel = viewModel(video(durationSeconds = 1200))
+    advanceUntilIdle()
+
+    viewModel.onEvent(MediaSendFlowEvent.ToggleVideoMuted)
+
+    assertThat(trimOf(viewModel).videoTrimData.getDuration()).isEqualTo(MAX_480)
+  }
+
   private fun trimOf(viewModel: MediaSendFlowViewModel): EditorState.VideoTrim {
     return viewModel.state.value.editorStateMap[VIDEO_URI] as EditorState.VideoTrim
   }
@@ -209,6 +244,7 @@ class MediaSendFlowViewModelVideoLevelTest {
     private const val LIMIT = 100L * 1024 * 1024
     private val BATCH_MAX = 300.seconds
     private val MAX_1080 = TellomiVideoQuality.maxDurationSeconds(TellomiVideoQuality.level(1080)!!, LIMIT).seconds
+    private val MAX_480 = TellomiVideoQuality.maxDurationSeconds(TellomiVideoQuality.level(480)!!, LIMIT).seconds
     private val VIDEO_URI = "content://media/video/1".toUri()
 
     private fun video(durationSeconds: Long) = Media(

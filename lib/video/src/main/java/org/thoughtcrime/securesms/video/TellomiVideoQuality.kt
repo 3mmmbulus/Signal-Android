@@ -28,6 +28,9 @@ object TellomiVideoQuality {
 
   const val AUDIO_BITRATE_KBPS = 128
 
+  /** Tellomi（V-6）：静音当 GIF 发时用的档。 */
+  const val MUTED_SHORT_EDGE = 480
+
   val LEVELS: List<Level> = listOf(
     Level(shortEdge = 270, videoBitrateMbps = 0.6f),
     Level(shortEdge = 480, videoBitrateMbps = 1.0f),
@@ -64,6 +67,20 @@ object TellomiVideoQuality {
       audioBitrateKbps = AUDIO_BITRATE_KBPS,
       maxDurationSec = maxDurationSeconds(level, maxUploadBytes)
     )
+  }
+
+  /**
+   * Tellomi（tellomi/tellomi#1518 V-6，owner 2026-10-14 照 TG 两端）：静音的视频当 GIF 发，画质固定在 480p 这一档（TG 安卓静音时强制
+   * 长边 854，TG iOS 848）；原片短边更小就照原片，不放大。
+   */
+  fun mutedTiers(sourceShortEdge: Int, maxUploadBytes: Long): List<QualityTier> {
+    val level = level(MUTED_SHORT_EDGE)!!
+    val tier = tier(level, maxUploadBytes)
+    return if (sourceShortEdge in 2 until MUTED_SHORT_EDGE) {
+      listOf(tier.copy(resolution = sourceShortEdge and 1.inv()))
+    } else {
+      listOf(tier)
+    }
   }
 
   /** [tier] for a stored short edge, or null if it is not one of the levels. */

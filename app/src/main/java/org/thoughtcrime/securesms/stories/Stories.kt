@@ -344,7 +344,8 @@ object Stories {
           error("Illegal clip: $startTimeUs > $endTimeUs for clip $clipIndex")
         }
 
-        TransformProperties(false, true, startTimeUs, endTimeUs, media.transformProperties?.sentMediaQuality ?: SentMediaQuality.STANDARD.code, false)
+        // Tellomi（tellomi/tellomi#1518 V-6）：静音当 GIF 发的视频切成快拍片段时也要去音轨。
+        TransformProperties(false, true, startTimeUs, endTimeUs, media.transformProperties?.sentMediaQuality ?: SentMediaQuality.STANDARD.code, false, videoMuted = media.transformProperties?.videoMuted ?: false)
       }.map { transformMedia(media, it) }
     }
 
