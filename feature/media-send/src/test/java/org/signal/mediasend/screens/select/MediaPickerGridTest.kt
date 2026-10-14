@@ -245,6 +245,18 @@ class MediaPickerGridTest {
     assertThat(events).contains(MediaSelectScreenEvents.SendWithQuality(SentMediaQuality.HIGH))
   }
 
+  // V-7 / O4（照 Telegram 安卓 getSelectedPhotosCount）：选的全是静态图才有高清项。
+
+  @Test
+  fun `Given a photo and a video, when the more menu is opened, then there is no high quality`() {
+    val video = MEDIA[2].copy(uri = "content://media/video".toUri(), contentType = "video/mp4", duration = 75_000)
+    setContent(selectedMedia = listOf(MEDIA[0], video), items = MEDIA.take(2) + video, sendOptions = MediaSelectState.SendOptions(canSendSeparately = true))
+
+    composeTestRule.onNode(hasContentDescription("More options")).performClick()
+    composeTestRule.onNodeWithText("Send Separately").assertIsDisplayed()
+    composeTestRule.onNodeWithText("Send in High Quality").assertDoesNotExist()
+  }
+
   @Test
   fun `Given the default is already high, when the more menu is opened, then it offers standard quality instead`() {
     setContent(selectedMedia = MEDIA.take(1), sendOptions = MediaSelectState.SendOptions(sentMediaQuality = SentMediaQuality.HIGH))

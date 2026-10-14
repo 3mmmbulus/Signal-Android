@@ -609,7 +609,10 @@ private enum class MoreMenuItem {
 
 @Composable
 private fun rememberMoreMenuItems(state: MediaSelectState.Files): List<MoreMenuItem> {
-  val hasPhoto = state.selectedMedia.any { ContentTypeUtil.isImageType(it.contentType) && !ContentTypeUtil.isGif(it.contentType) }
+  // Tellomi（tellomi/tellomi#1518 V-7，O4 取 Telegram 安卓 `ChatAttachAlertPhotoLayout` 的规则：已选数 = `getSelectedPhotosCount()` 时
+  // 才有高清项）：选的全是静态图才有，里面有视频或 GIF 就没有；裁剪、画过的照片照样算。
+  val hasPhoto = state.selectedMedia.isNotEmpty() &&
+    state.selectedMedia.all { ContentTypeUtil.isImageType(it.contentType) && !ContentTypeUtil.isGif(it.contentType) }
   val options = state.sendOptions
   val hasCaption = !options.message.isNullOrBlank()
   return remember(hasPhoto, hasCaption, state.selectedMedia.size, options.sentMediaQuality, options.canSendSeparately, options.canSendAsFile, options.canMoveCaption, options.isCaptionAboveMedia, options.isViewOnceEnabled) {
