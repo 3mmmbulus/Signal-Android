@@ -103,6 +103,14 @@ class ImageAdjustmentsGlTest {
     assertMaxDifference(ImageAdjustmentsRenderer.applyOnCpu(source, pass), gl.render(source, pass), 4)
   }
 
+  /** E5-9：美肤在 GPU 上和 CPU 上一样。 */
+  @Test
+  fun skinGpuMatchesCpu() {
+    val source = gradient(2048 + 300, 300)
+    val pass = ImageAdjustmentsRenderer.pass(adjustments.copy(skin = 90f, enhance = 40f), tiltedFrame, true, source)
+    assertMaxDifference(ImageAdjustmentsRenderer.applyOnCpu(source, pass), gl.render(source, pass), 4)
+  }
+
   /** 半透明的像素按没预乘的颜色查表，alpha 不变；颜色空间跟着原图。 */
   @Test
   fun keepsAlphaAndColorSpace() {

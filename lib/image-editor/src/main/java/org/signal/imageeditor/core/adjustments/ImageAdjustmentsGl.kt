@@ -22,7 +22,7 @@ import java.nio.FloatBuffer
 import kotlin.math.ceil
 
 /**
- * Tellomi（tellomi/tellomi#1592 E5-2、#1595 E5-5、#1598 E5-8、#1599 E5-9）：用 GLES 2.0 离屏把调色画进一张位图：锐化 → 增强 → 查找表 → 颗粒 → 暗角 → 模糊（[ImageAdjustmentsDetail]）。
+ * Tellomi（tellomi/tellomi#1592 E5-2、#1595 E5-5、#1598 E5-8、#1599 E5-9）：用 GLES 2.0 离屏把调色画进一张位图：锐化 → 美肤 → 增强 → 查找表 → 颗粒 → 暗角 → 模糊（[ImageAdjustmentsDetail]）。
  *
  * 只在 [ImageAdjustmentsRenderer] 的 GL 线程上用：EGL 上下文建在那条线程上，一直是它的当前上下文。
  * 图比 `GL_MAX_TEXTURE_SIZE`（再封顶 [MAX_TILE]）大时分块画；锐化要取旁边的像素，每块四周多传一圈重叠边（[apron]），只取中间那块写回。
@@ -61,6 +61,8 @@ internal class ImageAdjustmentsGl private constructor(
   private val blurNormalHandle = GLES20.glGetUniformLocation(program, "uBlurNormal")
   private val enhanceHandle = GLES20.glGetUniformLocation(program, "uEnhance")
   private val enhanceLutHandle = GLES20.glGetUniformLocation(program, "uEnhanceLut")
+  private val skinHandle = GLES20.glGetUniformLocation(program, "uSkin")
+  private val skinTextureHandle = GLES20.glGetUniformLocation(program, "uSkinTex")
 
   /**
    * 这一次怎么画：[lut] 为 null 时不查表；[sharpen] / [grain] / [vignette] 是着色器里直接用的量（倍数、振幅、值/100），0 = 不做；
@@ -75,7 +77,9 @@ internal class ImageAdjustmentsGl private constructor(
     val frame: ImageAdjustmentsDetail.VignetteFrame,
     val blur: BlurPass? = null,
     val enhance: Float = 0f,
-    val enhanceLuts: ByteArray? = null
+    val enhanceLuts: ByteArray? = null,
+    val skin: Float = 0f,
+    val skinSmall: Bitmap? = null
   )
 
   /** 模糊：[small] 是模糊好的小图（没查表）；[kind] 1 径向、2 线性；中心是单位坐标；半径、法线在「短边 = 1」的单位里。 */
@@ -101,9 +105,9 @@ internal class ImageAdjustmentsGl private constructor(
     val output = ImageAdjustmentsRenderer.createOutput(source)
     val unit = ImageAdjustmentsDetail.unit(maxOf(source.width, source.height))
 
-    val textures = IntArray(6)
+    val textures = IntArray(7)
     val framebuffers = IntArray(1)
-    GLES20.glGenTextures(6, textures, 0)
+    GLES20.glGenTextures(7, textures, 0)
     GLES20.glGenFramebuffers(1, framebuffers, 0)
     val lutTexture = textures[0]
     val imageTexture = textures[1]
@@ -111,6 +115,7 @@ internal class ImageAdjustmentsGl private constructor(
     val noiseTexture = textures[3]
     val blurTexture = textures[4]
     val enhanceTexture = textures[5]
+    val skinTexture = textures[6]
     try {
       GLES20.glUseProgram(program)
       GLES20.glPixelStorei(GLES20.GL_UNPACK_ALIGNMENT, 1)
@@ -169,6 +174,18 @@ internal class ImageAdjustmentsGl private constructor(
       GLES20.glUniform1i(enhanceLutHandle, 4)
       GLES20.glUniform1f(enhanceHandle, if (enhanceLuts != null) pass.enhance else 0f)
 
+      // 美肤「磨过的」小图：整张一个纹理，按单位坐标取。
+      GLES20.glActiveTexture(GLES20.GL_TEXTURE5)
+      bindTexture(skinTexture, GLES20.GL_LINEAR)
+      val skinSmall = pass.skinSmall
+      if (pass.skin > 0f && skinSmall != null) {
+        GLUtils.texImage2D(GLES20.GL_TEXTURE_2D, 0, skinSmall, 0)
+      } else {
+        GLES20.glTexImage2D(GLES20.GL_TEXTURE_2D, 0, GLES20.GL_RGBA, 1, 1, 0, GLES20.GL_RGBA, GLES20.GL_UNSIGNED_BYTE, ByteBuffer.allocateDirect(4))
+      }
+      GLES20.glUniform1i(skinTextureHandle, 5)
+      GLES20.glUniform1f(skinHandle, if (skinSmall != null) pass.skin else 0f)
+
       GLES20.glUniform1i(imageHandle, 0)
       GLES20.glUniform1f(stepHandle, unit)
       GLES20.glUniform1f(sharpenHandle, pass.sharpen)
@@ -221,7 +238,7 @@ internal class ImageAdjustmentsGl private constructor(
     } finally {
       GLES20.glBindFramebuffer(GLES20.GL_FRAMEBUFFER, 0)
       GLES20.glDeleteFramebuffers(1, framebuffers, 0)
-      GLES20.glDeleteTextures(6, textures, 0)
+      GLES20.glDeleteTextures(7, textures, 0)
     }
   }
 
@@ -319,6 +336,12 @@ internal class ImageAdjustmentsGl private constructor(
       uniform vec2 uBlurNormal;
       uniform float uEnhance;
       uniform sampler2D uEnhanceLut;
+      uniform float uSkin;
+      uniform sampler2D uSkinTex;
+
+      float window(float x, float lo, float hi, float feather) {
+        return smoothstep(lo - feather, lo, x) * (1.0 - smoothstep(hi, hi + feather, x));
+      }
 
       float enhanceLookup(vec2 tile, float x) {
         return texture2D(uEnhanceLut, vec2(x, (tile.y * 4.0 + tile.x + 0.5) / 16.0)).r;
@@ -352,6 +375,19 @@ internal class ImageAdjustmentsGl private constructor(
         vec3 rgb = color.a > 0.0 ? clamp(color.rgb / color.a, 0.0, 1.0) : vec3(0.0);
         vec2 pixel = uOrigin + vTexCoord / uTexel;
         vec2 unitPos = pixel / uImageSize;
+
+        if (uSkin > 0.0) {
+          vec4 smoothed = texture2D(uSkinTex, unitPos);
+          if (smoothed.a > 0.0) {
+            vec3 s = clamp(smoothed.rgb / smoothed.a, 0.0, 1.0);
+            vec3 v255 = s * 255.0;
+            float cb = 128.0 - 0.168736 * v255.r - 0.331264 * v255.g + 0.5 * v255.b;
+            float cr = 128.0 + 0.5 * v255.r - 0.418688 * v255.g - 0.081312 * v255.b;
+            float skinWeight = window(cr, 136.0, 172.0, 6.0) * window(cb, 85.0, 128.0, 6.0);
+            float keep = 1.0 - smoothstep(0.04, 0.12, abs(dot(rgb - s, vec3(0.2126, 0.7152, 0.0722))));
+            rgb = mix(rgb, s, 0.8 * uSkin * skinWeight * keep);
+          }
+        }
 
         if (uEnhance > 0.0) {
           float v = max(rgb.r, max(rgb.g, rgb.b));

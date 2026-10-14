@@ -39,6 +39,7 @@ object ImageAdjustmentsRenderer {
   private var cachedLut: Pair<ImageAdjustments, ByteArray>? = null
   private var cachedBlur: Pair<Bitmap, Bitmap>? = null
   private var cachedEnhance: Pair<Bitmap, ByteArray>? = null
+  private var cachedSkin: Pair<Bitmap, Bitmap>? = null
 
   fun interface Callback {
     /** 在主线程回调；出错时是 null。 */
@@ -130,8 +131,15 @@ object ImageAdjustmentsRenderer {
       frame = frame,
       blur = blurPass,
       enhance = if (detail) ImageAdjustmentsDetail.ENHANCE_STRENGTH * adjustments.enhance / 100f else 0f,
-      enhanceLuts = if (detail && source != null && adjustments.enhance > 0f) enhanceLuts(source) else null
+      enhanceLuts = if (detail && source != null && adjustments.enhance > 0f) enhanceLuts(source) else null,
+      skin = if (detail) adjustments.skin / 100f else 0f,
+      skinSmall = if (detail && source != null && adjustments.skin > 0f) smoothedSmall(source) else null
     )
+  }
+
+  private fun smoothedSmall(source: Bitmap): Bitmap {
+    cachedSkin?.let { (cachedSource, small) -> if (cachedSource === source && !small.isRecycled) return small }
+    return ImageAdjustmentsDetail.smoothedSmall(source).also { cachedSkin = source to it }
   }
 
   private fun enhanceLuts(source: Bitmap): ByteArray {
@@ -164,7 +172,7 @@ object ImageAdjustmentsRenderer {
     val height = source.height
     val pixels = IntArray(width * height)
     source.getPixels(pixels, 0, width, 0, 0, width, height)
-    ImageAdjustmentsDetail.applyOnCpu(pixels, width, height, pass.lut, pass.lutSize, pass.sharpen, pass.grain, pass.vignette, pass.frame, pass.blur, pass.enhance, pass.enhanceLuts)
+    ImageAdjustmentsDetail.applyOnCpu(pixels, width, height, pass.lut, pass.lutSize, pass.sharpen, pass.grain, pass.vignette, pass.frame, pass.blur, pass.enhance, pass.enhanceLuts, pass.skin, pass.skinSmall)
     return createOutput(source).apply { setPixels(pixels, 0, width, 0, 0, width, height) }
   }
 

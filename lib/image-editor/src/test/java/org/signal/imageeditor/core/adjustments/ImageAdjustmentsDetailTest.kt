@@ -236,6 +236,42 @@ class ImageAdjustmentsDetailTest {
     assertNull(ImageAdjustmentsRenderer.pass(adjustments, ImageAdjustmentsDetail.VignetteFrame.FULL_IMAGE, false, flat).enhanceLuts)
   }
 
+  /** E5-9：两端同一套：小图方框模糊的半径、肤色权重、边缘保留。和 iOS `testSkinMatchesTheSharedReferenceValues` 同一组。 */
+  @Test
+  fun skinMatchesTheSharedReferenceValues() {
+    assertEquals(3, ImageAdjustmentsDetail.skinRadius(768))
+    assertEquals(2, ImageAdjustmentsDetail.skinRadius(400))
+    assertEquals(1, ImageAdjustmentsDetail.skinRadius(100))
+
+    assertEquals(1f, ImageAdjustmentsDetail.skinWeight(224 / 255f, 172 / 255f, 140 / 255f), 1e-5f)
+    assertEquals(0f, ImageAdjustmentsDetail.skinWeight(1f, 1f, 1f), 1e-5f)
+    assertEquals(0f, ImageAdjustmentsDetail.skinWeight(0.2f, 0.4f, 0.9f), 1e-5f)
+    assertEquals(0.97305f, ImageAdjustmentsDetail.skinWeight(0.7f, 0.65f, 0.6f), 1e-4f)
+    assertEquals(0.13426f, ImageAdjustmentsDetail.skinWeight(0.68f, 0.66f, 0.62f), 1e-4f)
+
+    assertEquals(1f, ImageAdjustmentsDetail.skinEdgeKeep(0f), 1e-6f)
+    assertEquals(0.95703f, ImageAdjustmentsDetail.skinEdgeKeep(0.05f), 1e-5f)
+    assertEquals(0.5f, ImageAdjustmentsDetail.skinEdgeKeep(0.08f), 1e-5f)
+    assertEquals(0f, ImageAdjustmentsDetail.skinEdgeKeep(0.2f), 1e-6f)
+  }
+
+  /** E5-9：美肤只磨肤色：左半边带细纹理的肤色磨平了，右半边带同样纹理的蓝色不动。 */
+  @Test
+  fun skinSmoothsSkinOnly() {
+    val pixels = IntArray(400 * 300) { i ->
+      val x = i % 400
+      val y = i / 400
+      val bump = if ((x + y) % 2 == 0) 0.03f else -0.03f
+      val c = if (x < 200) floatArrayOf(0.85f + bump, 0.62f + bump, 0.52f + bump) else floatArrayOf(0.2f + bump, 0.4f + bump, 0.9f + bump)
+      Color.argb(255, (c[0] * 255 + 0.5f).toInt(), (c[1] * 255 + 0.5f).toInt(), (c[2] * 255 + 0.5f).toInt())
+    }
+    val image = Bitmap.createBitmap(pixels, 400, 300, Bitmap.Config.ARGB_8888)
+    val output = ImageAdjustmentsRenderer.applyOnCpu(image, ImageAdjustmentsRenderer.pass(ImageAdjustments(skin = 100f), ImageAdjustmentsDetail.VignetteFrame.FULL_IMAGE, true, image))
+    fun ripple(bitmap: Bitmap, x: Int) = kotlin.math.abs(red(bitmap, x, 150) - red(bitmap, x + 1, 150))
+    assertTrue("肤色磨平了", ripple(output, 100) < ripple(image, 100) * 0.4f)
+    assertEquals("蓝色不动", ripple(image, 300), ripple(output, 300), 1f / 255f)
+  }
+
   /** 分块要的重叠边：锐化取样最远 u 个像素，再加一个给线性插值。 */
   @Test
   fun apronCoversTheSharpenTaps() {

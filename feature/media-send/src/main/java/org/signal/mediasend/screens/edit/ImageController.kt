@@ -25,6 +25,7 @@ import org.signal.imageeditor.core.model.EditorModel
 import org.signal.imageeditor.core.model.ImageAdjustments
 import org.signal.imageeditor.core.renderers.BezierDrawingRenderer
 import org.signal.imageeditor.core.renderers.MultiLineTextRenderer
+import org.signal.mediasend.screens.edit.image.AVAILABLE_TOOLS
 import org.signal.mediasend.screens.edit.image.BrushTool
 import org.signal.mediasend.screens.edit.image.BrushWidthsState
 import org.signal.mediasend.screens.edit.image.CropAspectRatio
@@ -155,6 +156,32 @@ internal class ImageController(
   /** Tellomi（tellomi/tellomi#1597 E5-7）：曲线页签里在改哪一条。 */
   var curveChannel: ImageAdjustments.CurveChannel by mutableStateOf(ImageAdjustments.CurveChannel.ALL)
     private set
+
+  /**
+   * Tellomi（tellomi/tellomi#1599 E5-9）：照片里认出人脸没有（null = 还没找）。美肤这一行照两端 TG 只在有人脸时出现
+   * （TG 安卓 `PhotoFilterView` 的 `hasFaces`、TG iOS 的 `requiresFaces`）。
+   */
+  var adjustHasFaces: Boolean? by mutableStateOf(null)
+    private set
+
+  /** Tellomi（tellomi/tellomi#1599 E5-9）：调色页打开时找一次人脸（和「打码人脸」共用那次检测的结果）。 */
+  suspend fun detectFacesForAdjustments(context: Context) {
+    if (adjustHasFaces != null) {
+      return
+    }
+    val result = cachedFaceDetection?.takeIf { it.matches(editorModel) } ?: withContext(Dispatchers.Default) {
+      detectFaces(context, editorModel, imageEditorState.typefaceProvider)
+    }
+    onAdjustFacesDetected(result.faces.isNotEmpty())
+  }
+
+  internal fun onAdjustFacesDetected(hasFaces: Boolean) {
+    adjustHasFaces = hasFaces
+  }
+
+  /** Tellomi（tellomi/tellomi#1599 E5-9）：调色页列哪些工具：有人脸（或已经磨过）时美肤排第一，然后是 [AVAILABLE_TOOLS]。 */
+  val adjustmentTools: List<ImageAdjustments.Tool>
+    get() = if (adjustHasFaces == true || adjustments.skin > 0f) listOf(ImageAdjustments.Tool.SKIN) + AVAILABLE_TOOLS else AVAILABLE_TOOLS
 
   enum class AdjustTab {
     TOOLS,

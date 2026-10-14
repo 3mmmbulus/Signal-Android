@@ -20,7 +20,7 @@ import kotlin.math.sqrt
  * Tellomi（tellomi/tellomi#1595 E5-5、#1598 E5-8、#1599 E5-9，Epic #1523）：调色里和位置有关的几项——锐化、增强、颗粒、暗角、模糊（移轴）——的定义和 CPU 实现。
  * GPU 上同样的算法在 [ImageAdjustmentsGl] 的着色器里；和 iOS `TellomiImageAdjustments.metal` 是同一套（自己定的，Telegram 的着色器一行不搬）。
  *
- * 都在编码值（0…1）上算；顺序：锐化 → 增强 → 查找表（[ImageAdjustmentsColor]）→ 颗粒 → 暗角 → 模糊（照两端 Telegram，只是增强挪到锐化后面）。
+ * 都在编码值（0…1）上算；顺序：锐化 → 美肤 → 增强 → 查找表（[ImageAdjustmentsColor]）→ 颗粒 → 暗角 → 模糊（照两端 Telegram，只是美肤、增强挪到锐化后面）。
  * 尺寸用一个「格」u = max(1, 长边 / 2048) 像素量：预览图（长边 ≤ 2048）上 u = 1，原尺寸图上按比例放大，预览和发出的图看起来一样。
  * - 锐化：c' = c + 2.5·(值/100)·(c − 模糊)，模糊是以 u 为一格的 3×3 帐篷核（1 2 1 / 2 4 2 / 1 2 1，除以 16），图边外取最靠边的像素。
  * - 颗粒：[NOISE]（256 × 256，四边循环）按 2u 像素一格双线性插值，c' = c + 0.06·(值/100)·w(y)·n，w(y) = 1 − |2y − 1|³，单色。只用于照片。
@@ -31,6 +31,8 @@ import kotlin.math.sqrt
  *   这个像素 = mix(清楚的, 模糊的, m)。内半径 = `falloff`、外半径 = `size`（照两端 TG 的控件）。
  *   安卓照 TG 安卓存的角度是那条线的法线方向（π/2 = 横线），法线 = (cos, sin)；iOS 存的是线的方向。
  * - 增强（E5-9）：分块直方图均衡（CLAHE），见 [enhanceLuts]；v' = v + (查到的 − v)·0.6·(值/100)，三个通道按 v'/v 缩放。
+ * - 美肤（E5-9）：原图缩到长边 ≤ 768，三遍方框模糊（[skinRadius]）放大回去当「磨过的」；肤色权重 [skinWeight]、边缘保留 [skinEdgeKeep]，
+ *   c' = mix(c, 磨过的, 0.8·(值/100)·肤色·边缘)。只在照片里认出人脸时出现这一行（两端 TG 都是）。
  */
 object ImageAdjustmentsDetail {
 
@@ -193,6 +195,36 @@ object ImageAdjustmentsDetail {
     return enhanceLuts(values, width, height)
   }
 
+  /** 美肤「磨过的」小图长边上限。 */
+  const val SKIN_SMALL_LONG_SIDE = 768
+
+  /** 小图上三遍方框模糊的半径：长边的 0.4%，四舍五入，至少 1（768 上是 3）。iOS 一样。 */
+  @JvmStatic
+  fun skinRadius(longSide: Int): Int = max(1, (0.004f * longSide).roundToInt())
+
+  /** 肤色权重：(r, g, b) 是磨过的颜色（0…1），换成 YCbCr（BT.601，0…255），Cr 在 [136, 172]、Cb 在 [85, 128]，两头各 6 的过渡。 */
+  @JvmStatic
+  fun skinWeight(r: Float, g: Float, b: Float): Float {
+    val cb = 128f - 0.168736f * r * 255f - 0.331264f * g * 255f + 0.5f * b * 255f
+    val cr = 128f + 0.5f * r * 255f - 0.418688f * g * 255f - 0.081312f * b * 255f
+    return window(cr, 136f, 172f, 6f) * window(cb, 85f, 128f, 6f)
+  }
+
+  /** 边缘保留：原来的和磨过的亮度差 [difference] 越大越不磨，1 − smoothstep(0.04, 0.12, e)。 */
+  @JvmStatic
+  fun skinEdgeKeep(difference: Float): Float = 1f - smoothstep(0.04f, 0.12f, difference)
+
+  private fun window(x: Float, low: Float, high: Float, feather: Float): Float = smoothstep(low - feather, low, x) * (1f - smoothstep(high, high + feather, x))
+
+  private fun smoothstep(edge0: Float, edge1: Float, x: Float): Float {
+    val t = ((x - edge0) / (edge1 - edge0)).coerceIn(0f, 1f)
+    return t * t * (3f - 2f * t)
+  }
+
+  /** 美肤「磨过的」小图：缩到长边 ≤ 768，每个通道横、竖各三遍方框模糊。 */
+  @JvmStatic
+  fun smoothedSmall(source: Bitmap): Bitmap = boxBlurredSmall(source, SKIN_SMALL_LONG_SIDE) { skinRadius(it) }
+
   /** 模糊用的小图长边上限。 */
   const val BLUR_SMALL_LONG_SIDE = 512
 
@@ -249,9 +281,12 @@ object ImageAdjustmentsDetail {
 
   /** 模糊用的小图：缩到长边 ≤ 512，每个通道横、竖各三遍方框模糊（ARGB，按 `getPixels` 给的没预乘的值做）。 */
   @JvmStatic
-  fun blurredSmall(source: Bitmap): Bitmap {
+  fun blurredSmall(source: Bitmap): Bitmap = boxBlurredSmall(source, BLUR_SMALL_LONG_SIDE) { blurRadius(it) }
+
+  /** 缩到长边 ≤ [maximum]，每个通道横、竖各三遍方框模糊（半径由缩好的长边定）。 */
+  private fun boxBlurredSmall(source: Bitmap, maximum: Int, radiusFor: (Int) -> Int): Bitmap {
     val longSide = max(source.width, source.height)
-    val scale = min(1f, BLUR_SMALL_LONG_SIDE / longSide.toFloat())
+    val scale = min(1f, maximum / longSide.toFloat())
     val width = max(1, (source.width * scale).roundToInt())
     val height = max(1, (source.height * scale).roundToInt())
     val small = if (width == source.width && height == source.height) source else Bitmap.createScaledBitmap(source, width, height, true)
@@ -259,7 +294,7 @@ object ImageAdjustmentsDetail {
     small.getPixels(pixels, 0, width, 0, 0, width, height)
     if (small !== source) small.recycle()
 
-    val radius = blurRadius(max(width, height))
+    val radius = radiusFor(max(width, height))
     for (shift in intArrayOf(24, 16, 8, 0)) {
       repeat(3) {
         for (y in 0 until height) {
@@ -317,8 +352,12 @@ object ImageAdjustmentsDetail {
     frame: VignetteFrame,
     blur: ImageAdjustmentsGl.BlurPass? = null,
     enhance: Float = 0f,
-    enhanceLuts: ByteArray? = null
+    enhanceLuts: ByteArray? = null,
+    skin: Float = 0f,
+    skinSmall: Bitmap? = null
   ) {
+    val skinPixels = skinSmall?.let { small -> IntArray(small.width * small.height).also { small.getPixels(it, 0, small.width, 0, 0, small.width, small.height) } }
+    val smooth = FloatArray(3)
     val u = unit(max(width, height))
     val blurPixels = blur?.small?.let { small -> IntArray(small.width * small.height).also { small.getPixels(it, 0, small.width, 0, 0, small.width, small.height) } }
     val blurColor = FloatArray(3)
@@ -342,6 +381,18 @@ object ImageAdjustmentsDetail {
           tentBlur(source, width, height, x + 0.5f, y + 0.5f, u, tent)
           for (i in 0..2) {
             rgb[i] = (rgb[i] + sharpen * (rgb[i] - tent[i])).coerceIn(0f, 1f)
+          }
+        }
+
+        if (skin > 0f && skinSmall != null && skinPixels != null) {
+          bilinear(skinPixels, skinSmall.width, skinSmall.height, (x + 0.5f) / width * skinSmall.width, (y + 0.5f) / height * skinSmall.height, smooth)
+          val weight = skinWeight(smooth[0], smooth[1], smooth[2])
+          if (weight > 0f) {
+            val difference = abs((rgb[0] - smooth[0]) * LUMA_R + (rgb[1] - smooth[1]) * LUMA_G + (rgb[2] - smooth[2]) * LUMA_B)
+            val m = 0.8f * skin * weight * skinEdgeKeep(difference)
+            for (i in 0..2) {
+              rgb[i] = rgb[i] + (smooth[i] - rgb[i]) * m
+            }
           }
         }
 

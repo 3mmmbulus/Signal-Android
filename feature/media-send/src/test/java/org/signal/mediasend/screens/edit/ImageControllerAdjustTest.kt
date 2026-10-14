@@ -224,6 +224,23 @@ class ImageControllerAdjustTest {
     assertEquals("转了 −90°", linear.angle - (Math.PI / 2).toFloat(), turned.angle, 1e-4f)
   }
 
+  /** E5-9：美肤只在认出人脸（或已经磨过）时出现，排第一。 */
+  @Test
+  fun `soften skin is listed first only when there are faces`() {
+    assertFalse(controller.adjustmentTools.contains(ImageAdjustments.Tool.SKIN))
+    controller.onAdjustFacesDetected(false)
+    assertFalse(controller.adjustmentTools.contains(ImageAdjustments.Tool.SKIN))
+    controller.onAdjustFacesDetected(true)
+    assertEquals(ImageAdjustments.Tool.SKIN, controller.adjustmentTools.first())
+    assertEquals(AVAILABLE_TOOLS, controller.adjustmentTools.drop(1))
+
+    controller.onAdjustFacesDetected(false)
+    controller.beginAdjustEdit()
+    controller.setAdjustment(ImageAdjustments.Tool.SKIN, 30f)
+    assertEquals("已经磨过的照片直接有这一行", ImageAdjustments.Tool.SKIN, controller.adjustmentTools.first())
+    controller.cancelEdit()
+  }
+
   @Test
   fun `back leaves the panel like cancel`() {
     controller.beginAdjustEdit()

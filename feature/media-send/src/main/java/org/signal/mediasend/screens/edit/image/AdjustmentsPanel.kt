@@ -42,6 +42,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.ProgressBarRangeInfo
@@ -69,6 +70,12 @@ import kotlin.math.roundToInt
  */
 @Composable
 internal fun AdjustmentsPanel(controller: ImageController, modifier: Modifier = Modifier) {
+  // Tellomi（tellomi/tellomi#1599 E5-9）：找人脸，找到了美肤一行出现在最上面。
+  val context = LocalContext.current
+  LaunchedEffect(controller) {
+    controller.detectFacesForAdjustments(context)
+  }
+
   // 照 Telegram 安卓：列表区高度固定（约四行半），工具多了在里面上下滚，不往上盖住照片。
   Column(
     modifier = modifier
@@ -78,7 +85,7 @@ internal fun AdjustmentsPanel(controller: ImageController, modifier: Modifier = 
       .heightIn(max = 180.dp)
       .verticalScroll(rememberScrollState())
   ) {
-    AVAILABLE_TOOLS.forEach { tool ->
+    controller.adjustmentTools.forEach { tool ->
       AdjustmentRow(
         tool = tool,
         value = controller.adjustments[tool],
