@@ -94,6 +94,10 @@ internal class ImageController(
   var textAlign: MultiLineTextRenderer.Align by mutableStateOf(MultiLineTextRenderer.Align.CENTER)
     private set
 
+  /** Tellomi（tellomi/tellomi#1522 E-4）：正在编辑 / 选中的那段文字的字体，字体键跟着它。 */
+  var textFont: MultiLineTextRenderer.Font by mutableStateOf(MultiLineTextRenderer.Font.DEFAULT)
+    private set
+
   val textColorBarState = HSVColorBarState()
   val drawColorBarState = HSVColorBarState()
 
@@ -498,7 +502,10 @@ internal class ImageController(
     transitionTo(Mode.TEXT)
     textEditingElement = element
     imageEditorState.textEditingElement = element
-    (element.renderer as? MultiLineTextRenderer)?.let { textAlign = it.align }
+    (element.renderer as? MultiLineTextRenderer)?.let {
+      textAlign = it.align
+      textFont = it.font
+    }
     editorModel.addFade()
     editorModel.setSelectionVisible(false)
     (element.renderer as? MultiLineTextRenderer)?.setFocused(true)
@@ -566,6 +573,15 @@ internal class ImageController(
   }
 
   /** Tellomi（tellomi/tellomi#1522 E-4）：对齐按 左 → 中 → 右 循环（照 Telegram 安卓 `PaintTextOptionsView` 的 `(currentAlign + 1) % 3`）。 */
+  /** Tellomi（tellomi/tellomi#1522 E-4）：换下一个字体（照 Telegram 两端文字工具的字体列表）。 */
+  fun nextTextFont() {
+    val element = textEditingElement ?: selectedElement
+    val renderer = element?.renderer as? MultiLineTextRenderer ?: return
+    renderer.font = renderer.font.next()
+    textFont = renderer.font
+    imageEditorState.invalidate()
+  }
+
   fun nextTextAlign() {
     val element = textEditingElement ?: selectedElement
     val renderer = element?.renderer as? MultiLineTextRenderer ?: return
@@ -613,7 +629,10 @@ internal class ImageController(
     (element.renderer as? SelectableRenderer)?.onSelected(true)
     editorModel.setSelected(element)
     selectedElement = element
-    (element.renderer as? MultiLineTextRenderer)?.let { textAlign = it.align }
+    (element.renderer as? MultiLineTextRenderer)?.let {
+      textAlign = it.align
+      textFont = it.font
+    }
 
     if (isPaintMode) {
       syncDrawingState()

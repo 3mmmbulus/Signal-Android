@@ -7,6 +7,7 @@ import android.graphics.Paint;
 import android.graphics.Path;
 import android.graphics.Rect;
 import android.graphics.RectF;
+import android.graphics.Typeface;
 import android.os.Build;
 import android.os.Parcel;
 import android.view.animation.Interpolator;
@@ -19,6 +20,7 @@ import androidx.annotation.VisibleForTesting;
 import org.signal.core.util.DimensionUnit;
 import org.signal.imageeditor.core.Bounds;
 import org.signal.imageeditor.core.ColorableRenderer;
+import org.signal.imageeditor.core.Renderer;
 import org.signal.imageeditor.core.RendererContext;
 import org.signal.imageeditor.core.SelectableRenderer;
 
@@ -59,6 +61,9 @@ public final class MultiLineTextRenderer extends InvalidateableRenderer implemen
   private boolean hasFocus;
   private Mode    mode;
   private Align   align = Align.CENTER;
+  private Font    font  = Font.DEFAULT;
+  /** The font the lines were last measured in; lines are measured with the paint, which only gets its typeface in render. */
+  private @Nullable Font measuredFont;
 
   private List<Line> lines = emptyList();
 
@@ -74,8 +79,13 @@ public final class MultiLineTextRenderer extends InvalidateableRenderer implemen
   }
 
   public MultiLineTextRenderer(@Nullable String text, @ColorInt int color, @NonNull Mode mode, @NonNull Align align) {
+    this(text, color, mode, align, Font.DEFAULT);
+  }
+
+  public MultiLineTextRenderer(@Nullable String text, @ColorInt int color, @NonNull Mode mode, @NonNull Align align, @NonNull Font font) {
     this.mode  = mode;
     this.align = align;
+    this.font  = font;
 
     modePaint.setAntiAlias(true);
     modePaint.setTextSize(100);
@@ -101,6 +111,15 @@ public final class MultiLineTextRenderer extends InvalidateableRenderer implemen
 
     paint.setTypeface(rendererContext.typefaceProvider.getSelectedTypeface(rendererContext.context, this, rendererContext.invalidate));
     modePaint.setTypeface(rendererContext.typefaceProvider.getSelectedTypeface(rendererContext.context, this, rendererContext.invalidate));
+
+    // Tellomi (tellomi/tellomi#1522 E-4): a font changes the width of every line, so measure again in the new typeface.
+    if (measuredFont != font) {
+      measuredFont = font;
+      for (Line line : lines) {
+        line.recalculate();
+      }
+      updateAlignment();
+    }
 
     float height = 0;
     float width  = 0;
@@ -139,6 +158,21 @@ public final class MultiLineTextRenderer extends InvalidateableRenderer implemen
    */
   public @NonNull Align getAlign() {
     return align;
+  }
+
+  /**
+   * Tellomi (tellomi/tellomi#1522 E-4, as Telegram's text font list): the font this text is drawn in. The typeface
+   * providers ask for it, so the editor and the sent image use the same one.
+   */
+  public @NonNull Font getFont() {
+    return font;
+  }
+
+  public void setFont(@NonNull Font font) {
+    if (this.font != font) {
+      this.font = font;
+      invalidate();
+    }
   }
 
   public void setAlign(@NonNull Align align) {
@@ -563,7 +597,8 @@ public final class MultiLineTextRenderer extends InvalidateableRenderer implemen
       Mode   mode  = Mode.fromCode(in.readInt());
       // Tellomi (tellomi/tellomi#1522 E-4): written last, so state saved before it existed still reads.
       Align  align = in.dataAvail() > 0 ? Align.fromCode(in.readInt()) : Align.CENTER;
-      return new MultiLineTextRenderer(text, color, mode, align);
+      Font   font  = in.dataAvail() > 0 ? Font.fromCode(in.readInt()) : Font.DEFAULT;
+      return new MultiLineTextRenderer(text, color, mode, align, font);
     }
 
     @Override
@@ -583,6 +618,7 @@ public final class MultiLineTextRenderer extends InvalidateableRenderer implemen
     dest.writeInt(color);
     dest.writeInt(mode.code);
     dest.writeInt(align.code);
+    dest.writeInt(font.code);
   }
 
   private static Interpolator pulseInterpolator() {
@@ -660,5 +696,62 @@ public final class MultiLineTextRenderer extends InvalidateableRenderer implemen
       }
       return CENTER;
     }
+  }
+
+  /**
+   * Tellomi (tellomi/tellomi#1522 E-4): the fonts text can be drawn in. After the default come Telegram Android's built-in
+   * text fonts ({@code PaintTypeface.BUILT_IN_FONTS}), as the Android system families closest to them; Merriweather is left
+   * out because it would have to be bundled.
+   */
+  public enum Font {
+    DEFAULT(0, null, Typeface.NORMAL),
+    MEDIUM(1, "sans-serif-medium", Typeface.NORMAL),
+    ITALIC(2, "sans-serif-medium", Typeface.ITALIC),
+    SERIF(3, "serif", Typeface.BOLD),
+    CONDENSED(4, "sans-serif-condensed", Typeface.BOLD),
+    MONO(5, "monospace", Typeface.NORMAL);
+
+    private final int              code;
+    private final @Nullable String family;
+    private final int              style;
+
+    Font(int code, @Nullable String family, int style) {
+      this.code   = code;
+      this.family = family;
+      this.style  = style;
+    }
+
+    /** The typeface for this font, or null for the provider's own default. */
+    public @Nullable Typeface typeface() {
+      return family != null ? Typeface.create(family, style) : null;
+    }
+
+    public @NonNull Font next() {
+      Font[] values = values();
+      return values[(ordinal() + 1) % values.length];
+    }
+
+    private static Font fromCode(int code) {
+      for (final Font value : Font.values()) {
+        if (value.code == code) {
+          return value;
+        }
+      }
+      return DEFAULT;
+    }
+  }
+
+  /**
+   * Tellomi (tellomi/tellomi#1522 E-4): the typeface a provider should use for {@code renderer}: its own font if it has
+   * one, otherwise {@code fallback}.
+   */
+  public static @NonNull Typeface typefaceFor(@NonNull Renderer renderer, @NonNull Typeface fallback) {
+    if (renderer instanceof MultiLineTextRenderer) {
+      Typeface typeface = ((MultiLineTextRenderer) renderer).font.typeface();
+      if (typeface != null) {
+        return typeface;
+      }
+    }
+    return fallback;
   }
 }

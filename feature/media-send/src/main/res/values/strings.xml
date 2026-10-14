@@ -191,6 +191,8 @@
   <string name="TextModeColorBar__toggle_between_text_styles">Toggle between text styles</string>
   <!-- Tellomi (tellomi/tellomi#1522 E-4): content description of the button that cycles the text between left, center and right alignment. -->
   <string name="TextModeColorBar__text_alignment">Text alignment</string>
+  <!-- Tellomi (tellomi/tellomi#1522 E-4): content description of the button that switches the text to the next font. -->
+  <string name="TextModeColorBar__font">Font</string>
 
   <!-- Label for the button that undoes every edit made to the image, returning it to its original state -->
   <string name="ImageEditorClearAllButton__clear_all">Clear all</string>

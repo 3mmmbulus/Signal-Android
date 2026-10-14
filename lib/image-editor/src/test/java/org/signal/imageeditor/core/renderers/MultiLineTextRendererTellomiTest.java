@@ -6,6 +6,7 @@
 package org.signal.imageeditor.core.renderers;
 
 import android.graphics.Color;
+import android.graphics.Typeface;
 import android.os.Parcel;
 
 import org.junit.Test;
@@ -14,6 +15,8 @@ import org.robolectric.RobolectricTestRunner;
 import org.robolectric.annotation.GraphicsMode;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotSame;
+import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertTrue;
 
 /**
@@ -90,5 +93,32 @@ public final class MultiLineTextRendererTellomiTest {
     old.recycle();
     assertEquals(MultiLineTextRenderer.Align.CENTER, oldCopy.getAlign());
     assertEquals(MultiLineTextRenderer.Mode.HIGHLIGHT, oldCopy.getMode());
+  }
+
+  @Test
+  public void fontsCycleAndTheDefaultLeavesTheProvidersOwnTypeface() {
+    MultiLineTextRenderer renderer = new MultiLineTextRenderer("hi", Color.WHITE, MultiLineTextRenderer.Mode.REGULAR);
+    assertEquals(MultiLineTextRenderer.Font.DEFAULT, renderer.getFont());
+    Typeface fallback = Typeface.create("sans-serif", Typeface.BOLD);
+    assertSame(fallback, MultiLineTextRenderer.typefaceFor(renderer, fallback));
+
+    renderer.setFont(MultiLineTextRenderer.Font.DEFAULT.next());
+    assertEquals(MultiLineTextRenderer.Font.MEDIUM, renderer.getFont());
+    assertNotSame(fallback, MultiLineTextRenderer.typefaceFor(renderer, fallback));
+
+    MultiLineTextRenderer.Font font = MultiLineTextRenderer.Font.MONO;
+    assertEquals(MultiLineTextRenderer.Font.DEFAULT, font.next());
+  }
+
+  @Test
+  public void theFontSurvivesAParcel() {
+    MultiLineTextRenderer renderer = new MultiLineTextRenderer("hi", Color.RED, MultiLineTextRenderer.Mode.REGULAR, MultiLineTextRenderer.Align.LEFT, MultiLineTextRenderer.Font.SERIF);
+    Parcel parcel = Parcel.obtain();
+    renderer.writeToParcel(parcel, 0);
+    parcel.setDataPosition(0);
+    MultiLineTextRenderer copy = MultiLineTextRenderer.CREATOR.createFromParcel(parcel);
+    parcel.recycle();
+    assertEquals(MultiLineTextRenderer.Font.SERIF, copy.getFont());
+    assertEquals(MultiLineTextRenderer.Align.LEFT, copy.getAlign());
   }
 }

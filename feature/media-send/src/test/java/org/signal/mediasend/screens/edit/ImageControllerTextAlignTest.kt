@@ -53,4 +53,16 @@ class ImageControllerTextAlignTest {
 
     assertEquals(MultiLineTextRenderer.Mode.SEMI, renderer.mode)
   }
+
+  @Test
+  fun `Given new text, when the font button is tapped, then the text and the button take the next font`() {
+    controller.enterTextMode()
+    val renderer = controller.textEditingElement?.renderer as MultiLineTextRenderer
+    assertEquals(MultiLineTextRenderer.Font.DEFAULT, controller.textFont)
+
+    controller.nextTextFont()
+
+    assertEquals(MultiLineTextRenderer.Font.MEDIUM, controller.textFont)
+    assertEquals(MultiLineTextRenderer.Font.MEDIUM, renderer.font)
+  }
 }

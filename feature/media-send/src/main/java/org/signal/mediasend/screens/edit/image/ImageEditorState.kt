@@ -26,6 +26,7 @@ import org.signal.imageeditor.core.Renderer
 import org.signal.imageeditor.core.RendererContext
 import org.signal.imageeditor.core.model.EditorElement
 import org.signal.imageeditor.core.model.EditorModel
+import org.signal.imageeditor.core.renderers.MultiLineTextRenderer
 import org.signal.mediasend.screens.edit.ChromeInsets
 
 /** In model units. */
@@ -102,8 +103,9 @@ internal class ImageEditorState(
     revision++
   }
 
-  val typefaceProvider = RendererContext.TypefaceProvider { _: Context, _: Renderer, _: RendererContext.Invalidate ->
-    Typeface.DEFAULT
+  // Tellomi（tellomi/tellomi#1522 E-4）：文字自己选了字体就用它。
+  val typefaceProvider = RendererContext.TypefaceProvider { _: Context, renderer: Renderer, _: RendererContext.Invalidate ->
+    MultiLineTextRenderer.typefaceFor(renderer, Typeface.DEFAULT)
   }
 
   /** Manually triggers a Canvas redraw. Call after touch moves that modify the model directly. */

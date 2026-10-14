@@ -8,6 +8,7 @@ package org.signal.mediasend.screens.edit.image
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.material3.Icon
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
@@ -16,7 +17,12 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.res.vectorResource
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import org.signal.core.ui.compose.DayNightPreviews
 import org.signal.core.ui.compose.IconButtons
 import org.signal.core.ui.compose.Previews
@@ -45,6 +51,7 @@ internal fun TextModeColorBar(
         verticalAlignment = Alignment.CenterVertically
       ) {
         TextColorBar(imageEditorController, orientation, Modifier.weight(1f, fill = false))
+        TextFontToggle(imageEditorController)
         TextStyleToggle(imageEditorController)
         TextAlignToggle(imageEditorController)
       }
@@ -56,6 +63,7 @@ internal fun TextModeColorBar(
         horizontalAlignment = Alignment.CenterHorizontally
       ) {
         TextColorBar(imageEditorController, orientation, Modifier.weight(1f, fill = false))
+        TextFontToggle(imageEditorController)
         TextStyleToggle(imageEditorController)
         TextAlignToggle(imageEditorController)
       }
@@ -90,6 +98,26 @@ private fun TextStyleToggle(imageEditorController: ImageController) {
       imageVector = SignalIcons.TextSquare.imageVector,
       contentDescription = stringResource(R.string.TextModeColorBar__toggle_between_text_styles)
     )
+  }
+}
+
+/** Tellomi（tellomi/tellomi#1522 E-4）：字体键，「Aa」用现在的字体写（同 Tellomi iOS 的字体键）；点一下换下一个。 */
+@Composable
+private fun TextFontToggle(imageEditorController: ImageController) {
+  val font = imageEditorController.textFont
+  val fontFamily = remember(font) { font.typeface()?.let { FontFamily(it) } ?: FontFamily.Default }
+  val fontLabel = stringResource(R.string.TextModeColorBar__font)
+  IconButtons.IconButton(
+    onClick = imageEditorController::nextTextFont,
+    colors = IconButtons.iconButtonColors(
+      containerColor = SignalTheme.colors.colorSurface5
+    ),
+    size = 40.dp,
+    modifier = Modifier
+      .testTag(TestTags.IMAGE_EDITOR_TEXT_FONT)
+      .semantics { contentDescription = fontLabel }
+  ) {
+    Text(text = "Aa", fontFamily = fontFamily, fontWeight = if (font == MultiLineTextRenderer.Font.DEFAULT) FontWeight.Black else null, fontSize = 17.sp)
   }
 }
 
