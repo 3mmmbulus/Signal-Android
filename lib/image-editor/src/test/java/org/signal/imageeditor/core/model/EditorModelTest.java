@@ -19,6 +19,7 @@ import org.robolectric.annotation.GraphicsMode;
 import org.signal.imageeditor.core.Renderer;
 import org.signal.imageeditor.core.RendererContext;
 
+import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
@@ -99,6 +100,57 @@ public final class EditorModelTest {
     model.setVisibleViewPort(SMALLER_VIEW_PORT);
 
     assertTrue(model.isChanged());
+  }
+
+  /** Tellomi (tellomi/tellomi#1522 E-1): a crop opened before the image loads is still open once it has loaded. */
+  @Test
+  public void aCropOpenedBeforeTheImageLoadsStaysOpen() {
+    EditorModel model = modelWithMainImage();
+
+    model.setVisibleViewPort(VIEW_PORT);
+    model.startCrop();
+    ready(model);
+
+    assertTrue(model.isCropping());
+    model.setCropAspectRatio(1f);
+    assertEquals(1f, model.getCropAspectRatioOnScreen(), 0.01f);
+  }
+
+  /** Tellomi (tellomi/tellomi#1522 E-1): picking an aspect ratio while cropping shrinks the crop to it and locks it. */
+  @Test
+  public void croppingToAnAspectRatioShrinksTheCropToItAndLocksIt() {
+    EditorModel model = modelWithMainImage();
+
+    model.setVisibleViewPort(VIEW_PORT);
+    ready(model);
+    model.startCrop();
+
+    float before = model.getCropAspectRatioOnScreen();
+    assertEquals(IMAGE_SIZE.x / (float) IMAGE_SIZE.y, before, 0.01f);
+    assertEquals(before, model.getOrientedImageAspectRatio(), 0.01f);
+
+    model.setCropAspectRatio(1.5f);
+
+    assertEquals(1.5f, model.getCropAspectRatioOnScreen(), 0.01f);
+    assertTrue(model.isCropAspectLocked());
+  }
+
+  /** Tellomi (tellomi/tellomi#1522 E-1): after a quarter turn the ratio is still the one seen on screen. */
+  @Test
+  public void croppingToAnAspectRatioAfterAQuarterTurnUsesTheScreenAxes() {
+    EditorModel model = modelWithMainImage();
+
+    model.setVisibleViewPort(VIEW_PORT);
+    ready(model);
+    model.startCrop();
+    model.rotate90anticlockwise();
+
+    assertEquals(IMAGE_SIZE.y / (float) IMAGE_SIZE.x, model.getCropAspectRatioOnScreen(), 0.01f);
+    assertEquals(IMAGE_SIZE.y / (float) IMAGE_SIZE.x, model.getOrientedImageAspectRatio(), 0.01f);
+
+    model.setCropAspectRatio(4f / 5f);
+
+    assertEquals(0.8f, model.getCropAspectRatioOnScreen(), 0.01f);
   }
 
   private @NonNull EditorModel modelWithMainImage() {

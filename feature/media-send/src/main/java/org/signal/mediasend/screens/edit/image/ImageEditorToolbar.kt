@@ -12,11 +12,16 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import org.signal.core.ui.compose.Dialogs
 import org.signal.core.ui.compose.FoldablePortraitDayPreview
 import org.signal.core.ui.compose.FoldablePortraitNightPreview
 import org.signal.core.ui.compose.IconButtons
@@ -37,6 +42,7 @@ import org.signal.mediasend.screens.edit.MediaEditState
 import org.signal.mediasend.screens.edit.MediaEditorToolbar
 import org.signal.mediasend.screens.edit.MediaEditorToolbarButton
 import org.signal.mediasend.screens.edit.MediaEditorToolbarSharedButtons
+import org.signal.mediasend.test.TestTags
 import java.util.EnumMap
 
 @Composable
@@ -185,11 +191,24 @@ private fun ImageEditorCropAndResizeToolbar(
       enabled = enabled
     )
 
+    // Tellomi（tellomi/tellomi#1522 E-1）：长按「翻转」选比例（照 Telegram 安卓 `CropRotationWheel` 的 mirrorButton 长按 →
+    // `CropView.showAspectRatioDialog`）；选了以后锁住比例，旁边的锁跟着变成锁上。
+    var showAspectRatios by remember { mutableStateOf(false) }
     MediaEditorToolbarButton(
       imageVector = SignalIcons.Flip.imageVector,
       onClick = imageEditorController::flip,
-      enabled = enabled
+      enabled = enabled,
+      onLongClick = { showAspectRatios = true },
+      onLongClickLabel = stringResource(R.string.ImageEditorToolbar__aspect_ratio),
+      modifier = Modifier.testTag(TestTags.IMAGE_EDITOR_FLIP)
     )
+    if (showAspectRatios) {
+      CropAspectRatioDialog(
+        portrait = remember { imageEditorController.isCropPortrait },
+        onSelected = imageEditorController::cropTo,
+        onDismiss = { showAspectRatios = false }
+      )
+    }
 
     val cropLockImageVector = SignalIcons.CropLock.imageVector
     val cropUnlockImageVector = SignalIcons.CropUnlock.imageVector
@@ -223,6 +242,33 @@ private fun ImageEditorCropAndResizeToolbar(
       }
     )
   }
+}
+
+/** Tellomi（tellomi/tellomi#1522 E-1）：8 个比例，点一个就裁（同 Telegram 的列表对话框，这里用 Signal 的单选列表）。 */
+@Composable
+private fun CropAspectRatioDialog(
+  portrait: Boolean,
+  onSelected: (CropAspectRatio) -> Unit,
+  onDismiss: () -> Unit
+) {
+  val original = stringResource(R.string.ImageEditorToolbar__aspect_ratio_original)
+  val square = stringResource(R.string.ImageEditorToolbar__aspect_ratio_square)
+  val ratios = CropAspectRatio.entries
+  val labels = ratios.map { ratio ->
+    when (ratio) {
+      CropAspectRatio.ORIGINAL -> original
+      CropAspectRatio.SQUARE -> square
+      else -> ratio.sides(portrait)?.let { (width, height) -> stringResource(R.string.ImageEditorToolbar__aspect_ratio_x_by_y, width, height) }.orEmpty()
+    }
+  }
+  Dialogs.RadioListDialog(
+    onDismissRequest = onDismiss,
+    title = stringResource(R.string.ImageEditorToolbar__aspect_ratio),
+    labels = labels.toTypedArray(),
+    values = ratios.map { it.name }.toTypedArray(),
+    selectedIndex = -1,
+    onSelected = { index -> onSelected(ratios[index]) }
+  )
 }
 
 @Composable

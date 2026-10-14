@@ -172,6 +172,14 @@
   <string name="ImageEditorToolbar__aspect_ratio_locked">Aspect ratio locked</string>
   <!-- Content description for the crop toggle when the crop area can currently be resized freely. Tapping it constrains the crop area to a fixed aspect ratio. -->
   <string name="ImageEditorToolbar__aspect_ratio_unlocked">Aspect ratio unlocked</string>
+  <!-- Tellomi (tellomi/tellomi#1522 E-1): title of the list of crop aspect ratios, opened by long pressing the flip button. Also its long press label. -->
+  <string name="ImageEditorToolbar__aspect_ratio">Aspect Ratio</string>
+  <!-- Tellomi (tellomi/tellomi#1522 E-1): crop aspect ratio of the whole image as it is. -->
+  <string name="ImageEditorToolbar__aspect_ratio_original">Original</string>
+  <!-- Tellomi (tellomi/tellomi#1522 E-1): 1:1 crop aspect ratio. -->
+  <string name="ImageEditorToolbar__aspect_ratio_square">Square</string>
+  <!-- Tellomi (tellomi/tellomi#1522 E-1): a crop aspect ratio, width then height, e.g. 3:2. -->
+  <string name="ImageEditorToolbar__aspect_ratio_x_by_y" translatable="false">%1$d:%2$d</string>
 
   <!-- Label for the toggle that blurs every face in the image being edited -->
   <string name="BlurFacesBar__blur_faces">Blur faces</string>

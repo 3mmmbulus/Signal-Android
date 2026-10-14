@@ -24,6 +24,7 @@ import org.signal.imageeditor.core.model.EditorModel
 import org.signal.imageeditor.core.renderers.MultiLineTextRenderer
 import org.signal.mediasend.screens.edit.image.BrushTool
 import org.signal.mediasend.screens.edit.image.BrushWidthsState
+import org.signal.mediasend.screens.edit.image.CropAspectRatio
 import org.signal.mediasend.screens.edit.image.FaceDetectionResult
 import org.signal.mediasend.screens.edit.image.HSVColorBarState
 import org.signal.mediasend.screens.edit.image.ImageEditorState
@@ -709,6 +710,17 @@ internal class ImageController(
   fun lockCrop() {
     editorModel.setCropAspectLock(true)
     isCropAspectRatioLocked = true
+  }
+
+  /** Tellomi（tellomi/tellomi#1522 E-1）：现在的裁剪框是不是竖的（高大于宽），比例菜单按它倒过来写。 */
+  val isCropPortrait: Boolean
+    get() = editorModel.cropAspectRatioOnScreen < 1f
+
+  /** Tellomi（tellomi/tellomi#1522 E-1）：裁成这个比例并锁住（照 Telegram 选了比例就 `setLockedAspectRatio`）。 */
+  internal fun cropTo(aspectRatio: CropAspectRatio) {
+    val widthToHeight = aspectRatio.widthToHeight(editorModel.orientedImageAspectRatio, isCropPortrait)
+    editorModel.setCropAspectRatio(widthToHeight)
+    isCropAspectRatioLocked = editorModel.isCropAspectLocked
   }
 
   fun unlockCrop() {

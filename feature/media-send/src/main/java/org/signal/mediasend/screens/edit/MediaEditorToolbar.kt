@@ -93,13 +93,17 @@ internal fun MediaEditorToolbarButton(
   modifier: Modifier = Modifier,
   enabled: Boolean = true,
   contentDescription: String? = null,
-  colors: IconButtonColors = IconButtons.iconButtonColors()
+  colors: IconButtonColors = IconButtons.iconButtonColors(),
+  onLongClick: (() -> Unit)? = null,
+  onLongClickLabel: String? = null
 ) {
   IconButtons.IconButton(
     onClick = onClick,
     enabled = enabled,
     colors = colors,
-    modifier = modifier
+    modifier = modifier,
+    onLongClick = onLongClick,
+    onLongClickLabel = onLongClickLabel
   ) {
     Icon(imageVector = imageVector, contentDescription = contentDescription, modifier = Modifier.size(24.dp))
   }
