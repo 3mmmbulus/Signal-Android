@@ -1097,6 +1097,51 @@ class ConversationFragment :
     return adapter.clickListener
   }
 
+  /** Tellomi（#1611）：会话输入框能用（没退群、不是只许管理员发言、消息请求已接受……）。定时消息页的输入框跟着它。 */
+  private var tellomiInputEnabled = false
+
+  /** Tellomi（#1611）：定时消息页上写的那条在等开精确闹钟权限 / 确认安全码。 */
+  private var tellomiPendingScheduledText: (() -> Unit)? = null
+
+  override fun tellomiCanWriteScheduledMessages(): Boolean = tellomiInputEnabled
+
+  /** Tellomi（#1611，M-4）：定时消息页上写好、选好时间的一条。同 [sendMessage] 的检查（精确闹钟权限、安全码变了先确认），不碰输入框。 */
+  override fun tellomiScheduleText(body: String, mentions: List<Mention>, bodyRanges: BodyRangeList?, linkPreviews: List<LinkPreview>, scheduledTime: Long) {
+    val threadRecipient = viewModel.recipientSnapshot ?: return
+    if (!tellomiInputEnabled) {
+      Log.w(TAG, "The chat can no longer be written to; not scheduling.")
+      return
+    }
+    val schedule = {
+      disposables += viewModel.sendMessage(
+        metricId = null,
+        threadRecipient = threadRecipient,
+        body = body,
+        slideDeck = null,
+        scheduledDate = scheduledTime,
+        messageToEdit = null,
+        quote = null,
+        mentions = mentions,
+        bodyRanges = bodyRanges,
+        contacts = emptyList(),
+        linkPreviews = linkPreviews,
+        preUploadResults = emptyList(),
+        isViewOnce = false
+      ).subscribeBy(onError = { Log.w(TAG, "Couldn't schedule a message from the scheduled list", it) })
+    }
+    // 精确闹钟权限没开：开了以后（`onSchedulePermissionsGranted`）排这一条
+    if (ReenableScheduledMessagesDialogFragment.showIfNeeded(requireContext(), childFragmentManager, null, scheduledTime)) {
+      tellomiPendingScheduledText = { tellomiScheduleText(body, mentions, bodyRanges, linkPreviews, scheduledTime) }
+      return
+    }
+    if (viewModel.identityRecordsState.hasRecentSafetyNumberChange()) {
+      tellomiPendingScheduledText = schedule
+      handleRecentSafetyNumberChange(viewModel.identityRecordsState.getRecentSafetyNumberChangeRecords())
+      return
+    }
+    schedule()
+  }
+
   override fun jumpToMessage(messageRecord: MessageRecord) {
     viewModel
       .moveToMessage(messageRecord)
@@ -1218,16 +1263,22 @@ class ConversationFragment :
   }
 
   override fun onSchedulePermissionsGranted(metricId: String?, scheduledDate: Long) {
-    sendMessage(scheduledDate = scheduledDate)
+    // Tellomi（#1611）：权限是为定时消息页上写的那条开的，就排它，不发输入框里的字
+    val pendingScheduledText = tellomiPendingScheduledText
+    tellomiPendingScheduledText = null
+    pendingScheduledText?.invoke() ?: sendMessage(scheduledDate = scheduledDate)
   }
 
   override fun sendAnywayAfterSafetyNumberChangedInBottomSheet(destinations: List<RecipientSearchKey>) {
     Log.d(TAG, "onSendAnywayAfterSafetyNumberChange")
+    // Tellomi（#1611）：确认安全码是为了定时消息页上写的那条，就排它，不发输入框里的字
+    val pendingScheduledText = tellomiPendingScheduledText
+    tellomiPendingScheduledText = null
     viewModel
       .updateIdentityRecords()
       .subscribeBy(
         onError = { t -> Log.w(TAG, "Error sending", t) },
-        onComplete = { sendMessage() }
+        onComplete = { pendingScheduledText?.invoke() ?: sendMessage() }
       )
       .addTo(disposables)
   }
@@ -1237,7 +1288,9 @@ class ConversationFragment :
     viewModel.updateIdentityRecordsInBackground()
   }
 
-  override fun onCanceled() = Unit
+  override fun onCanceled() {
+    tellomiPendingScheduledText = null
+  }
 
   override fun onCallNotificationSettingsDialogDismissed() {
     adapter.notifyDataSetChanged()
@@ -1789,6 +1842,7 @@ class ConversationFragment :
     }
 
     inputPanel.setHideForMessageRequestState(inputDisabled)
+    tellomiInputEnabled = !inputDisabled && !isReleaseNotes
 
     if (inputDisabled && !isReleaseNotes) {
       chatScrims.navigationBarColor = disabledInputView.color

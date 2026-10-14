@@ -10447,6 +10447,12 @@
 
     <!-- Tellomi (tellomi/tellomi#1601, M-4): long-press send menu item and time sheet title in Saved Messages (note to self) — schedule the note to yourself as a reminder -->
     <string name="TellomiScheduleTimePicker__set_reminder">Set a reminder</string>
+    <!-- Tellomi (tellomi/tellomi#1611): scheduled messages sheet stays open when empty; shown in it -->
+    <string name="TellomiScheduledMessages__empty">No scheduled messages here yet.</string>
+    <string name="TellomiScheduledMessages__reminders_empty">No reminders here yet.</string>
+    <!-- Tellomi (tellomi/tellomi#1611): toast when a scheduled message was sent before the edits to it were saved -->
+    <string name="TellomiScheduledMessages__edit_already_sent">This message was already sent, so your changes weren\'t saved.</string>
+    <string name="TellomiScheduledMessages__edit_failed">Couldn\'t save the changes.</string>
     <!-- Tellomi (#1601): schedule time sheet button when the chosen time is today. %1$s = time -->
     <string name="TellomiScheduleTimePicker__send_today_at">Send today at %1$s</string>
     <!-- Tellomi (#1601): schedule time sheet button for another day. %1$s = date, %2$s = time -->

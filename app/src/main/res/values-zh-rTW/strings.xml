@@ -10173,6 +10173,10 @@
     <string name="TellomiAttachmentFiles__some_not_on_device">有些檔案已不在本機，沒有傳送。</string>
 
     <string name="TellomiScheduleTimePicker__set_reminder">設定提醒</string>
+    <string name="TellomiScheduledMessages__empty">這裡還沒有定時訊息。</string>
+    <string name="TellomiScheduledMessages__reminders_empty">這裡還沒有提醒。</string>
+    <string name="TellomiScheduledMessages__edit_already_sent">這則訊息已經傳出去了，修改沒有儲存。</string>
+    <string name="TellomiScheduledMessages__edit_failed">修改無法儲存。</string>
     <string name="TellomiScheduleTimePicker__send_today_at">今天 %1$s 傳送</string>
     <string name="TellomiScheduleTimePicker__send_on_at">%1$s %2$s 傳送</string>
     <string name="TellomiScheduleTimePicker__remind_today_at">今天 %1$s 提醒</string>

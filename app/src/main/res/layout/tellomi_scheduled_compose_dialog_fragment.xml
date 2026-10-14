@@ -1,0 +1,135 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Copyright 2026 重庆半格智能科技有限公司
+  SPDX-License-Identifier: AGPL-3.0-only
+
+  Tellomi（tellomi/tellomi#1611，M-4）：定时消息页上写新的 / 改一条的输入框（键盘上方一条；同媒体页「添加说明」那种键盘对话框）。
+-->
+<org.thoughtcrime.securesms.components.InputAwareLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:id="@+id/hud"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    tools:viewBindingIgnore="true">
+
+    <FrameLayout
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1">
+
+        <View
+            android:id="@+id/dismiss_area"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent" />
+
+        <androidx.fragment.app.FragmentContainerView
+            android:id="@+id/mentions_picker_container"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent" />
+
+    </FrameLayout>
+
+    <LinearLayout
+        android:id="@+id/panel"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:background="@color/signal_colorSurface1"
+        android:orientation="vertical">
+
+        <LinearLayout
+            android:id="@+id/edit_header"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:gravity="center_vertical"
+            android:orientation="horizontal"
+            android:paddingStart="20dp"
+            android:paddingTop="8dp"
+            android:paddingEnd="8dp"
+            android:visibility="gone"
+            tools:visibility="visible">
+
+            <ImageView
+                android:layout_width="16dp"
+                android:layout_height="16dp"
+                android:importantForAccessibility="no"
+                app:srcCompat="@drawable/symbol_edit_24"
+                app:tint="@color/signal_colorOnSurface" />
+
+            <TextView
+                android:id="@+id/edit_header_label"
+                style="@style/Signal.Text.BodyMedium"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="6dp"
+                android:layout_weight="1"
+                android:text="@string/InputPanel_edit_message"
+                android:textColor="@color/signal_colorOnSurface"
+                android:textStyle="bold" />
+
+            <ImageView
+                android:id="@+id/edit_header_close"
+                android:layout_width="40dp"
+                android:layout_height="40dp"
+                android:background="?selectableItemBackgroundBorderless"
+                android:contentDescription="@android:string/cancel"
+                android:padding="10dp"
+                app:srcCompat="@drawable/symbol_x_24"
+                app:tint="@color/signal_colorOnSurfaceVariant" />
+
+        </LinearLayout>
+
+        <org.thoughtcrime.securesms.components.LinkPreviewView
+            android:id="@+id/link_preview"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:paddingStart="16dp"
+            android:paddingTop="8dp"
+            android:paddingEnd="16dp"
+            android:visibility="gone"
+            app:linkpreview_type="compose" />
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:gravity="bottom"
+            android:orientation="horizontal"
+            android:paddingStart="16dp"
+            android:paddingTop="8dp"
+            android:paddingEnd="8dp"
+            android:paddingBottom="8dp">
+
+            <org.thoughtcrime.securesms.components.ComposeText
+                android:id="@+id/compose_text"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:background="@drawable/rounded_rectangle_surface_variant_20"
+                android:hint="@string/conversation_activity__type_message_push"
+                android:imeOptions="flagNoEnterAction"
+                android:inputType="textAutoCorrect|textCapSentences|textMultiLine"
+                android:maxLines="5"
+                android:minHeight="@dimen/conversation_compose_height"
+                android:paddingStart="16dp"
+                android:paddingEnd="12dp"
+                android:textAppearance="@style/Signal.Text.Body"
+                android:textColor="@color/signal_colorOnSurface" />
+
+            <com.google.android.material.imageview.ShapeableImageView
+                android:id="@+id/submit_button"
+                android:layout_width="48dp"
+                android:layout_height="48dp"
+                android:layout_marginStart="8dp"
+                android:background="@color/signal_colorPrimary"
+                android:scaleType="centerInside"
+                app:contentPadding="12dp"
+                app:shapeAppearanceOverlay="@style/ShapeAppearanceOverlay.Signal.Circle"
+                app:srcCompat="@drawable/symbol_calendar_24"
+                app:tint="@color/signal_colorOnPrimary" />
+
+        </LinearLayout>
+
+    </LinearLayout>
+
+</org.thoughtcrime.securesms.components.InputAwareLayout>

@@ -5,7 +5,13 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import io.reactivex.rxjava3.android.schedulers.AndroidSchedulers
 import io.reactivex.rxjava3.core.Observable
+import io.reactivex.rxjava3.core.Single
+import io.reactivex.rxjava3.schedulers.Schedulers
 import org.signal.core.util.logging.Log
+import org.thoughtcrime.securesms.database.SignalDatabase
+import org.thoughtcrime.securesms.database.model.Mention
+import org.thoughtcrime.securesms.database.model.databaseprotos.BodyRangeList
+import org.thoughtcrime.securesms.linkpreview.LinkPreview
 
 class ScheduledMessagesViewModel @JvmOverloads constructor(
   private val threadId: Long,
@@ -19,6 +25,41 @@ class ScheduledMessagesViewModel @JvmOverloads constructor(
 
   fun rescheduleMessage(messageId: Long, scheduleTime: Long) {
     repository.rescheduleMessage(threadId, messageId, scheduleTime)
+  }
+
+  /**
+   * Tellomi（tellomi/tellomi#1611）：定时消息页输入框交回来的一条。新写的先放在这里等选时间（选时间页一弹键盘就收起、输入框对话框跟着关）；
+   * 改的直接存。
+   *
+   * @param linkPreviews 改的时候 null = 预览不动。
+   */
+  data class TellomiDraft(
+    /** 输入框里的原样（带 @、样式的 span）：选时间取消了，下次打开输入框放回去。 */
+    val displayText: CharSequence,
+    val body: String,
+    val mentions: List<Mention>,
+    val bodyRanges: BodyRangeList?,
+    val linkPreviews: List<LinkPreview>?,
+    val editMessageId: Long?
+  )
+
+  /** 新写的、正在选时间的那条（选时间取消了也留着，下次打开输入框放回去）。 */
+  var tellomiPendingDraft: TellomiDraft? = null
+
+  /** 改好、等存的那条（和新写的分开放：改一条不丢写了一半的新消息）。 */
+  var tellomiPendingEdit: TellomiDraft? = null
+
+  /** 正在改的那条（输入框对话框读它的原文）。 */
+  var tellomiEditingMessage: ConversationMessage? = null
+
+  /** 存一条改好的；已经发出去了（到点被认领）返回 false。 */
+  fun tellomiSaveEdit(draft: TellomiDraft): Single<Boolean> {
+    val messageId = draft.editMessageId ?: return Single.just(false)
+    return Single.fromCallable {
+      SignalDatabase.messages.tellomiEditScheduledMessage(threadId, messageId, draft.body, draft.bodyRanges, draft.mentions, draft.linkPreviews)
+    }
+      .subscribeOn(Schedulers.io())
+      .observeOn(AndroidSchedulers.mainThread())
   }
 
   companion object {

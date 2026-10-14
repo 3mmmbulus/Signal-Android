@@ -2566,6 +2566,85 @@ open class MessageTable(context: Context?, databaseHelper: SignalDatabase) : Dat
     }
   }
 
+  /**
+   * Tellomi（tellomi/tellomi#1611，M-4，照 Telegram 两端可以改还没发的定时消息）：原地改一条定时消息的文字、样式、@ 和链接预览；
+   * 到点时刻、附件、引用不变。和 [clearScheduledStatus] 用同一个判据（`SCHEDULED_DATE != -1`），在一个事务里改完：
+   * 已经发出去（被到点发送认领）的改不了，返回 false；改完之后才到点的，发出去的就是改过的。
+   *
+   * @param linkPreviews null = 预览不动；空表 = 去掉预览；否则换成这些（旧预览图删掉，新图入库）。
+   */
+  fun tellomiEditScheduledMessage(
+    threadId: Long,
+    messageId: Long,
+    body: String,
+    messageRanges: BodyRangeList?,
+    mentions: List<Mention>,
+    linkPreviews: List<LinkPreview>?
+  ): Boolean {
+    val oldPreviewAttachmentIds = mutableListOf<AttachmentId>()
+    val edited = writableDatabase.withinTransaction { db ->
+      val oldPreviewsJson: String? = db.select(LINK_PREVIEWS)
+        .from(TABLE_NAME)
+        .where("$ID = ? AND $SCHEDULED_DATE != ?", messageId, -1)
+        .run()
+        .use { cursor ->
+          if (!cursor.moveToFirst()) {
+            return@withinTransaction false
+          }
+          cursor.requireString(LINK_PREVIEWS)
+        }
+
+      // 同 [insertMessageOutbox]：@ 换成占位符（正文里不留本机给对方起的名字），样式区间跟着挪
+      val updatedBodyAndMentions = MentionUtil.updateBodyAndMentionsWithPlaceholders(body, mentions)
+      val adjustedRanges = messageRanges.adjustBodyRanges(updatedBodyAndMentions.bodyAdjustments)
+      val placeholderMentions = updatedBodyAndMentions.mentions
+      val mentionsSelf = placeholderMentions.any { Recipient.resolved(it.recipientId).isSelf }
+      val values = contentValuesOf(
+        BODY to updatedBodyAndMentions.bodyAsString?.trim(),
+        MENTIONS_SELF to if (mentionsSelf) 1 else 0,
+        MESSAGE_RANGES to adjustedRanges?.encode()
+      )
+      db.update(TABLE_NAME)
+        .values(values)
+        .where("$ID = ?", messageId)
+        .run()
+
+      SignalDatabase.mentions.deleteMentionsForMessage(messageId)
+      SignalDatabase.mentions.insert(threadId, messageId, placeholderMentions)
+
+      if (linkPreviews != null) {
+        if (!oldPreviewsJson.isNullOrEmpty()) {
+          try {
+            val json = JSONArray(oldPreviewsJson)
+            for (i in 0 until json.length()) {
+              LinkPreview.deserialize(json.getJSONObject(i).toString()).attachmentId?.let { oldPreviewAttachmentIds += it }
+            }
+          } catch (e: JSONException) {
+            Log.w(TAG, "[tellomiEditScheduledMessage] Couldn't read the old link previews.", e)
+          } catch (e: IOException) {
+            Log.w(TAG, "[tellomiEditScheduledMessage] Couldn't read the old link previews.", e)
+          }
+        }
+        val thumbnails = linkPreviews.mapNotNull { it.thumbnail.orElse(null) }
+        val inserted = if (thumbnails.isEmpty()) emptyMap() else SignalDatabase.attachments.insertAttachmentsForMessage(messageId, thumbnails, emptyList())
+        db.update(TABLE_NAME)
+          .values(LINK_PREVIEWS to getSerializedLinkPreviews(inserted, linkPreviews))
+          .where("$ID = ?", messageId)
+          .run()
+        oldPreviewAttachmentIds.forEach { SignalDatabase.attachments.deleteAttachment(it) }
+      }
+      true
+    }
+
+    if (edited) {
+      AppDependencies.databaseObserver.notifyMessageUpdateObservers(MessageId(messageId))
+      AppDependencies.databaseObserver.notifyScheduledMessageObservers(threadId)
+    } else {
+      Log.w(TAG, "[tellomiEditScheduledMessage] messageId=$messageId is no longer scheduled; it may have been sent already.")
+    }
+    return edited
+  }
+
   fun markAsInsecure(messageId: Long) {
     updateMailboxBitmask(messageId, MessageTypes.SECURE_MESSAGE_BIT, 0, Optional.empty())
   }

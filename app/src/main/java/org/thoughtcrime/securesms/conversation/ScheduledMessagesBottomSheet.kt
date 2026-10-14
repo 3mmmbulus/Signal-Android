@@ -7,13 +7,18 @@ import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.widget.TextView
+import android.widget.Toast
 import androidx.appcompat.app.AlertDialog
 import androidx.core.view.doOnNextLayout
+import androidx.core.view.isVisible
 import androidx.fragment.app.FragmentManager
 import androidx.fragment.app.viewModels
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.bumptech.glide.Glide
+import com.google.android.material.bottomsheet.BottomSheetBehavior
+import com.google.android.material.bottomsheet.BottomSheetDialog
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import org.signal.core.ui.BottomSheetUtil
 import org.signal.core.ui.BottomSheetUtil.requireCoordinatorLayout
@@ -48,7 +53,12 @@ import org.thoughtcrime.securesms.recipients.Recipient
 import org.thoughtcrime.securesms.recipients.RecipientId
 import org.thoughtcrime.securesms.util.StickyHeaderDecoration
 import org.thoughtcrime.securesms.util.fragments.findListener
+import org.thoughtcrime.securesms.util.hasAudio
+import org.thoughtcrime.securesms.util.hasPoll
+import org.thoughtcrime.securesms.util.hasSharedContact
+import org.thoughtcrime.securesms.util.hasSticker
 import org.thoughtcrime.securesms.util.hasTextSlide
+import org.thoughtcrime.securesms.util.isViewOnceMessage
 import org.thoughtcrime.securesms.util.requireTextSlide
 import java.io.IOException
 import java.util.Locale
@@ -57,7 +67,10 @@ import org.signal.core.ui.R as CoreUiR
 /**
  * Bottom sheet dialog to view all scheduled messages within a given thread.
  */
-class ScheduledMessagesBottomSheet : FixedRoundedCornerBottomSheetDialogFragment(), ScheduleMessageTimePickerBottomSheet.RescheduleCallback {
+class ScheduledMessagesBottomSheet :
+  FixedRoundedCornerBottomSheetDialogFragment(),
+  ScheduleMessageTimePickerBottomSheet.RescheduleCallback,
+  ScheduleMessageTimePickerBottomSheet.ScheduleCallback {
 
   override val peekHeightPercentage: Float = 0.66f
   override val themeResId: Int = R.style.Widget_Signal_FixedRoundedCorners_Messages
@@ -67,6 +80,11 @@ class ScheduledMessagesBottomSheet : FixedRoundedCornerBottomSheetDialogFragment
 
   private lateinit var messageAdapter: ConversationAdapter
   private lateinit var callback: ConversationBottomSheetCallback
+
+  /** Tellomi（#1611）：会话现在能发，定时消息页上才能写新的 / 改。 */
+  private var tellomiCanWrite = false
+  private lateinit var tellomiConversationRecipient: Recipient
+  private var tellomiComposeHint: TextView? = null
 
   private val viewModel: ScheduledMessagesViewModel by viewModels(
     factoryProducer = {
@@ -93,6 +111,10 @@ class ScheduledMessagesBottomSheet : FixedRoundedCornerBottomSheetDialogFragment
       return
     }
 
+    tellomiConversationRecipient = conversationRecipient
+    tellomiCanWrite = callback.tellomiCanWriteScheduledMessages()
+    tellomiInitializeCompose(view)
+
     @Suppress("DEPRECATION")
     val colorizer = ColorizerV1()
 
@@ -115,10 +137,18 @@ class ScheduledMessagesBottomSheet : FixedRoundedCornerBottomSheetDialogFragment
 
     val recyclerViewColorizer = RecyclerViewColorizer(list)
 
+    val emptyView: TextView = view.findViewById(R.id.tellomi_empty)
+    emptyView.setText(if (conversationRecipient.isSelf) R.string.TellomiScheduledMessages__reminders_empty else R.string.TellomiScheduledMessages__empty)
     disposables += viewModel.getMessages(requireContext()).subscribe { messages ->
+      // Tellomi（#1611）：会话能不能发可能晚到（重建后会话页的状态后到）：每次刷新再看一眼
+      tellomiRefreshCanWrite(view)
+      // 能写的时候空了也不关（同 TG 两端：空的定时消息页还在，底下能写新的）
+      emptyView.isVisible = messages.isEmpty() && tellomiCanWrite
       if (messages.isEmpty()) {
         deleteDialog?.dismiss()
-        dismissAllowingStateLoss()
+        if (!tellomiCanWrite) {
+          dismissAllowingStateLoss()
+        }
       }
 
       messageAdapter.submitList(messages) {
@@ -169,6 +199,19 @@ class ScheduledMessagesBottomSheet : FixedRoundedCornerBottomSheetDialogFragment
     items.add(ActionItem(CoreUiR.drawable.symbol_trash_24, resources.getString(R.string.conversation_selection__menu_delete), action = { handleDeleteMessage(message.messageRecord) }))
     if (canCopy) {
       items.add(ActionItem(CoreUiR.drawable.symbol_copy_android_24, resources.getString(R.string.conversation_selection__menu_copy), action = { handleCopyMessage(message) }))
+    }
+    // Tellomi（#1611）：「编辑」（同 TG 两端）。不能带字的不给改（同上游改消息的条件 `MessageConstraintsUtil.isValidEditMessageSend`：
+    // 阅后即焚、语音、名片、贴纸、投票）；长文（正文另存成附件的）原地改不了
+    val record = message.messageRecord as? MmsMessageRecord
+    val canEdit = record != null &&
+      !record.isViewOnceMessage() &&
+      !record.hasAudio() &&
+      !record.hasSharedContact() &&
+      !record.hasSticker() &&
+      !record.hasPoll() &&
+      !record.hasTextSlide()
+    if (tellomiCanWrite && canEdit) {
+      items.add(ActionItem(CoreUiR.drawable.symbol_edit_24, resources.getString(R.string.conversation_selection__menu_edit), action = { tellomiEdit(message) }))
     }
     items.add(ActionItem(R.drawable.symbol_send_24, resources.getString(R.string.ScheduledMessagesBottomSheet_menu_send_now), action = { handleSendMessageNow(message.messageRecord) }))
     items.add(ActionItem(R.drawable.symbol_calendar_24, resources.getString(R.string.ScheduledMessagesBottomSheet_menu_reschedule), action = { handleRescheduleMessage(message.messageRecord) }))
@@ -251,6 +294,83 @@ class ScheduledMessagesBottomSheet : FixedRoundedCornerBottomSheetDialogFragment
   override fun onReschedule(scheduledTime: Long, messageId: Long) {
     viewModel.rescheduleMessage(messageId, scheduledTime)
   }
+
+  // region Tellomi（tellomi/tellomi#1611，M-4）：定时消息页上写新的、改还没发的
+
+  private fun tellomiInitializeCompose(view: View) {
+    tellomiComposeHint = view.findViewById(R.id.tellomi_compose_hint)
+    val open = View.OnClickListener {
+      TellomiScheduledComposeDialogFragment.show(childFragmentManager, requireArguments().getLong(KEY_THREAD_ID), tellomiConversationRecipient.id, tellomiConversationRecipient.isSelf)
+    }
+    tellomiComposeHint?.setOnClickListener(open)
+    view.findViewById<View>(R.id.tellomi_compose_schedule).setOnClickListener(open)
+    tellomiUpdateComposeHint()
+    tellomiRefreshCanWrite(view)
+
+    childFragmentManager.setFragmentResultListener(TellomiScheduledComposeDialogFragment.REQUEST_KEY, viewLifecycleOwner) { _, _ ->
+      val edit = viewModel.tellomiPendingEdit
+      if (edit != null) {
+        viewModel.tellomiPendingEdit = null
+        viewModel.tellomiEditingMessage = null
+        disposables += viewModel.tellomiSaveEdit(edit).subscribe(
+          { saved ->
+            if (!saved) {
+              Toast.makeText(requireContext(), R.string.TellomiScheduledMessages__edit_already_sent, Toast.LENGTH_LONG).show()
+            }
+          },
+          { error ->
+            Log.w(TAG, "Couldn't save an edit to a scheduled message", error)
+            Toast.makeText(requireContext(), R.string.TellomiScheduledMessages__edit_failed, Toast.LENGTH_LONG).show()
+          }
+        )
+      } else if (viewModel.tellomiPendingDraft != null) {
+        // 新写的：先选时间（同 TG 两端在定时消息页点发送）；取消了，写的字留着，下次点输入框放回去
+        tellomiUpdateComposeHint()
+        ScheduleMessageTimePickerBottomSheet.showSchedule(childFragmentManager, tellomiConversationRecipient.isSelf)
+      }
+    }
+  }
+
+  /** 输入框跟着会话能不能发；能写的时候整张展开，列表长了自己缩、输入框总在底下。 */
+  private fun tellomiRefreshCanWrite(view: View) {
+    val canWrite = callback.tellomiCanWriteScheduledMessages()
+    val changed = canWrite != tellomiCanWrite
+    tellomiCanWrite = canWrite
+    view.findViewById<View>(R.id.tellomi_compose_bar).isVisible = canWrite
+    if (canWrite && (changed || !tellomiExpanded)) {
+      tellomiExpanded = true
+      (dialog as? BottomSheetDialog)?.behavior?.apply {
+        skipCollapsed = true
+        state = BottomSheetBehavior.STATE_EXPANDED
+      }
+    }
+  }
+
+  private var tellomiExpanded = false
+
+  private fun tellomiUpdateComposeHint() {
+    tellomiComposeHint?.text = viewModel.tellomiPendingDraft?.takeIf { it.editMessageId == null }?.displayText
+  }
+
+  private fun tellomiEdit(message: ConversationMessage) {
+    viewModel.tellomiEditingMessage = message
+    TellomiScheduledComposeDialogFragment.show(
+      childFragmentManager,
+      requireArguments().getLong(KEY_THREAD_ID),
+      tellomiConversationRecipient.id,
+      tellomiConversationRecipient.isSelf,
+      editMessageId = message.messageRecord.id
+    )
+  }
+
+  override fun onScheduleSend(scheduledTime: Long) {
+    val draft = viewModel.tellomiPendingDraft?.takeIf { it.editMessageId == null } ?: return
+    viewModel.tellomiPendingDraft = null
+    tellomiUpdateComposeHint()
+    callback.tellomiScheduleText(draft.body, draft.mentions, draft.bodyRanges, draft.linkPreviews ?: emptyList(), scheduledTime)
+  }
+
+  // endregion
 
   private inner class ConversationAdapterListener : ConversationAdapter.ItemClickListener by callback.getConversationAdapterListener() {
     override fun onQuoteClicked(messageRecord: MmsMessageRecord) {
