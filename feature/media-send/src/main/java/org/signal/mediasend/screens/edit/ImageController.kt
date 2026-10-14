@@ -22,6 +22,7 @@ import org.signal.imageeditor.core.SelectableRenderer
 import org.signal.imageeditor.core.TappableRenderer
 import org.signal.imageeditor.core.model.EditorElement
 import org.signal.imageeditor.core.model.EditorModel
+import org.signal.imageeditor.core.model.ImageAdjustments
 import org.signal.imageeditor.core.renderers.BezierDrawingRenderer
 import org.signal.imageeditor.core.renderers.MultiLineTextRenderer
 import org.signal.mediasend.screens.edit.image.BrushTool
@@ -136,6 +137,20 @@ internal class ImageController(
   val isUserDrawing: Boolean by derivedStateOf { mode == Mode.DRAW || mode == Mode.HIGHLIGHT }
   val isUserBlurring: Boolean by derivedStateOf { mode == Mode.BLUR }
 
+  /** Tellomi（tellomi/tellomi#1593 E5-3）：在调色页。 */
+  val isUserAdjusting: Boolean by derivedStateOf { mode == Mode.ADJUST }
+
+  /** Tellomi（tellomi/tellomi#1593 E5-3）：调色页上显示的调色（跟着模型；打开调色页时从模型读）。 */
+  var adjustments: ImageAdjustments by mutableStateOf(editorModel.adjustments)
+    private set
+
+  /** Tellomi（tellomi/tellomi#1593 E5-3）：正按住画面看原图。 */
+  var isShowingOriginal: Boolean by mutableStateOf(false)
+    private set
+
+  /** 打开调色页时的调色：取消回到它；完成时整段在撤销栈里只占一步。 */
+  private var adjustSessionStart: ImageAdjustments? = null
+
   var isDetectingFaces: Boolean by mutableStateOf(false)
     private set
 
@@ -212,7 +227,7 @@ internal class ImageController(
 
     when (mode) {
       Mode.TEXT -> finishTextEditing()
-      Mode.DRAW, Mode.HIGHLIGHT, Mode.BLUR, Mode.CROP -> requestCancelEdit()
+      Mode.DRAW, Mode.HIGHLIGHT, Mode.BLUR, Mode.CROP, Mode.ADJUST -> requestCancelEdit()
       Mode.ZOOM -> exitZoomMode()
       Mode.NONE, Mode.INSERT_STICKER, Mode.DELETE -> Unit
     }
@@ -243,6 +258,30 @@ internal class ImageController(
     enterCropMode()
   }
 
+  /** Tellomi（tellomi/tellomi#1593 E5-3）：打开调色页（照 Telegram 安卓 `PhotoFilterView`）。 */
+  fun beginAdjustEdit() {
+    clearSelection()
+    adjustSessionStart = editorModel.adjustments
+    adjustments = editorModel.adjustments
+    transitionTo(Mode.ADJUST)
+  }
+
+  /** Tellomi（tellomi/tellomi#1593 E5-3）：拖滑杆。只改预览、不记撤销；完成时再记一步。 */
+  fun setAdjustment(tool: ImageAdjustments.Tool, value: Float) {
+    val updated = adjustments.with(tool, value)
+    if (updated == adjustments) {
+      return
+    }
+    adjustments = updated
+    editorModel.setAdjustments(updated, false)
+  }
+
+  /** Tellomi（tellomi/tellomi#1593 E5-3）：按住画面看原图（照 Telegram 安卓 `PhotoFilterView.onTouch` → `setShowOriginal`）。 */
+  fun setShowsOriginal(showsOriginal: Boolean) {
+    isShowingOriginal = showsOriginal
+    editorModel.setShowsOriginal(showsOriginal)
+  }
+
   fun cancelEdit() {
     when {
       mode == Mode.TEXT -> {
@@ -251,6 +290,10 @@ internal class ImageController(
       mode == Mode.CROP -> {
         editorModel.clearUndoStack()
         editorModel.doneCrop()
+        exitEditMode()
+      }
+      mode == Mode.ADJUST -> {
+        adjustSessionStart?.let { editorModel.setAdjustments(it, false) }
         exitEditMode()
       }
       isInDrawSession -> {
@@ -268,11 +311,26 @@ internal class ImageController(
         editorModel.doneCrop()
         exitEditMode()
       }
+      Mode.ADJUST -> {
+        val start = adjustSessionStart
+        val final = editorModel.adjustments
+        if (start != null && start != final) {
+          // 先悄悄回到打开时的样子，再记一步换成最终的：撤销栈里整段调色只有这一步。
+          editorModel.setAdjustments(start, false)
+          editorModel.setAdjustments(final, true)
+        }
+        exitEditMode()
+      }
       else -> exitEditMode()
     }
   }
 
   private fun exitEditMode() {
+    if (mode == Mode.ADJUST) {
+      setShowsOriginal(false)
+      adjustSessionStart = null
+      adjustments = editorModel.adjustments
+    }
     drawSessionSnapshot = null
     drawSessionDirty = false
     selectedElement = null
@@ -882,7 +940,10 @@ internal class ImageController(
     HIGHLIGHT,
     BLUR,
     DELETE,
-    INSERT_STICKER;
+    INSERT_STICKER,
+
+    /** Tellomi（tellomi/tellomi#1593 E5-3）：调色页。 */
+    ADJUST;
 
     /** Whether this is something done within a session rather than a session in its own right. */
     internal val isTransient: Boolean

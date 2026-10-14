@@ -73,6 +73,7 @@ import org.signal.mediasend.MediaConstraints
 import org.signal.mediasend.PreviewMediaInputFactory
 import org.signal.mediasend.screens.MediaSendMetrics
 import org.signal.mediasend.screens.edit.document.DocumentPage
+import org.signal.mediasend.screens.edit.image.AdjustmentsPanel
 import org.signal.mediasend.screens.edit.image.BlurFacesBar
 import org.signal.mediasend.screens.edit.image.BrushWidthBar
 import org.signal.mediasend.screens.edit.image.BrushWidthPreview
@@ -415,6 +416,18 @@ internal fun MediaEditScreen(
               BlurFacesBar(
                 checked = controller.isBlurringFaces,
                 onCheckedChange = { onEvent(MediaEditScreenEvents.ToggleBlurFaces(it)) }
+              )
+            }
+          }
+
+          // Tellomi（tellomi/tellomi#1593 E5-3）：调色页的工具列表。
+          if (controller.isUserAdjusting) {
+            MediaEditControl(faded = isChromeFaded) {
+              AdjustmentsPanel(
+                controller = controller,
+                modifier = Modifier
+                  .widthIn(max = 480.dp)
+                  .padding(horizontal = 16.dp)
               )
             }
           }

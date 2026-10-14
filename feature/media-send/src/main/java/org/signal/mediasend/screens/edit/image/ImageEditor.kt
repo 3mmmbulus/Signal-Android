@@ -189,6 +189,25 @@ private fun Modifier.imageEditorPointerInput(state: ImageEditorState, controller
         return@awaitEachGesture
       }
 
+      // Tellomi（tellomi/tellomi#1593 E5-3）：调色页按住画面看原图，松手回来（照 Telegram 安卓 `PhotoFilterView.onTouch` →
+      // `setShowOriginal`）；不碰画上去的元素。
+      if (controller.mode == ImageController.Mode.ADJUST) {
+        down.consume()
+        controller.setShowsOriginal(true)
+        try {
+          while (true) {
+            val event = awaitPointerEvent()
+            event.changes.forEach { it.consume() }
+            if (event.changes.none { it.pressed }) {
+              break
+            }
+          }
+        } finally {
+          controller.setShowsOriginal(false)
+        }
+        return@awaitEachGesture
+      }
+
       if (state.textEditingElement != null) {
         // During text editing, a tap on the canvas finishes editing
         down.consume()

@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Copyright 2026 重庆半格智能科技有限公司
+  SPDX-License-Identifier: AGPL-3.0-only
+
+  Tellomi（tellomi/tellomi#1593 E5-3）：调色入口的图标——三条带圆钮的滑杆，自己画的。
+-->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="24"
+    android:viewportHeight="24">
+    <path
+        android:pathData="M3,6H12.5M17.5,6H21M3,12H6.5M11.5,12H21M3,18H14.5M19.5,18H21"
+        android:strokeWidth="1.75"
+        android:strokeColor="#FF000000"
+        android:strokeLineCap="round" />
+    <path
+        android:pathData="M15,3.75a2.25,2.25 0,1 1,0 4.5a2.25,2.25 0,1 1,0 -4.5zM9,9.75a2.25,2.25 0,1 1,0 4.5a2.25,2.25 0,1 1,0 -4.5zM17,15.75a2.25,2.25 0,1 1,0 4.5a2.25,2.25 0,1 1,0 -4.5z"
+        android:strokeWidth="1.75"
+        android:strokeColor="#FF000000" />
+</vector>

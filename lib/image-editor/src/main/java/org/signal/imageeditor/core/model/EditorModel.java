@@ -1098,6 +1098,20 @@ public final class EditorModel implements Parcelable, RendererContext.Ready {
     invalidate.run();
   }
 
+  /**
+   * Tellomi（tellomi/tellomi#1593 E5-3）：调色时按住画面看原图（照 Telegram 两端调整页）。只换画布上画的底图：
+   * 不进撤销、不算改动，发出去的图不受影响。
+   */
+  public void setShowsOriginal(boolean showsOriginal) {
+    UriGlideRenderer renderer = getMainImageRenderer();
+    if (renderer == null || renderer.isShowingOriginal() == showsOriginal) {
+      return;
+    }
+
+    renderer.setShowingOriginal(showsOriginal);
+    invalidate.run();
+  }
+
   private @Nullable UriGlideRenderer getMainImageRenderer() {
     EditorElement mainImage = editorElementHierarchy.getMainImage();
     if (mainImage == null) {

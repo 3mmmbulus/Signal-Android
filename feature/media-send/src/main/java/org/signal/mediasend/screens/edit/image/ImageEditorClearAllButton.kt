@@ -30,7 +30,8 @@ internal fun ImageEditorClearAllButton(
   canUndo: Boolean = imageEditorController?.imageEditorState?.undoAvailable ?: false
 ) {
   MediaEditControl(
-    visible = imageEditorController != null && imageEditorController.isUserInEdit && canUndo,
+    // Tellomi（tellomi/tellomi#1593 E5-3）：调色页没有「全部清除」（同上面的撤销）。
+    visible = imageEditorController != null && imageEditorController.isUserInEdit && !imageEditorController.isUserAdjusting && canUndo,
     faded = faded,
     modifier = modifier
   ) {

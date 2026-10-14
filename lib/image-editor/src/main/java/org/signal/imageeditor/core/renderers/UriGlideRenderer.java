@@ -92,6 +92,9 @@ public final class UriGlideRenderer implements SelectableRenderer {
   @Nullable private Bitmap           adjustedBlurredBitmap;
   @Nullable private Bitmap           adjustedBlurredSource;
   @Nullable private ImageAdjustments adjustedBlurredFor;
+
+  /** Tellomi（tellomi/tellomi#1593 E5-3）：按住看原图。只管画布上怎么画，不写进 parcel、不算改动，发出时（阻塞渲染）不看它。 */
+  private boolean showingOriginal;
   @Nullable private Paint  blurPaint;
   private final Paint maskLayerPaint = new Paint();
   private final Paint maskDrawPaint  = new Paint(Paint.ANTI_ALIAS_FLAG);
@@ -209,7 +212,7 @@ public final class UriGlideRenderer implements SelectableRenderer {
       }
 
       rendererContext.canvas.concat(blurScaleMatrix);
-      rendererContext.canvas.drawBitmap(adjustedBlurredBitmap(blurredBitmap), 0, 0, blurPaint);
+      rendererContext.canvas.drawBitmap(showingOriginal && !rendererContext.isBlockingLoad() ? blurredBitmap : adjustedBlurredBitmap(blurredBitmap), 0, 0, blurPaint);
       blurPaint.setXfermode(null);
 
       rendererContext.restore();
@@ -225,6 +228,10 @@ public final class UriGlideRenderer implements SelectableRenderer {
       adjustedBitmap = null;
       adjustedSource = null;
       adjustedFor    = null;
+      return bitmap;
+    }
+
+    if (showingOriginal && !rendererContext.isBlockingLoad()) {
       return bitmap;
     }
 
@@ -387,6 +394,16 @@ public final class UriGlideRenderer implements SelectableRenderer {
   /** Tellomi（tellomi/tellomi#1591 E5-1）。 */
   public @NonNull ImageAdjustments getAdjustments() {
     return adjustments;
+  }
+
+  /** Tellomi（tellomi/tellomi#1593 E5-3）。 */
+  public boolean isShowingOriginal() {
+    return showingOriginal;
+  }
+
+  /** Tellomi（tellomi/tellomi#1593 E5-3）：走 {@link EditorModel#setShowsOriginal}，那里管重画。 */
+  public void setShowingOriginal(boolean showingOriginal) {
+    this.showingOriginal = showingOriginal;
   }
 
   /** Tellomi（tellomi/tellomi#1591 E5-1）：别直接调，走 {@link EditorModel#setAdjustments}，那里管撤销和重画。 */

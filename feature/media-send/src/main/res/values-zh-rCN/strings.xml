@@ -344,4 +344,18 @@
   <string name="MediaSendViewModel__tellomi_video_will_be_sent_as_gif">已关闭声音，视频会像 GIF 一样循环播放。</string>
   <string name="ScheduleSendMenu__tellomi_schedule_message">定时发送</string>
   <string name="ScheduleSendMenu__tellomi_set_reminder">设置提醒</string>
+  <!-- Tellomi（tellomi/tellomi#1593 E5-3）调色页：入口、各工具的名字 -->
+  <string name="ImageEditor_tellomi_adjust">调整</string>
+  <string name="ImageEditor_tellomi_adjust_skin">美肤</string>
+  <string name="ImageEditor_tellomi_adjust_enhance">增强</string>
+  <string name="ImageEditor_tellomi_adjust_exposure">曝光</string>
+  <string name="ImageEditor_tellomi_adjust_contrast">对比度</string>
+  <string name="ImageEditor_tellomi_adjust_saturation">饱和度</string>
+  <string name="ImageEditor_tellomi_adjust_warmth">色温</string>
+  <string name="ImageEditor_tellomi_adjust_fade">褪色</string>
+  <string name="ImageEditor_tellomi_adjust_highlights">高光</string>
+  <string name="ImageEditor_tellomi_adjust_shadows">阴影</string>
+  <string name="ImageEditor_tellomi_adjust_vignette">暗角</string>
+  <string name="ImageEditor_tellomi_adjust_grain">颗粒</string>
+  <string name="ImageEditor_tellomi_adjust_sharpen">锐化</string>
 </resources>

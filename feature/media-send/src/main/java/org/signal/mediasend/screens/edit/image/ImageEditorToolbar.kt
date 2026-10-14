@@ -20,6 +20,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.res.vectorResource
 import androidx.compose.ui.unit.dp
 import org.signal.core.ui.compose.Dialogs
 import org.signal.core.ui.compose.FoldablePortraitDayPreview
@@ -67,6 +68,9 @@ internal fun ImageEditorToolbar(
     imageEditorController.mode == ImageController.Mode.CROP -> {
       ImageEditorCropAndResizeToolbar(imageEditorController, modifier, enabled)
     }
+    imageEditorController.mode == ImageController.Mode.ADJUST -> {
+      ImageEditorAdjustToolbar(imageEditorController, modifier, enabled)
+    }
     else -> {
       ImageEditorDrawStateToolbar(imageEditorController, onEvent, modifier, enabled)
     }
@@ -98,6 +102,15 @@ private fun ImageEditorNoneStateToolbar(
       enabled = enabled
     )
 
+    // Tellomi（tellomi/tellomi#1593 E5-3）：调色，在画笔后面（照 Telegram 安卓查看器底栏 `PhotoViewer.itemsLayout` 的次序：裁剪、画笔、调整）。
+    MediaEditorToolbarButton(
+      imageVector = ImageVector.vectorResource(R.drawable.tellomi_adjust_24),
+      onClick = imageEditorController::beginAdjustEdit,
+      enabled = enabled,
+      contentDescription = stringResource(R.string.ImageEditor_tellomi_adjust),
+      modifier = Modifier.testTag(TELLOMI_ADJUST_BUTTON_TAG)
+    )
+
     MediaEditorToolbarSharedButtons(
       state = state,
       editorState = editorState,
@@ -106,6 +119,29 @@ private fun ImageEditorNoneStateToolbar(
     )
   }
 }
+
+/**
+ * Tellomi（tellomi/tellomi#1593 E5-3）：调色页底栏：取消、完成（照 Telegram 安卓调整页底栏两头的取消 / 完成）。中间的页签（模糊、曲线）
+ * 等那几项做了再加。
+ */
+@Composable
+private fun ImageEditorAdjustToolbar(
+  imageEditorController: ImageController,
+  modifier: Modifier = Modifier,
+  enabled: Boolean = true
+) {
+  MediaEditorToolbar(
+    modifier = modifier,
+    leading = {
+      DiscardButton(imageEditorController, enabled)
+    },
+    trailing = {
+      CommitButton(imageEditorController, enabled)
+    }
+  ) {}
+}
+
+internal const val TELLOMI_ADJUST_BUTTON_TAG = "tellomi-adjust-button"
 
 @Composable
 private fun ImageEditorDrawStateToolbar(

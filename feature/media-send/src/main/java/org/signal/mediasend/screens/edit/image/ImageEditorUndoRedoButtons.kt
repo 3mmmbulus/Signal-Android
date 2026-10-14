@@ -35,7 +35,8 @@ internal fun ImageEditorUndoRedoButtons(
   canRedo: Boolean = imageEditorController?.imageEditorState?.redoAvailable ?: false
 ) {
   MediaEditControl(
-    visible = imageEditorController != null && imageEditorController.isUserInEdit && (canUndo || canRedo),
+    // Tellomi（tellomi/tellomi#1593 E5-3）：调色页没有撤销（照 Telegram 两端调整页；整段调色在完成时才算一步）。
+    visible = imageEditorController != null && imageEditorController.isUserInEdit && !imageEditorController.isUserAdjusting && (canUndo || canRedo),
     faded = faded,
     modifier = modifier
   ) {
