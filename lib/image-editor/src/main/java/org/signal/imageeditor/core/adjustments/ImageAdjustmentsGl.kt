@@ -22,11 +22,11 @@ import java.nio.FloatBuffer
 import kotlin.math.ceil
 
 /**
- * Tellomi（tellomi/tellomi#1592 E5-2、#1595 E5-5）：用 GLES 2.0 离屏把调色画进一张位图：锐化 → 查找表 → 颗粒 → 暗角（[ImageAdjustmentsDetail]）。
+ * Tellomi（tellomi/tellomi#1592 E5-2、#1595 E5-5、#1598 E5-8）：用 GLES 2.0 离屏把调色画进一张位图：锐化 → 查找表 → 颗粒 → 暗角 → 模糊（[ImageAdjustmentsDetail]）。
  *
  * 只在 [ImageAdjustmentsRenderer] 的 GL 线程上用：EGL 上下文建在那条线程上，一直是它的当前上下文。
  * 图比 `GL_MAX_TEXTURE_SIZE`（再封顶 [MAX_TILE]）大时分块画；锐化要取旁边的像素，每块四周多传一圈重叠边（[apron]），只取中间那块写回。
- * 颗粒、暗角按像素在整张图里的位置算（每块传自己的左上角），分块不影响结果。
+ * 颗粒、暗角、模糊按像素在整张图里的位置算（每块传自己的左上角），分块不影响结果；模糊的小图整张作一个纹理，按单位坐标取。
  * 着色器是自己写的（标准的 2D 排布查找表 + 两片之间插值、3×3 帐篷核、噪声纹理双线性），和 Telegram 的着色器无关。
  */
 internal class ImageAdjustmentsGl private constructor(
@@ -54,15 +54,36 @@ internal class ImageAdjustmentsGl private constructor(
   private val imageSizeHandle = GLES20.glGetUniformLocation(program, "uImageSize")
   private val frameXHandle = GLES20.glGetUniformLocation(program, "uFrameX")
   private val frameYHandle = GLES20.glGetUniformLocation(program, "uFrameY")
+  private val blurHandle = GLES20.glGetUniformLocation(program, "uBlur")
+  private val blurKindHandle = GLES20.glGetUniformLocation(program, "uBlurKind")
+  private val blurCenterHandle = GLES20.glGetUniformLocation(program, "uBlurCenter")
+  private val blurRadiiHandle = GLES20.glGetUniformLocation(program, "uBlurRadii")
+  private val blurNormalHandle = GLES20.glGetUniformLocation(program, "uBlurNormal")
 
-  /** 这一次怎么画：[lut] 为 null 时不查表；[sharpen] / [grain] / [vignette] 是着色器里直接用的量（倍数、振幅、值/100），0 = 不做。 */
+  /**
+   * 这一次怎么画：[lut] 为 null 时不查表；[sharpen] / [grain] / [vignette] 是着色器里直接用的量（倍数、振幅、值/100），0 = 不做；
+   * [blur] 为 null 时不模糊。
+   */
   class Pass(
     val lut: ByteArray?,
     val lutSize: Int,
     val sharpen: Float,
     val grain: Float,
     val vignette: Float,
-    val frame: ImageAdjustmentsDetail.VignetteFrame
+    val frame: ImageAdjustmentsDetail.VignetteFrame,
+    val blur: BlurPass? = null
+  )
+
+  /** 模糊：[small] 是模糊好的小图（没查表）；[kind] 1 径向、2 线性；中心是单位坐标；半径、法线在「短边 = 1」的单位里。 */
+  class BlurPass(
+    val small: Bitmap,
+    val kind: Int,
+    val centerX: Float,
+    val centerY: Float,
+    val inner: Float,
+    val outer: Float,
+    val normalX: Float,
+    val normalY: Float
   )
 
   private val quad: FloatBuffer = ByteBuffer.allocateDirect(QUAD.size * 4).order(ByteOrder.nativeOrder()).asFloatBuffer().apply {
@@ -76,14 +97,15 @@ internal class ImageAdjustmentsGl private constructor(
     val output = ImageAdjustmentsRenderer.createOutput(source)
     val unit = ImageAdjustmentsDetail.unit(maxOf(source.width, source.height))
 
-    val textures = IntArray(4)
+    val textures = IntArray(5)
     val framebuffers = IntArray(1)
-    GLES20.glGenTextures(4, textures, 0)
+    GLES20.glGenTextures(5, textures, 0)
     GLES20.glGenFramebuffers(1, framebuffers, 0)
     val lutTexture = textures[0]
     val imageTexture = textures[1]
     val targetTexture = textures[2]
     val noiseTexture = textures[3]
+    val blurTexture = textures[4]
     try {
       GLES20.glUseProgram(program)
       GLES20.glPixelStorei(GLES20.GL_UNPACK_ALIGNMENT, 1)
@@ -112,6 +134,21 @@ internal class ImageAdjustmentsGl private constructor(
       val noiseSize = ImageAdjustmentsDetail.NOISE_SIZE
       GLES20.glTexImage2D(GLES20.GL_TEXTURE_2D, 0, GLES20.GL_LUMINANCE, noiseSize, noiseSize, 0, GLES20.GL_LUMINANCE, GLES20.GL_UNSIGNED_BYTE, noiseBuffer)
       GLES20.glUniform1i(noiseHandle, 2)
+
+      // 模糊的小图：整张作一个纹理，线性过滤就是放大回去时的双线性插值。
+      GLES20.glActiveTexture(GLES20.GL_TEXTURE3)
+      bindTexture(blurTexture, GLES20.GL_LINEAR)
+      val blur = pass.blur
+      if (blur != null) {
+        GLUtils.texImage2D(GLES20.GL_TEXTURE_2D, 0, blur.small, 0)
+      } else {
+        GLES20.glTexImage2D(GLES20.GL_TEXTURE_2D, 0, GLES20.GL_RGBA, 1, 1, 0, GLES20.GL_RGBA, GLES20.GL_UNSIGNED_BYTE, ByteBuffer.allocateDirect(4))
+      }
+      GLES20.glUniform1i(blurHandle, 3)
+      GLES20.glUniform1f(blurKindHandle, blur?.kind?.toFloat() ?: 0f)
+      GLES20.glUniform2f(blurCenterHandle, blur?.centerX ?: 0f, blur?.centerY ?: 0f)
+      GLES20.glUniform2f(blurRadiiHandle, blur?.inner ?: 0f, blur?.outer ?: 1f)
+      GLES20.glUniform2f(blurNormalHandle, blur?.normalX ?: 0f, blur?.normalY ?: 1f)
 
       GLES20.glUniform1i(imageHandle, 0)
       GLES20.glUniform1f(stepHandle, unit)
@@ -165,7 +202,7 @@ internal class ImageAdjustmentsGl private constructor(
     } finally {
       GLES20.glBindFramebuffer(GLES20.GL_FRAMEBUFFER, 0)
       GLES20.glDeleteFramebuffers(1, framebuffers, 0)
-      GLES20.glDeleteTextures(4, textures, 0)
+      GLES20.glDeleteTextures(5, textures, 0)
     }
   }
 
@@ -256,6 +293,11 @@ internal class ImageAdjustmentsGl private constructor(
       uniform vec2 uImageSize;
       uniform vec3 uFrameX;
       uniform vec3 uFrameY;
+      uniform sampler2D uBlur;
+      uniform float uBlurKind;
+      uniform vec2 uBlurCenter;
+      uniform vec2 uBlurRadii;
+      uniform vec2 uBlurNormal;
 
       vec3 lookup(vec3 color) {
         float last = uLutSize - 1.0;
@@ -293,12 +335,26 @@ internal class ImageAdjustmentsGl private constructor(
           float t = abs(2.0 * dot(rgb, vec3(0.2126, 0.7152, 0.0722)) - 1.0);
           rgb = clamp(rgb + uGrain * (1.0 - t * t * t) * n, 0.0, 1.0);
         }
+        vec2 unitPos = pixel / uImageSize;
+        float k = 0.0;
         if (uVignette > 0.0) {
-          vec3 unit = vec3(pixel / uImageSize, 1.0);
-          vec2 d = vec2(dot(uFrameX, unit), dot(uFrameY, unit));
+          vec2 d = vec2(dot(uFrameX, vec3(unitPos, 1.0)), dot(uFrameY, vec3(unitPos, 1.0)));
           float rho = min(length(d) * 0.70710678, 1.0);
-          float k = uVignette * rho * rho * rho;
+          k = uVignette * rho * rho * rho;
           rgb = pow(rgb, vec3(1.0 + 1.2 * k)) * (1.0 - 0.35 * k);
+        }
+        if (uBlurKind > 0.5) {
+          vec4 blurred = texture2D(uBlur, unitPos);
+          vec3 blurredRgb = blurred.a > 0.0 ? clamp(blurred.rgb / blurred.a, 0.0, 1.0) : rgb;
+          if (uUseLut > 0.5) {
+            blurredRgb = lookup(blurredRgb);
+          }
+          if (k > 0.0) {
+            blurredRgb = pow(blurredRgb, vec3(1.0 + 1.2 * k)) * (1.0 - 0.35 * k);
+          }
+          vec2 q = (unitPos - uBlurCenter) * uImageSize / min(uImageSize.x, uImageSize.y);
+          float d = uBlurKind < 1.5 ? length(q) : abs(dot(q, uBlurNormal));
+          rgb = mix(rgb, blurredRgb, smoothstep(uBlurRadii.x, uBlurRadii.y, d));
         }
 
         gl_FragColor = vec4(rgb * color.a, color.a);

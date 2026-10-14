@@ -4,25 +4,32 @@
  */
 package org.signal.imageeditor.core.adjustments
 
+import android.graphics.Bitmap
 import org.signal.imageeditor.core.model.ImageAdjustments
 import kotlin.math.abs
+import kotlin.math.cos
 import kotlin.math.floor
 import kotlin.math.max
 import kotlin.math.min
 import kotlin.math.pow
 import kotlin.math.roundToInt
+import kotlin.math.sin
 import kotlin.math.sqrt
 
 /**
- * Tellomi（tellomi/tellomi#1595 E5-5，Epic #1523）：调色里和位置有关的三项——锐化、颗粒、暗角——的定义和 CPU 实现。
+ * Tellomi（tellomi/tellomi#1595 E5-5、#1598 E5-8，Epic #1523）：调色里和位置有关的几项——锐化、颗粒、暗角、模糊（移轴）——的定义和 CPU 实现。
  * GPU 上同样的算法在 [ImageAdjustmentsGl] 的着色器里；和 iOS `TellomiImageAdjustments.metal` 是同一套（自己定的，Telegram 的着色器一行不搬）。
  *
- * 都在编码值（0…1）上算；顺序照两端 Telegram：锐化 → 查找表（[ImageAdjustmentsColor]）→ 颗粒 → 暗角。
+ * 都在编码值（0…1）上算；顺序照两端 Telegram：锐化 → 查找表（[ImageAdjustmentsColor]）→ 颗粒 → 暗角 → 模糊。
  * 尺寸用一个「格」u = max(1, 长边 / 2048) 像素量：预览图（长边 ≤ 2048）上 u = 1，原尺寸图上按比例放大，预览和发出的图看起来一样。
  * - 锐化：c' = c + 2.5·(值/100)·(c − 模糊)，模糊是以 u 为一格的 3×3 帐篷核（1 2 1 / 2 4 2 / 1 2 1，除以 16），图边外取最靠边的像素。
  * - 颗粒：[NOISE]（256 × 256，四边循环）按 2u 像素一格双线性插值，c' = c + 0.06·(值/100)·w(y)·n，w(y) = 1 − |2y − 1|³，单色。只用于照片。
  * - 暗角：跟着画框（裁剪后的输出范围）走；[VignetteFrame] 把图上的单位坐标映到画框坐标 d（中心 0，四边 ±1），
  *   ρ = min(|d|/√2, 1)，k = (值/100)·ρ³，c' = c^(1 + 1.2k)·(1 − 0.35k)。
+ * - 模糊（移轴，E5-8）：原图缩到长边 ≤ 512，三遍方框模糊（[blurRadius]，[boxBlurPass]），查同一张表、压同样的暗角，放大回去；
+ *   遮罩 m = smoothstep(内半径, 外半径, d)，d 在「短边 = 1」的单位里量：径向是到中心的距离，线性是到过中心那条线的距离；
+ *   这个像素 = mix(清楚的, 模糊的, m)。内半径 = `falloff`、外半径 = `size`（照两端 TG 的控件）。
+ *   安卓照 TG 安卓存的角度是那条线的法线方向（π/2 = 横线），法线 = (cos, sin)；iOS 存的是线的方向。
  */
 object ImageAdjustmentsDetail {
 
@@ -86,6 +93,88 @@ object ImageAdjustmentsDetail {
   @JvmStatic
   fun vignette(value: Float, k: Float): Float = value.pow(1f + 1.2f * k) * (1f - 0.35f * k)
 
+  /** 模糊用的小图长边上限。 */
+  const val BLUR_SMALL_LONG_SIDE = 512
+
+  /** 小图上三遍方框模糊的半径：长边的 1.1%，四舍五入，至少 1（512 上是 6）。iOS `TellomiImageAdjustmentsRenderer.blurRadius` 一样。 */
+  @JvmStatic
+  fun blurRadius(longSide: Int): Int = max(1, (0.011f * longSide).roundToInt())
+
+  /** 一行（或一列）方框模糊一遍：每个值换成前后各 [radius] 个（图边外取最靠边的）的平均，整数四舍五入。iOS 同一算法。 */
+  @JvmStatic
+  fun boxBlurPass(line: IntArray, radius: Int): IntArray {
+    val count = line.size
+    if (count == 0) return line
+    val width = 2 * radius + 1
+    var sum = 0
+    for (offset in -radius..radius) {
+      sum += line[offset.coerceIn(0, count - 1)]
+    }
+    val output = IntArray(count)
+    for (index in 0 until count) {
+      output[index] = (sum + width / 2) / width
+      sum += line[min(index + radius + 1, count - 1)] - line[max(index - radius, 0)]
+    }
+    return output
+  }
+
+  /** 内、外半径（短边 = 1）：内 = `falloff`、外 = `size`，外至少比内大一点。 */
+  @JvmStatic
+  fun blurRadii(blur: ImageAdjustments.Blur): Pair<Float, Float> {
+    val inner = max(blur.falloff, 0f)
+    return inner to max(blur.size, inner + 0.001f)
+  }
+
+  /** 线性模糊的法线：安卓存的角度就是法线方向（照 TG 安卓，π/2 = 横线），法线 = (cos, sin)。 */
+  @JvmStatic
+  fun blurNormal(blur: ImageAdjustments.Blur): Pair<Float, Float> = cos(blur.angle) to sin(blur.angle)
+
+  /** 单位坐标 ([ux], [uy])（左上为原点）处模糊的遮罩：0 = 清楚、1 = 全模糊。 */
+  @JvmStatic
+  fun blurMask(blur: ImageAdjustments.Blur, ux: Float, uy: Float, width: Float, height: Float): Float {
+    if (blur.type == ImageAdjustments.BlurType.OFF) return 0f
+    val short = min(width, height)
+    val qx = (ux - blur.centerX) * width / short
+    val qy = (uy - blur.centerY) * height / short
+    val d = if (blur.type == ImageAdjustments.BlurType.RADIAL) {
+      sqrt(qx * qx + qy * qy)
+    } else {
+      val (nx, ny) = blurNormal(blur)
+      abs(qx * nx + qy * ny)
+    }
+    val (inner, outer) = blurRadii(blur)
+    val t = ((d - inner) / (outer - inner)).coerceIn(0f, 1f)
+    return t * t * (3f - 2f * t)
+  }
+
+  /** 模糊用的小图：缩到长边 ≤ 512，每个通道横、竖各三遍方框模糊（ARGB，按 `getPixels` 给的没预乘的值做）。 */
+  @JvmStatic
+  fun blurredSmall(source: Bitmap): Bitmap {
+    val longSide = max(source.width, source.height)
+    val scale = min(1f, BLUR_SMALL_LONG_SIDE / longSide.toFloat())
+    val width = max(1, (source.width * scale).roundToInt())
+    val height = max(1, (source.height * scale).roundToInt())
+    val small = if (width == source.width && height == source.height) source else Bitmap.createScaledBitmap(source, width, height, true)
+    val pixels = IntArray(width * height)
+    small.getPixels(pixels, 0, width, 0, 0, width, height)
+    if (small !== source) small.recycle()
+
+    val radius = blurRadius(max(width, height))
+    for (shift in intArrayOf(24, 16, 8, 0)) {
+      repeat(3) {
+        for (y in 0 until height) {
+          val row = IntArray(width) { (pixels[y * width + it] ushr shift) and 0xFF }
+          boxBlurPass(row, radius).forEachIndexed { x, value -> pixels[y * width + x] = (pixels[y * width + x] and (0xFF shl shift).inv()) or (value shl shift) }
+        }
+        for (x in 0 until width) {
+          val column = IntArray(height) { (pixels[it * width + x] ushr shift) and 0xFF }
+          boxBlurPass(column, radius).forEachIndexed { y, value -> pixels[y * width + x] = (pixels[y * width + x] and (0xFF shl shift).inv()) or (value shl shift) }
+        }
+      }
+    }
+    return ImageAdjustmentsRenderer.createOutput(source, width, height).apply { setPixels(pixels, 0, width, 0, 0, width, height) }
+  }
+
   /** 查找表只管逐像素的几项：把和位置有关的几项放回默认。只动了它们时不用查表，拖它们的滑杆也不用重算表。 */
   @JvmStatic
   fun colorOnly(adjustments: ImageAdjustments): ImageAdjustments {
@@ -116,7 +205,7 @@ object ImageAdjustmentsDetail {
    * 参数同 [ImageAdjustmentsGl.Pass]：[lut] 为 null 表示不查表；[sharpen] / [grain] / [vignetteAmount] 是倍数、振幅、值/100，0 = 不做。
    * 透明的像素不动。
    */
-  fun applyOnCpu(
+  internal fun applyOnCpu(
     pixels: IntArray,
     width: Int,
     height: Int,
@@ -125,13 +214,17 @@ object ImageAdjustmentsDetail {
     sharpen: Float,
     grain: Float,
     vignetteAmount: Float,
-    frame: VignetteFrame
+    frame: VignetteFrame,
+    blur: ImageAdjustmentsGl.BlurPass? = null
   ) {
     val u = unit(max(width, height))
+    val blurPixels = blur?.small?.let { small -> IntArray(small.width * small.height).also { small.getPixels(it, 0, small.width, 0, 0, small.width, small.height) } }
+    val blurColor = FloatArray(3)
+    val short = min(width, height).toFloat()
     val source = if (sharpen > 0f) pixels.copyOf() else null
     val cellSize = GRAIN_CELL * u
     val rgb = FloatArray(3)
-    val blur = FloatArray(3)
+    val tent = FloatArray(3)
 
     for (y in 0 until height) {
       for (x in 0 until width) {
@@ -144,9 +237,9 @@ object ImageAdjustmentsDetail {
         rgb[2] = (color and 0xFF) / 255f
 
         if (source != null) {
-          tentBlur(source, width, height, x + 0.5f, y + 0.5f, u, blur)
+          tentBlur(source, width, height, x + 0.5f, y + 0.5f, u, tent)
           for (i in 0..2) {
-            rgb[i] = (rgb[i] + sharpen * (rgb[i] - blur[i])).coerceIn(0f, 1f)
+            rgb[i] = (rgb[i] + sharpen * (rgb[i] - tent[i])).coerceIn(0f, 1f)
           }
         }
 
@@ -162,12 +255,34 @@ object ImageAdjustmentsDetail {
           }
         }
 
+        val ux = (x + 0.5f) / width
+        val uy = (y + 0.5f) / height
+        var k = 0f
         if (vignetteAmount > 0f) {
-          val ux = (x + 0.5f) / width
-          val uy = (y + 0.5f) / height
-          val k = vignetteStrength(vignetteAmount, frame.xx * ux + frame.xy * uy + frame.x0, frame.yx * ux + frame.yy * uy + frame.y0)
+          k = vignetteStrength(vignetteAmount, frame.xx * ux + frame.xy * uy + frame.x0, frame.yx * ux + frame.yy * uy + frame.y0)
           for (i in 0..2) {
             rgb[i] = vignette(rgb[i], k)
+          }
+        }
+
+        if (blur != null && blurPixels != null) {
+          val small = blur.small
+          bilinear(blurPixels, small.width, small.height, ux * small.width, uy * small.height, blurColor)
+          if (lut != null) {
+            ImageAdjustmentsColor.lookup(lut, lutSize, blurColor)
+          }
+          if (k > 0f) {
+            for (i in 0..2) {
+              blurColor[i] = vignette(blurColor[i], k)
+            }
+          }
+          val qx = (ux - blur.centerX) * width / short
+          val qy = (uy - blur.centerY) * height / short
+          val d = if (blur.kind == 1) sqrt(qx * qx + qy * qy) else abs(qx * blur.normalX + qy * blur.normalY)
+          val t = ((d - blur.inner) / (blur.outer - blur.inner)).coerceIn(0f, 1f)
+          val m = t * t * (3f - 2f * t)
+          for (i in 0..2) {
+            rgb[i] = rgb[i] + (blurColor[i] - rgb[i]) * m
           }
         }
 

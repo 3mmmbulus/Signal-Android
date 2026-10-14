@@ -82,6 +82,19 @@ class ImageAdjustmentsGlTest {
     assertMaxDifference(ImageAdjustmentsRenderer.applyOnCpu(source, pass), gl.render(source, pass), 4)
   }
 
+  /** E5-8：模糊（径向、线性）在 GPU 上和 CPU 上一样；分块时也一样（小图整张一个纹理，按单位坐标取）。 */
+  @Test
+  fun blurGpuMatchesCpu() {
+    val source = gradient(2048 + 300, 300)
+    for (blur in listOf(
+      ImageAdjustments.Blur(type = ImageAdjustments.BlurType.RADIAL, centerX = 0.45f, falloff = 0.1f, size = 0.3f),
+      ImageAdjustments.Blur(type = ImageAdjustments.BlurType.LINEAR, centerY = 0.6f, falloff = 0.05f, size = 0.2f, angle = 1.2f)
+    )) {
+      val pass = ImageAdjustmentsRenderer.pass(detailAdjustments.copy(blur = blur), tiltedFrame, true, source)
+      assertMaxDifference(ImageAdjustmentsRenderer.applyOnCpu(source, pass), gl.render(source, pass), 4)
+    }
+  }
+
   /** 半透明的像素按没预乘的颜色查表，alpha 不变；颜色空间跟着原图。 */
   @Test
   fun keepsAlphaAndColorSpace() {

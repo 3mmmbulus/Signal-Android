@@ -10,6 +10,7 @@ import android.graphics.Matrix
 import android.graphics.Point
 import android.graphics.RectF
 import android.net.Uri
+import androidx.compose.ui.geometry.Offset
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -24,7 +25,12 @@ import org.signal.imageeditor.core.model.EditorModel
 import org.signal.imageeditor.core.model.ImageAdjustments
 import org.signal.imageeditor.core.renderers.UriGlideRenderer
 import org.signal.mediasend.screens.edit.image.AVAILABLE_TOOLS
+import org.signal.mediasend.screens.edit.image.BlurControl
+import org.signal.mediasend.screens.edit.image.BlurMapping
 import org.signal.mediasend.screens.edit.image.adjustmentValueText
+import org.signal.mediasend.screens.edit.image.blurControlAt
+import org.signal.mediasend.screens.edit.image.blurDragged
+import org.signal.mediasend.screens.edit.image.blurPinched
 import org.signal.mediasend.screens.edit.image.curveSegment
 import org.signal.mediasend.screens.edit.image.curveValueText
 
@@ -166,6 +172,55 @@ class ImageControllerAdjustTest {
     val root = model.findCropRelativeToRoot()
     assertTrue("裁剪框在画布上：${crop.toShortString()} vs ${root.toShortString()}", crop.width() > 0f && crop.height() > 0f)
     assertEquals(crop.width() / crop.height(), root.width() / root.height(), 0.01f)
+  }
+
+  /** E5-8：模糊页签——选「径向 / 线性」、改模糊只改预览，完成算一步撤销。 */
+  @Test
+  fun `blur type and blur changes are one undo step`() {
+    controller.beginAdjustEdit()
+    controller.selectAdjustTab(ImageController.AdjustTab.BLUR)
+    controller.selectBlurType(ImageAdjustments.BlurType.RADIAL)
+    assertEquals(ImageAdjustments.BlurType.RADIAL, model.adjustments.blur.type)
+    controller.setBlur(model.adjustments.blur.copy(centerX = 0.3f))
+    assertEquals(0.3f, model.adjustments.blur.centerX, 0f)
+    controller.selectBlurType(ImageAdjustments.BlurType.LINEAR)
+    assertEquals("中心留着", 0.3f, model.adjustments.blur.centerX, 0f)
+
+    controller.commitEdit()
+    model.undo()
+    assertEquals(ImageAdjustments.BlurType.OFF, model.adjustments.blur.type)
+  }
+
+  /** E5-8：模糊控件——按中心、内外圈、线性别处；拖中心、拖外圈、捏、转；画布上的位置用单位坐标 → view 的矩阵。 */
+  @Test
+  fun `blur controls hit test and move like Telegram`() {
+    // 图 4:3，在画布上 (100, 50) 起、400 × 300：短边 300 像素。
+    val mapping = BlurMapping(Matrix().apply { setScale(400f, 300f); postTranslate(100f, 50f) })
+    assertEquals(300f, mapping.shortSideInView, 1e-3f)
+    val radial = ImageAdjustments.Blur(type = ImageAdjustments.BlurType.RADIAL, falloff = 0.12f, size = 0.24f)
+    val center = mapping.view(0.5f, 0.5f)
+    assertEquals(Offset(300f, 200f), center)
+    assertEquals(BlurControl.CENTER, blurControlAt(radial, mapping, center, 30f))
+    assertEquals(BlurControl.INNER, blurControlAt(radial, mapping, center + Offset(36f, 0f), 30f))
+    assertEquals(BlurControl.OUTER, blurControlAt(radial, mapping, center + Offset(0f, 72f), 30f))
+    assertEquals("径向时别处不动", null, blurControlAt(radial, mapping, Offset(110f, 60f), 30f))
+
+    val moved = blurDragged(BlurControl.CENTER, radial, center, center + Offset(40f, -30f), mapping)
+    assertEquals(0.6f, moved.centerX, 1e-5f)
+    assertEquals(0.4f, moved.centerY, 1e-5f)
+    val bigger = blurDragged(BlurControl.OUTER, radial, center + Offset(72f, 0f), center + Offset(102f, 0f), mapping)
+    assertEquals(0.34f, bigger.size, 1e-5f)
+    val inner = blurDragged(BlurControl.INNER, radial, center + Offset(36f, 0f), center + Offset(200f, 0f), mapping)
+    assertEquals("内圈不超过外圈", 0.22f, inner.falloff, 1e-5f)
+    val pinched = blurPinched(radial, 0.5f)
+    assertEquals(0.06f, pinched.falloff, 1e-5f)
+    assertEquals(0.12f, pinched.size, 1e-5f)
+
+    val linear = radial.copy(type = ImageAdjustments.BlurType.LINEAR)
+    val below = center + Offset(0f, 150f)
+    assertEquals(BlurControl.ROTATION, blurControlAt(linear, mapping, below, 30f))
+    val turned = blurDragged(BlurControl.ROTATION, linear, below, center + Offset(150f, 0f), mapping)
+    assertEquals("转了 −90°", linear.angle - (Math.PI / 2).toFloat(), turned.angle, 1e-4f)
   }
 
   @Test

@@ -121,8 +121,8 @@ private fun ImageEditorNoneStateToolbar(
 }
 
 /**
- * Tellomi（tellomi/tellomi#1593 E5-3、#1597 E5-7）：调色页底栏：两头取消 / 完成，中间是页签——工具列表、曲线
- * （照 Telegram 安卓调整页底栏 `PhotoFilterView` 的 tuneItem / curveItem；模糊页签做了再加）。
+ * Tellomi（tellomi/tellomi#1593 E5-3、#1597 E5-7、#1598 E5-8）：调色页底栏：两头取消 / 完成，中间是页签——工具列表、模糊、曲线
+ * （照 Telegram 安卓调整页底栏 `PhotoFilterView` 的 tuneItem / blurItem / curveItem）。
  */
 @Composable
 private fun ImageEditorAdjustToolbar(
@@ -145,6 +145,14 @@ private fun ImageEditorAdjustToolbar(
       enabled = enabled,
       contentDescription = stringResource(R.string.ImageEditor_tellomi_adjust),
       onCheckChanged = { imageEditorController.selectAdjustTab(ImageController.AdjustTab.TOOLS) }
+    )
+
+    ImageEditorToggleButton(
+      imageVector = ImageVector.vectorResource(R.drawable.tellomi_blur_24),
+      checked = imageEditorController.adjustTab == ImageController.AdjustTab.BLUR,
+      enabled = enabled,
+      contentDescription = stringResource(R.string.ImageEditor_tellomi_adjust_blur),
+      onCheckChanged = { imageEditorController.selectAdjustTab(ImageController.AdjustTab.BLUR) }
     )
 
     ImageEditorToggleButton(

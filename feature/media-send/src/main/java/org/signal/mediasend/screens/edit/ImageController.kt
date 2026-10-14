@@ -148,7 +148,7 @@ internal class ImageController(
   var isShowingOriginal: Boolean by mutableStateOf(false)
     private set
 
-  /** Tellomi（tellomi/tellomi#1597 E5-7）：调色页的页签：工具列表、曲线（照 Telegram 安卓调整页底栏的 tune / curve；模糊做了再加）。 */
+  /** Tellomi（tellomi/tellomi#1597 E5-7、#1598 E5-8）：调色页的页签：工具列表、模糊、曲线（照 Telegram 安卓调整页底栏的 tune / blur / curve）。 */
   var adjustTab: AdjustTab by mutableStateOf(AdjustTab.TOOLS)
     private set
 
@@ -158,6 +158,7 @@ internal class ImageController(
 
   enum class AdjustTab {
     TOOLS,
+    BLUR,
     CURVES
   }
 
@@ -289,6 +290,21 @@ internal class ImageController(
   /** Tellomi（tellomi/tellomi#1597 E5-7）：曲线页签里换一条（全部 / 红 / 绿 / 蓝）。 */
   fun selectCurveChannel(channel: ImageAdjustments.CurveChannel) {
     curveChannel = channel
+  }
+
+  /** Tellomi（tellomi/tellomi#1598 E5-8）：选「关 / 径向 / 线性」：中心、半径、角度留着上次的。 */
+  fun selectBlurType(type: ImageAdjustments.BlurType) {
+    setBlur(adjustments.blur.copy(type = type))
+  }
+
+  /** Tellomi（tellomi/tellomi#1598 E5-8）：拖、捏模糊控件。和拖滑杆一样，只改预览、完成时记一步撤销。 */
+  fun setBlur(blur: ImageAdjustments.Blur) {
+    val updated = adjustments.copy(blur = blur)
+    if (updated == adjustments) {
+      return
+    }
+    adjustments = updated
+    editorModel.setAdjustments(updated, false)
   }
 
   /**

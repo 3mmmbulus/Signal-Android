@@ -1151,6 +1151,21 @@ public final class EditorModel implements Parcelable, RendererContext.Ready {
     return dst;
   }
 
+  /**
+   * Tellomi（tellomi/tellomi#1598 E5-8）：主图上的单位坐标（左上为原点，0…1）→ 画布（view）坐标；主图还没加载好时 null。
+   * 调色的模糊控件（中心、内外圈）按它画在照片上、按它把手指换回图上的坐标。
+   */
+  public @Nullable Matrix findImageUnitToView(@NonNull Matrix viewMatrix) {
+    UriGlideRenderer renderer    = getMainImageRenderer();
+    Matrix           unitToLocal = renderer != null ? renderer.getUnitToLocalMatrix() : null;
+    Matrix           localToView = findElementMatrix(editorElementHierarchy.getMainImage(), viewMatrix);
+    if (unitToLocal == null || localToView == null) {
+      return null;
+    }
+    unitToLocal.postConcat(localToView);
+    return unitToLocal;
+  }
+
   public RectF findCropRelativeToRoot() {
     return findCropRelativeTo(editorElementHierarchy.getRoot());
   }

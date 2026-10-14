@@ -383,6 +383,11 @@
   <string name="ImageEditor_tellomi_adjust_curves_red">Red</string>
   <string name="ImageEditor_tellomi_adjust_curves_green">Green</string>
   <string name="ImageEditor_tellomi_adjust_curves_blue">Blue</string>
+  <!-- Tellomi（tellomi/tellomi#1598 E5-8）：调色页的「模糊」页签和它的三个选项 -->
+  <string name="ImageEditor_tellomi_adjust_blur">Blur</string>
+  <string name="ImageEditor_tellomi_adjust_blur_off">Off</string>
+  <string name="ImageEditor_tellomi_adjust_blur_radial">Radial</string>
+  <string name="ImageEditor_tellomi_adjust_blur_linear">Linear</string>
   <!-- Tellomi（tellomi/tellomi#1596 E5-6）调色页色调两行 -->
   <string name="ImageEditor_tellomi_adjust_tint_shadows">Shadows tint</string>
   <string name="ImageEditor_tellomi_adjust_tint_highlights">Highlights tint</string>

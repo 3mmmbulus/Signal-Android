@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Copyright 2026 重庆半格智能科技有限公司
+  SPDX-License-Identifier: AGPL-3.0-only
+
+  Tellomi（tellomi/tellomi#1598 E5-8）：调色页「模糊」页签的图标——一滴水，自己画的（iOS 用系统的 drop）。
+-->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="24"
+    android:viewportHeight="24">
+    <path
+        android:pathData="M12,3C12,3 5.5,10.2 5.5,14.5A6.5,6.5 0,0 0,18.5 14.5C18.5,10.2 12,3 12,3Z"
+        android:strokeWidth="1.75"
+        android:strokeColor="#FF000000"
+        android:strokeLineJoin="round" />
+</vector>

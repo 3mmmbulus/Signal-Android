@@ -75,6 +75,7 @@ import org.signal.mediasend.screens.MediaSendMetrics
 import org.signal.mediasend.screens.edit.document.DocumentPage
 import org.signal.mediasend.screens.edit.image.AdjustmentsPanel
 import org.signal.mediasend.screens.edit.image.BlurFacesBar
+import org.signal.mediasend.screens.edit.image.BlurPanel
 import org.signal.mediasend.screens.edit.image.BrushWidthBar
 import org.signal.mediasend.screens.edit.image.BrushWidthPreview
 import org.signal.mediasend.screens.edit.image.CurvesPanel
@@ -421,16 +422,16 @@ internal fun MediaEditScreen(
             }
           }
 
-          // Tellomi（tellomi/tellomi#1593 E5-3、#1597 E5-7）：调色页的工具列表；曲线页签时是「全部 / 红 / 绿 / 蓝」。
+          // Tellomi（tellomi/tellomi#1593 E5-3、#1597 E5-7、#1598 E5-8）：调色页的工具列表；模糊页签时是「关 / 径向 / 线性」，曲线页签时是「全部 / 红 / 绿 / 蓝」。
           if (controller.isUserAdjusting) {
             MediaEditControl(faded = isChromeFaded) {
               val panelModifier = Modifier
                 .widthIn(max = 480.dp)
                 .padding(horizontal = 16.dp)
-              if (controller.adjustTab == ImageController.AdjustTab.CURVES) {
-                CurvesPanel(controller = controller, modifier = panelModifier)
-              } else {
-                AdjustmentsPanel(controller = controller, modifier = panelModifier)
+              when (controller.adjustTab) {
+                ImageController.AdjustTab.TOOLS -> AdjustmentsPanel(controller = controller, modifier = panelModifier)
+                ImageController.AdjustTab.BLUR -> BlurPanel(controller = controller, modifier = panelModifier)
+                ImageController.AdjustTab.CURVES -> CurvesPanel(controller = controller, modifier = panelModifier)
               }
             }
           }

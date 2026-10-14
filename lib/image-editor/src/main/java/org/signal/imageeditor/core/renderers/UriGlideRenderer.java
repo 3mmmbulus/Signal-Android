@@ -460,6 +460,20 @@ public final class UriGlideRenderer implements SelectableRenderer {
     this.adjustments = adjustments;
   }
 
+  /**
+   * Tellomi（tellomi/tellomi#1598 E5-8）：图上的单位坐标（左上为原点，0…1）→ 主图局部坐标；还没加载好时 null。调色的模糊控件用它摆在画布上。
+   */
+  public @Nullable Matrix getUnitToLocalMatrix() {
+    Bitmap bitmap = getBitmap();
+    if (bitmap == null) {
+      return null;
+    }
+    Matrix matrix = new Matrix();
+    matrix.setScale(bitmap.getWidth(), bitmap.getHeight());
+    matrix.postConcat(imageProjectionMatrix);
+    return matrix;
+  }
+
   /** Tellomi（tellomi/tellomi#1595 E5-5）：主图局部坐标 → 裁剪框局部坐标；{@link EditorModel} 每次画之前给（暗角跟着画框走）。 */
   public void setImageToCrop(@NonNull Matrix imageToCrop) {
     if (this.imageToCrop == null) {

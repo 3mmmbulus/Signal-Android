@@ -141,6 +141,57 @@ class ImageAdjustmentsDetailTest {
     assertEquals(0.2f, blurred.vignette, 1e-6f)
   }
 
+  /** E5-8：两端同一套：小图方框模糊的半径、三遍方框模糊、遮罩。和 iOS `testBlurMatchesTheSharedReferenceValues` 同一组。 */
+  @Test
+  fun blurMatchesTheSharedReferenceValues() {
+    assertEquals(6, ImageAdjustmentsDetail.blurRadius(512))
+    assertEquals(3, ImageAdjustmentsDetail.blurRadius(300))
+    assertEquals(1, ImageAdjustmentsDetail.blurRadius(64))
+
+    var row = IntArray(21).also { it[10] = 255 }
+    repeat(3) { row = ImageAdjustmentsDetail.boxBlurPass(row, 2) }
+    assertEquals(listOf(0, 0, 0, 0, 2, 6, 12, 20, 31, 37, 39, 37, 31, 20, 12, 6, 2, 0, 0, 0, 0), row.toList())
+    var edges = intArrayOf(10, 200, 30, 40, 250, 60, 70)
+    repeat(3) { edges = ImageAdjustmentsDetail.boxBlurPass(edges, 1) }
+    assertEquals(listOf(77, 83, 93, 105, 109, 103, 93), edges.toList())
+
+    val radial = ImageAdjustments.Blur(type = ImageAdjustments.BlurType.RADIAL, falloff = 0.12f, size = 0.24f)
+    assertEquals(0f, ImageAdjustmentsDetail.blurMask(radial, 0.5f, 0.5f, 400f, 300f), 1e-5f)
+    assertEquals(0.5f, ImageAdjustmentsDetail.blurMask(radial, 0.5f + 0.18f * 300f / 400f, 0.5f, 400f, 300f), 1e-5f)
+    assertEquals(1f, ImageAdjustmentsDetail.blurMask(radial, 0.9f, 0.5f, 400f, 300f), 1e-5f)
+
+    // 安卓的角度是法线方向（π/2 = 横线，照 TG 安卓的默认）。
+    val linear = ImageAdjustments.Blur(type = ImageAdjustments.BlurType.LINEAR, falloff = 0.15f, size = 0.35f)
+    assertEquals(0.5f, ImageAdjustmentsDetail.blurMask(linear, 0.1f, 0.75f, 400f, 300f), 1e-5f)
+    assertEquals(0f, ImageAdjustmentsDetail.blurMask(linear, 0.9f, 0.5f, 400f, 300f), 1e-5f)
+    // iOS 的「线转 30°」= 法线 120°。
+    val rotated = linear.copy(centerX = 0.4f, centerY = 0.6f, falloff = 0.1f, size = 0.3f, angle = (2 * Math.PI / 3).toFloat())
+    assertEquals(0.30385f, ImageAdjustmentsDetail.blurMask(rotated, 0.4f, 0.8f, 400f, 300f), 1e-4f)
+  }
+
+  /** E5-8：径向中心的细条纹还在，角上糊成平均色；线性横带中间清楚、上下糊，转 90° 变竖带。 */
+  @Test
+  fun blurKeepsTheFocusSharp() {
+    val stripes = image(400, 300) { x, _ -> if (x % 2 == 0) 0.2f else 0.8f }
+    val radial = ImageAdjustments(blur = ImageAdjustments.Blur(type = ImageAdjustments.BlurType.RADIAL, falloff = 0.12f, size = 0.24f))
+    val radialOut = ImageAdjustmentsRenderer.applyOnCpu(stripes, ImageAdjustmentsRenderer.pass(radial, ImageAdjustmentsDetail.VignetteFrame.FULL_IMAGE, true, stripes))
+    assertTrue("中心清楚", kotlin.math.abs(red(radialOut, 200, 150) - red(radialOut, 201, 150)) > 0.5f)
+    assertTrue("角上糊了", kotlin.math.abs(red(radialOut, 10, 10) - red(radialOut, 11, 10)) < 0.05f)
+    assertEquals(0.5f, red(radialOut, 10, 10), 0.05f)
+
+    val band = ImageAdjustments(blur = ImageAdjustments.Blur(type = ImageAdjustments.BlurType.LINEAR, falloff = 0.1f, size = 0.2f))
+    val bandOut = ImageAdjustmentsRenderer.applyOnCpu(stripes, ImageAdjustmentsRenderer.pass(band, ImageAdjustmentsDetail.VignetteFrame.FULL_IMAGE, true, stripes))
+    assertTrue("横带中间清楚", kotlin.math.abs(red(bandOut, 20, 150) - red(bandOut, 21, 150)) > 0.5f)
+    assertTrue("上面糊了", kotlin.math.abs(red(bandOut, 200, 5) - red(bandOut, 201, 5)) < 0.05f)
+
+    val vertical = band.copy(blur = band.blur.copy(angle = 0f))
+    val verticalOut = ImageAdjustmentsRenderer.applyOnCpu(stripes, ImageAdjustmentsRenderer.pass(vertical, ImageAdjustmentsDetail.VignetteFrame.FULL_IMAGE, true, stripes))
+    assertTrue("竖带中间清楚", kotlin.math.abs(red(verticalOut, 200, 5) - red(verticalOut, 201, 5)) > 0.5f)
+    assertTrue("左边糊了", kotlin.math.abs(red(verticalOut, 20, 150) - red(verticalOut, 21, 150)) < 0.05f)
+
+    assertNull("打码小图（detail = false）不加移轴模糊", ImageAdjustmentsRenderer.pass(radial, ImageAdjustmentsDetail.VignetteFrame.FULL_IMAGE, false, stripes).blur)
+  }
+
   /** 分块要的重叠边：锐化取样最远 u 个像素，再加一个给线性插值。 */
   @Test
   fun apronCoversTheSharpenTaps() {
