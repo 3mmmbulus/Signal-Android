@@ -3212,6 +3212,11 @@ class AttachmentTable(
       return false
     }
 
+    // Tellomi (tellomi/tellomi#1518 V-7 ②): a video sent at one quality level must not pick up a copy made at another
+    if (newProperties.tellomiVideoShortEdge != potentialMatchProperties.tellomiVideoShortEdge) {
+      return false
+    }
+
     return true
   }
 

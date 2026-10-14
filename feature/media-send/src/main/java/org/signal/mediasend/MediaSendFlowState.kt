@@ -44,6 +44,8 @@ data class MediaSendFlowState(
   val isMeteredConnection: Boolean = false,
   val isPreUploadEnabled: Boolean = false,
   val sentMediaQuality: @WriteWith<SentMediaQualityParceler> SentMediaQuality = MediaSendDependencies.mediaSendRepository.sentMediaQuality,
+  /** Tellomi (tellomi/tellomi#1518 V-7 ②): the upload limit a video's quality level has to fit in. */
+  val tellomiVideoMaxUploadBytes: Long = MediaSendDependencies.mediaSendRepository.tellomiVideoMaxUploadBytes,
   /**
    * Per-media editor state keyed by URI (video trim data, image editor data, etc.).
    */

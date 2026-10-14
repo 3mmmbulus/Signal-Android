@@ -42,6 +42,9 @@ internal sealed interface MediaSendFlowEvent {
   //region Edits, which the flow holds so that they survive the editor being swiped away
 
   data class SetMediaQuality(val quality: SentMediaQuality) : MediaSendFlowEvent
+
+  /** Tellomi (tellomi/tellomi#1518 V-7 ②): the focused video's own quality level, as a short edge; 0 = the batch quality. */
+  data class SetVideoLevel(val shortEdge: Int) : MediaSendFlowEvent
   data class SetBrushWidth(val tool: BrushTool, val fraction: Float) : MediaSendFlowEvent
   data class SetBlurFacesEnabled(val enabled: Boolean) : MediaSendFlowEvent
   data class VideoTrimChanged(val videoTrimData: VideoTrimData, val editingComplete: Boolean) : MediaSendFlowEvent

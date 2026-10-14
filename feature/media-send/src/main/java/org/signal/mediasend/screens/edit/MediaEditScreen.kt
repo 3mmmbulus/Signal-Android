@@ -364,7 +364,7 @@ internal fun MediaEditScreen(
           VideoTrimTimeline(
             videoUri = focusedUri,
             editorState = focusedEditorState,
-            transcodingTiers = state.videoTranscodingTiers,
+            transcodingTiers = state.focusedVideoTranscodingTiers,
             mediaInputFactory = mediaInputFactory,
             videoEditorViewModel = videoEditorViewModel,
             onInteractingChange = { isVideoInteracting = it },

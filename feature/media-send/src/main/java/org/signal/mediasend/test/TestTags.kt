@@ -17,6 +17,9 @@ object TestTags {
 
   // Media Editor Toolbar
   const val MEDIA_EDITOR_TOOLBAR_QUALITY_BUTTON = "media_editor_toolbar_quality_button"
+  const val MEDIA_EDITOR_VIDEO_QUALITY_SHEET = "media_editor_video_quality_sheet"
+
+  fun videoQualityLevel(shortEdge: Int): String = "media_editor_video_quality_$shortEdge"
   const val MEDIA_EDITOR_TOOLBAR_SAVE_BUTTON = "media_editor_toolbar_save_button"
   const val MEDIA_EDITOR_TOOLBAR_ADD_MEDIA_BUTTON = "media_editor_toolbar_add_media_button"
   const val MEDIA_EDITOR_TOOLBAR_TAKE_MORE_BUTTON = "media_editor_toolbar_take_more_button"

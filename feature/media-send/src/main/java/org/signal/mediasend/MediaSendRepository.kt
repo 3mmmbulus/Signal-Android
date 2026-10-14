@@ -111,6 +111,13 @@ interface MediaSendRepository {
   fun isVideoTranscodeAvailable(): Boolean
 
   /**
+   * Tellomi (tellomi/tellomi#1518 V-7 ②): the upload limit, in bytes, that a video's quality level has to fit in
+   * (`TellomiVideoQuality`). A level is only offered for a video short enough to fit.
+   */
+  val tellomiVideoMaxUploadBytes: Long
+    get() = DEFAULT_TELLOMI_VIDEO_MAX_UPLOAD_BYTES
+
+  /**
    * Gets the story send requirement for each of the given media, keyed by URI as the selection's stable identity.
    *
    * Per-item because pre-upload eligibility is decided per media, while the UI needs the whole selection's
@@ -277,3 +284,6 @@ fun Collection<StorySendRequirements>.strictest(): StorySendRequirements {
     }
   }
 }
+
+/** Signal's default attachment limit (100 MiB), for repositories that do not know the configured one. */
+const val DEFAULT_TELLOMI_VIDEO_MAX_UPLOAD_BYTES: Long = 100L * 1024 * 1024

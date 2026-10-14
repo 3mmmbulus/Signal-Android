@@ -34,6 +34,9 @@ sealed interface MediaEditScreenEvents {
   /** Tellomi（tellomi/tellomi#1520 C-7）：编辑页在相机上面时，添加键换成「再拍」：回到相机接着拍，拍下的都留着。 */
   data object TakeMore : MediaEditScreenEvents
   data class SetMediaQuality(val quality: SentMediaQuality) : MediaEditScreenEvents
+
+  /** Tellomi (tellomi/tellomi#1518 V-7 ②): see [org.signal.mediasend.MediaSendFlowEvent.SetVideoLevel]. */
+  data class SetVideoLevel(val shortEdge: Int) : MediaEditScreenEvents
   data object ToggleViewOnce : MediaEditScreenEvents
 
   /** Tellomi（#1263，ADR-0068 §4.7）：长按发送里的「说明文字上移 / 下移」。 */

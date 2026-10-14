@@ -58,6 +58,7 @@ import org.signal.mediasend.screens.edit.image.BrushTool
 import org.signal.mediasend.screens.edit.image.BrushWidthsState
 import org.signal.mediasend.screens.edit.video.VideoTrimData
 import org.signal.mediasend.util.MeteredConnectivity
+import org.thoughtcrime.securesms.video.TellomiVideoQuality
 import kotlin.coroutines.resume
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.microseconds
@@ -267,6 +268,7 @@ class MediaSendFlowViewModel(
       MediaSendFlowEvent.CloseRequested -> onCloseRequested()
 
       is MediaSendFlowEvent.SetMediaQuality -> setSentMediaQuality(event.quality)
+      is MediaSendFlowEvent.SetVideoLevel -> setVideoLevel(event.shortEdge)
       is MediaSendFlowEvent.SetBrushWidth -> setBrushWidth(event.tool, event.fraction)
       is MediaSendFlowEvent.SetBlurFacesEnabled -> setBlurFacesEnabled(event.enabled)
       is MediaSendFlowEvent.VideoTrimChanged -> onEditVideoDuration(
@@ -1014,7 +1016,7 @@ class MediaSendFlowViewModel(
     val durationEdited = clampedStartTime > 0 || endTimeUs < totalDurationUs
     val isEntireDuration = startTimeUs == 0L && endTimeUs == totalDurationUs
     val endMoved = !isEntireDuration && existingData.videoTrimData.endTimeUs != endTimeUs
-    val maxVideoDurationUs = getMaxVideoDurationUs(existingData.videoTrimData.totalInputDurationUs.microseconds)
+    val maxVideoDurationUs = getMaxVideoDurationUs(existingData.videoTrimData.totalInputDurationUs.microseconds, existingData.videoTrimData.tellomiShortEdge)
     val preserveStartTime = unedited || !endMoved
 
     val newData = existingData.videoTrimData.copy(
@@ -1044,12 +1046,36 @@ class MediaSendFlowViewModel(
     }
   }
 
-  private fun getMaxVideoDurationUs(duration: Duration): Long {
+  private fun getMaxVideoDurationUs(duration: Duration, tellomiShortEdge: Int = 0): Long {
     val snapshot = state.value
+    // Tellomi (tellomi/tellomi#1518 V-7 ②): a video with its own quality level may last as long as that level fits.
+    TellomiVideoQuality.level(tellomiShortEdge)?.let { level ->
+      return TellomiVideoQuality.maxDurationSeconds(level, snapshot.tellomiVideoMaxUploadBytes).seconds.inWholeMicroseconds
+    }
     return repository.getMaxVideoDurationUs(
       quality = snapshot.sentMediaQuality,
       duration = duration
     )
+  }
+
+  /**
+   * Tellomi (tellomi/tellomi#1518 V-7 ②, as both Telegram clients' per-video quality): sets the focused video's own
+   * quality level ([shortEdge], or 0 to follow the batch quality again), re-clamps its trim to what that level fits,
+   * and drops the pre-upload made at the old quality.
+   */
+  private fun setVideoLevel(shortEdge: Int) {
+    if (!repository.isVideoTranscodeAvailable()) return
+    val snapshot = state.value
+    val uri = snapshot.focusedMedia?.uri ?: return
+    val existing = snapshot.editorStateMap[uri] as? EditorState.VideoTrim ?: return
+    if (existing.videoTrimData.tellomiShortEdge == shortEdge) return
+
+    val data = existing.videoTrimData.copy(tellomiShortEdge = shortEdge)
+    val maxDurationUs = getMaxVideoDurationUs(data.totalInputDurationUs.microseconds, shortEdge)
+    val updated = EditorState.VideoTrim(data, maxDurationUs).clampToMaxDuration(maxDurationUs, preserveStartTime = true)
+
+    updateState { copy(editorStateMap = editorStateMap + (uri to updated)) }
+    snapshot.selectedMedia.firstOrNull { it.uri == uri }?.let { preUploadController.cancelUpload(it) }
   }
 
   //endregion

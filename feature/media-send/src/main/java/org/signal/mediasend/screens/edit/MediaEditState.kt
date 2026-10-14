@@ -12,6 +12,7 @@ import org.signal.mediasend.MediaRecipientId
 import org.signal.mediasend.MediaSendFlowState
 import org.signal.mediasend.SentMediaQuality
 import org.signal.mediasend.screens.edit.video.VideoTrimData
+import org.thoughtcrime.securesms.video.TellomiVideoQuality
 import org.thoughtcrime.securesms.video.TranscodingConfig
 
 /**
@@ -29,6 +30,8 @@ internal data class MediaEditState(
   val message: CharSequence? = null,
   val sentMediaQuality: SentMediaQuality = SentMediaQuality.STANDARD,
   val videoTranscodingTiers: List<TranscodingConfig.QualityTier> = emptyList(),
+  /** Tellomi (tellomi/tellomi#1518 V-7 ②): the upload limit a video's quality level has to fit in. */
+  val videoMaxUploadBytes: Long = 0,
   val isStory: Boolean = false,
   val isReply: Boolean = false,
   val isSending: Boolean = false,
@@ -71,6 +74,20 @@ internal data class MediaEditState(
     return (editorStateMap[uri] as? EditorState.VideoTrim)?.videoTrimData ?: VideoTrimData()
   }
 
+  /**
+   * Tellomi (tellomi/tellomi#1518 V-7 ②): the tiers the focused video will be transcoded with -- its own quality
+   * level if one was picked, the batch quality's otherwise. The size hint is derived from these.
+   */
+  val focusedVideoTranscodingTiers: List<TranscodingConfig.QualityTier>
+    get() {
+      val shortEdge = (focusedEditorState as? EditorState.VideoTrim)?.videoTrimData?.tellomiShortEdge ?: 0
+      return if (shortEdge > 0) {
+        TellomiVideoQuality.tiersFor(shortEdge, videoMaxUploadBytes) ?: videoTranscodingTiers
+      } else {
+        videoTranscodingTiers
+      }
+    }
+
   /** Everything the flow reports, merged in. [isSavingMedia] is left alone: the flow knows nothing about it. */
   fun withParentState(parentState: MediaSendFlowState): MediaEditState = copy(
     selectedMedia = parentState.selectedMedia,
@@ -81,6 +98,7 @@ internal data class MediaEditState(
     message = parentState.message,
     sentMediaQuality = parentState.sentMediaQuality,
     videoTranscodingTiers = parentState.videoTranscodingTiers,
+    videoMaxUploadBytes = parentState.tellomiVideoMaxUploadBytes,
     isStory = parentState.isStory,
     isReply = parentState.isReply,
     isSending = parentState.isSending,

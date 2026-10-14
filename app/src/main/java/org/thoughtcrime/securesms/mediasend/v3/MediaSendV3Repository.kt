@@ -48,6 +48,7 @@ import org.thoughtcrime.securesms.conversation.MessageStyler
 import org.thoughtcrime.securesms.database.SignalDatabase
 import org.thoughtcrime.securesms.database.model.IdentityRecord
 import org.thoughtcrime.securesms.dependencies.AppDependencies
+import org.thoughtcrime.securesms.jobs.AttachmentUploadJob
 import org.thoughtcrime.securesms.keyvalue.SignalStore
 import org.thoughtcrime.securesms.mediasend.MediaRepository
 import org.thoughtcrime.securesms.mediasend.v2.MediaSelectionRepository
@@ -325,6 +326,10 @@ object MediaSendV3Repository : MediaSendRepository {
   }
 
   override var storyMaxVideoDuration: Duration = Stories.MAX_VIDEO_DURATION_MILLIS.milliseconds
+
+  /** Tellomi (tellomi/tellomi#1518 V-7 ②): what the attachment upload actually allows. */
+  override val tellomiVideoMaxUploadBytes: Long
+    get() = AttachmentUploadJob.maxPlaintextSize
 
   /**
    * Stored as whole percentages so that the v2 and v3 editors stay in sync.

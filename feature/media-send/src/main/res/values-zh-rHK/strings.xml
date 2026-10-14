@@ -338,4 +338,6 @@
   <string name="MediaEditScreen__take_more">繼續拍攝</string>
   <string name="MediaCaptureScreen__captured_photo">第 %1$d 張相片</string>
   <string name="MediaCaptureScreen__captured_video">第 %1$d 段影片</string>
+  <!-- Tellomi (tellomi/tellomi#1518 V-7): title of the sheet that picks one video's quality level -->
+  <string name="VideoQualitySheet__video_quality">影片畫質</string>
 </resources>

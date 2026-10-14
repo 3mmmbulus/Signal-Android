@@ -20,7 +20,9 @@ data class VideoTrimData(
   val totalInputDurationUs: Long = 0,
   val startTimeUs: Long = 0,
   val endTimeUs: Long = 0,
-  val isMuted: Boolean = false
+  val isMuted: Boolean = false,
+  /** Tellomi（tellomi/tellomi#1518 V-7 ②）：这个视频选的画质档（短边，`TellomiVideoQuality`）；0 = 跟整批的画质走。 */
+  val tellomiShortEdge: Int = 0
 ) : Parcelable {
 
   fun getDuration(): Duration = (endTimeUs - startTimeUs).microseconds
@@ -32,6 +34,7 @@ data class VideoTrimData(
       putLong(KEY_START, startTimeUs)
       putLong(KEY_END, endTimeUs)
       putByte(KEY_MUTED, (if (isMuted) 1 else 0).toByte())
+      putInt(KEY_TELLOMI_SHORT_EDGE, tellomiShortEdge)
     }
   }
 
@@ -41,6 +44,7 @@ data class VideoTrimData(
     private const val KEY_START = "START"
     private const val KEY_END = "END"
     private const val KEY_MUTED = "MUTED"
+    private const val KEY_TELLOMI_SHORT_EDGE = "TELLOMI_SHORT_EDGE"
 
     fun fromBundle(bundle: Bundle): VideoTrimData {
       return VideoTrimData(
@@ -48,7 +52,8 @@ data class VideoTrimData(
         totalInputDurationUs = bundle.getLong(KEY_TOTAL),
         startTimeUs = bundle.getLong(KEY_START),
         endTimeUs = bundle.getLong(KEY_END),
-        isMuted = bundle.getByte(KEY_MUTED) == 1.toByte()
+        isMuted = bundle.getByte(KEY_MUTED) == 1.toByte(),
+        tellomiShortEdge = bundle.getInt(KEY_TELLOMI_SHORT_EDGE, 0)
       )
     }
   }

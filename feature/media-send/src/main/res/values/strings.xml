@@ -355,4 +355,6 @@
   <!-- Tellomi（C-7）：相机快门上方胶片条里一张拍下的照片 / 视频的读屏标签，带它在条里的序号。 -->
   <string name="MediaCaptureScreen__captured_photo">Photo %1$d</string>
   <string name="MediaCaptureScreen__captured_video">Video %1$d</string>
+  <!-- Tellomi (tellomi/tellomi#1518 V-7): title of the sheet that picks one video's quality level -->
+  <string name="VideoQualitySheet__video_quality">Video quality</string>
 </resources>

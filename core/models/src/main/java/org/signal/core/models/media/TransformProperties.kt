@@ -106,7 +106,18 @@ data class TransformProperties(
   @field:JsonInclude(JsonInclude.Include.NON_NULL)
   @SerialName("tellomiLivePhotoVideo")
   @JvmField
-  val tellomiLivePhotoVideo: String? = null
+  val tellomiLivePhotoVideo: String? = null,
+
+  /**
+   * Tellomi (tellomi/tellomi#1518 V-7 ②): the quality level the sender picked for this one video, as the short edge to
+   * transcode to (`TellomiVideoQuality`); 0 means "follow [sentMediaQuality]" as upstream. Sender side only. Same
+   * storage rules as [tellomiAsFile].
+   */
+  @JsonProperty("tellomiVideoShortEdge")
+  @field:JsonInclude(JsonInclude.Include.NON_DEFAULT)
+  @SerialName("tellomiVideoShortEdge")
+  @JvmField
+  val tellomiVideoShortEdge: Int = 0
 ) : Parcelable {
   fun shouldSkipTransform(): Boolean {
     return skipTransform
@@ -116,7 +127,7 @@ data class TransformProperties(
   @EncodeDefault(EncodeDefault.Mode.ALWAYS)
   @JsonProperty("videoEdited")
   @SerialName("videoEdited")
-  val videoEdited: Boolean = videoTrim || videoMuted
+  val videoEdited: Boolean = videoTrim || videoMuted || tellomiVideoShortEdge > 0
 
   fun withSkipTransform(): TransformProperties {
     return this.copy(

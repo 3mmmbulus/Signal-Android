@@ -29,7 +29,8 @@ class VideoTrimTransform(private val data: VideoTrimData) : MediaTransform {
         videoTrimEndTimeUs = if (data.isDurationEdited) data.endTimeUs else 0,
         sentMediaQuality = SentMediaQuality.STANDARD.code,
         mp4FastStart = false,
-        videoMuted = data.isMuted
+        videoMuted = data.isMuted,
+        tellomiVideoShortEdge = data.tellomiShortEdge
       ),
       fileName = media.fileName
     )

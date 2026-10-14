@@ -285,7 +285,7 @@ class MediaSelectionRepository(context: Context) {
         }
       }
 
-      if (state is VideoTrimData && (state.isDurationEdited || state.isMuted)) {
+      if (state is VideoTrimData && (state.isDurationEdited || state.isMuted || state.tellomiShortEdge > 0)) {
         modelsToRender[it] = VideoTrimTransform(state)
       }
 

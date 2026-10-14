@@ -118,17 +118,34 @@ internal fun MediaEditorToolbarSharedButtons(
 ) {
   if (isQualityVisible(state, editorState)) {
     var isSelectingQuality by rememberSaveable { mutableStateOf(false) }
+    // Tellomi（tellomi/tellomi#1518 V-7 ②，照 Telegram 两端每个视频各选画质）：视频有两档以上可选时，画质键选这一个视频的档；
+    // 否则照旧是上游的整批「标准 / 高」。
+    val videoLevels = if (editorState is EditorState.VideoTrim) state.focusedVideoLevelOptions() else emptyList()
 
     if (isSelectingQuality) {
-      QualitySelectorBottomSheet(
-        quality = state.sentMediaQuality,
-        onQualitySelected = { onEvent(MediaEditScreenEvents.SetMediaQuality(it)) },
-        onDismiss = { isSelectingQuality = false }
-      )
+      if (videoLevels.isNotEmpty()) {
+        VideoQualityBottomSheet(
+          options = videoLevels,
+          onLevelSelected = { onEvent(MediaEditScreenEvents.SetVideoLevel(it)) },
+          onDismiss = { isSelectingQuality = false }
+        )
+      } else {
+        QualitySelectorBottomSheet(
+          quality = state.sentMediaQuality,
+          onQualitySelected = { onEvent(MediaEditScreenEvents.SetMediaQuality(it)) },
+          onDismiss = { isSelectingQuality = false }
+        )
+      }
+    }
+
+    val isHigh = if (videoLevels.isNotEmpty()) {
+      (videoLevels.firstOrNull { it.isSelected }?.shortEdge ?: 0) >= 720
+    } else {
+      state.sentMediaQuality == SentMediaQuality.HIGH
     }
 
     MediaEditorToolbarButton(
-      imageVector = if (state.sentMediaQuality == SentMediaQuality.HIGH) {
+      imageVector = if (isHigh) {
         SignalIcons.QualityHigh.imageVector
       } else {
         SignalIcons.QualityHighSlash.imageVector
