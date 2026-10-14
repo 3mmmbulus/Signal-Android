@@ -16,7 +16,7 @@ import org.signal.imageeditor.core.model.ImageAdjustments
 import kotlin.math.abs
 
 /**
- * Tellomi（tellomi/tellomi#1592 E5-2）：调色的逐像素数学、查找表和 CPU 兜底。GL 路径在 androidTest 的 `ImageAdjustmentsGlTest`。
+ * Tellomi（tellomi/tellomi#1592 E5-2、#1597 E5-7）：调色的逐像素数学（含曲线）、查找表和 CPU 兜底。GL 路径在 androidTest 的 `ImageAdjustmentsGlTest`。
  */
 @RunWith(RobolectricTestRunner::class)
 class ImageAdjustmentsColorTest {
@@ -166,6 +166,71 @@ class ImageAdjustmentsColorTest {
     }
     assertTrue("worst ${worst * 255}/255", worst <= 2f / 255f)
   }
+
+  /**
+   * E5-7 曲线：单调三次插值，和 iOS `testCurvesMatchTheSharedReferenceValues` 同一组参考值
+   * （默认 / S 形 / 抬黑压白 / 中间平 / 反相 / 不单调）；不会冲过相邻两点。
+   */
+  @Test
+  fun curvesMatchTheSharedReferenceValues() {
+    val cases = listOf(
+      floatArrayOf(0f, 25f, 50f, 75f, 100f) to listOf(0.1f to 0.1f, 0.33f to 0.33f, 0.5f to 0.5f, 0.9f to 0.9f),
+      floatArrayOf(0f, 15f, 50f, 85f, 100f) to listOf(0.1f to 0.0504f, 0.2f to 0.1072f, 0.33f to 0.2472f, 0.6f to 0.6496f, 0.9f to 0.9496f),
+      floatArrayOf(20f, 40f, 60f, 80f, 90f) to listOf(0f to 0.2f, 0.1f to 0.28f, 0.37f to 0.496f, 0.5f to 0.6f, 1f to 0.9f),
+      floatArrayOf(0f, 50f, 50f, 50f, 100f) to listOf(0.1f to 0.248f, 0.3f to 0.5f, 0.6f to 0.5f, 0.8f to 0.536f),
+      floatArrayOf(100f, 75f, 50f, 25f, 0f) to listOf(0.1f to 0.9f, 0.5f to 0.5f, 0.8f to 0.2f),
+      floatArrayOf(0f, 40f, 30f, 80f, 100f) to listOf(0.2f to 0.3712f, 0.3f to 0.3896f, 0.45f to 0.3104f, 0.6f to 0.4424f)
+    )
+    cases.forEach { (levels, samples) ->
+      val points = curvePoints(levels)
+      samples.forEach { (x, expected) ->
+        assertEquals("${levels.toList()} at $x", expected, ImageAdjustmentsColor.curveValue(points, x), 1e-4f)
+      }
+    }
+    for (step in 25..75) {
+      assertEquals(0.5f, ImageAdjustmentsColor.curveValue(curvePoints(floatArrayOf(0f, 50f, 50f, 50f, 100f)), step / 100f), 1e-6f)
+    }
+  }
+
+  /** 曲线在调色的最前面：「全部」三个通道都过，红 / 绿 / 蓝只动自己那个通道。 */
+  @Test
+  fun curvesApplyPerChannel() {
+    val s = curvePoints(floatArrayOf(0f, 15f, 50f, 85f, 100f))
+    assertArrayEquals(floatArrayOf(0.1072f, 0.2472f, 0.6496f), adjusted(floatArrayOf(0.2f, 0.33f, 0.6f), ImageAdjustments(curves = ImageAdjustments.Curves(all = s))), 1e-4f)
+    val red = curvePoints(floatArrayOf(20f, 40f, 60f, 80f, 90f))
+    assertArrayEquals(floatArrayOf(0.6f, 0.5f, 0.5f), adjusted(gray(0.5f), ImageAdjustments(curves = ImageAdjustments.Curves(red = red))), 1e-4f)
+    val both = ImageAdjustments(curves = ImageAdjustments.Curves(all = s, red = red, blue = curvePoints(floatArrayOf(100f, 75f, 50f, 25f, 0f))))
+    assertArrayEquals(
+      floatArrayOf(ImageAdjustmentsColor.curveValue(red, 0.1072f), 0.2472f, 1f - 0.6496f),
+      adjusted(floatArrayOf(0.2f, 0.33f, 0.6f), both),
+      1e-4f
+    )
+  }
+
+  /** 查找表里的曲线和直接算的数学差不过 2/255。 */
+  @Test
+  fun lookupTableMatchesTheMathWithCurves() {
+    val adjustments = ImageAdjustments(
+      exposure = 10f,
+      contrast = 10f,
+      curves = ImageAdjustments.Curves(all = curvePoints(floatArrayOf(0f, 15f, 50f, 85f, 100f)), green = curvePoints(floatArrayOf(10f, 35f, 55f, 70f, 95f)))
+    )
+    val lut = ImageAdjustmentsColor.buildLut(adjustments)
+    var worst = 0f
+    for (r in 0..16) {
+      for (g in 0..16) {
+        for (b in 0..16) {
+          val input = floatArrayOf(r / 16f, g / 16f, b / 16f)
+          val expected = adjusted(input, adjustments)
+          val looked = input.copyOf().also { ImageAdjustmentsColor.lookup(lut, ImageAdjustmentsColor.LUT_SIZE, it) }
+          for (i in 0..2) worst = maxOf(worst, abs(expected[i] - looked[i]))
+        }
+      }
+    }
+    assertTrue("worst ${worst * 255}/255", worst <= 2f / 255f)
+  }
+
+  private fun curvePoints(levels: FloatArray) = ImageAdjustments.CurvePoints(levels[0], levels[1], levels[2], levels[3], levels[4])
 
   /** 全默认：原样返回传进来的那张位图。 */
   @Test

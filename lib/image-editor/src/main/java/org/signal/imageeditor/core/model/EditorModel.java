@@ -1139,6 +1139,18 @@ public final class EditorModel implements Parcelable, RendererContext.Ready {
     return renderer instanceof UriGlideRenderer ? (UriGlideRenderer) renderer : null;
   }
 
+  /**
+   * Tellomi（tellomi/tellomi#1597 E5-7）：裁剪框（照片看得见的那块）在画布上的位置，view 坐标；调色的曲线层盖在这上面。
+   */
+  public @NonNull RectF findCropRectInView(@NonNull Matrix viewMatrix) {
+    RectF  dst        = new RectF(Bounds.FULL_BOUNDS);
+    Matrix cropToView = findElementMatrix(editorElementHierarchy.getCropEditorElement(), viewMatrix);
+    if (cropToView != null) {
+      cropToView.mapRect(dst, Bounds.FULL_BOUNDS);
+    }
+    return dst;
+  }
+
   public RectF findCropRelativeToRoot() {
     return findCropRelativeTo(editorElementHierarchy.getRoot());
   }

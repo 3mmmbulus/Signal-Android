@@ -148,6 +148,19 @@ internal class ImageController(
   var isShowingOriginal: Boolean by mutableStateOf(false)
     private set
 
+  /** Tellomi（tellomi/tellomi#1597 E5-7）：调色页的页签：工具列表、曲线（照 Telegram 安卓调整页底栏的 tune / curve；模糊做了再加）。 */
+  var adjustTab: AdjustTab by mutableStateOf(AdjustTab.TOOLS)
+    private set
+
+  /** Tellomi（tellomi/tellomi#1597 E5-7）：曲线页签里在改哪一条。 */
+  var curveChannel: ImageAdjustments.CurveChannel by mutableStateOf(ImageAdjustments.CurveChannel.ALL)
+    private set
+
+  enum class AdjustTab {
+    TOOLS,
+    CURVES
+  }
+
   /** 打开调色页时的调色：取消回到它；完成时整段在撤销栈里只占一步。 */
   private var adjustSessionStart: ImageAdjustments? = null
 
@@ -263,7 +276,33 @@ internal class ImageController(
     clearSelection()
     adjustSessionStart = editorModel.adjustments
     adjustments = editorModel.adjustments
+    adjustTab = AdjustTab.TOOLS
+    curveChannel = ImageAdjustments.CurveChannel.ALL
     transitionTo(Mode.ADJUST)
+  }
+
+  /** Tellomi（tellomi/tellomi#1597 E5-7）：换页签。 */
+  fun selectAdjustTab(tab: AdjustTab) {
+    adjustTab = tab
+  }
+
+  /** Tellomi（tellomi/tellomi#1597 E5-7）：曲线页签里换一条（全部 / 红 / 绿 / 蓝）。 */
+  fun selectCurveChannel(channel: ImageAdjustments.CurveChannel) {
+    curveChannel = channel
+  }
+
+  /**
+   * Tellomi（tellomi/tellomi#1597 E5-7）：把当前那条曲线的第 [index] 个点（0 = 黑 … 4 = 白）往上挪 [delta]（0…100 的单位，夹在 0…100）。
+   * 和拖滑杆一样，只改预览、完成时记一步撤销。
+   */
+  fun moveCurvePoint(index: Int, delta: Float) {
+    val points = adjustments.curves[curveChannel]
+    val updated = adjustments.copy(curves = adjustments.curves.with(curveChannel, points.with(index, points[index] + delta)))
+    if (updated == adjustments) {
+      return
+    }
+    adjustments = updated
+    editorModel.setAdjustments(updated, false)
   }
 
   /** Tellomi（tellomi/tellomi#1593 E5-3）：拖滑杆。只改预览、不记撤销；完成时再记一步。 */

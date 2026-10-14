@@ -252,6 +252,22 @@ class ImageAdjustmentsTest {
     }
   }
 
+  /** E5-7：改曲线的一个点夹在 0…100（NaN 当 0），按通道读写四条。 */
+  @Test
+  fun curvePointsAndChannels() {
+    val points = ImageAdjustments.CurvePoints()
+    assertEquals(50f, points[2], 0f)
+    assertEquals(70f, points.with(2, 70f).midtones, 0f)
+    assertEquals(100f, points.with(4, 130f).whites, 0f)
+    assertEquals(0f, points.with(0, -5f).blacks, 0f)
+    assertEquals(0f, points.with(1, Float.NaN).shadows, 0f)
+
+    val curves = ImageAdjustments.Curves().with(ImageAdjustments.CurveChannel.GREEN, points.with(3, 60f))
+    assertEquals(60f, curves[ImageAdjustments.CurveChannel.GREEN].highlights, 0f)
+    assertTrue(curves[ImageAdjustments.CurveChannel.ALL].isDefault)
+    assertFalse(curves.isDefault)
+  }
+
   private class RecordingUndoListener : org.signal.imageeditor.core.UndoRedoStackListener {
     var canUndo = false
     var canRedo = false

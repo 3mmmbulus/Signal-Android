@@ -109,6 +109,11 @@ internal fun ImageEditor(
       }
     }
 
+    // Tellomi（tellomi/tellomi#1597 E5-7）：曲线页签时照片上盖曲线层（只画；手势在上面的 pointerInput 里）。
+    if (controller.isUserAdjusting && controller.adjustTab == ImageController.AdjustTab.CURVES) {
+      CurvesOverlay(state = state, controller = controller, modifier = Modifier.matchParentSize())
+    }
+
     if (controller.textEditingElement != null) {
       HiddenTextInput(controller = controller)
     }
@@ -190,9 +195,13 @@ private fun Modifier.imageEditorPointerInput(state: ImageEditorState, controller
       }
 
       // Tellomi（tellomi/tellomi#1593 E5-3）：调色页按住画面看原图，松手回来（照 Telegram 安卓 `PhotoFilterView.onTouch` →
-      // `setShowOriginal`）；不碰画上去的元素。
+      // `setShowOriginal`）；不碰画上去的元素。曲线页签（#1597 E5-7）里照片上的手势都给曲线（照 TG：这时按住不看原图）。
       if (controller.mode == ImageController.Mode.ADJUST) {
         down.consume()
+        if (controller.adjustTab == ImageController.AdjustTab.CURVES) {
+          curveGesture(state, controller, down)
+          return@awaitEachGesture
+        }
         controller.setShowsOriginal(true)
         try {
           while (true) {

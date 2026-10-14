@@ -25,9 +25,11 @@ import org.signal.imageeditor.core.model.ImageAdjustments
 import org.signal.imageeditor.core.renderers.UriGlideRenderer
 import org.signal.mediasend.screens.edit.image.AVAILABLE_TOOLS
 import org.signal.mediasend.screens.edit.image.adjustmentValueText
+import org.signal.mediasend.screens.edit.image.curveSegment
+import org.signal.mediasend.screens.edit.image.curveValueText
 
 /**
- * Tellomi（tellomi/tellomi#1593 E5-3）：调色页——进出、拖动 / 完成 / 取消和撤销、按住看原图、返回键。
+ * Tellomi（tellomi/tellomi#1593 E5-3、#1597 E5-7）：调色页——进出、拖动 / 完成 / 取消和撤销、按住看原图、返回键、曲线页签。
  */
 @RunWith(RobolectricTestRunner::class)
 @Config(application = Application::class)
@@ -118,6 +120,52 @@ class ImageControllerAdjustTest {
     controller.commitEdit()
     model.undo()
     assertTrue(model.adjustments.isDefault)
+  }
+
+  /** E5-7：曲线页签——打开调色页在工具列表上；改的是当前那条曲线的那个点（夹在 0…100）；换通道；完成算一步撤销。 */
+  @Test
+  fun `curves move the current channel's point and done is one undo step`() {
+    controller.beginAdjustEdit()
+    assertEquals(ImageController.AdjustTab.TOOLS, controller.adjustTab)
+    controller.selectAdjustTab(ImageController.AdjustTab.CURVES)
+    assertEquals(ImageAdjustments.CurveChannel.ALL, controller.curveChannel)
+
+    controller.moveCurvePoint(2, 20f)
+    assertEquals(70f, model.adjustments.curves.all.midtones, 0f)
+    controller.moveCurvePoint(4, 30f)
+    assertEquals("夹在 0…100", 100f, model.adjustments.curves.all.whites, 0f)
+
+    controller.selectCurveChannel(ImageAdjustments.CurveChannel.RED)
+    controller.moveCurvePoint(0, 12f)
+    assertEquals(12f, model.adjustments.curves.red.blacks, 0f)
+    assertEquals("别的通道不动", 70f, model.adjustments.curves.all.midtones, 0f)
+    assertEquals("0.12", curveValueText(model.adjustments.curves.red.blacks))
+
+    controller.commitEdit()
+    model.undo()
+    assertTrue(model.adjustments.curves.isDefault)
+
+    controller.beginAdjustEdit()
+    assertEquals("再打开回到工具列表、全部", ImageController.AdjustTab.TOOLS, controller.adjustTab)
+    assertEquals(ImageAdjustments.CurveChannel.ALL, controller.curveChannel)
+    controller.cancelEdit()
+  }
+
+  /** E5-7：按在哪一段改哪个点；照片在画布上的位置跟着视图矩阵。 */
+  @Test
+  fun `curve segments split the photo into fifths`() {
+    val rect = RectF(100f, 0f, 600f, 300f)
+    assertEquals(0, curveSegment(100f, rect))
+    assertEquals(2, curveSegment(350f, rect))
+    assertEquals(4, curveSegment(599f, rect))
+    assertEquals(4, curveSegment(800f, rect))
+    assertEquals(0, curveSegment(0f, rect))
+
+    val view = Matrix().apply { setScale(0.1f, 0.1f); postTranslate(200f, 300f) }
+    val crop = model.findCropRectInView(view)
+    val root = model.findCropRelativeToRoot()
+    assertTrue("裁剪框在画布上：${crop.toShortString()} vs ${root.toShortString()}", crop.width() > 0f && crop.height() > 0f)
+    assertEquals(crop.width() / crop.height(), root.width() / root.height(), 0.01f)
   }
 
   @Test

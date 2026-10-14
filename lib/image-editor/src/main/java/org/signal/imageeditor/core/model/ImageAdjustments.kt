@@ -123,6 +123,29 @@ data class ImageAdjustments(
 
     val isDefault: Boolean
       get() = blacks == 0f && shadows == 25f && midtones == 50f && highlights == 75f && whites == 100f
+
+    /** Tellomi（tellomi/tellomi#1597 E5-7）：第 [index] 个点（0 = 黑 … 4 = 白）的输出值。 */
+    operator fun get(index: Int): Float = values[index]
+
+    /** Tellomi（tellomi/tellomi#1597 E5-7）：换第 [index] 个点，夹在 0…100。 */
+    fun with(index: Int, value: Float): CurvePoints {
+      val clamped = if (value.isNaN()) 0f else value.coerceIn(0f, 100f) + 0f
+      return when (index) {
+        0 -> copy(blacks = clamped)
+        1 -> copy(shadows = clamped)
+        2 -> copy(midtones = clamped)
+        3 -> copy(highlights = clamped)
+        else -> copy(whites = clamped)
+      }
+    }
+  }
+
+  /** Tellomi（tellomi/tellomi#1597 E5-7）：曲线页签里的四条：全部、红、绿、蓝。 */
+  enum class CurveChannel {
+    ALL,
+    RED,
+    GREEN,
+    BLUE
   }
 
   /** 全部 / 红 / 绿 / 蓝 4 条曲线。 */
@@ -135,6 +158,24 @@ data class ImageAdjustments(
   ) : Parcelable {
     val isDefault: Boolean
       get() = all.isDefault && red.isDefault && green.isDefault && blue.isDefault
+
+    operator fun get(channel: CurveChannel): CurvePoints {
+      return when (channel) {
+        CurveChannel.ALL -> all
+        CurveChannel.RED -> red
+        CurveChannel.GREEN -> green
+        CurveChannel.BLUE -> blue
+      }
+    }
+
+    fun with(channel: CurveChannel, points: CurvePoints): Curves {
+      return when (channel) {
+        CurveChannel.ALL -> copy(all = points)
+        CurveChannel.RED -> copy(red = points)
+        CurveChannel.GREEN -> copy(green = points)
+        CurveChannel.BLUE -> copy(blue = points)
+      }
+    }
   }
 
   enum class BlurType {

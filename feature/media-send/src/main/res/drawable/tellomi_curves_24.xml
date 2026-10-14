@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Copyright 2026 重庆半格智能科技有限公司
+  SPDX-License-Identifier: AGPL-3.0-only
+
+  Tellomi（tellomi/tellomi#1597 E5-7）：调色页「曲线」页签的图标——圆角框里一条 S 形曲线，自己画的（和 iOS 的同一个样子）。
+-->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="24"
+    android:viewportHeight="24">
+    <path
+        android:pathData="M6,2.75H18A3.25,3.25 0,0 1,21.25 6V18A3.25,3.25 0,0 1,18 21.25H6A3.25,3.25 0,0 1,2.75 18V6A3.25,3.25 0,0 1,6 2.75z"
+        android:strokeWidth="1.5"
+        android:strokeColor="#FF000000" />
+    <path
+        android:pathData="M6,18.5C14,18.5 10,5.5 18,5.5"
+        android:strokeWidth="1.75"
+        android:strokeColor="#FF000000"
+        android:strokeLineCap="round" />
+</vector>

@@ -6,15 +6,19 @@ package org.signal.imageeditor.core.adjustments
 
 import org.signal.imageeditor.core.model.ImageAdjustments
 import kotlin.math.floor
+import kotlin.math.min
 import kotlin.math.pow
 import kotlin.math.roundToInt
+import kotlin.math.sqrt
 
 /**
- * Tellomi（tellomi/tellomi#1592 E5-2、#1594 E5-4、#1596 E5-6，Epic #1523）：调色里逐像素的那几项（曝光、对比度、高光、阴影、饱和度、色温、色调、褪色）的数学，
+ * Tellomi（tellomi/tellomi#1592 E5-2、#1594 E5-4、#1596 E5-6、#1597 E5-7，Epic #1523）：调色里逐像素的那几项（曲线、曝光、对比度、高光、阴影、饱和度、色温、色调、褪色）的数学，
  * 以及把它们合成的 3D 查找表。
  *
  * 和 iOS `TellomiImageAdjustmentsRenderer.adjust` 是同一套公式（`docs/product/specs/media-editor-adjustments-e5.md`
  * 第 4 节 E5-2），两端发出的图看起来一样。每一项的数学是自己定的，Telegram 只用来对照工具、范围和方向，它的着色器一行不搬：
+ * - 曲线：每条 5 个点（输入 0 / 0.25 / 0.5 / 0.75 / 1，输出 = 值/100），单调三次插值（Fritsch–Carlson，不会冲过相邻两点）；
+ *   「全部」三个通道各过一遍，然后红、绿、蓝各过自己那条。最先做（照两端 TG，曲线在工具着色器的最前面）。
  * - 曝光：线性光里乘增益，+100 = +2 档、−100 = −1.5 档；调亮时用一个让原来的白仍落在白上的肩，亮部不会一下顶死。
  * - 对比度：绕中灰拉开 / 收拢，系数 1.4^(值/100)。
  * - 饱和度：和同亮度的灰按比例混（Rec. 709 亮度），0…2 倍。
@@ -25,7 +29,7 @@ import kotlin.math.roundToInt
  *   强度固定 50%（O8），c' = c + (T − luma(T))·0.6·(强度/100)·w。
  * - 褪色：往一条「哑光」曲线 t(c) = 0.24 + 0.42c + 0.24c² 混（黑抬到 0.24、白压到 0.9、中灰几乎不动），混的比例 = 值/100。
  *
- * 后面的逐像素工具（曲线）往 [adjust] 里加；暗角、颗粒、锐化、模糊这些和位置有关的另走 pass。
+ * 暗角、颗粒、锐化这些和位置有关的在 [ImageAdjustmentsDetail]。
  */
 object ImageAdjustmentsColor {
 
@@ -38,9 +42,22 @@ object ImageAdjustmentsColor {
 
   /**
    * 一个编码值（0…1，sRGB / Display P3 用同一条传递曲线）的颜色调色后的样子，写回 [rgb]。
-   * 顺序：曝光 → 对比度 → 高光 / 阴影 → 饱和度 → 色温 → 色调 → 褪色，每一步后夹回 0…1。
+   * 顺序：曲线 → 曝光 → 对比度 → 高光 / 阴影 → 饱和度 → 色温 → 色调 → 褪色，每一步后夹回 0…1。
+   * [splines] 是建查找表时先算好的四条曲线（不传就当场算）。
    */
-  fun adjust(rgb: FloatArray, adjustments: ImageAdjustments) {
+  fun adjust(rgb: FloatArray, adjustments: ImageAdjustments, splines: CurveSplines? = null) {
+    if (!adjustments.curves.isDefault) {
+      val curves = splines ?: CurveSplines(adjustments.curves)
+      curves.all?.let { all ->
+        for (i in 0..2) {
+          rgb[i] = all.value(rgb[i])
+        }
+      }
+      curves.red?.let { rgb[0] = it.value(rgb[0]) }
+      curves.green?.let { rgb[1] = it.value(rgb[1]) }
+      curves.blue?.let { rgb[2] = it.value(rgb[2]) }
+    }
+
     if (adjustments.exposure != 0f) {
       val amount = adjustments.exposure / 100f
       for (i in 0..2) {
@@ -118,6 +135,66 @@ object ImageAdjustmentsColor {
     }
   }
 
+  /** 一条曲线在 [x]（0…1）处的值，见 [CurveSpline]。 */
+  @JvmStatic
+  fun curveValue(points: ImageAdjustments.CurvePoints, x: Float): Float = CurveSpline(points).value(x)
+
+  /**
+   * 一条曲线：5 个点之间单调三次插值（Fritsch–Carlson：切线先取两边斜率的平均、两边异号或有一边平就取 0，
+   * 再按 α² + β² ≤ 9 缩小，曲线不会冲过相邻两点），结果夹在 0…1。iOS `TellomiImageAdjustmentsRenderer.CurveSpline` 一样。
+   */
+  class CurveSpline(points: ImageAdjustments.CurvePoints) {
+    private val y = FloatArray(5) { points.values[it] / 100f }
+    private val tangents = FloatArray(5)
+
+    init {
+      val slopes = FloatArray(4) { (y[it + 1] - y[it]) / STEP }
+      tangents[0] = slopes[0]
+      tangents[4] = slopes[3]
+      for (k in 1..3) {
+        tangents[k] = if (slopes[k - 1] * slopes[k] <= 0f) 0f else (slopes[k - 1] + slopes[k]) / 2f
+      }
+      for (k in 0..3) {
+        if (slopes[k] == 0f) {
+          tangents[k] = 0f
+          tangents[k + 1] = 0f
+        } else {
+          val alpha = tangents[k] / slopes[k]
+          val beta = tangents[k + 1] / slopes[k]
+          val sum = alpha * alpha + beta * beta
+          if (sum > 9f) {
+            val tau = 3f / sqrt(sum)
+            tangents[k] = tau * alpha * slopes[k]
+            tangents[k + 1] = tau * beta * slopes[k]
+          }
+        }
+      }
+    }
+
+    fun value(x: Float): Float {
+      val clampedX = x.coerceIn(0f, 1f)
+      val k = min((clampedX / STEP).toInt(), 3)
+      val t = (clampedX - k * STEP) / STEP
+      val t2 = t * t
+      val t3 = t2 * t
+      val value = (2 * t3 - 3 * t2 + 1) * y[k] + (t3 - 2 * t2 + t) * STEP * tangents[k] +
+        (-2 * t3 + 3 * t2) * y[k + 1] + (t3 - t2) * STEP * tangents[k + 1]
+      return value.coerceIn(0f, 1f)
+    }
+
+    private companion object {
+      const val STEP = 0.25f
+    }
+  }
+
+  /** 四条曲线（在默认值的为 null，不过）。 */
+  class CurveSplines(curves: ImageAdjustments.Curves) {
+    val all: CurveSpline? = if (curves.all.isDefault) null else CurveSpline(curves.all)
+    val red: CurveSpline? = if (curves.red.isDefault) null else CurveSpline(curves.red)
+    val green: CurveSpline? = if (curves.green.isDefault) null else CurveSpline(curves.green)
+    val blue: CurveSpline? = if (curves.blue.isDefault) null else CurveSpline(curves.blue)
+  }
+
   /** 往 [color] 的色相偏 [weight]：加上「颜色 − 它自己的亮度」，所以亮度基本不变。 */
   private fun tint(rgb: FloatArray, color: Int, weight: Float) {
     if (color == ImageAdjustments.NO_TINT) {
@@ -146,6 +223,7 @@ object ImageAdjustmentsColor {
     val bytes = ByteArray(size * size * size * 4)
     val rgb = FloatArray(3)
     val scale = 1f / (size - 1)
+    val splines = CurveSplines(adjustments.curves)
     val rowStride = size * size * 4
     for (blue in 0 until size) {
       for (green in 0 until size) {
@@ -153,7 +231,7 @@ object ImageAdjustmentsColor {
           rgb[0] = red * scale
           rgb[1] = green * scale
           rgb[2] = blue * scale
-          adjust(rgb, adjustments)
+          adjust(rgb, adjustments, splines)
           val index = green * rowStride + (blue * size + red) * 4
           bytes[index] = toByte(rgb[0])
           bytes[index + 1] = toByte(rgb[1])

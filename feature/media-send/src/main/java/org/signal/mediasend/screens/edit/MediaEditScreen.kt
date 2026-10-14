@@ -77,6 +77,7 @@ import org.signal.mediasend.screens.edit.image.AdjustmentsPanel
 import org.signal.mediasend.screens.edit.image.BlurFacesBar
 import org.signal.mediasend.screens.edit.image.BrushWidthBar
 import org.signal.mediasend.screens.edit.image.BrushWidthPreview
+import org.signal.mediasend.screens.edit.image.CurvesPanel
 import org.signal.mediasend.screens.edit.image.DrawAnywhereToBlurPill
 import org.signal.mediasend.screens.edit.image.DrawModeColorBar
 import org.signal.mediasend.screens.edit.image.ImageEditor
@@ -420,15 +421,17 @@ internal fun MediaEditScreen(
             }
           }
 
-          // Tellomi（tellomi/tellomi#1593 E5-3）：调色页的工具列表。
+          // Tellomi（tellomi/tellomi#1593 E5-3、#1597 E5-7）：调色页的工具列表；曲线页签时是「全部 / 红 / 绿 / 蓝」。
           if (controller.isUserAdjusting) {
             MediaEditControl(faded = isChromeFaded) {
-              AdjustmentsPanel(
-                controller = controller,
-                modifier = Modifier
-                  .widthIn(max = 480.dp)
-                  .padding(horizontal = 16.dp)
-              )
+              val panelModifier = Modifier
+                .widthIn(max = 480.dp)
+                .padding(horizontal = 16.dp)
+              if (controller.adjustTab == ImageController.AdjustTab.CURVES) {
+                CurvesPanel(controller = controller, modifier = panelModifier)
+              } else {
+                AdjustmentsPanel(controller = controller, modifier = panelModifier)
+              }
             }
           }
         }
