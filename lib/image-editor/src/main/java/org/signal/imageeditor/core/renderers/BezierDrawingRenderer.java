@@ -52,6 +52,10 @@ public final class BezierDrawingRenderer extends InvalidateableRenderer implemen
   /** Arrow head length: the larger of 3× the stroke width and 2% of the image width. */
   @VisibleForTesting static final float ARROW_MIN_HEAD  = 0.02f * Bounds.FULL_BOUNDS.width();
   private static final long  ARROW_HEAD_DURATION_MS = 200;
+  private static final long  FILL_DURATION_MS       = 300;
+
+  /** What a fill covers when it has no crop to stay inside: far more than the image. */
+  private static final RectF FILL_BOUNDS = new RectF(Bounds.LEFT * 10, Bounds.TOP * 10, Bounds.RIGHT * 10, Bounds.BOTTOM * 10);
 
   private static final int   NEON_DARK_GLOW   = 0xFF440881;
   private static final float NEON_GLOW_ALPHA  = 0.87f;
@@ -73,6 +77,13 @@ public final class BezierDrawingRenderer extends InvalidateableRenderer implemen
   private       float      thickness;
   private       float      arrowHeadProgress;
   private       boolean    arrowHeadStarted;
+
+  // Tellomi (tellomi/tellomi#1522 E-2, as Telegram on both clients): a long press turns the stroke into a fill of the whole
+  // drawing area (the crop it was drawn in). It grows as a circle from the finger, then covers everything.
+  private       boolean    fill;
+  private       float      fillCenterX;
+  private       float      fillCenterY;
+  private       float      fillProgress = 1f;
 
   @Nullable private Paint neonPaint;
   @Nullable private BlurMaskFilter neonGlow;
@@ -180,6 +191,37 @@ public final class BezierDrawingRenderer extends InvalidateableRenderer implemen
   }
 
   /**
+   * Tellomi (tellomi/tellomi#1522 E-2): the finger was held still, so this stroke fills the whole drawing area instead,
+   * growing from [center] (in element coordinates) like Telegram Android's {@code Input.fill}. A pen, arrow or neon
+   * fills with plain color, a highlighter with its see-through color, an eraser clears the strokes before it, and a
+   * blur stroke blurs everything.
+   */
+  public void startFill(@NonNull PointF center) {
+    fill         = true;
+    fillCenterX  = center.x;
+    fillCenterY  = center.y;
+    fillProgress = 0f;
+
+    ValueAnimator animator = ValueAnimator.ofFloat(0f, 1f);
+    animator.setDuration(FILL_DURATION_MS);
+    animator.setInterpolator(new DecelerateInterpolator(2f));
+    animator.addUpdateListener(animation -> {
+      fillProgress = (float) animation.getAnimatedValue();
+      invalidate();
+    });
+    animator.start();
+  }
+
+  public boolean isFill() {
+    return fill;
+  }
+
+  @VisibleForTesting
+  void setFillProgress(float fillProgress) {
+    this.fillProgress = fillProgress;
+  }
+
+  /**
    * The finger lifted. An arrow grows its head now (as Telegram on both clients); other brushes have nothing to do.
    */
   public void finishStroke() {
@@ -225,13 +267,15 @@ public final class BezierDrawingRenderer extends InvalidateableRenderer implemen
       paint.setXfermode(rendererContext.getMaskPaint() != null ? rendererContext.getMaskPaint().getXfermode() : null);
     }
 
-    if (style == Style.NEON) {
+    if (fill) {
+      drawFill(canvas, rendererContext.isBlockingLoad() ? 1f : fillProgress);
+    } else if (style == Style.NEON) {
       drawNeon(canvas, rendererContext.getAlpha(255));
     } else {
       bezierLine.draw(canvas, paint);
     }
 
-    if (style == Style.ARROW && arrowHeadProgress > 0f) {
+    if (!fill && style == Style.ARROW && arrowHeadProgress > 0f) {
       float[] head = arrowHead(bezierLine, thickness, arrowHeadProgress);
       if (head != null) {
         canvas.drawLine(head[0], head[1], head[2], head[3], paint);
@@ -241,6 +285,24 @@ public final class BezierDrawingRenderer extends InvalidateableRenderer implemen
 
     paint.setAlpha(alpha);
     rendererContext.canvas.restore();
+  }
+
+  /** The fill: a circle growing from where the finger was, then the whole area. */
+  private void drawFill(@NonNull Canvas canvas, float progress) {
+    RectF area = clipRect != null ? clipRect : FILL_BOUNDS;
+    paint.setStyle(Paint.Style.FILL);
+    if (progress >= 1f) {
+      canvas.drawRect(area, paint);
+    } else {
+      float reach = 0f;
+      for (float x : new float[] { area.left, area.right }) {
+        for (float y : new float[] { area.top, area.bottom }) {
+          reach = Math.max(reach, (float) Math.hypot(x - fillCenterX, y - fillCenterY));
+        }
+      }
+      canvas.drawCircle(fillCenterX, fillCenterY, reach * progress, paint);
+    }
+    paint.setStyle(Paint.Style.STROKE);
   }
 
   /**
@@ -354,9 +416,16 @@ public final class BezierDrawingRenderer extends InvalidateableRenderer implemen
       Style      style      = Style.fromOrdinal(in.readInt());
       long       sequence   = in.readLong();
       float      arrowHead  = in.readFloat();
+      boolean    fill       = in.readInt() != 0;
+      float      fillX      = in.readFloat();
+      float      fillY      = in.readFloat();
 
       observeStrokeSequence(sequence);
-      return new BezierDrawingRenderer(color, thickness, cap, bezierLine, clipRect, style, sequence, arrowHead);
+      BezierDrawingRenderer renderer = new BezierDrawingRenderer(color, thickness, cap, bezierLine, clipRect, style, sequence, arrowHead);
+      renderer.fill        = fill;
+      renderer.fillCenterX = fillX;
+      renderer.fillCenterY = fillY;
+      return renderer;
     }
 
     @Override
@@ -381,6 +450,10 @@ public final class BezierDrawingRenderer extends InvalidateableRenderer implemen
     dest.writeLong(strokeSequence);
     // A head that has started growing is a finished arrow; bring it back whole.
     dest.writeFloat(arrowHeadStarted ? 1f : 0f);
+    // A fill comes back whole too (progress starts at 1).
+    dest.writeInt(fill ? 1 : 0);
+    dest.writeFloat(fillCenterX);
+    dest.writeFloat(fillCenterY);
   }
 
 }

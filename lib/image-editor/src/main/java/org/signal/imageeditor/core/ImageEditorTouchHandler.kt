@@ -128,6 +128,17 @@ class ImageEditorTouchHandler(
     editSession = null
   }
 
+  /**
+   * Tellomi (tellomi/tellomi#1522 E-2, as Telegram on both clients): the finger was held still on a fresh stroke, so the
+   * stroke fills the whole drawing area instead. Same undo step as the stroke (the undo point was pushed on down).
+   * Returns false when there is no stroke to turn into a fill.
+   */
+  fun fill(): Boolean {
+    val session = editSession as? DrawingSession ?: return false
+    session.fill()
+    return true
+  }
+
   fun hasActiveSession(): Boolean {
     return editSession != null
   }

@@ -181,6 +181,61 @@ public final class BezierDrawingRendererTellomiTest {
 
   // region helpers
 
+  // region Long-press fill (tellomi/tellomi#1522 E-2)
+
+  @Test
+  public void aFillCoversTheWholeAreaAndComesBackFromTheParcel() {
+    EditorElement root = new EditorElement(new FillRenderer(Color.BLUE, Bounds.FULL_BOUNDS));
+    BezierDrawingRenderer fill = stroke(Color.RED, BezierDrawingRenderer.Style.NEON, 0, 0, 0, 0);
+    fill.startFill(new PointF(0, 0));
+    fill.setFillProgress(1f);
+    root.addElement(new EditorElement(fill, EditorModel.Z_DRAWING));
+
+    Bitmap bitmap = render(root);
+
+    assertEquals("neon fills with plain color", Color.RED, bitmap.getPixel(2, 2));
+    assertEquals(Color.RED, bitmap.getPixel(SIZE - 3, SIZE - 3));
+    assertTrue(roundTrip(fill).isFill());
+    assertFalse(roundTrip(stroke(Color.RED, BezierDrawingRenderer.Style.NORMAL, 0, 0, 100, 0)).isFill());
+  }
+
+  @Test
+  public void aGrowingFillIsACircleFromTheFingerAndStaysInsideItsCrop() {
+    EditorElement root = new EditorElement(new FillRenderer(Color.BLUE, Bounds.FULL_BOUNDS));
+    BezierDrawingRenderer fill = new BezierDrawingRenderer(Color.RED, 100f, Paint.Cap.ROUND, new RectF(-500, -500, 500, 500));
+    fill.setFirstPoint(new PointF(0, 0));
+    fill.startFill(new PointF(0, 0));
+    fill.setFillProgress(0.3f);
+    root.addElement(new EditorElement(fill, EditorModel.Z_DRAWING));
+
+    Bitmap growing = render(root);
+    assertEquals("the middle is filled already", Color.RED, growing.getPixel(100, 100));
+    assertEquals("the corner of the crop is not yet", Color.BLUE, growing.getPixel(54, 54));
+
+    fill.setFillProgress(1f);
+    Bitmap done = render(root);
+    assertEquals("the whole crop", Color.RED, done.getPixel(54, 54));
+    assertEquals("nothing outside the crop", Color.BLUE, done.getPixel(10, 10));
+  }
+
+  @Test
+  public void anEraserFillClearsTheStrokesBeforeItButNotTheOnesAfter() {
+    EditorElement root = new EditorElement(new FillRenderer(Color.BLUE, Bounds.FULL_BOUNDS));
+    root.addElement(new EditorElement(stroke(Color.RED, BezierDrawingRenderer.Style.NORMAL, -800, 0, 800, 0), EditorModel.Z_DRAWING));
+    BezierDrawingRenderer eraser = stroke(Color.RED, BezierDrawingRenderer.Style.ERASER, 0, 0, 0, 0);
+    eraser.startFill(new PointF(0, 0));
+    eraser.setFillProgress(1f);
+    root.addElement(new EditorElement(eraser, EditorModel.Z_DRAWING));
+    root.addElement(new EditorElement(stroke(Color.YELLOW, BezierDrawingRenderer.Style.NORMAL, -800, -400, 800, -400), EditorModel.Z_DRAWING));
+
+    Bitmap bitmap = render(root);
+
+    assertEquals("the earlier stroke is cleared", Color.BLUE, bitmap.getPixel(60, 100));
+    assertEquals("the later stroke stays", Color.YELLOW, bitmap.getPixel(100, 60));
+  }
+
+  // endregion
+
   private static AutomaticControlPointBezierLine line(float... points) {
     AutomaticControlPointBezierLine line = new AutomaticControlPointBezierLine();
     for (int i = 0; i < points.length; i += 2) {

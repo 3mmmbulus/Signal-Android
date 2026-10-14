@@ -39,6 +39,11 @@ class DrawingSession extends ElementEditSession {
     renderer.finishStroke();
   }
 
+  /** Tellomi (tellomi/tellomi#1522 E-2): the finger was held still; the stroke fills the area from where it went down. */
+  void fill() {
+    renderer.startFill(startPointElement[0]);
+  }
+
   @Override
   public EditSession newPoint(@NonNull Matrix newInverse, @NonNull PointF point, int p) {
     return this;

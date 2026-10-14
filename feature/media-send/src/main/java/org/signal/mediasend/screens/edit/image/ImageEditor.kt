@@ -7,6 +7,7 @@ package org.signal.mediasend.screens.edit.image
 
 import android.graphics.Matrix
 import android.graphics.PointF
+import android.os.SystemClock
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
@@ -90,9 +91,13 @@ internal fun ImageEditor(
         .matchParentSize()
         .clipToBounds()
         .onSizeChanged { state.setCanvasSize(it.width.toFloat(), it.height.toFloat()) }
-        .imageEditorPointerInput(state, controller, scope) {
-          hapticFeedback.performHapticFeedback(HapticFeedbackType.SegmentTick)
-        }
+        .imageEditorPointerInput(
+          state = state,
+          controller = controller,
+          scope = scope,
+          onRotationSnap = { hapticFeedback.performHapticFeedback(HapticFeedbackType.SegmentTick) },
+          onFill = { hapticFeedback.performHapticFeedback(HapticFeedbackType.LongPress) }
+        )
     ) {
       state.revision
 
@@ -180,7 +185,20 @@ private fun HiddenTextInput(controller: ImageController) {
 /** How far a finger travels before a touch on an element counts as a drag. */
 private const val MAX_MOVE_SQUARED_BEFORE_DRAG = 10f
 
-private fun Modifier.imageEditorPointerInput(state: ImageEditorState, controller: ImageController, scope: CoroutineScope, onRotationSnap: () -> Unit): Modifier {
+/**
+ * Tellomi (tellomi/tellomi#1522 E-2, as Telegram on both clients): how long a finger has to stay put on a fresh stroke before
+ * the stroke fills the whole drawing area, and how far it may wander meanwhile.
+ */
+private const val FILL_PRESS_MILLIS = 500L
+private const val FILL_SLOP_DP = 6f
+
+private fun Modifier.imageEditorPointerInput(
+  state: ImageEditorState,
+  controller: ImageController,
+  scope: CoroutineScope,
+  onRotationSnap: () -> Unit,
+  onFill: () -> Unit
+): Modifier {
   return this.pointerInput(controller, controller.textEditingElement) {
     val touchHandler = ImageEditorTouchHandler(onRotationSnap)
 
@@ -276,11 +294,33 @@ private fun Modifier.imageEditorPointerInput(state: ImageEditorState, controller
       var didPinch = false
       var zoomPointers: Pair<Offset, Offset>? = null
 
+      // Tellomi (tellomi/tellomi#1522 E-2): a stroke whose finger stays put long enough becomes a fill.
+      var fillArmed = touchHandler.isDrawingSession()
+      var filled = false
+      val fillSlop = FILL_SLOP_DP * density
+
       try {
         while (true) {
-          val event = awaitPointerEvent()
+          val event = if (fillArmed) {
+            val waited = SystemClock.uptimeMillis() - down.uptimeMillis
+            withTimeoutOrNull((FILL_PRESS_MILLIS - waited).coerceAtLeast(0L)) { awaitPointerEvent() }
+          } else {
+            awaitPointerEvent()
+          }
+          if (event == null) {
+            fillArmed = false
+            if (touchHandler.fill()) {
+              filled = true
+              onFill()
+              state.invalidate()
+            }
+            continue
+          }
           val currentPressed = event.changes.filter { it.pressed }
           val currentCount = currentPressed.size
+          if (fillArmed && (currentCount > 1 || currentPressed.any { (it.position - down.position).getDistance() > fillSlop })) {
+            fillArmed = false
+          }
 
           if (currentCount == 0) {
             event.changes.forEach { it.consume() }
@@ -340,7 +380,7 @@ private fun Modifier.imageEditorPointerInput(state: ImageEditorState, controller
             val released = event.changes.firstOrNull { !it.pressed && it.previousPressed }
             val releasedIndex = if (released != null) event.changes.indexOf(released).coerceIn(0, 1) else 0
             touchHandler.onSecondPointerUp(state.editorModel, state.viewMatrix, releasedIndex)
-          } else if (touchHandler.hasActiveSession()) {
+          } else if (touchHandler.hasActiveSession() && !filled) {
             val pointers = currentPressed.take(2).map { it.position.toPointF() }.toTypedArray()
             touchHandler.onMove(state.editorModel, pointers)
             state.invalidate()
