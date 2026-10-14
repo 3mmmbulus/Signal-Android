@@ -23,6 +23,7 @@ import android.renderscript.ScriptIntrinsicBlur;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
+import androidx.annotation.VisibleForTesting;
 
 import com.bumptech.glide.Glide;
 import com.bumptech.glide.RequestBuilder;
@@ -33,6 +34,7 @@ import com.bumptech.glide.request.transition.Transition;
 import org.signal.core.util.BitmapExtensionsKt;
 import org.signal.core.util.logging.Log;
 import org.signal.imageeditor.core.Bounds;
+import org.signal.imageeditor.core.PaintStrokeRenderer;
 import org.signal.imageeditor.core.Renderer;
 import org.signal.imageeditor.core.RendererContext;
 import org.signal.imageeditor.core.SelectableRenderer;
@@ -40,6 +42,9 @@ import org.signal.imageeditor.core.model.EditorElement;
 import org.signal.imageeditor.core.model.EditorModel;
 import org.signal.glide.decryptableuri.DecryptableUri;
 
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
 import java.util.concurrent.ExecutionException;
 
 /**
@@ -73,6 +78,11 @@ public final class UriGlideRenderer implements SelectableRenderer {
   @Nullable private Bitmap bitmap;
   @Nullable private Bitmap blurredBitmap;
   @Nullable private Paint  blurPaint;
+  private final Paint maskLayerPaint = new Paint();
+  private final Paint maskDrawPaint  = new Paint(Paint.ANTI_ALIAS_FLAG);
+  {
+    maskLayerPaint.setXfermode(new PorterDuffXfermode(PorterDuff.Mode.DST_OUT));
+  }
 
   public UriGlideRenderer(@NonNull Uri imageUri, boolean decryptable, int maxWidth, int maxHeight) {
     this(imageUri, decryptable, maxWidth, maxHeight, STRONG_BLUR);
@@ -148,18 +158,23 @@ public final class UriGlideRenderer implements SelectableRenderer {
   private void renderBlurOverlay(RendererContext rendererContext) {
       boolean renderMask = false;
 
-      for (EditorElement child : rendererContext.getChildren()) {
-        if (child.getZOrder() == EditorModel.Z_MASK) {
-          renderMask = true;
-          if (blurPaint == null) {
-            blurPaint = new Paint();
-            blurPaint.setAntiAlias(true);
-            blurPaint.setFilterBitmap(true);
-            blurPaint.setDither(true);
+      if (hasErasedBlurStrokes(rendererContext.getChildren())) {
+        renderMask = true;
+        renderErasedBlurMask(rendererContext);
+      } else {
+        for (EditorElement child : rendererContext.getChildren()) {
+          if (child.getZOrder() == EditorModel.Z_MASK) {
+            renderMask = true;
+            if (blurPaint == null) {
+              blurPaint = new Paint();
+              blurPaint.setAntiAlias(true);
+              blurPaint.setFilterBitmap(true);
+              blurPaint.setDither(true);
+            }
+            blurPaint.setXfermode(new PorterDuffXfermode(PorterDuff.Mode.DST_OUT));
+            rendererContext.setMaskPaint(blurPaint);
+            child.draw(rendererContext);
           }
-          blurPaint.setXfermode(new PorterDuffXfermode(PorterDuff.Mode.DST_OUT));
-          rendererContext.setMaskPaint(blurPaint);
-          child.draw(rendererContext);
         }
       }
 
@@ -184,6 +199,63 @@ public final class UriGlideRenderer implements SelectableRenderer {
 
       rendererContext.restore();
     }
+  }
+
+  /**
+   * Tellomi (tellomi/tellomi#1522 E-2, as Telegram's eraser on both clients): true when an eraser was drawn after a
+   * blur stroke, so the eraser has to take that blur away again.
+   */
+  @VisibleForTesting
+  static boolean hasErasedBlurStrokes(@NonNull List<EditorElement> children) {
+    long firstBlurStroke = Long.MAX_VALUE;
+    long lastEraser      = Long.MIN_VALUE;
+    for (EditorElement child : children) {
+      if (!(child.getRenderer() instanceof PaintStrokeRenderer)) continue;
+      PaintStrokeRenderer stroke = (PaintStrokeRenderer) child.getRenderer();
+      if (child.getZOrder() == EditorModel.Z_MASK) {
+        firstBlurStroke = Math.min(firstBlurStroke, stroke.getStrokeSequence());
+      } else if (stroke.isEraser()) {
+        lastEraser = Math.max(lastEraser, stroke.getStrokeSequence());
+      }
+    }
+    return lastEraser > firstBlurStroke;
+  }
+
+  /**
+   * The blur mask with erasers in it: blur strokes and erasers go into one layer in the order they were drawn (an
+   * eraser takes back the blur strokes before it, not the ones after), then the face blur, which the eraser never
+   * touches; the layer then cuts the image the way the upstream mask does.
+   */
+  private void renderErasedBlurMask(@NonNull RendererContext rendererContext) {
+    List<EditorElement> strokes = new ArrayList<>();
+    List<EditorElement> others  = new ArrayList<>();
+    for (EditorElement child : rendererContext.getChildren()) {
+      boolean isStroke = child.getRenderer() instanceof PaintStrokeRenderer;
+      if (child.getZOrder() == EditorModel.Z_MASK) {
+        (isStroke ? strokes : others).add(child);
+      } else if (isStroke && ((PaintStrokeRenderer) child.getRenderer()).isEraser()) {
+        strokes.add(child);
+      }
+    }
+    Collections.sort(strokes, (a, b) -> Long.compare(((PaintStrokeRenderer) a.getRenderer()).getStrokeSequence(),
+                                                     ((PaintStrokeRenderer) b.getRenderer()).getStrokeSequence()));
+
+    if (blurPaint == null) {
+      blurPaint = new Paint();
+      blurPaint.setAntiAlias(true);
+      blurPaint.setFilterBitmap(true);
+      blurPaint.setDither(true);
+    }
+    int layer = rendererContext.canvas.saveLayer(null, maskLayerPaint);
+    rendererContext.setMaskPaint(maskDrawPaint);
+    for (EditorElement stroke : strokes) {
+      stroke.draw(rendererContext);
+    }
+    for (EditorElement other : others) {
+      other.draw(rendererContext);
+    }
+    rendererContext.canvas.restoreToCount(layer);
+    rendererContext.setMaskPaint(blurPaint);
   }
 
   private RequestBuilder<Bitmap> getGlideRequestBuilder(@NonNull Context context, boolean preview) {

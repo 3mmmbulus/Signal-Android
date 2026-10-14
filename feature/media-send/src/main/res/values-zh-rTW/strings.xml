@@ -163,6 +163,10 @@
   <string name="DrawModeColorBar__brush">筆刷</string>
   <!-- Tellomi (tellomi/tellomi#1522 E-2): content description of the eyedropper button next to the color bar; it picks a color from the photo. -->
   <string name="DrawModeColorBar__eyedropper">從圖片中取色</string>
+  <string name="DrawModeColorBar__choose_brush">選擇畫筆</string>
+  <string name="DrawModeColorBar__arrow">箭頭</string>
+  <string name="DrawModeColorBar__neon">霓虹</string>
+  <string name="DrawModeColorBar__eraser">橡皮擦</string>
 
   <!-- Content description for the crop toggle when the crop area is currently constrained to a fixed aspect ratio. Tapping it removes the constraint. -->
   <string name="ImageEditorToolbar__aspect_ratio_locked">已鎖定畫面比例</string>

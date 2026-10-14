@@ -1,0 +1,23 @@
+<!--
+  Copyright 2026 重庆半格智能科技有限公司
+  SPDX-License-Identifier: AGPL-3.0-only
+-->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="24"
+    android:viewportHeight="24">
+    <path
+        android:strokeColor="#FF000000"
+        android:strokeAlpha="0.3"
+        android:strokeWidth="5"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round"
+        android:pathData="M4 15C6.5 9 9 9 12 12S17.5 15 20 9"/>
+    <path
+        android:strokeColor="#FF000000"
+        android:strokeWidth="1.75"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round"
+        android:pathData="M4 15C6.5 9 9 9 12 12S17.5 15 20 9"/>
+</vector>

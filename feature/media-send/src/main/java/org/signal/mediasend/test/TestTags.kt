@@ -5,6 +5,8 @@
 
 package org.signal.mediasend.test
 
+import org.signal.mediasend.screens.edit.image.DrawBrush
+
 /**
  * Test tags for Compose UI testing.
  */
@@ -54,6 +56,9 @@ object TestTags {
   const val IMAGE_EDITOR_TEXT_FONT = "image_editor_text_font"
   const val IMAGE_EDITOR_EYEDROPPER = "image_editor_eyedropper"
   const val IMAGE_EDITOR_EYEDROPPER_BUTTON = "image_editor_eyedropper_button"
+  const val IMAGE_EDITOR_BRUSH_MENU = "image_editor_brush_menu"
+
+  fun imageEditorBrush(brush: DrawBrush): String = "image_editor_brush_${brush.name.lowercase()}"
   const val MEDIA_PICKER_NO_ACCESS_CAMERA = "media_picker_no_access_camera"
   const val MEDIA_PICKER_SEND_BAR = "media_picker_send_bar"
 

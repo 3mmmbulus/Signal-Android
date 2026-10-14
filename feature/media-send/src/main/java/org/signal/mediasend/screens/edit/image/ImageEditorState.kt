@@ -28,6 +28,7 @@ import org.signal.imageeditor.core.Renderer
 import org.signal.imageeditor.core.RendererContext
 import org.signal.imageeditor.core.model.EditorElement
 import org.signal.imageeditor.core.model.EditorModel
+import org.signal.imageeditor.core.renderers.BezierDrawingRenderer
 import org.signal.imageeditor.core.renderers.MultiLineTextRenderer
 import org.signal.mediasend.screens.edit.ChromeInsets
 
@@ -75,6 +76,9 @@ internal class ImageEditorState(
   var drawColor: Int by mutableIntStateOf(0xff000000.toInt())
   var drawThickness: Float = 0.02f
   var drawCap: Paint.Cap = Paint.Cap.ROUND
+
+  /** Tellomi (tellomi/tellomi#1522 E-2): arrow, neon or eraser on top of the plain brush. */
+  var drawStyle: BezierDrawingRenderer.Style = BezierDrawingRenderer.Style.NORMAL
   var onGestureCompleted: (() -> Unit)? = null
 
   val viewMatrix: Matrix = Matrix()

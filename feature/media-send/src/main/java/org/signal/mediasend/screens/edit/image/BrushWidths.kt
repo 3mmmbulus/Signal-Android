@@ -25,7 +25,13 @@ private const val HIGHLIGHTER_ALPHA = 0x60
 enum class BrushTool(val minThickness: Float, val maxThickness: Float, val alpha: Int = OPAQUE_ALPHA) {
   MARKER(0.01f, 0.05f),
   HIGHLIGHTER(0.03f, 0.08f, alpha = HIGHLIGHTER_ALPHA),
-  BLUR(0.052f, 0.092f);
+  BLUR(0.052f, 0.092f),
+
+  // Tellomi (tellomi/tellomi#1522 E-2, as Telegram's brushes): the arrow draws like the pen; neon and the eraser run
+  // wider, as on Telegram.
+  ARROW(0.01f, 0.05f),
+  NEON(0.015f, 0.06f),
+  ERASER(0.02f, 0.08f);
 
   fun thicknessAt(fraction: Float): Float = minThickness + (maxThickness - minThickness) * fraction
 
@@ -40,14 +46,25 @@ enum class BrushTool(val minThickness: Float, val maxThickness: Float, val alpha
 data class BrushWidths(
   val marker: Float = 0f,
   val highlighter: Float = 0f,
-  val blur: Float = 0f
+  val blur: Float = 0f,
+  val arrow: Float = 0f,
+  val neon: Float = DEFAULT_NEON,
+  val eraser: Float = DEFAULT_ERASER
 ) : Parcelable {
+
+  companion object {
+    const val DEFAULT_NEON = 0.3f
+    const val DEFAULT_ERASER = 0.5f
+  }
 
   operator fun get(tool: BrushTool): Float {
     return when (tool) {
       BrushTool.MARKER -> marker
       BrushTool.HIGHLIGHTER -> highlighter
       BrushTool.BLUR -> blur
+      BrushTool.ARROW -> arrow
+      BrushTool.NEON -> neon
+      BrushTool.ERASER -> eraser
     }
   }
 
@@ -56,6 +73,9 @@ data class BrushWidths(
       BrushTool.MARKER -> copy(marker = fraction)
       BrushTool.HIGHLIGHTER -> copy(highlighter = fraction)
       BrushTool.BLUR -> copy(blur = fraction)
+      BrushTool.ARROW -> copy(arrow = fraction)
+      BrushTool.NEON -> copy(neon = fraction)
+      BrushTool.ERASER -> copy(eraser = fraction)
     }
   }
 }

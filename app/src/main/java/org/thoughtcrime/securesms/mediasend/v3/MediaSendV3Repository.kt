@@ -333,12 +333,18 @@ object MediaSendV3Repository : MediaSendRepository {
     get() = BrushWidths(
       marker = SignalStore.imageEditor.getMarkerPercentage() / 100f,
       highlighter = SignalStore.imageEditor.getHighlighterPercentage() / 100f,
-      blur = SignalStore.imageEditor.getBlurPercentage() / 100f
+      blur = SignalStore.imageEditor.getBlurPercentage() / 100f,
+      arrow = SignalStore.imageEditor.getArrowPercentage() / 100f,
+      neon = SignalStore.imageEditor.getNeonPercentage((BrushWidths.DEFAULT_NEON * 100).roundToInt()) / 100f,
+      eraser = SignalStore.imageEditor.getEraserPercentage((BrushWidths.DEFAULT_ERASER * 100).roundToInt()) / 100f
     )
     set(value) {
       SignalStore.imageEditor.setMarkerPercentage((value.marker * 100).roundToInt())
       SignalStore.imageEditor.setHighlighterPercentage((value.highlighter * 100).roundToInt())
       SignalStore.imageEditor.setBlurPercentage((value.blur * 100).roundToInt())
+      SignalStore.imageEditor.setArrowPercentage((value.arrow * 100).roundToInt())
+      SignalStore.imageEditor.setNeonPercentage((value.neon * 100).roundToInt())
+      SignalStore.imageEditor.setEraserPercentage((value.eraser * 100).roundToInt())
     }
 
   private fun PreUploadResult.toLegacyPreUploadResult(): MessageSender.PreUploadResult {

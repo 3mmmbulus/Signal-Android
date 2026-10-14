@@ -22,10 +22,12 @@ import org.signal.imageeditor.core.SelectableRenderer
 import org.signal.imageeditor.core.TappableRenderer
 import org.signal.imageeditor.core.model.EditorElement
 import org.signal.imageeditor.core.model.EditorModel
+import org.signal.imageeditor.core.renderers.BezierDrawingRenderer
 import org.signal.imageeditor.core.renderers.MultiLineTextRenderer
 import org.signal.mediasend.screens.edit.image.BrushTool
 import org.signal.mediasend.screens.edit.image.BrushWidthsState
 import org.signal.mediasend.screens.edit.image.CropAspectRatio
+import org.signal.mediasend.screens.edit.image.DrawBrush
 import org.signal.mediasend.screens.edit.image.FaceDetectionResult
 import org.signal.mediasend.screens.edit.image.HSVColorBarState
 import org.signal.mediasend.screens.edit.image.ImageEditorState
@@ -155,9 +157,19 @@ internal class ImageController(
   /** Whether the request put masks on the model, which only holds for an image a face was actually found in. */
   private var hasAppliedFaceMasks: Boolean by mutableStateOf(false)
 
+  /**
+   * Tellomi (tellomi/tellomi#1522 E-2): which brush the draw tool paints with (pen, arrow, neon or eraser). The
+   * highlighter keeps upstream's own [Mode.HIGHLIGHT].
+   */
+  var drawBrush: DrawBrush by mutableStateOf(DrawBrush.PEN)
+    private set
+
+  /** The brush the brush menu shows as chosen. */
+  val currentBrush: DrawBrush by derivedStateOf { if (mode == Mode.HIGHLIGHT) DrawBrush.HIGHLIGHTER else drawBrush }
+
   val brushTool: BrushTool? by derivedStateOf {
     when (mode) {
-      Mode.DRAW -> BrushTool.MARKER
+      Mode.DRAW -> drawBrush.tool
       Mode.HIGHLIGHT -> BrushTool.HIGHLIGHTER
       Mode.BLUR -> BrushTool.BLUR
       else -> null
@@ -362,6 +374,16 @@ internal class ImageController(
     imageEditorState.invalidate()
   }
 
+  /** Tellomi (tellomi/tellomi#1522 E-2): picks a brush from the brush menu. */
+  fun selectBrush(brush: DrawBrush) {
+    if (brush == DrawBrush.HIGHLIGHTER) {
+      enterHighlightMode()
+    } else {
+      drawBrush = brush
+      enterDrawMode()
+    }
+  }
+
   fun enterDrawMode() {
     clearSelection()
     snapshotIfNewDrawSession()
@@ -484,6 +506,7 @@ internal class ImageController(
     imageEditorState.isDrawing = canPaint
     imageEditorState.isBlur = canPaint && mode == Mode.BLUR
     imageEditorState.drawCap = if (mode == Mode.HIGHLIGHT) Paint.Cap.SQUARE else Paint.Cap.ROUND
+    imageEditorState.drawStyle = if (mode == Mode.DRAW) drawBrush.style else BezierDrawingRenderer.Style.NORMAL
     imageEditorState.drawThickness = brushThickness
     setDrawColor(drawColorBarState.color)
   }

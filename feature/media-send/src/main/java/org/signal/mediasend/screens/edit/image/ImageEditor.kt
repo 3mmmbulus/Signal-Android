@@ -205,7 +205,7 @@ private fun Modifier.imageEditorPointerInput(state: ImageEditorState, controller
       }
 
       touchHandler.setDrawing(state.isDrawing, state.isBlur)
-      touchHandler.setDrawingBrush(state.drawColor, state.drawThickness, state.drawCap)
+      touchHandler.setDrawingBrush(state.drawColor, state.drawThickness, state.drawCap, state.drawStyle)
       val hitElement = touchHandler.onDown(state.editorModel, state.viewMatrix, down.position.toPointF())
 
       if (!state.isDrawing && !state.isBlur) {

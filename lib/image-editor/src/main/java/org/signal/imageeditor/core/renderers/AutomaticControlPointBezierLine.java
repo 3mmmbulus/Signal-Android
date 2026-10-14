@@ -54,6 +54,19 @@ final class AutomaticControlPointBezierLine implements Parcelable {
     path.reset();
   }
 
+  /** Tellomi (tellomi/tellomi#1522 E-2): the arrow brush reads the last points to aim its head. */
+  int getPointCount() {
+    return count;
+  }
+
+  float getX(int index) {
+    return x[index];
+  }
+
+  float getY(int index) {
+    return y[index];
+  }
+
   /**
    * Adds a new point to the end of the line but ignores points that are too close to the last.
    *

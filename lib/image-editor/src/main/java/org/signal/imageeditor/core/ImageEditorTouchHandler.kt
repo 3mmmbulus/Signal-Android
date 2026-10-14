@@ -33,6 +33,7 @@ class ImageEditorTouchHandler(
   private var drawColor: Int = 0xff000000.toInt()
   private var drawThickness: Float = 0.02f
   private var drawCap: Paint.Cap = Paint.Cap.ROUND
+  private var drawStyle: BezierDrawingRenderer.Style = BezierDrawingRenderer.Style.NORMAL
 
   private var editSession: EditSession? = null
   private var moreThanOnePointerUsedInSession: Boolean = false
@@ -45,10 +46,11 @@ class ImageEditorTouchHandler(
   }
 
   /** Sets the brush parameters used when creating new drawing sessions. */
-  fun setDrawingBrush(color: Int, thickness: Float, cap: Paint.Cap) {
+  fun setDrawingBrush(color: Int, thickness: Float, cap: Paint.Cap, style: BezierDrawingRenderer.Style = BezierDrawingRenderer.Style.NORMAL) {
     drawColor = color
     drawThickness = thickness
     drawCap = cap
+    drawStyle = style
   }
 
   /** Begins a new gesture. Creates either a move/resize, thumb drag, or drawing session. */
@@ -113,6 +115,8 @@ class ImageEditorTouchHandler(
   /** Ends the current gesture: commits the session and calls [EditorModel.postEdit]. */
   fun onUp(model: EditorModel) {
     editSession?.let {
+      // Tellomi (tellomi/tellomi#1522 E-2): the stroke is done; an arrow grows its head now.
+      (it as? DrawingSession)?.finishStroke()
       it.commit()
       model.dragDropRelease()
       editSession = null
@@ -176,7 +180,8 @@ class ImageEditorTouchHandler(
       drawColor,
       drawThickness * Bounds.FULL_BOUNDS.width(),
       drawCap,
-      model.findCropRelativeToRoot()
+      model.findCropRelativeToRoot(),
+      if (blur) BezierDrawingRenderer.Style.NORMAL else drawStyle
     )
     val element = EditorElement(renderer, if (blur) EditorModel.Z_MASK else EditorModel.Z_DRAWING)
 

@@ -34,6 +34,11 @@ class DrawingSession extends ElementEditSession {
     renderer.addNewPoint(endPointElement[0]);
   }
 
+  /** Tellomi (tellomi/tellomi#1522 E-2): the finger lifted. */
+  void finishStroke() {
+    renderer.finishStroke();
+  }
+
   @Override
   public EditSession newPoint(@NonNull Matrix newInverse, @NonNull PointF point, int p) {
     return this;

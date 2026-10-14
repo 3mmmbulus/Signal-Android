@@ -169,6 +169,10 @@
   <string name="DrawModeColorBar__brush">Brush</string>
   <!-- Tellomi (tellomi/tellomi#1522 E-2): content description of the eyedropper button next to the color bar; it picks a color from the photo. -->
   <string name="DrawModeColorBar__eyedropper">Pick a color from the photo</string>
+  <string name="DrawModeColorBar__choose_brush">Choose brush</string>
+  <string name="DrawModeColorBar__arrow">Arrow</string>
+  <string name="DrawModeColorBar__neon">Neon</string>
+  <string name="DrawModeColorBar__eraser">Eraser</string>
 
   <!-- Content description for the crop toggle when the crop area is currently constrained to a fixed aspect ratio. Tapping it removes the constraint. -->
   <string name="ImageEditorToolbar__aspect_ratio_locked">Aspect ratio locked</string>
