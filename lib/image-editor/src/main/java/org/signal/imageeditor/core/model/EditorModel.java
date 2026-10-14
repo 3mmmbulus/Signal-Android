@@ -211,6 +211,7 @@ public final class EditorModel implements Parcelable, RendererContext.Ready {
    * @param renderOnTop     This element will appear on top of the overlay.
    */
   public void draw(@NonNull RendererContext rendererContext, @Nullable EditorElement renderOnTop) {
+    updateVignetteFrame(false);
     EditorElement root = editorElementHierarchy.getRoot();
     if (renderOnTop != null) {
       root.forAllInTree(element -> element.getFlags().mark());
@@ -827,6 +828,7 @@ public final class EditorModel implements Parcelable, RendererContext.Ready {
    */
   @WorkerThread
   public @NonNull Bitmap render(@NonNull Context context, @Nullable Point size, @NonNull RendererContext.TypefaceProvider typefaceProvider) {
+    updateVignetteFrame(true);
     EditorElement image      = editorElementHierarchy.getFlipRotate();
     RectF         cropRect   = editorElementHierarchy.getCropRect();
     Point         outputSize = size != null ? size : getOutputSize();
@@ -1110,6 +1112,21 @@ public final class EditorModel implements Parcelable, RendererContext.Ready {
 
     renderer.setShowingOriginal(showsOriginal);
     invalidate.run();
+  }
+
+  /**
+   * Tellomi（tellomi/tellomi#1595 E5-5）：暗角跟着画框（裁剪框）走：每次画之前把「主图 → 裁剪框」的矩阵交给主图的 renderer。
+   * 画布上裁剪中不更新（拖裁剪框时调色图不跟着一遍遍重画，裁完画一次）；发出时（{@link #render}）总按最后的裁剪。暗角是 0 时不用算。
+   */
+  private void updateVignetteFrame(boolean evenWhileCropping) {
+    UriGlideRenderer renderer = getMainImageRenderer();
+    if (renderer == null || renderer.getAdjustments().getVignette() <= 0f || (!evenWhileCropping && isCropping())) {
+      return;
+    }
+    Matrix imageToCrop = findRelativeMatrix(editorElementHierarchy.getMainImage(), editorElementHierarchy.getCropEditorElement());
+    if (imageToCrop != null) {
+      renderer.setImageToCrop(imageToCrop);
+    }
   }
 
   private @Nullable UriGlideRenderer getMainImageRenderer() {

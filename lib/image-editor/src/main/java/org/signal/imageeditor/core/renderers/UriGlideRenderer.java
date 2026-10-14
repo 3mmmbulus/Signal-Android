@@ -38,6 +38,7 @@ import org.signal.imageeditor.core.PaintStrokeRenderer;
 import org.signal.imageeditor.core.Renderer;
 import org.signal.imageeditor.core.RendererContext;
 import org.signal.imageeditor.core.SelectableRenderer;
+import org.signal.imageeditor.core.adjustments.ImageAdjustmentsDetail;
 import org.signal.imageeditor.core.adjustments.ImageAdjustmentsRenderer;
 import org.signal.imageeditor.core.model.EditorElement;
 import org.signal.imageeditor.core.model.EditorModel;
@@ -47,6 +48,7 @@ import org.signal.glide.decryptableuri.DecryptableUri;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.Objects;
 import java.util.concurrent.ExecutionException;
 
 /**
@@ -92,6 +94,12 @@ public final class UriGlideRenderer implements SelectableRenderer {
   @Nullable private Bitmap           adjustedBlurredBitmap;
   @Nullable private Bitmap           adjustedBlurredSource;
   @Nullable private ImageAdjustments adjustedBlurredFor;
+
+  // Tellomi（tellomi/tellomi#1595 E5-5）：暗角跟着画框（裁剪框）走。主图局部坐标 → 裁剪框局部坐标，由 EditorModel 每次画之前给；
+  // 调色图记着按哪个画框画的（暗角是 0 时为 null，裁剪变了也不用重画）。不写进 parcel。
+  @Nullable private Matrix                                   imageToCrop;
+  @Nullable private ImageAdjustmentsDetail.VignetteFrame     adjustedFrame;
+  @Nullable private ImageAdjustmentsDetail.VignetteFrame     adjustedBlurredFrame;
 
   /** Tellomi（tellomi/tellomi#1593 E5-3）：按住看原图。只管画布上怎么画，不写进 parcel、不算改动，发出时（阻塞渲染）不看它。 */
   private boolean showingOriginal;
@@ -228,6 +236,7 @@ public final class UriGlideRenderer implements SelectableRenderer {
       adjustedBitmap = null;
       adjustedSource = null;
       adjustedFor    = null;
+      adjustedFrame  = null;
       return bitmap;
     }
 
@@ -235,21 +244,24 @@ public final class UriGlideRenderer implements SelectableRenderer {
       return bitmap;
     }
 
-    if (adjustedBitmap != null && adjustedSource == bitmap && adjustments.equals(adjustedFor)) {
+    ImageAdjustmentsDetail.VignetteFrame frame = frameKey(bitmap);
+    if (adjustedBitmap != null && adjustedSource == bitmap && adjustments.equals(adjustedFor) && Objects.equals(frame, adjustedFrame)) {
       return adjustedBitmap;
     }
 
     if (rendererContext.isBlockingLoad()) {
-      adjustedBitmap = ImageAdjustmentsRenderer.apply(bitmap, adjustments);
+      adjustedBitmap = ImageAdjustmentsRenderer.apply(bitmap, adjustments, frameOrFull(frame), true);
       adjustedSource = bitmap;
       adjustedFor    = adjustments;
+      adjustedFrame  = frame;
       return adjustedBitmap;
     }
 
     if (adjustingFor == null && !adjustments.equals(failedFor)) {
-      ImageAdjustments requested = adjustments;
+      ImageAdjustments                     requested      = adjustments;
+      ImageAdjustmentsDetail.VignetteFrame requestedFrame = frame;
       adjustingFor = requested;
-      ImageAdjustmentsRenderer.applyAsync(bitmap, requested, result -> {
+      ImageAdjustmentsRenderer.applyAsync(bitmap, requested, frameOrFull(requestedFrame), result -> {
         adjustingFor = null;
         if (result == null) {
           failedFor = requested;
@@ -257,12 +269,45 @@ public final class UriGlideRenderer implements SelectableRenderer {
           adjustedBitmap = result;
           adjustedSource = bitmap;
           adjustedFor    = requested;
+          adjustedFrame  = requestedFrame;
         }
         rendererContext.invalidate.onInvalidate(UriGlideRenderer.this);
       });
     }
 
     return adjustedBitmap != null && adjustedSource == bitmap ? adjustedBitmap : bitmap;
+  }
+
+  /**
+   * Tellomi（tellomi/tellomi#1595 E5-5）：调色图按哪个画框画——暗角不是 0 时是 {@link #vignetteFrame}，否则 null（裁剪变了不用重画）。
+   */
+  private @Nullable ImageAdjustmentsDetail.VignetteFrame frameKey(@NonNull Bitmap bitmap) {
+    return adjustments.getVignette() > 0f ? vignetteFrame(bitmap) : null;
+  }
+
+  private static @NonNull ImageAdjustmentsDetail.VignetteFrame frameOrFull(@Nullable ImageAdjustmentsDetail.VignetteFrame frame) {
+    return frame != null ? frame : ImageAdjustmentsDetail.VignetteFrame.FULL_IMAGE;
+  }
+
+  /**
+   * Tellomi（tellomi/tellomi#1595 E5-5）：暗角跟着的画框：图上的单位坐标（左上为原点，0…1）→ 画框坐标（裁剪框的局部坐标 ÷ 1000，中心 0、四边 ±1）。
+   * 单位坐标 → 位图像素 → 主图局部坐标（{@link #imageProjectionMatrix}）→ 裁剪框局部坐标（{@link #imageToCrop}）。
+   * 预览图和原尺寸图宽高比一样，算出来的是同一个映射。还没拿到裁剪信息时当整张图就是画框。
+   */
+  @VisibleForTesting
+  @NonNull ImageAdjustmentsDetail.VignetteFrame vignetteFrame(@NonNull Bitmap bitmap) {
+    if (imageToCrop == null) {
+      return ImageAdjustmentsDetail.VignetteFrame.FULL_IMAGE;
+    }
+    Matrix matrix = new Matrix();
+    matrix.setScale(bitmap.getWidth(), bitmap.getHeight());
+    matrix.postConcat(imageProjectionMatrix);
+    matrix.postConcat(imageToCrop);
+    matrix.postScale(1f / Bounds.RIGHT, 1f / Bounds.BOTTOM);
+    float[] values = new float[9];
+    matrix.getValues(values);
+    return new ImageAdjustmentsDetail.VignetteFrame(values[Matrix.MSCALE_X], values[Matrix.MSKEW_X], values[Matrix.MTRANS_X],
+                                                    values[Matrix.MSKEW_Y], values[Matrix.MSCALE_Y], values[Matrix.MTRANS_Y]);
   }
 
   /**
@@ -273,10 +318,14 @@ public final class UriGlideRenderer implements SelectableRenderer {
     if (adjustments.isDefault()) {
       return blurred;
     }
-    if (adjustedBlurredBitmap == null || adjustedBlurredSource != blurred || !adjustments.equals(adjustedBlurredFor)) {
-      adjustedBlurredBitmap = ImageAdjustmentsRenderer.apply(blurred, adjustments);
+    Bitmap                               source = getBitmap();
+    ImageAdjustmentsDetail.VignetteFrame frame  = source != null ? frameKey(source) : null;
+    if (adjustedBlurredBitmap == null || adjustedBlurredSource != blurred || !adjustments.equals(adjustedBlurredFor) || !Objects.equals(frame, adjustedBlurredFrame)) {
+      // 暗角是大范围的明暗，和模糊次序可换，照加；锐化、颗粒不加。
+      adjustedBlurredBitmap = ImageAdjustmentsRenderer.apply(blurred, adjustments, frameOrFull(frame), false);
       adjustedBlurredSource = blurred;
       adjustedBlurredFor    = adjustments;
+      adjustedBlurredFrame  = frame;
     }
     return adjustedBlurredBitmap;
   }
@@ -409,6 +458,15 @@ public final class UriGlideRenderer implements SelectableRenderer {
   /** Tellomi（tellomi/tellomi#1591 E5-1）：别直接调，走 {@link EditorModel#setAdjustments}，那里管撤销和重画。 */
   public void setAdjustments(@NonNull ImageAdjustments adjustments) {
     this.adjustments = adjustments;
+  }
+
+  /** Tellomi（tellomi/tellomi#1595 E5-5）：主图局部坐标 → 裁剪框局部坐标；{@link EditorModel} 每次画之前给（暗角跟着画框走）。 */
+  public void setImageToCrop(@NonNull Matrix imageToCrop) {
+    if (this.imageToCrop == null) {
+      this.imageToCrop = new Matrix(imageToCrop);
+    } else {
+      this.imageToCrop.set(imageToCrop);
+    }
   }
 
   private void setBitmap(@NonNull RendererContext rendererContext, @Nullable Bitmap bitmap) {

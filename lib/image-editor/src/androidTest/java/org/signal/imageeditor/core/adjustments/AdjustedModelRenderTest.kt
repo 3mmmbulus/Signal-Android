@@ -28,7 +28,7 @@ import org.thoughtcrime.securesms.mms.SignalGlideModule
 import java.io.File
 
 /**
- * Tellomi（tellomi/tellomi#1592 E5-2）：发出时那条路——模型阻塞渲染（`ImageEditorModelRenderMediaTransform` 调的就是它）——
+ * Tellomi（tellomi/tellomi#1592 E5-2、#1595 E5-5）：发出时那条路——模型阻塞渲染（`ImageEditorModelRenderMediaTransform` 调的就是它）——
  * 把调色烘焙进去；调回默认后和没调过一样。
  */
 @RunWith(AndroidJUnit4::class)
@@ -65,6 +65,37 @@ class AdjustedModelRenderTest {
 
       model.setAdjustments(ImageAdjustments.DEFAULT, true)
       assertChannels(GRAY, model.render(context, size, typefaceProvider).getPixel(200, 200), 1)
+    } finally {
+      file.delete()
+    }
+  }
+
+  /**
+   * E5-5：暗角跟着画框（裁剪框）走：主图转 45° 后（转盘那条路，图放大盖住裁剪框），发出的图四角仍是暗角最暗的地方；
+   * 要是跟着整张原图，四角落在原图的边中点附近，只压到 ≈ 0.33。
+   */
+  @Test
+  fun vignetteFollowsTheCropFrame() {
+    val file = File(context.cacheDir, "tellomi-e55-gray.png")
+    file.outputStream().use { Bitmap.createBitmap(IntArray(400 * 400) { GRAY }, 400, 400, Bitmap.Config.ARGB_8888).compress(Bitmap.CompressFormat.PNG, 100, it) }
+    try {
+      val model = EditorModel.create(0)
+      model.addElement(EditorElement(UriGlideRenderer(Uri.fromFile(file), false, 1000, 1000)))
+      val size = Point(400, 400)
+      model.render(context, size, typefaceProvider)
+
+      model.setAdjustments(ImageAdjustments(vignette = 100f), true)
+      val straight = model.render(context, size, typefaceProvider)
+      val input = Color.red(GRAY) / 255f
+      val cornerD = 2f * 2.5f / 400f - 1f
+      val expectedCorner = ImageAdjustmentsDetail.vignette(input, ImageAdjustmentsDetail.vignetteStrength(1f, cornerD, cornerD))
+      assertEquals(expectedCorner * 255f, Color.red(straight.getPixel(2, 2)).toFloat(), 3f)
+      assertChannels(GRAY, straight.getPixel(200, 200), 2)
+
+      model.setMainImageEditorMatrixRotation(45f, 1f)
+      val rotated = model.render(context, size, typefaceProvider)
+      assertEquals("转过之后四角仍最暗", expectedCorner * 255f, Color.red(rotated.getPixel(2, 2)).toFloat(), 6f)
+      assertChannels(GRAY, rotated.getPixel(200, 200), 2)
     } finally {
       file.delete()
     }

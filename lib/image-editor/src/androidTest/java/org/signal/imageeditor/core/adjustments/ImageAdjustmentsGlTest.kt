@@ -20,7 +20,7 @@ import org.signal.imageeditor.core.model.ImageAdjustments
 import kotlin.math.abs
 
 /**
- * Tellomi（tellomi/tellomi#1592 E5-2）：调色的 GL 路径在真 GPU 上画出来的和 CPU 查同一张表的结果一致；分块、透明、耗时。
+ * Tellomi（tellomi/tellomi#1592 E5-2、#1595 E5-5）：调色的 GL 路径在真 GPU 上画出来的和 CPU 上同样的算法一致；分块、透明、耗时。
  * 跑法：`./gradlew :lib:image-editor:connectedDebugAndroidTest`（要有一台设备或模拟器）。
  */
 @RunWith(AndroidJUnit4::class)
@@ -30,6 +30,11 @@ class ImageAdjustmentsGlTest {
 
   private val adjustments = ImageAdjustments(exposure = 35f, contrast = 25f, saturation = -30f, warmth = 40f)
   private val lut = ImageAdjustmentsColor.buildLut(adjustments)
+  private val colorPass = ImageAdjustmentsGl.Pass(lut, ImageAdjustmentsColor.LUT_SIZE, 0f, 0f, 0f, ImageAdjustmentsDetail.VignetteFrame.FULL_IMAGE)
+
+  /** E5-5：调色加上锐化、颗粒、暗角，画框是斜的（裁剪 + 转过一点）。 */
+  private val detailAdjustments = adjustments.copy(sharpen = 60f, grain = 50f, vignette = 70f)
+  private val tiltedFrame = ImageAdjustmentsDetail.VignetteFrame(2.4f, 0.3f, -1.3f, -0.2f, 2f, -0.9f)
 
   @Before
   fun setUp() {
@@ -45,7 +50,7 @@ class ImageAdjustmentsGlTest {
   @Test
   fun gpuMatchesCpu() {
     val source = gradient(256, 256)
-    val gpu = gl.render(source, lut, ImageAdjustmentsColor.LUT_SIZE)
+    val gpu = gl.render(source, colorPass)
     val cpu = ImageAdjustmentsRenderer.applyOnCpu(source, lut, ImageAdjustmentsColor.LUT_SIZE)
     assertEquals(source.width, gpu.width)
     assertEquals(source.height, gpu.height)
@@ -56,9 +61,25 @@ class ImageAdjustmentsGlTest {
   @Test
   fun largeImagesAreTiled() {
     val source = gradient(2048 + 300, 64)
-    val gpu = gl.render(source, lut, ImageAdjustmentsColor.LUT_SIZE)
+    val gpu = gl.render(source, colorPass)
     val cpu = ImageAdjustmentsRenderer.applyOnCpu(source, lut, ImageAdjustmentsColor.LUT_SIZE)
     assertMaxDifference(cpu, gpu, 3)
+  }
+
+  /** E5-5：锐化、颗粒、暗角在 GPU 上和 CPU 上一样（锐化放大了纹理过滤的精度差，最大放宽到 4/255，平均仍不过 0.5/255）。 */
+  @Test
+  fun detailGpuMatchesCpu() {
+    val pass = ImageAdjustmentsRenderer.pass(detailAdjustments, tiltedFrame, true)
+    val source = gradient(256, 256)
+    assertMaxDifference(ImageAdjustmentsRenderer.applyOnCpu(source, pass), gl.render(source, pass), 4)
+  }
+
+  /** E5-5：分块时锐化跨过接缝也一样（每块带重叠边），颗粒、暗角按整张图的位置算。 */
+  @Test
+  fun detailIsSeamlessAcrossTiles() {
+    val pass = ImageAdjustmentsRenderer.pass(detailAdjustments.copy(sharpen = 100f), tiltedFrame, true)
+    val source = gradient(2048 + 300, 96)
+    assertMaxDifference(ImageAdjustmentsRenderer.applyOnCpu(source, pass), gl.render(source, pass), 4)
   }
 
   /** 半透明的像素按没预乘的颜色查表，alpha 不变；颜色空间跟着原图。 */
@@ -68,7 +89,7 @@ class ImageAdjustmentsGlTest {
       setPixel(0, 0, Color.argb(128, 200, 100, 50))
       setPixel(1, 0, Color.argb(255, 200, 100, 50))
     }
-    val gpu = gl.render(source, lut, ImageAdjustmentsColor.LUT_SIZE)
+    val gpu = gl.render(source, colorPass)
     assertEquals(128, Color.alpha(gpu.getPixel(0, 0)))
     assertChannelsClose(gpu.getPixel(1, 0), gpu.getPixel(0, 0), 3)
     assertEquals(source.colorSpace, gpu.colorSpace)
@@ -78,14 +99,23 @@ class ImageAdjustmentsGlTest {
   @Test
   fun twelveMegapixelBakeTime() {
     val source = gradient(4032, 3024)
-    gl.render(gradient(64, 64), lut, ImageAdjustmentsColor.LUT_SIZE)
+    gl.render(gradient(64, 64), colorPass)
     val start = SystemClock.elapsedRealtime()
-    val output = gl.render(source, lut, ImageAdjustmentsColor.LUT_SIZE)
+    val output = gl.render(source, colorPass)
     val elapsed = SystemClock.elapsedRealtime() - start
     Log.i("TellomiE52", "TELLOMI_E52_12MP_BAKE_MS=$elapsed")
     println("TELLOMI_E52_12MP_BAKE_MS=$elapsed")
     assertEquals(4032, output.width)
     assertTrue("took $elapsed ms", elapsed < 10_000)
+
+    // E5-5：锐化 + 颗粒 + 暗角都开（分块带重叠边）。
+    val detailPass = ImageAdjustmentsRenderer.pass(detailAdjustments, tiltedFrame, true)
+    val detailStart = SystemClock.elapsedRealtime()
+    gl.render(source, detailPass)
+    val detailElapsed = SystemClock.elapsedRealtime() - detailStart
+    Log.i("TellomiE55", "TELLOMI_E55_12MP_BAKE_MS=$detailElapsed")
+    println("TELLOMI_E55_12MP_BAKE_MS=$detailElapsed")
+    assertTrue("took $detailElapsed ms", detailElapsed < 10_000)
   }
 
   /** 通过对外的入口走一遍（GL 线程 + 阻塞等结果）。 */

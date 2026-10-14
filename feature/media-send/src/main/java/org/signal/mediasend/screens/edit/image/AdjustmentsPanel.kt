@@ -175,7 +175,10 @@ internal val AVAILABLE_TOOLS = listOf(
   ImageAdjustments.Tool.WARMTH,
   ImageAdjustments.Tool.FADE,
   ImageAdjustments.Tool.HIGHLIGHTS,
-  ImageAdjustments.Tool.SHADOWS
+  ImageAdjustments.Tool.SHADOWS,
+  ImageAdjustments.Tool.VIGNETTE,
+  ImageAdjustments.Tool.GRAIN,
+  ImageAdjustments.Tool.SHARPEN
 )
 
 /** 行里显示的数值：照 Telegram 安卓，整数，正的带 +。 */

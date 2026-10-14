@@ -14,14 +14,16 @@ import org.signal.core.util.logging.Log
 import org.signal.imageeditor.core.model.ImageAdjustments
 import java.util.concurrent.ExecutionException
 import java.util.concurrent.FutureTask
-import kotlin.math.roundToInt
 
 /**
- * Tellomi（tellomi/tellomi#1592 E5-2，Epic #1523）：把调色画进位图。
+ * Tellomi（tellomi/tellomi#1592 E5-2、#1595 E5-5，Epic #1523）：把调色画进位图。
  *
- * 逐像素的工具合成一张查找表（[ImageAdjustmentsColor]），在一条专门的 GL 线程上用 GLES 2.0 套上去（[ImageAdjustmentsGl]）；
- * 那台机器建不起 GL 上下文、或这一次 GL 出错，就在 CPU 上查同一张表（慢，但结果一样）。
- * 全在默认值时原样返回传进来的那张位图，整条管线不走。
+ * 逐像素的工具合成一张查找表（[ImageAdjustmentsColor]），和位置有关的锐化、颗粒、暗角（[ImageAdjustmentsDetail]）一起，
+ * 在一条专门的 GL 线程上用 GLES 2.0 一遍画完（[ImageAdjustmentsGl]）；那台机器建不起 GL 上下文、或这一次 GL 出错，
+ * 就在 CPU 上走同样的算法（慢，但结果一样）。全在默认值时原样返回传进来的那张位图，整条管线不走。
+ *
+ * - `frame`：暗角跟着的画框（裁剪后的输出范围），由 `EditorModel` 算好经 `UriGlideRenderer` 传进来；只在暗角不是 0 时有用。
+ * - `detail`：要不要锐化和颗粒。打码用的小模糊图不要（锐化一张模糊图没意义，颗粒在小图上放大会成斑块），只调色和暗角。
  */
 object ImageAdjustmentsRenderer {
 
@@ -43,9 +45,15 @@ object ImageAdjustmentsRenderer {
 
   /** 阻塞着画（发出时的原尺寸烘焙、打码的小模糊图）。不要在 GL 线程上调。 */
   @JvmStatic
-  fun apply(source: Bitmap, adjustments: ImageAdjustments): Bitmap {
+  @JvmOverloads
+  fun apply(
+    source: Bitmap,
+    adjustments: ImageAdjustments,
+    frame: ImageAdjustmentsDetail.VignetteFrame = ImageAdjustmentsDetail.VignetteFrame.FULL_IMAGE,
+    detail: Boolean = true
+  ): Bitmap {
     if (adjustments.isDefault) return source
-    val task = FutureTask { render(source, adjustments) }
+    val task = FutureTask { render(source, adjustments, frame, detail) }
     glHandler.post(task)
     return try {
       task.get()
@@ -56,14 +64,14 @@ object ImageAdjustmentsRenderer {
 
   /** 异步画（拖滑杆时的预览），画好在主线程回调。 */
   @JvmStatic
-  fun applyAsync(source: Bitmap, adjustments: ImageAdjustments, callback: Callback) {
+  fun applyAsync(source: Bitmap, adjustments: ImageAdjustments, frame: ImageAdjustmentsDetail.VignetteFrame, callback: Callback) {
     if (adjustments.isDefault) {
       mainHandler.post { callback.onRendered(source) }
       return
     }
     glHandler.post {
       val result = try {
-        render(source, adjustments)
+        render(source, adjustments, frame, true)
       } catch (e: Throwable) {
         Log.w(TAG, "Adjustments render failed", e)
         null
@@ -73,18 +81,32 @@ object ImageAdjustmentsRenderer {
   }
 
   /** GL 线程上。 */
-  private fun render(source: Bitmap, adjustments: ImageAdjustments): Bitmap {
+  private fun render(source: Bitmap, adjustments: ImageAdjustments, frame: ImageAdjustmentsDetail.VignetteFrame, detail: Boolean): Bitmap {
     val input = if (source.config == Bitmap.Config.ARGB_8888) source else source.copy(Bitmap.Config.ARGB_8888, false)
-    val lut = lut(adjustments)
+    val pass = pass(adjustments, frame, detail)
     val renderer = glRenderer()
     if (renderer != null) {
       try {
-        return renderer.render(input, lut, ImageAdjustmentsColor.LUT_SIZE)
+        return renderer.render(input, pass)
       } catch (e: Throwable) {
         Log.w(TAG, "GL adjustments failed, using the CPU", e)
       }
     }
-    return applyOnCpu(input, lut, ImageAdjustmentsColor.LUT_SIZE)
+    return applyOnCpu(input, pass)
+  }
+
+  /** 一组调色怎么画：查找表只管逐像素的几项（只动了锐化、颗粒、暗角时不查表，拖它们的滑杆也不重算表）。 */
+  @VisibleForTesting
+  internal fun pass(adjustments: ImageAdjustments, frame: ImageAdjustmentsDetail.VignetteFrame, detail: Boolean): ImageAdjustmentsGl.Pass {
+    val colorOnly = ImageAdjustmentsDetail.colorOnly(adjustments)
+    return ImageAdjustmentsGl.Pass(
+      lut = if (colorOnly.isDefault) null else lut(colorOnly),
+      lutSize = ImageAdjustmentsColor.LUT_SIZE,
+      sharpen = if (detail) ImageAdjustmentsDetail.SHARPEN_AMOUNT * adjustments.sharpen / 100f else 0f,
+      grain = if (detail) ImageAdjustmentsDetail.GRAIN_AMPLITUDE * adjustments.grain / 100f else 0f,
+      vignette = adjustments.vignette / 100f,
+      frame = frame
+    )
   }
 
   private fun glRenderer(): ImageAdjustmentsGl? {
@@ -100,25 +122,21 @@ object ImageAdjustmentsRenderer {
     return ImageAdjustmentsColor.buildLut(adjustments).also { cachedLut = adjustments to it }
   }
 
-  /** CPU 上查表：`getPixels` 给的是没预乘的颜色，透明的像素不动。 */
+  /** CPU 上走一遍（[ImageAdjustmentsDetail.applyOnCpu]）：`getPixels` 给的是没预乘的颜色，透明的像素不动。 */
   @VisibleForTesting
-  internal fun applyOnCpu(source: Bitmap, lut: ByteArray, size: Int): Bitmap {
+  internal fun applyOnCpu(source: Bitmap, pass: ImageAdjustmentsGl.Pass): Bitmap {
     val width = source.width
     val height = source.height
     val pixels = IntArray(width * height)
     source.getPixels(pixels, 0, width, 0, 0, width, height)
-    val rgb = FloatArray(3)
-    for (i in pixels.indices) {
-      val color = pixels[i]
-      val alpha = color ushr 24
-      if (alpha == 0) continue
-      rgb[0] = ((color shr 16) and 0xFF) / 255f
-      rgb[1] = ((color shr 8) and 0xFF) / 255f
-      rgb[2] = (color and 0xFF) / 255f
-      ImageAdjustmentsColor.lookup(lut, size, rgb)
-      pixels[i] = (alpha shl 24) or (toByte(rgb[0]) shl 16) or (toByte(rgb[1]) shl 8) or toByte(rgb[2])
-    }
+    ImageAdjustmentsDetail.applyOnCpu(pixels, width, height, pass.lut, pass.lutSize, pass.sharpen, pass.grain, pass.vignette, pass.frame)
     return createOutput(source).apply { setPixels(pixels, 0, width, 0, 0, width, height) }
+  }
+
+  /** 只查表（测试用）。 */
+  @VisibleForTesting
+  internal fun applyOnCpu(source: Bitmap, lut: ByteArray, size: Int): Bitmap {
+    return applyOnCpu(source, ImageAdjustmentsGl.Pass(lut, size, 0f, 0f, 0f, ImageAdjustmentsDetail.VignetteFrame.FULL_IMAGE))
   }
 
   /** 和 [source] 同尺寸、同颜色空间（API 26+）的空位图。 */
@@ -132,6 +150,4 @@ object ImageAdjustmentsRenderer {
     output.setHasAlpha(source.hasAlpha())
     return output
   }
-
-  private fun toByte(value: Float): Int = (value * 255f).roundToInt().coerceIn(0, 255)
 }
