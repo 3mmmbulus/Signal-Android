@@ -359,4 +359,8 @@
   <string name="VideoQualitySheet__video_quality">Video quality</string>
   <!-- Tellomi (tellomi/tellomi#1518 V-6): toast when a video is muted, which sends it as a GIF -->
   <string name="MediaSendViewModel__tellomi_video_will_be_sent_as_gif">Sound off. The video will be sent like a GIF and play on a loop.</string>
+  <!-- Tellomi (tellomi/tellomi#1601, M-4): the only item for scheduling in the long-press send menu; opens the date/time wheels -->
+  <string name="ScheduleSendMenu__tellomi_schedule_message">Schedule message</string>
+  <!-- Tellomi (#1601): the same item when sending to yourself (Saved Messages) -->
+  <string name="ScheduleSendMenu__tellomi_set_reminder">Set a reminder</string>
 </resources>

@@ -374,7 +374,7 @@ private fun SendMenuCard(
       }
       if (showScheduleOptions) {
         ScheduleSendOptions(
-          options = remember { ScheduleSendOption.forCurrentTime(System.currentTimeMillis()) },
+          options = TellomiScheduleSendOptions,
           onOptionClick = onScheduleOption
         )
       }

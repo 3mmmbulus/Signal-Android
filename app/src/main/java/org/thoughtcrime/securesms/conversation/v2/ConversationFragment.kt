@@ -5330,9 +5330,11 @@ class ConversationFragment :
         inputPanel.onSaveRecordDraft()
       }
 
-      ScheduleMessageContextMenu.show(sendButton, (conversationContent as ViewGroup)) { time ->
+      // Tellomi（#1601）：收藏里叫「设置提醒」。
+      val isReminder = viewModel.recipientSnapshot?.isSelf == true
+      ScheduleMessageContextMenu.show(sendButton, (conversationContent as ViewGroup), isReminder) { time ->
         if (time == -1L) {
-          showSchedule(childFragmentManager)
+          showSchedule(childFragmentManager, isReminder)
         } else {
           sendMessage(scheduledDate = time)
         }

@@ -10172,5 +10172,11 @@
     <!-- Tellomi (tellomi/tellomi#1121): some recently sent files picked on the Files page were cleaned up from this device before sending -->
     <string name="TellomiAttachmentFiles__some_not_on_device">有的文件已不在本机，没有发送。</string>
 
+    <string name="TellomiScheduleTimePicker__set_reminder">设置提醒</string>
+    <string name="TellomiScheduleTimePicker__send_today_at">今天 %1$s 发送</string>
+    <string name="TellomiScheduleTimePicker__send_on_at">%1$s %2$s 发送</string>
+    <string name="TellomiScheduleTimePicker__remind_today_at">今天 %1$s 提醒</string>
+    <string name="TellomiScheduleTimePicker__remind_on_at">%1$s %2$s 提醒</string>
+
     <!-- EOF -->
 </resources>

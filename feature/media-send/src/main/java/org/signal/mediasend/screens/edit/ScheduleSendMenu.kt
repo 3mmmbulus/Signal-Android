@@ -38,6 +38,18 @@ import java.time.temporal.TemporalAdjusters
 import java.util.concurrent.TimeUnit
 
 /**
+ * Tellomi（tellomi/tellomi#1601，M-4）：发给自己（收藏）时「定时发送」叫「设置提醒」（同 Telegram 两端 `SetReminder`）。
+ * 由宿主按这次发给谁提供；默认不是。
+ */
+val LocalTellomiScheduleIsReminder = compositionLocalOf { false }
+
+/**
+ * Tellomi（#1601，O8 照 Telegram 两端）：长按发送菜单里只有一项「定时发送」，点了直接出日 / 时 / 分滚轮选时间；
+ * 不再给上游的三个整点预设（[ScheduleSendOption.forCurrentTime] 留着不用）。
+ */
+internal val TellomiScheduleSendOptions: List<ScheduleSendOption> = listOf(ScheduleSendOption.PickTime)
+
+/**
  * Renders the label for a scheduled send time, e.g. "Tomorrow at 8:00 AM". Injected because localized date formatting
  * lives with the host app.
  */
@@ -144,7 +156,7 @@ fun ScheduleSendMenu(
     }
     if (showScheduleOptions) {
       ScheduleSendOptions(
-        options = remember(controller.isShown()) { ScheduleSendOption.forCurrentTime(System.currentTimeMillis()) },
+        options = TellomiScheduleSendOptions,
         onOptionClick = {
           controller.hide()
           onOptionClick(it)
@@ -196,7 +208,8 @@ private fun ScheduleSendMenuItem(
 ) {
   val label = when (option) {
     is ScheduleSendOption.PresetTime -> LocalScheduledSendTimeFormatter.current(option.timeMs)
-    ScheduleSendOption.PickTime -> stringResource(R.string.ScheduleSendMenu__pick_date_and_time)
+    // Tellomi（#1601）：只剩这一项，照 TG 写「定时发送」（收藏里「设置提醒」）。
+    ScheduleSendOption.PickTime -> stringResource(if (LocalTellomiScheduleIsReminder.current) R.string.ScheduleSendMenu__tellomi_set_reminder else R.string.ScheduleSendMenu__tellomi_schedule_message)
   }
 
   val testTag = when (option) {

@@ -51,13 +51,28 @@ class ScheduleSendMenuTest {
     composeTestRule.onNodeWithTag(TestTags.scheduleSendPresetOption(TOMORROW)).assertTextEquals("Scheduled for $TOMORROW")
   }
 
+  // Tellomi（tellomi/tellomi#1601）：只剩这一项，照 Telegram 叫「定时发送」，收藏里「设置提醒」。
   @Test
-  fun `Given a pick a time option, when displayed, then it is labelled from the module's strings`() {
+  fun `Given a pick a time option, when displayed, then it is labelled Schedule message`() {
     setContent()
 
     composeTestRule
       .onNodeWithTag(TestTags.SCHEDULE_SEND_PICK_TIME_OPTION)
-      .assertTextEquals(context.getString(R.string.ScheduleSendMenu__pick_date_and_time))
+      .assertTextEquals(context.getString(R.string.ScheduleSendMenu__tellomi_schedule_message))
+  }
+
+  @Test
+  fun `Given a send to yourself, when displayed, then the option is labelled Set a reminder`() {
+    setContent(isReminder = true)
+
+    composeTestRule
+      .onNodeWithTag(TestTags.SCHEDULE_SEND_PICK_TIME_OPTION)
+      .assertTextEquals(context.getString(R.string.ScheduleSendMenu__tellomi_set_reminder))
+  }
+
+  @Test
+  fun `The long-press menus offer only Schedule message, as Telegram`() {
+    assertEquals(listOf(ScheduleSendOption.PickTime), TellomiScheduleSendOptions)
   }
 
   @Test
@@ -86,10 +101,13 @@ class ScheduleSendMenuTest {
     composeTestRule.onNodeWithTag(TestTags.scheduleSendPresetOption(TOMORROW)).assertIsDisplayed()
   }
 
-  private fun setContent() {
+  private fun setContent(isReminder: Boolean = false) {
     composeTestRule.setContent {
       SignalTheme {
-        CompositionLocalProvider(LocalScheduledSendTimeFormatter provides { "Scheduled for $it" }) {
+        CompositionLocalProvider(
+          LocalScheduledSendTimeFormatter provides { "Scheduled for $it" },
+          LocalTellomiScheduleIsReminder provides isReminder
+        ) {
           Column {
             ScheduleSendOptions(
               options = listOf(

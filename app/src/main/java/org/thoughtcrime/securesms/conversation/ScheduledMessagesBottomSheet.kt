@@ -176,7 +176,9 @@ class ScheduledMessagesBottomSheet : FixedRoundedCornerBottomSheetDialogFragment
   }
 
   private fun handleRescheduleMessage(messageRecord: MessageRecord) {
-    ScheduleMessageTimePickerBottomSheet.showReschedule(childFragmentManager, messageRecord.id, (messageRecord as MmsMessageRecord).scheduledDate)
+    // Tellomi（#1601）：收藏里的定时消息是提醒，选时间页写「设置提醒」。
+    val isReminder = messageRecord.toRecipient.isSelf
+    ScheduleMessageTimePickerBottomSheet.showReschedule(childFragmentManager, messageRecord.id, (messageRecord as MmsMessageRecord).scheduledDate, isReminder)
   }
 
   private fun handleSendMessageNow(messageRecord: MessageRecord) {

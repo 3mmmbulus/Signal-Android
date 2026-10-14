@@ -342,4 +342,6 @@
   <string name="VideoQualitySheet__video_quality">影片畫質</string>
   <!-- Tellomi (tellomi/tellomi#1518 V-6): toast when a video is muted, which sends it as a GIF -->
   <string name="MediaSendViewModel__tellomi_video_will_be_sent_as_gif">已關閉聲音，影片會像 GIF 一樣循環播放。</string>
+  <string name="ScheduleSendMenu__tellomi_schedule_message">定時傳送</string>
+  <string name="ScheduleSendMenu__tellomi_set_reminder">設定提醒</string>
 </resources>

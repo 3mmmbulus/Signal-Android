@@ -7,7 +7,6 @@ import org.signal.core.util.dp
 import org.thoughtcrime.securesms.R
 import org.thoughtcrime.securesms.components.menu.ActionItem
 import org.thoughtcrime.securesms.components.menu.SignalContextMenu
-import org.thoughtcrime.securesms.util.DateUtils
 import org.thoughtcrime.securesms.util.toLocalDateTime
 import org.thoughtcrime.securesms.util.toMillis
 import java.time.DayOfWeek
@@ -19,21 +18,19 @@ class ScheduleMessageContextMenu {
 
     private val presetHours = arrayOf(8, 12, 18, 21)
 
+    /**
+     * Tellomi（tellomi/tellomi#1601，M-4，O8 照 Telegram 两端）：菜单里只有一项「定时发送」（收藏里「设置提醒」），
+     * 点了 `action(-1)` 出日 / 时 / 分滚轮；不再给上游的整点预设（[getNextScheduleTimes] 留着不用）。
+     */
     @JvmStatic
-    fun show(anchor: View, container: ViewGroup, action: (Long) -> Unit): SignalContextMenu {
-      val currentTime = System.currentTimeMillis()
-      val scheduledTimes = getNextScheduleTimes(currentTime)
-      val actionItems = scheduledTimes.map {
-        if (it > 0) {
-          ActionItem(getIconForTime(it), DateUtils.getScheduledMessageDateString(anchor.context, it)) {
-            action(it)
-          }
-        } else {
-          ActionItem(R.drawable.symbol_calendar_24, anchor.context.getString(R.string.ScheduledMessages_pick_time)) {
-            action(it)
-          }
+    @JvmOverloads
+    fun show(anchor: View, container: ViewGroup, isReminder: Boolean = false, action: (Long) -> Unit): SignalContextMenu {
+      val title = anchor.context.getString(if (isReminder) R.string.TellomiScheduleTimePicker__set_reminder else R.string.ScheduleMessageTimePickerBottomSheet__dialog_title)
+      val actionItems = listOf(
+        ActionItem(R.drawable.symbol_calendar_24, title) {
+          action(-1)
         }
-      }
+      )
 
       return SignalContextMenu.Builder(anchor, container)
         .offsetX(12.dp)

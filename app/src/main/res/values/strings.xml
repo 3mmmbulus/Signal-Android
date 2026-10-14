@@ -10445,5 +10445,16 @@
     <!-- Tellomi (tellomi/tellomi#1121): some recently sent files picked on the Files page were cleaned up from this device before sending -->
     <string name="TellomiAttachmentFiles__some_not_on_device">Some files are no longer on this device and weren\'t sent.</string>
 
+    <!-- Tellomi (tellomi/tellomi#1601, M-4): long-press send menu item and time sheet title in Saved Messages (note to self) — schedule the note to yourself as a reminder -->
+    <string name="TellomiScheduleTimePicker__set_reminder">Set a reminder</string>
+    <!-- Tellomi (#1601): schedule time sheet button when the chosen time is today. %1$s = time -->
+    <string name="TellomiScheduleTimePicker__send_today_at">Send today at %1$s</string>
+    <!-- Tellomi (#1601): schedule time sheet button for another day. %1$s = date, %2$s = time -->
+    <string name="TellomiScheduleTimePicker__send_on_at">Send on %1$s at %2$s</string>
+    <!-- Tellomi (#1601): reminder time sheet button (Saved Messages) when the chosen time is today. %1$s = time -->
+    <string name="TellomiScheduleTimePicker__remind_today_at">Remind today at %1$s</string>
+    <!-- Tellomi (#1601): reminder time sheet button (Saved Messages) for another day. %1$s = date, %2$s = time -->
+    <string name="TellomiScheduleTimePicker__remind_on_at">Remind on %1$s at %2$s</string>
+
     <!-- EOF -->
 </resources>
