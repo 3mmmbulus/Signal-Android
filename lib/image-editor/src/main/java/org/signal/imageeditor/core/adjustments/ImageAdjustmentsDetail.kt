@@ -17,10 +17,10 @@ import kotlin.math.sin
 import kotlin.math.sqrt
 
 /**
- * Tellomi（tellomi/tellomi#1595 E5-5、#1598 E5-8，Epic #1523）：调色里和位置有关的几项——锐化、颗粒、暗角、模糊（移轴）——的定义和 CPU 实现。
+ * Tellomi（tellomi/tellomi#1595 E5-5、#1598 E5-8、#1599 E5-9，Epic #1523）：调色里和位置有关的几项——锐化、增强、颗粒、暗角、模糊（移轴）——的定义和 CPU 实现。
  * GPU 上同样的算法在 [ImageAdjustmentsGl] 的着色器里；和 iOS `TellomiImageAdjustments.metal` 是同一套（自己定的，Telegram 的着色器一行不搬）。
  *
- * 都在编码值（0…1）上算；顺序照两端 Telegram：锐化 → 查找表（[ImageAdjustmentsColor]）→ 颗粒 → 暗角 → 模糊。
+ * 都在编码值（0…1）上算；顺序：锐化 → 增强 → 查找表（[ImageAdjustmentsColor]）→ 颗粒 → 暗角 → 模糊（照两端 Telegram，只是增强挪到锐化后面）。
  * 尺寸用一个「格」u = max(1, 长边 / 2048) 像素量：预览图（长边 ≤ 2048）上 u = 1，原尺寸图上按比例放大，预览和发出的图看起来一样。
  * - 锐化：c' = c + 2.5·(值/100)·(c − 模糊)，模糊是以 u 为一格的 3×3 帐篷核（1 2 1 / 2 4 2 / 1 2 1，除以 16），图边外取最靠边的像素。
  * - 颗粒：[NOISE]（256 × 256，四边循环）按 2u 像素一格双线性插值，c' = c + 0.06·(值/100)·w(y)·n，w(y) = 1 − |2y − 1|³，单色。只用于照片。
@@ -30,6 +30,7 @@ import kotlin.math.sqrt
  *   遮罩 m = smoothstep(内半径, 外半径, d)，d 在「短边 = 1」的单位里量：径向是到中心的距离，线性是到过中心那条线的距离；
  *   这个像素 = mix(清楚的, 模糊的, m)。内半径 = `falloff`、外半径 = `size`（照两端 TG 的控件）。
  *   安卓照 TG 安卓存的角度是那条线的法线方向（π/2 = 横线），法线 = (cos, sin)；iOS 存的是线的方向。
+ * - 增强（E5-9）：分块直方图均衡（CLAHE），见 [enhanceLuts]；v' = v + (查到的 − v)·0.6·(值/100)，三个通道按 v'/v 缩放。
  */
 object ImageAdjustmentsDetail {
 
@@ -92,6 +93,105 @@ object ImageAdjustmentsDetail {
   /** 暗角压一个编码值：c^(1 + 1.2k)·(1 − 0.35k)。 */
   @JvmStatic
   fun vignette(value: Float, k: Float): Float = value.pow(1f + 1.2f * k) * (1f - 0.35f * k)
+
+  const val ENHANCE_TILES = 4
+
+  /** 值 100 时混进多少均衡后的亮度：全混在平滑的渐变（天空）上会压出一条暗带，0.6 看起来像「自动对比」。iOS 一样。 */
+  const val ENHANCE_STRENGTH = 0.6f
+
+  /** 算增强直方图的小图长边上限。 */
+  const val ENHANCE_SMALL_LONG_SIDE = 256
+
+  /**
+   * 由小图的 HSV 亮度（每个像素一个 0…255 的值，一行一行）算 16 张表（第 t 张 = 第 t 块，块按行排），每张 256 个字节。
+   * 4 × 4 块；每块直方图 256 格，每格最多 ⌈3 × 平均⌉，多出来的平均分给 256 格，累加成 CDF，
+   * 表 = floor(255·(CDF − CDF[0]) / (块里像素数 − CDF[0]) + 0.5)，Float 一步步算。iOS `TellomiImageAdjustmentsRenderer.enhanceLuts` 逐字节一样。
+   */
+  @JvmStatic
+  fun enhanceLuts(values: IntArray, width: Int, height: Int): ByteArray {
+    val n = ENHANCE_TILES
+    val luts = ByteArray(n * n * 256)
+    for (tileY in 0 until n) {
+      for (tileX in 0 until n) {
+        val x0 = tileX * width / n
+        val x1 = (tileX + 1) * width / n
+        val y0 = tileY * height / n
+        val y1 = (tileY + 1) * height / n
+        val base = (tileY * n + tileX) * 256
+        val count = (x1 - x0) * (y1 - y0)
+        val histogram = IntArray(256)
+        for (y in y0 until y1) {
+          for (x in x0 until x1) {
+            histogram[values[y * width + x]]++
+          }
+        }
+        if (count <= 0) {
+          for (k in 0 until 256) luts[base + k] = k.toByte()
+          continue
+        }
+        val limit = max(1, (3 * count + 255) / 256)
+        var excess = 0
+        for (c in histogram) excess += max(0, c - limit)
+        val share = excess.toFloat() / 256f
+        var cdf = 0f
+        val cdfs = FloatArray(256)
+        for (k in 0 until 256) {
+          cdf = cdf + min(histogram[k], limit).toFloat() + share
+          cdfs[k] = cdf
+        }
+        val denominator = count.toFloat() - cdfs[0]
+        for (k in 0 until 256) {
+          luts[base + k] = if (denominator <= 0f) {
+            k.toByte()
+          } else {
+            val value = 255f * (cdfs[k] - cdfs[0]) / denominator
+            floor(value + 0.5f).toInt().coerceIn(0, 255).toByte()
+          }
+        }
+      }
+    }
+    return luts
+  }
+
+  /** 单位坐标 ([ux], [uy]) 处 HSV 亮度 [v]（0…1）均衡后的值（四块双线性、表内线性）；CPU 兜底和测试用，GPU 上同样的查法在着色器里。 */
+  @JvmStatic
+  fun enhanceValue(luts: ByteArray, v: Float, ux: Float, uy: Float): Float {
+    val n = ENHANCE_TILES.toFloat()
+    val tx = (ux * n - 0.5f).coerceIn(0f, n - 1)
+    val ty = (uy * n - 0.5f).coerceIn(0f, n - 1)
+    val x0 = floor(tx)
+    val y0 = floor(ty)
+    val x1 = min(x0 + 1f, n - 1)
+    val y1 = min(y0 + 1f, n - 1)
+    val fx = tx - x0
+    val fy = ty - y0
+    fun lookup(tileX: Float, tileY: Float): Float {
+      val base = ((tileY * n + tileX).toInt()) * 256
+      val position = v.coerceIn(0f, 1f) * 255f
+      val k0 = floor(position).toInt()
+      val k1 = min(k0 + 1, 255)
+      val fraction = position - k0
+      return ((luts[base + k0].toInt() and 0xFF) * (1f - fraction) + (luts[base + k1].toInt() and 0xFF) * fraction) / 255f
+    }
+    val top = lookup(x0, y0) * (1f - fx) + lookup(x1, y0) * fx
+    val bottom = lookup(x0, y1) * (1f - fx) + lookup(x1, y1) * fx
+    return top * (1f - fy) + bottom * fy
+  }
+
+  /** 原图的增强表：缩到长边 ≤ 256，取每个像素的 max(r, g, b)。 */
+  @JvmStatic
+  fun enhanceLuts(source: Bitmap): ByteArray {
+    val longSide = max(source.width, source.height)
+    val scale = min(1f, ENHANCE_SMALL_LONG_SIDE / longSide.toFloat())
+    val width = max(1, (source.width * scale).roundToInt())
+    val height = max(1, (source.height * scale).roundToInt())
+    val small = if (width == source.width && height == source.height) source else Bitmap.createScaledBitmap(source, width, height, true)
+    val pixels = IntArray(width * height)
+    small.getPixels(pixels, 0, width, 0, 0, width, height)
+    if (small !== source) small.recycle()
+    val values = IntArray(pixels.size) { max((pixels[it] shr 16) and 0xFF, max((pixels[it] shr 8) and 0xFF, pixels[it] and 0xFF)) }
+    return enhanceLuts(values, width, height)
+  }
 
   /** 模糊用的小图长边上限。 */
   const val BLUR_SMALL_LONG_SIDE = 512
@@ -178,7 +278,7 @@ object ImageAdjustmentsDetail {
   /** 查找表只管逐像素的几项：把和位置有关的几项放回默认。只动了它们时不用查表，拖它们的滑杆也不用重算表。 */
   @JvmStatic
   fun colorOnly(adjustments: ImageAdjustments): ImageAdjustments {
-    return adjustments.copy(sharpen = 0f, grain = 0f, vignette = 0f, blur = ImageAdjustments.Blur())
+    return adjustments.copy(enhance = 0f, skin = 0f, sharpen = 0f, grain = 0f, vignette = 0f, blur = ImageAdjustments.Blur())
   }
 
   /** 噪声在 (x, y)（以格为单位，格子中心在 整数 + 0.5）处双线性插值的值，−1…1，四边循环。 */
@@ -215,7 +315,9 @@ object ImageAdjustmentsDetail {
     grain: Float,
     vignetteAmount: Float,
     frame: VignetteFrame,
-    blur: ImageAdjustmentsGl.BlurPass? = null
+    blur: ImageAdjustmentsGl.BlurPass? = null,
+    enhance: Float = 0f,
+    enhanceLuts: ByteArray? = null
   ) {
     val u = unit(max(width, height))
     val blurPixels = blur?.small?.let { small -> IntArray(small.width * small.height).also { small.getPixels(it, 0, small.width, 0, 0, small.width, small.height) } }
@@ -240,6 +342,17 @@ object ImageAdjustmentsDetail {
           tentBlur(source, width, height, x + 0.5f, y + 0.5f, u, tent)
           for (i in 0..2) {
             rgb[i] = (rgb[i] + sharpen * (rgb[i] - tent[i])).coerceIn(0f, 1f)
+          }
+        }
+
+        if (enhance > 0f && enhanceLuts != null) {
+          val v = max(rgb[0], max(rgb[1], rgb[2]))
+          if (v > 0.0001f) {
+            val equalized = enhanceValue(enhanceLuts, v, (x + 0.5f) / width, (y + 0.5f) / height)
+            val scale = (v + (equalized - v) * enhance) / v
+            for (i in 0..2) {
+              rgb[i] = (rgb[i] * scale).coerceIn(0f, 1f)
+            }
           }
         }
 

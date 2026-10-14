@@ -169,6 +169,7 @@ private fun TintSwatch(color: Int, isSelected: Boolean, description: String, onC
 
 /** 照 Telegram 安卓 `PhotoFilterView` 列表的顺序，只放已经能画的。 */
 internal val AVAILABLE_TOOLS = listOf(
+  ImageAdjustments.Tool.ENHANCE,
   ImageAdjustments.Tool.EXPOSURE,
   ImageAdjustments.Tool.CONTRAST,
   ImageAdjustments.Tool.SATURATION,

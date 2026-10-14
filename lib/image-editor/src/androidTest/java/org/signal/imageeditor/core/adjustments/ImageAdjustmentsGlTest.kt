@@ -95,6 +95,14 @@ class ImageAdjustmentsGlTest {
     }
   }
 
+  /** E5-9：增强在 GPU 上和 CPU 上一样（分块时也一样，表按整张图的位置查）。 */
+  @Test
+  fun enhanceGpuMatchesCpu() {
+    val source = gradient(2048 + 300, 300)
+    val pass = ImageAdjustmentsRenderer.pass(adjustments.copy(enhance = 80f, vignette = 30f), tiltedFrame, true, source)
+    assertMaxDifference(ImageAdjustmentsRenderer.applyOnCpu(source, pass), gl.render(source, pass), 4)
+  }
+
   /** 半透明的像素按没预乘的颜色查表，alpha 不变；颜色空间跟着原图。 */
   @Test
   fun keepsAlphaAndColorSpace() {

@@ -15,6 +15,7 @@ import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.signal.imageeditor.core.model.ImageAdjustments
+import kotlin.math.min
 import kotlin.math.sqrt
 
 /**
@@ -190,6 +191,49 @@ class ImageAdjustmentsDetailTest {
     assertTrue("左边糊了", kotlin.math.abs(red(verticalOut, 20, 150) - red(verticalOut, 21, 150)) < 0.05f)
 
     assertNull("打码小图（detail = false）不加移轴模糊", ImageAdjustmentsRenderer.pass(radial, ImageAdjustmentsDetail.VignetteFrame.FULL_IMAGE, false, stripes).blur)
+  }
+
+  /** E5-9：两端同一套：16 × 12 的小图算出的 16 张表、按位置插值后的值。和 iOS `testEnhanceMatchesTheSharedReferenceValues` 同一组。 */
+  @Test
+  fun enhanceMatchesTheSharedReferenceValues() {
+    val width = 16
+    val height = 12
+    val values = IntArray(width * height) { i ->
+      val x = i % width
+      val y = i / width
+      min(255, ((x * 13 + y * 29 + (x * y) % 7) % 256) / 2 + 40)
+    }
+    assertEquals(listOf(40, 46, 53, 59, 66, 72, 79, 85), values.take(8))
+    val luts = ImageAdjustmentsDetail.enhanceLuts(values, width, height).map { it.toInt() and 0xFF }
+    assertEquals(16 * 256, luts.size)
+    assertEquals(listOf(21, 106, 213, 255, 255, 255), listOf(40, 60, 80, 100, 120, 160).map { luts[it] })
+    assertEquals(listOf(0, 0, 0, 0, 43, 255), listOf(40, 60, 80, 100, 120, 160).map { luts[5 * 256 + it] })
+    assertEquals(listOf(0, 21, 21, 21, 21, 234), listOf(40, 60, 80, 100, 120, 160).map { luts[15 * 256 + it] })
+    assertEquals(615_884, luts.sum())
+
+    val bytes = ImageAdjustmentsDetail.enhanceLuts(values, width, height)
+    assertEquals(0.83529f, ImageAdjustmentsDetail.enhanceValue(bytes, 0.3f, 0.1f, 0.1f), 1e-4f)
+    assertEquals(0.58333f, ImageAdjustmentsDetail.enhanceValue(bytes, 0.5f, 0.5f, 0.5f), 1e-4f)
+    assertEquals(0.54141f, ImageAdjustmentsDetail.enhanceValue(bytes, 0.4f, 0.8f, 0.3f), 1e-4f)
+    assertEquals(0.74902f, ImageAdjustmentsDetail.enhanceValue(bytes, 0.6f, 0.95f, 0.95f), 1e-4f)
+  }
+
+  /** E5-9：增强把一张发灰的图拉开，色相不变（三个通道按比例）；打码小图（detail = false）不增强。 */
+  @Test
+  fun enhanceStretchesAFlatImage() {
+    val pixels = IntArray(256 * 192) { i ->
+      val v = 0.35f + 0.3f * ((i % 256 + i / 256) % 64) / 63f
+      Color.argb(255, (v * 255 + 0.5f).toInt(), (v * 0.8f * 255 + 0.5f).toInt(), (v * 0.6f * 255 + 0.5f).toInt())
+    }
+    val flat = Bitmap.createBitmap(pixels, 256, 192, Bitmap.Config.ARGB_8888)
+    val adjustments = ImageAdjustments(enhance = 100f)
+    val output = ImageAdjustmentsRenderer.applyOnCpu(flat, ImageAdjustmentsRenderer.pass(adjustments, ImageAdjustmentsDetail.VignetteFrame.FULL_IMAGE, true, flat))
+    val reds = IntArray(256 * 192).also { output.getPixels(it, 0, 256, 0, 0, 256, 192) }.map { Color.red(it) }
+    val inputReds = pixels.map { Color.red(it) }
+    assertTrue("亮度拉开了", (reds.max() - reds.min()) > (inputReds.max() - inputReds.min()) + 50)
+    val sample = output.getPixel(37, 100)
+    assertEquals("色相不变", 0.8f, Color.green(sample) / Color.red(sample).toFloat(), 0.03f)
+    assertNull(ImageAdjustmentsRenderer.pass(adjustments, ImageAdjustmentsDetail.VignetteFrame.FULL_IMAGE, false, flat).enhanceLuts)
   }
 
   /** 分块要的重叠边：锐化取样最远 u 个像素，再加一个给线性插值。 */

@@ -55,6 +55,7 @@ class ImageControllerAdjustTest {
   fun `the panel lists the rendered tools in Telegram Android order and values read like Telegram`() {
     assertEquals(
       listOf(
+        ImageAdjustments.Tool.ENHANCE,
         ImageAdjustments.Tool.EXPOSURE,
         ImageAdjustments.Tool.CONTRAST,
         ImageAdjustments.Tool.SATURATION,

@@ -22,7 +22,7 @@ import java.nio.FloatBuffer
 import kotlin.math.ceil
 
 /**
- * Tellomi（tellomi/tellomi#1592 E5-2、#1595 E5-5、#1598 E5-8）：用 GLES 2.0 离屏把调色画进一张位图：锐化 → 查找表 → 颗粒 → 暗角 → 模糊（[ImageAdjustmentsDetail]）。
+ * Tellomi（tellomi/tellomi#1592 E5-2、#1595 E5-5、#1598 E5-8、#1599 E5-9）：用 GLES 2.0 离屏把调色画进一张位图：锐化 → 增强 → 查找表 → 颗粒 → 暗角 → 模糊（[ImageAdjustmentsDetail]）。
  *
  * 只在 [ImageAdjustmentsRenderer] 的 GL 线程上用：EGL 上下文建在那条线程上，一直是它的当前上下文。
  * 图比 `GL_MAX_TEXTURE_SIZE`（再封顶 [MAX_TILE]）大时分块画；锐化要取旁边的像素，每块四周多传一圈重叠边（[apron]），只取中间那块写回。
@@ -59,6 +59,8 @@ internal class ImageAdjustmentsGl private constructor(
   private val blurCenterHandle = GLES20.glGetUniformLocation(program, "uBlurCenter")
   private val blurRadiiHandle = GLES20.glGetUniformLocation(program, "uBlurRadii")
   private val blurNormalHandle = GLES20.glGetUniformLocation(program, "uBlurNormal")
+  private val enhanceHandle = GLES20.glGetUniformLocation(program, "uEnhance")
+  private val enhanceLutHandle = GLES20.glGetUniformLocation(program, "uEnhanceLut")
 
   /**
    * 这一次怎么画：[lut] 为 null 时不查表；[sharpen] / [grain] / [vignette] 是着色器里直接用的量（倍数、振幅、值/100），0 = 不做；
@@ -71,7 +73,9 @@ internal class ImageAdjustmentsGl private constructor(
     val grain: Float,
     val vignette: Float,
     val frame: ImageAdjustmentsDetail.VignetteFrame,
-    val blur: BlurPass? = null
+    val blur: BlurPass? = null,
+    val enhance: Float = 0f,
+    val enhanceLuts: ByteArray? = null
   )
 
   /** 模糊：[small] 是模糊好的小图（没查表）；[kind] 1 径向、2 线性；中心是单位坐标；半径、法线在「短边 = 1」的单位里。 */
@@ -97,15 +101,16 @@ internal class ImageAdjustmentsGl private constructor(
     val output = ImageAdjustmentsRenderer.createOutput(source)
     val unit = ImageAdjustmentsDetail.unit(maxOf(source.width, source.height))
 
-    val textures = IntArray(5)
+    val textures = IntArray(6)
     val framebuffers = IntArray(1)
-    GLES20.glGenTextures(5, textures, 0)
+    GLES20.glGenTextures(6, textures, 0)
     GLES20.glGenFramebuffers(1, framebuffers, 0)
     val lutTexture = textures[0]
     val imageTexture = textures[1]
     val targetTexture = textures[2]
     val noiseTexture = textures[3]
     val blurTexture = textures[4]
+    val enhanceTexture = textures[5]
     try {
       GLES20.glUseProgram(program)
       GLES20.glPixelStorei(GLES20.GL_UNPACK_ALIGNMENT, 1)
@@ -149,6 +154,20 @@ internal class ImageAdjustmentsGl private constructor(
       GLES20.glUniform2f(blurCenterHandle, blur?.centerX ?: 0f, blur?.centerY ?: 0f)
       GLES20.glUniform2f(blurRadiiHandle, blur?.inner ?: 0f, blur?.outer ?: 1f)
       GLES20.glUniform2f(blurNormalHandle, blur?.normalX ?: 0f, blur?.normalY ?: 1f)
+
+      // 增强的 16 张表：256 × 16 的灰度纹理，横向线性过滤就是表内插值，竖向取在行中心不混。
+      GLES20.glActiveTexture(GLES20.GL_TEXTURE4)
+      bindTexture(enhanceTexture, GLES20.GL_LINEAR)
+      val enhanceLuts = pass.enhanceLuts
+      val tiles = ImageAdjustmentsDetail.ENHANCE_TILES * ImageAdjustmentsDetail.ENHANCE_TILES
+      if (pass.enhance > 0f && enhanceLuts != null) {
+        val buffer = ByteBuffer.allocateDirect(enhanceLuts.size).order(ByteOrder.nativeOrder()).put(enhanceLuts).apply { position(0) }
+        GLES20.glTexImage2D(GLES20.GL_TEXTURE_2D, 0, GLES20.GL_LUMINANCE, 256, tiles, 0, GLES20.GL_LUMINANCE, GLES20.GL_UNSIGNED_BYTE, buffer)
+      } else {
+        GLES20.glTexImage2D(GLES20.GL_TEXTURE_2D, 0, GLES20.GL_LUMINANCE, 1, 1, 0, GLES20.GL_LUMINANCE, GLES20.GL_UNSIGNED_BYTE, ByteBuffer.allocateDirect(4))
+      }
+      GLES20.glUniform1i(enhanceLutHandle, 4)
+      GLES20.glUniform1f(enhanceHandle, if (enhanceLuts != null) pass.enhance else 0f)
 
       GLES20.glUniform1i(imageHandle, 0)
       GLES20.glUniform1f(stepHandle, unit)
@@ -202,7 +221,7 @@ internal class ImageAdjustmentsGl private constructor(
     } finally {
       GLES20.glBindFramebuffer(GLES20.GL_FRAMEBUFFER, 0)
       GLES20.glDeleteFramebuffers(1, framebuffers, 0)
-      GLES20.glDeleteTextures(5, textures, 0)
+      GLES20.glDeleteTextures(6, textures, 0)
     }
   }
 
@@ -298,6 +317,12 @@ internal class ImageAdjustmentsGl private constructor(
       uniform vec2 uBlurCenter;
       uniform vec2 uBlurRadii;
       uniform vec2 uBlurNormal;
+      uniform float uEnhance;
+      uniform sampler2D uEnhanceLut;
+
+      float enhanceLookup(vec2 tile, float x) {
+        return texture2D(uEnhanceLut, vec2(x, (tile.y * 4.0 + tile.x + 0.5) / 16.0)).r;
+      }
 
       vec3 lookup(vec3 color) {
         float last = uLutSize - 1.0;
@@ -325,17 +350,35 @@ internal class ImageAdjustmentsGl private constructor(
         }
 
         vec3 rgb = color.a > 0.0 ? clamp(color.rgb / color.a, 0.0, 1.0) : vec3(0.0);
+        vec2 pixel = uOrigin + vTexCoord / uTexel;
+        vec2 unitPos = pixel / uImageSize;
+
+        if (uEnhance > 0.0) {
+          float v = max(rgb.r, max(rgb.g, rgb.b));
+          if (v > 0.0001) {
+            vec2 t = clamp(unitPos * 4.0 - 0.5, 0.0, 3.0);
+            vec2 t0 = floor(t);
+            vec2 t1 = min(t0 + 1.0, 3.0);
+            vec2 f = t - t0;
+            float x = (v * 255.0 + 0.5) / 256.0;
+            float equalized = mix(
+              mix(enhanceLookup(t0, x), enhanceLookup(vec2(t1.x, t0.y), x), f.x),
+              mix(enhanceLookup(vec2(t0.x, t1.y), x), enhanceLookup(t1, x), f.x),
+              f.y
+            );
+            rgb = clamp(rgb * ((v + (equalized - v) * uEnhance) / v), 0.0, 1.0);
+          }
+        }
+
         if (uUseLut > 0.5) {
           rgb = lookup(rgb);
         }
 
-        vec2 pixel = uOrigin + vTexCoord / uTexel;
         if (uGrain > 0.0) {
           float n = texture2D(uNoise, pixel / (uGrainCell * 256.0)).r * (255.0 / 127.5) - 1.0;
           float t = abs(2.0 * dot(rgb, vec3(0.2126, 0.7152, 0.0722)) - 1.0);
           rgb = clamp(rgb + uGrain * (1.0 - t * t * t) * n, 0.0, 1.0);
         }
-        vec2 unitPos = pixel / uImageSize;
         float k = 0.0;
         if (uVignette > 0.0) {
           vec2 d = vec2(dot(uFrameX, vec3(unitPos, 1.0)), dot(uFrameY, vec3(unitPos, 1.0)));
