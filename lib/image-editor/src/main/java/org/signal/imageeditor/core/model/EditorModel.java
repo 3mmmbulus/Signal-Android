@@ -22,6 +22,7 @@ import org.signal.imageeditor.core.RendererContext;
 import org.signal.imageeditor.core.UndoRedoStackListener;
 import org.signal.imageeditor.core.renderers.FaceBlurRenderer;
 import org.signal.imageeditor.core.renderers.MultiLineTextRenderer;
+import org.signal.imageeditor.core.renderers.UriGlideRenderer;
 
 import java.util.HashMap;
 import java.util.LinkedHashSet;
@@ -1067,6 +1068,44 @@ public final class EditorModel implements Parcelable, RendererContext.Ready {
 
   public boolean isChanged() {
     return undoRedoStacks.isChanged(editorElementHierarchy.getRoot());
+  }
+
+  /**
+   * Tellomi（tellomi/tellomi#1591 E5-1）：主图的调色；没有主图、或主图不是一张照片时是默认值。
+   */
+  public @NonNull ImageAdjustments getAdjustments() {
+    UriGlideRenderer renderer = getMainImageRenderer();
+    return renderer != null ? renderer.getAdjustments() : ImageAdjustments.DEFAULT;
+  }
+
+  /**
+   * Tellomi（tellomi/tellomi#1591 E5-1）：换主图的调色；和现在一样就什么都不做。
+   * <p>
+   * 拖滑杆时第一下传 {@code pushUndoPoint = true}（撤销栈记下拖之前的样子），之后拖动中传 false，一次拖动只占一步撤销。
+   * 调色存在主图的 renderer 里，是元素树的一部分，所以撤销 / 重做、{@link #isChanged()}（发出时重新渲染）都自动带上。
+   */
+  public void setAdjustments(@NonNull ImageAdjustments adjustments, boolean pushUndoPoint) {
+    UriGlideRenderer renderer = getMainImageRenderer();
+    if (renderer == null || renderer.getAdjustments().equals(adjustments)) {
+      return;
+    }
+
+    if (pushUndoPoint) {
+      pushUndoPoint();
+    }
+    renderer.setAdjustments(adjustments);
+    updateUndoRedoAvailabilityState();
+    invalidate.run();
+  }
+
+  private @Nullable UriGlideRenderer getMainImageRenderer() {
+    EditorElement mainImage = editorElementHierarchy.getMainImage();
+    if (mainImage == null) {
+      return null;
+    }
+
+    Renderer renderer = mainImage.getRenderer();
+    return renderer instanceof UriGlideRenderer ? (UriGlideRenderer) renderer : null;
   }
 
   public RectF findCropRelativeToRoot() {

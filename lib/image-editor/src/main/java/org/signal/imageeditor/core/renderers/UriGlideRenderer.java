@@ -40,6 +40,7 @@ import org.signal.imageeditor.core.RendererContext;
 import org.signal.imageeditor.core.SelectableRenderer;
 import org.signal.imageeditor.core.model.EditorElement;
 import org.signal.imageeditor.core.model.EditorModel;
+import org.signal.imageeditor.core.model.ImageAdjustments;
 import org.signal.glide.decryptableuri.DecryptableUri;
 
 import java.util.ArrayList;
@@ -74,6 +75,9 @@ public final class UriGlideRenderer implements SelectableRenderer {
   private final RequestListener<Bitmap> bitmapRequestListener;
 
   private boolean selected;
+
+  /** Tellomi（tellomi/tellomi#1591 E5-1）：这张图的调色。写进 parcel，所以跟着撤销 / 重做和 {@link EditorModel#isChanged()} 走。 */
+  @NonNull private ImageAdjustments adjustments = ImageAdjustments.DEFAULT;
 
   @Nullable private Bitmap bitmap;
   @Nullable private Bitmap blurredBitmap;
@@ -311,6 +315,16 @@ public final class UriGlideRenderer implements SelectableRenderer {
     return bitmap;
   }
 
+  /** Tellomi（tellomi/tellomi#1591 E5-1）。 */
+  public @NonNull ImageAdjustments getAdjustments() {
+    return adjustments;
+  }
+
+  /** Tellomi（tellomi/tellomi#1591 E5-1）：别直接调，走 {@link EditorModel#setAdjustments}，那里管撤销和重画。 */
+  public void setAdjustments(@NonNull ImageAdjustments adjustments) {
+    this.adjustments = adjustments;
+  }
+
   private void setBitmap(@NonNull RendererContext rendererContext, @Nullable Bitmap bitmap) {
     this.bitmap = bitmap;
     if (bitmap != null) {
@@ -375,12 +389,15 @@ public final class UriGlideRenderer implements SelectableRenderer {
   public static final Creator<UriGlideRenderer> CREATOR = new Creator<UriGlideRenderer>() {
     @Override
     public UriGlideRenderer createFromParcel(Parcel in) {
-      return new UriGlideRenderer(Uri.parse(in.readString()),
-                                  in.readInt() == 1,
-                                  in.readInt(),
-                                  in.readInt(),
-                                  in.readFloat()
-                                 );
+      UriGlideRenderer renderer = new UriGlideRenderer(Uri.parse(in.readString()),
+                                                       in.readInt() == 1,
+                                                       in.readInt(),
+                                                       in.readInt(),
+                                                       in.readFloat()
+                                                      );
+      ImageAdjustments adjustments = in.readParcelable(ImageAdjustments.class.getClassLoader());
+      renderer.adjustments = adjustments != null ? adjustments : ImageAdjustments.DEFAULT;
+      return renderer;
     }
 
     @Override
@@ -401,6 +418,7 @@ public final class UriGlideRenderer implements SelectableRenderer {
     dest.writeInt(maxWidth);
     dest.writeInt(maxHeight);
     dest.writeFloat(blurRadius);
+    dest.writeParcelable(adjustments, flags);
   }
 
   @Override
