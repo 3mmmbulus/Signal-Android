@@ -72,6 +72,7 @@ import org.signal.glide.compose.GlideImageScaleType
 import org.signal.mediasend.AlbumEditTool
 import org.signal.mediasend.R
 import org.signal.mediasend.screens.MediaSendMetrics
+import org.signal.mediasend.screens.edit.image.TellomiAdjustToolbarButton
 import org.signal.mediasend.screens.select.SelectionCheck
 
 @Composable
@@ -236,9 +237,12 @@ internal fun MediaAlbumScreen(
   }
 }
 
-/** 查看器底部「裁剪」「绘制」：照 Telegram 安卓查看器底栏的 Crop / Paint；按钮与编辑页的工具条同款。 */
+/**
+ * 查看器底部「裁剪」「绘制」「调整」：照 Telegram 安卓查看器底栏的 Crop / Paint / Tune（`PhotoViewer.itemsLayout`），
+ * 三个键、次序与 iOS `TellomiPhotoPickerAlbumViewer` 一致；按钮与编辑页的工具条同款，「调整」就是编辑页那一个。
+ */
 @Composable
-private fun AlbumEditShortcuts(
+internal fun AlbumEditShortcuts(
   media: Media,
   onEvent: (MediaEditScreenEvents) -> Unit
 ) {
@@ -250,6 +254,9 @@ private fun AlbumEditShortcuts(
     MediaEditorToolbarButton(
       imageVector = SignalIcons.BrushPen.imageVector,
       onClick = { onEvent(MediaEditScreenEvents.EditFromAlbum(media, AlbumEditTool.DRAW)) }
+    )
+    TellomiAdjustToolbarButton(
+      onClick = { onEvent(MediaEditScreenEvents.EditFromAlbum(media, AlbumEditTool.ADJUST)) }
     )
   }
 }

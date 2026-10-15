@@ -34,7 +34,9 @@ import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
+import org.robolectric.annotation.GraphicsMode
 import org.signal.core.models.media.Media
+import org.signal.mediasend.screens.edit.ImageController
 
 @OptIn(ExperimentalCoroutinesApi::class)
 @RunWith(RobolectricTestRunner::class)
@@ -204,6 +206,49 @@ class MediaSendFlowViewModelAlbumTest {
     assertThat(state.isBrowsingAlbum).isFalse()
   }
 
+  /**
+   * Tellomi：查看器底部第三个快捷「调整」（对齐 iOS `TellomiPhotoPickerAlbumViewer` 的裁剪 · 绘制 · 调整）：
+   * 选上这一张，进编辑器直接停在调色页的工具列表。
+   */
+  @Test
+  @GraphicsMode(GraphicsMode.Mode.NATIVE)
+  fun `Given a browsed still picture, when the adjust shortcut is tapped, then it is selected and the editor opens on the adjust panel`() = runTest {
+    val viewModel = viewModel()
+    openAlbum(viewModel, focus = STILL_PHOTO, album = STILL_ALBUM)
+
+    send(viewModel, MediaSendFlowEvent.EditFromAlbum(STILL_PHOTO, AlbumEditTool.ADJUST))
+
+    val state = viewModel.state.value
+    assertThat(state.selectedMedia).containsExactly(STILL_PHOTO)
+    assertThat(state.focusedMedia).isEqualTo(STILL_PHOTO)
+    assertThat(state.isBrowsingAlbum).isFalse()
+    assertThat(viewModel.backStack.lastOrNull()).isEqualTo(MediaSendRoute.Edit)
+    val controller = imageControllerOf(viewModel, STILL_PHOTO)
+    assertThat(controller.mode).isEqualTo(ImageController.Mode.ADJUST)
+    assertThat(controller.adjustTab).isEqualTo(ImageController.AdjustTab.TOOLS)
+  }
+
+  /** Tellomi：三个快捷各进各的工具，「调整」没有挤掉「裁剪」「绘制」。 */
+  @Test
+  @GraphicsMode(GraphicsMode.Mode.NATIVE)
+  fun `Given a browsed still picture, when each shortcut is tapped, then the editor opens on that tool`() = runTest {
+    val expectedModes = mapOf(
+      AlbumEditTool.CROP to ImageController.Mode.CROP,
+      AlbumEditTool.DRAW to ImageController.Mode.DRAW,
+      AlbumEditTool.ADJUST to ImageController.Mode.ADJUST
+    )
+    assertThat(expectedModes.keys.toList()).isEqualTo(AlbumEditTool.entries.toList())
+
+    for ((tool, mode) in expectedModes) {
+      val viewModel = viewModel()
+      openAlbum(viewModel, focus = STILL_PHOTO, album = STILL_ALBUM)
+
+      send(viewModel, MediaSendFlowEvent.EditFromAlbum(STILL_PHOTO, tool))
+
+      assertThat(imageControllerOf(viewModel, STILL_PHOTO).mode).isEqualTo(mode)
+    }
+  }
+
   @Test
   fun `Given the shortcut's picture is refused, then the album stays open with nothing selected`() = runTest {
     coEvery { repository.validateAndFilterMedia(any(), any(), any()) } returns
@@ -258,8 +303,14 @@ class MediaSendFlowViewModelAlbumTest {
     )
   }
 
-  private fun TestScope.openAlbum(viewModel: MediaSendFlowViewModel, focus: Media) {
-    send(viewModel, MediaSendFlowEvent.OpenAlbumViewer(media = focus, album = ALBUM))
+  private fun TestScope.openAlbum(viewModel: MediaSendFlowViewModel, focus: Media, album: List<Media> = ALBUM) {
+    send(viewModel, MediaSendFlowEvent.OpenAlbumViewer(media = focus, album = album))
+  }
+
+  /** 编辑页用的就是这个控制器：同一张图、同一个编辑模型拿到的是同一个。 */
+  private fun imageControllerOf(viewModel: MediaSendFlowViewModel, media: Media): ImageController {
+    val editorState = viewModel.state.value.editorStateMap[media.uri] as EditorState.Image
+    return viewModel.imageControllers.getOrCreate(media.uri, editorState.model)
   }
 
   private fun TestScope.send(viewModel: MediaSendFlowViewModel, event: MediaSendFlowEvent) {
@@ -273,10 +324,14 @@ class MediaSendFlowViewModelAlbumTest {
     private val PHOTO_C = photo("content://media/3")
     private val ALBUM = listOf(PHOTO_A, PHOTO_B, PHOTO_C)
 
+    // A still picture gets a real image editor model, which only builds under the native graphics mode (see above).
+    private val STILL_PHOTO = photo("content://media/4", contentType = "image/jpeg")
+    private val STILL_ALBUM = listOf(STILL_PHOTO)
+
     // image/gif skips the image editor model, which Robolectric cannot build (Path.toggleInverseFillType).
-    private fun photo(uri: String) = Media(
+    private fun photo(uri: String, contentType: String = "image/gif") = Media(
       uri = uri.toUri(),
-      contentType = "image/gif",
+      contentType = contentType,
       date = 0,
       width = 100,
       height = 200,

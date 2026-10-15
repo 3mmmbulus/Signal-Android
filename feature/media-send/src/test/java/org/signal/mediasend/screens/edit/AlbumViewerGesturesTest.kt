@@ -85,12 +85,21 @@ class AlbumViewerGesturesTest {
   }
 
   @Test
-  fun `Only still pictures get the crop and draw shortcuts`() {
+  fun `Only still pictures get the crop, draw and adjust shortcuts`() {
     assertThat(AlbumViewerGestures.isEditableImage("image/jpeg")).isTrue()
     assertThat(AlbumViewerGestures.isEditableImage("image/heic")).isTrue()
+    assertThat(AlbumViewerGestures.isEditableImage("image/png")).isTrue()
     assertThat(AlbumViewerGestures.isEditableImage("image/gif")).isFalse()
     assertThat(AlbumViewerGestures.isEditableImage("video/mp4")).isFalse()
     assertThat(AlbumViewerGestures.isEditableImage(null)).isFalse()
+  }
+
+  /** 对齐 iOS `TellomiPhotoPickerAlbumViewer`：动图（`isAnimatedImage`）不给工具键；安卓只看得到类型，WebP 一律当可能会动。 */
+  @Test
+  fun `Pictures that may be animated get no shortcuts`() {
+    assertThat(AlbumViewerGestures.isEditableImage("image/webp")).isFalse()
+    assertThat(AlbumViewerGestures.isEditableImage("image/apng")).isFalse()
+    assertThat(AlbumViewerGestures.isEditableImage("image/vnd.mozilla.apng")).isFalse()
   }
 
   /** Where a point of the unscaled page ends up on screen: `graphicsLayer` scales around the centre, then translates. */

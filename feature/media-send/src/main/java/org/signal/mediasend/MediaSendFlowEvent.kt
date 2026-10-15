@@ -84,7 +84,7 @@ internal sealed interface MediaSendFlowEvent {
   /** V-1：相册查看器里点选中计数，切到已选胶片。 */
   data object ShowSelectedFilmstrip : MediaSendFlowEvent
 
-  /** V-1（D11 / D13）：查看器底部「裁剪」「绘制」：没选就先选上，在编辑器里打开这一张并直接进入对应工具。 */
+  /** V-1（D11 / D13）：查看器底部「裁剪」「绘制」「调整」：没选就先选上，在编辑器里打开这一张并直接进入对应工具。 */
   data class EditFromAlbum(val media: Media, val tool: AlbumEditTool) : MediaSendFlowEvent
 
   /** V-2：相册查看器下滑关闭，回到网格（和系统返回一样）。 */
@@ -148,8 +148,14 @@ internal sealed interface MediaSendFlowEvent {
   data object NavigateBackFromEdit : MediaSendFlowEvent
 }
 
-/** 相册查看器底部快捷直接打开的编辑工具（照 Telegram 查看器底栏的 Crop / Paint）。 */
+/**
+ * 相册查看器底部快捷直接打开的编辑工具（照 Telegram 查看器底栏的 Crop / Paint / Tune），
+ * 次序与 iOS `TellomiPhotoPickerAlbumViewer` 底部的裁剪 · 绘制 · 调整一致。
+ */
 enum class AlbumEditTool {
   CROP,
-  DRAW
+  DRAW,
+
+  /** 调整（调色页，tellomi/tellomi#1593 E5-3）。 */
+  ADJUST
 }

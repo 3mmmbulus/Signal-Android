@@ -103,12 +103,9 @@ private fun ImageEditorNoneStateToolbar(
     )
 
     // Tellomi（tellomi/tellomi#1593 E5-3）：调色，在画笔后面（照 Telegram 安卓查看器底栏 `PhotoViewer.itemsLayout` 的次序：裁剪、画笔、调整）。
-    MediaEditorToolbarButton(
-      imageVector = ImageVector.vectorResource(R.drawable.tellomi_adjust_24),
+    TellomiAdjustToolbarButton(
       onClick = imageEditorController::beginAdjustEdit,
-      enabled = enabled,
-      contentDescription = stringResource(R.string.ImageEditor_tellomi_adjust),
-      modifier = Modifier.testTag(TELLOMI_ADJUST_BUTTON_TAG)
+      enabled = enabled
     )
 
     MediaEditorToolbarSharedButtons(
@@ -166,6 +163,25 @@ private fun ImageEditorAdjustToolbar(
 }
 
 internal const val TELLOMI_ADJUST_BUTTON_TAG = "tellomi-adjust-button"
+
+/**
+ * Tellomi（tellomi/tellomi#1593 E5-3）：「调整」键。编辑页工具条和相册查看器底部的快捷（对齐 iOS `TellomiPhotoPickerAlbumViewer`
+ * 的裁剪 · 绘制 · 调整）共用这一个，图标、读屏文字和测试标记只写一处，两边不会走样。
+ */
+@Composable
+internal fun TellomiAdjustToolbarButton(
+  onClick: () -> Unit,
+  modifier: Modifier = Modifier,
+  enabled: Boolean = true
+) {
+  MediaEditorToolbarButton(
+    imageVector = ImageVector.vectorResource(R.drawable.tellomi_adjust_24),
+    onClick = onClick,
+    enabled = enabled,
+    contentDescription = stringResource(R.string.ImageEditor_tellomi_adjust),
+    modifier = modifier.testTag(TELLOMI_ADJUST_BUTTON_TAG)
+  )
+}
 
 @Composable
 private fun ImageEditorDrawStateToolbar(

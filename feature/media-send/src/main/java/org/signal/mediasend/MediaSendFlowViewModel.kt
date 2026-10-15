@@ -512,8 +512,9 @@ class MediaSendFlowViewModel(
   }
 
   /**
-   * Tellomi（tellomi/tellomi#1518 V-1，D11 / D13）：查看器底部「裁剪」「绘制」。没选就先选上（打开即选，D13），
+   * Tellomi（tellomi/tellomi#1518 V-1，D11 / D13）：查看器底部「裁剪」「绘制」「调整」。没选就先选上（打开即选，D13），
    * 再在编辑器里打开这一张并直接进入对应工具；超出上限等原因选不上时留在查看器，提示照常。
+   * 「调整」直接停在调色页，和编辑页工具条上的调整键同一个入口（对齐 iOS `TellomiPhotoPickerAlbumViewer`）。
    */
   private fun editFromAlbum(media: Media, tool: AlbumEditTool) {
     mutateSelection {
@@ -527,6 +528,7 @@ class MediaSendFlowViewModel(
       when (tool) {
         AlbumEditTool.CROP -> controller.beginCropAndRotateEdit()
         AlbumEditTool.DRAW -> controller.beginDrawEdit()
+        AlbumEditTool.ADJUST -> controller.beginAdjustEdit()
       }
     }
   }
