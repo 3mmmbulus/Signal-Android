@@ -1674,7 +1674,7 @@ class ConversationFragment :
               }
 
               AvatarDownloadStateCache.DownloadState.FAILED -> {
-                Snackbar.make(requireView(), R.string.ConversationFragment_photo_failed, Snackbar.LENGTH_LONG).show()
+                snackbar(R.string.ConversationFragment_photo_failed)
                 presentConversationTitle(recipient)
                 viewModel.onAvatarDownloadFailed()
               }
@@ -2952,30 +2952,37 @@ class ConversationFragment :
       .show(childFragmentManager)
   }
 
+  /**
+   * Tellomi（交互审计 A-30）：页面还在时改用锚在输入栏上方、能横滑关掉的提示条（[TellomiBulletin]）；
+   * 页面已经离开（异步结果回来晚了）才退回系统 Toast。
+   */
   private fun toast(@StringRes toastTextId: Int, toastDuration: Int = Toast.LENGTH_SHORT) {
     ThreadUtil.runOnMain {
-      if (context != null) {
-        Toast.makeText(context, toastTextId, toastDuration).show()
-      } else {
+      val context = context
+      if (context == null) {
         Log.w(TAG, "Dropping toast without context.")
+      } else if (isAdded && view != null) {
+        TellomiBulletin.show(binding.tellomiBulletinHost, context.getString(toastTextId), TellomiBulletin.durationForToast(toastDuration))
+      } else {
+        Toast.makeText(context, toastTextId, toastDuration).show()
       }
     }
   }
 
   private fun snackbar(
     @StringRes text: Int,
-    anchor: View = binding.conversationItemRecycler,
     @Duration duration: Int = Snackbar.LENGTH_LONG
   ) {
-    Snackbar.make(anchor, text, duration).show()
+    TellomiBulletin.show(binding.tellomiBulletinHost, getString(text), duration)
   }
 
   private fun maybeShowSwipeToReplyTooltip() {
     if (!TextSecurePreferences.hasSeenSwipeToReplyTooltip(requireContext())) {
+      // Tellomi（tellomi/tellomi#1109）：回复改成手指往开头那边滑（从左往右排版时往左），提示跟着换。
       val tooltipText = if (ViewUtil.isLtr(requireContext())) {
-        R.string.ConversationFragment_you_can_swipe_to_the_right_reply
-      } else {
         R.string.ConversationFragment_you_can_swipe_to_the_left_reply
+      } else {
+        R.string.ConversationFragment_you_can_swipe_to_the_right_reply
       }
 
       snackbar(tooltipText)
@@ -3413,11 +3420,13 @@ class ConversationFragment :
       return
     }
 
-    Snackbar.make(binding.conversationItemRecycler, R.string.ConversationFragment__tellomi_saved_to_saved_messages, Snackbar.LENGTH_LONG)
-      .setAction(R.string.ConversationFragment__tellomi_view_saved_messages) {
-        CommunicationActions.startConversation(requireContext(), Recipient.self(), null)
-      }
-      .show()
+    TellomiBulletin.show(
+      host = binding.tellomiBulletinHost,
+      text = getString(R.string.ConversationFragment__tellomi_saved_to_saved_messages),
+      actionText = getString(R.string.ConversationFragment__tellomi_view_saved_messages)
+    ) {
+      CommunicationActions.startConversation(requireContext(), Recipient.self(), null)
+    }
   }
 
   private fun handleSaveAttachment(record: MmsMessageRecord) {

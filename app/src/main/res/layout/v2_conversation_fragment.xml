@@ -330,6 +330,16 @@
         app:layout_constraintBottom_toTopOf="@id/conversation_bottom_panel_barrier"
         tools:visibility="visible" />
 
+    <!-- Tellomi（交互审计 A-30）：聊天页提示条的宿主，底边是输入区上沿；提示条在 CoordinatorLayout 里能横滑关掉。空的时候不接触摸。 -->
+    <androidx.coordinatorlayout.widget.CoordinatorLayout
+        android:id="@+id/tellomi_bulletin_host"
+        android:layout_width="0dp"
+        android:layout_height="0dp"
+        app:layout_constraintBottom_toTopOf="@id/conversation_bottom_panel_barrier"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent" />
+
     <androidx.fragment.app.FragmentContainerView
         android:id="@+id/emoji_search_container"
         android:layout_width="0dp"
