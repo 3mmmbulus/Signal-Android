@@ -51,6 +51,9 @@ abstract class FixedRoundedCornerBottomSheetDialogFragment : BottomSheetDialogFr
 
   private lateinit var dialogBackground: MaterialShapeDrawable
 
+  /** Tellomi（交互审计 A-29）：主题给的遮罩深度，拖到收起以下时按它变淡。 */
+  private var baseDimAmount: Float? = null
+
   override fun onCreate(savedInstanceState: Bundle?) {
     super.onCreate(savedInstanceState)
     setStyle(STYLE_NORMAL, themeResId)
@@ -85,7 +88,16 @@ abstract class FixedRoundedCornerBottomSheetDialogFragment : BottomSheetDialogFr
         }
       }
 
-      override fun onSlide(bottomSheet: View, slideOffset: Float) {}
+      // Tellomi（交互审计 A-29「遮罩不随拖动变化」）：往下拖到收起位置以下时，遮罩按离「关掉」还有多远变淡；
+      // 松手后滑下去关掉时也跟着淡。在收起和展开之间拖不改遮罩（也就不更新窗口属性）。
+      override fun onSlide(bottomSheet: View, slideOffset: Float) {
+        val window = dialog.window ?: return
+        val base = baseDimAmount ?: window.attributes.dimAmount.also { baseDimAmount = it }
+        val dim = base * TellomiSheetScrim.dimFraction(slideOffset)
+        if (window.attributes.dimAmount != dim) {
+          window.setDimAmount(dim)
+        }
+      }
     })
 
     return dialog
