@@ -16,6 +16,11 @@
  */
 package org.thoughtcrime.securesms.conversationlist;
 
+import org.signal.core.ui.motion.TellomiMotion;
+import org.signal.core.ui.motion.TellomiHaptics;
+import androidx.dynamicanimation.animation.SpringForce;
+import androidx.dynamicanimation.animation.SpringAnimation;
+import androidx.dynamicanimation.animation.FloatValueHolder;
 import android.annotation.SuppressLint;
 import android.app.Activity;
 import android.content.Context;
@@ -1823,6 +1828,12 @@ public class ConversationListFragment extends MainFragment implements Conversati
 
     private WeakReference<RecyclerView.ViewHolder> lastTouched;
 
+    // Tellomi (interaction audit A-24): past the threshold the swipe is "armed" — a haptic tick and a popped icon say that
+    // letting go now archives.
+    private boolean                armed;
+    private final FloatValueHolder armedProgress = new FloatValueHolder(0f);
+    private SpringAnimation        armedSpring;
+
     ArchiveListenerCallback(@ColorInt int archiveColorStart, @ColorInt int archiveColorEnd) {
       super(0, ItemTouchHelper.END);
       this.archiveColorStart = archiveColorStart;
@@ -1924,6 +1935,16 @@ public class ConversationListFragment extends MainFragment implements Conversati
           scale = Math.min(MAX_ICON_SCALE, MIN_ICON_SCALE + ((absoluteDx - scaleStartPoint) / (scaleEndPoint - scaleStartPoint)) * (MAX_ICON_SCALE - MIN_ICON_SCALE));
         }
 
+        if (isCurrentlyActive) {
+          boolean nowArmed = TellomiArchiveSwipe.INSTANCE.isArmed(absoluteDx, itemView.getWidth(), getSwipeThreshold(viewHolder));
+          if (nowArmed != armed) {
+            armed = nowArmed;
+            TellomiHaptics.INSTANCE.perform(itemView, armed ? TellomiHaptics.Event.THRESHOLD_ACTIVATE : TellomiHaptics.Event.THRESHOLD_DEACTIVATE);
+            animateArmed(recyclerView, armed);
+          }
+        }
+        scale *= TellomiArchiveSwipe.INSTANCE.iconScaleFactor(armedProgress.getValue());
+
         if (absoluteDx > 0) {
           if (archiveDrawable == null) {
             archiveDrawable = Objects.requireNonNull(AppCompatResources.getDrawable(requireContext(), getArchiveIconRes()));
@@ -1963,9 +1984,33 @@ public class ConversationListFragment extends MainFragment implements Conversati
       }
     }
 
+    /** Tellomi (A-24): the icon springs up when armed and back when not; the least motion tier just switches. */
+    private void animateArmed(@NonNull RecyclerView recyclerView, boolean armed) {
+      float target = armed ? 1f : 0f;
+      if (armedSpring != null) {
+        armedSpring.cancel();
+      }
+      if (TellomiMotion.INSTANCE.tier(recyclerView.getContext()) == TellomiMotion.Tier.MINIMAL) {
+        armedProgress.setValue(target);
+        recyclerView.invalidate();
+        return;
+      }
+      armedSpring = new SpringAnimation(armedProgress);
+      armedSpring.setSpring(new SpringForce(target).setStiffness(TellomiMotion.INSTANCE.getSnap().getStiffness())
+                                                   .setDampingRatio(TellomiMotion.INSTANCE.getSnap().getDampingRatio()));
+      armedSpring.addUpdateListener((animation, value, velocity) -> recyclerView.invalidate());
+      armedSpring.start();
+    }
+
     @Override
     public void clearView(@NonNull RecyclerView recyclerView, @NonNull RecyclerView.ViewHolder viewHolder) {
       super.clearView(recyclerView, viewHolder);
+
+      armed = false;
+      if (armedSpring != null) {
+        armedSpring.cancel();
+      }
+      armedProgress.setValue(0f);
 
       if (itemAnimator == null) {
         return;
