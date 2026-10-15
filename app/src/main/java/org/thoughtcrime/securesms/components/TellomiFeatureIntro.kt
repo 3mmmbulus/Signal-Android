@@ -50,8 +50,8 @@ import org.signal.mediasend.R as MediaSendR
  * - 一次只弹一张，按候选顺序；弹出来就记已读（划走、点按钮都算），记在本机 `SignalStore.uiHints`；
  * - 新装用户不弹：只给在这张卡出来之前注册的人（[introducedAtMillis]，用 `SignalStore.account.registeredAtTimestamp` 判断）。
  *
- * 安卓只有卡 2（选图）、卡 3（转发）。卡 1「新版附件面板」的第二条「位置、投票、联系人在面板里直接完成」在安卓还不成立
- * （位置等高德 #1124、联系人等 owner 定 `contactSharingV2`），那两页进了 Sheet 再加。
+ * 安卓只有卡 2（选图）、卡 3（转发）。卡 1「新版附件面板」的第二条「位置、投票、联系人在面板里直接完成」在安卓还不成立：
+ * 投票、联系人（2026-10-16）已在 Sheet 里，位置还等高德 #1124，位置页进了 Sheet 再加。
  */
 enum class TellomiFeatureIntro(
   val id: String,

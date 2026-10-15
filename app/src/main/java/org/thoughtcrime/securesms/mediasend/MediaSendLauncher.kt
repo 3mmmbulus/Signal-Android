@@ -220,6 +220,28 @@ object MediaSendLauncher {
   }
 
   /**
+   * Tellomi（2026-10-16）：附件 Sheet 联系人页确认要发的联系人卡（`ContactShareEditActivityV2.KEY_CONTACTS`，同整屏那条路的结果）；
+   * 不是这种结果时是 null。
+   */
+  fun parseAttachmentContacts(resultCode: Int, data: Intent?): List<org.thoughtcrime.securesms.contactshare.Contact>? {
+    if (resultCode != Activity.RESULT_OK || data == null) {
+      return null
+    }
+
+    if (data.getStringExtra(EXTRA_ATTACHMENT_PAGE) != MediaSendFlowActivityContract.AttachmentPage.CONTACT.name) {
+      return null
+    }
+
+    val bundle = data.getBundleExtra(EXTRA_ATTACHMENT_PAGE_RESULT) ?: return null
+    bundle.classLoader = org.thoughtcrime.securesms.contactshare.Contact::class.java.classLoader
+    return androidx.core.os.BundleCompat.getParcelableArrayList(
+      bundle,
+      org.thoughtcrime.securesms.contactshare.ContactShareEditActivityV2.KEY_CONTACTS,
+      org.thoughtcrime.securesms.contactshare.Contact::class.java
+    )
+  }
+
+  /**
    * Reads the payload the caller is expected to send itself, for either implementation.
    *
    * Returns null when the flow performed the send on its own, as it does whenever the destinations were chosen

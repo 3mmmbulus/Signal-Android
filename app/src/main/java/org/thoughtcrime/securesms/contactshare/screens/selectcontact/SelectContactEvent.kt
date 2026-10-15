@@ -34,5 +34,11 @@ sealed interface SelectContactEvent {
 
   data object LearnMoreClicked : SelectContactEvent
 
+  /**
+   * Tellomi（2026-10-16）：附件 Sheet 里从「分享联系人」确认页返回到这个列表（整屏那条路选完就关页，不会回来）。
+   * 点人时为了交接置的「加载中」要撤掉，搜索词和滚动位置留着。
+   */
+  data object TellomiReturnedFromShare : SelectContactEvent
+
   data object PermissionDeniedSheetDismissed : SelectContactEvent
 }

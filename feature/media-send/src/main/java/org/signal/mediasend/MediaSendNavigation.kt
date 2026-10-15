@@ -183,9 +183,11 @@ internal fun MediaSendNavigation(
                     AttachmentFilesScreen(state = filesState, onEvent = filesViewModel::onEvent)
                   }
 
-                  // Tellomi（2026-10-16）：投票也在 Sheet 里换页（照 Telegram 两端），页面由 app 画。
-                  MediaSendFlowActivityContract.AttachmentPage.POLL -> AttachmentExtraPageHost(
+                  // Tellomi（2026-10-16）：投票、联系人也在 Sheet 里换页（照 Telegram 两端），页面由 app 画。
+                  MediaSendFlowActivityContract.AttachmentPage.POLL,
+                  MediaSendFlowActivityContract.AttachmentPage.CONTACT -> AttachmentExtraPageHost(
                     page = current,
+                    recipientId = state.recipientId?.id,
                     dock = viewModel.state.value.attachmentSheet?.dock.orEmpty(),
                     onDockClick = { entry -> viewModel.onEvent(dockEventFor(entry)) },
                     onClose = viewModel::onCloseRequested,

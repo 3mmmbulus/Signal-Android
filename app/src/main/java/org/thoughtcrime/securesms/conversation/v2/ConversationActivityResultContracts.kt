@@ -65,6 +65,7 @@ class ConversationActivityResultContracts(private val fragment: Fragment, privat
       is AttachmentSheetResult.Dock -> callbacks.onAttachmentSheetButton(result.button)
       is AttachmentSheetResult.Files -> callbacks.onAttachmentSheetFiles(result.result)
       is AttachmentSheetResult.Poll -> callbacks.onAttachmentSheetPoll(result.poll)
+      is AttachmentSheetResult.Contacts -> callbacks.onSendContacts(result.contacts)
       is AttachmentSheetResult.Media -> callbacks.onMediaSend(result.result)
       null -> callbacks.onMediaSend(null)
     }
@@ -190,6 +191,9 @@ class ConversationActivityResultContracts(private val fragment: Fragment, privat
     data class Media(val result: MediaSendActivityResult) : AttachmentSheetResult
     data class Files(val result: MediaSendFlowActivityContract.AttachmentFilesResult) : AttachmentSheetResult
     data class Poll(val poll: org.thoughtcrime.securesms.polls.Poll) : AttachmentSheetResult
+
+    /** Tellomi（2026-10-16）：联系人页确认要发的联系人卡，和整屏那条路（[ContactShareEditor]）一样交给 `onSendContacts`。 */
+    data class Contacts(val contacts: List<Contact>) : AttachmentSheetResult
     data class Dock(val button: AttachmentKeyboardButton) : AttachmentSheetResult
   }
 
@@ -213,6 +217,11 @@ class ConversationActivityResultContracts(private val fragment: Fragment, privat
       val poll = MediaSendLauncher.parseAttachmentPoll(resultCode, intent)
       if (poll != null) {
         return AttachmentSheetResult.Poll(org.thoughtcrime.securesms.polls.Poll.fromBundle(poll))
+      }
+
+      val contacts = MediaSendLauncher.parseAttachmentContacts(resultCode, intent)
+      if (contacts != null) {
+        return AttachmentSheetResult.Contacts(contacts)
       }
 
       return MediaSendLauncher.parseResult(resultCode, intent)?.let { AttachmentSheetResult.Media(it) }

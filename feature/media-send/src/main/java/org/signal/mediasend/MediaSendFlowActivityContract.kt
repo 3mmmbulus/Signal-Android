@@ -140,11 +140,14 @@ class MediaSendFlowActivityContract(private val clazz: Class<out Activity>) : Ac
    * Tellomi（tellomi/tellomi#1121 F-1）：附件 Sheet 里的页。dock 的「相册」「文件」在同一个 Sheet 里换页，不收起 Sheet。
    * [POLL]（2026-10-16）：照 Telegram 两端（安卓 ChatAttachAlertPollLayout、iOS ChatControllerOpenAttachmentMenu `.poll`）
    * 也在 Sheet 里换页；内容由 app 提供（[MediaSendDependencies.attachmentExtraPages]）。
+   * [CONTACT]（owner 2026-10-16 定：Tellomi 构建强制用新的联系人选择器）：照 Telegram 两端（安卓 `ChatAttachAlert.showLayout(contactsLayout)`、
+   * iOS `.contact`）也在 Sheet 里换页，选人、确认要分享哪些字段都在 Sheet 里，内容由 app 提供。
    */
   enum class AttachmentPage {
     GALLERY,
     FILES,
-    POLL
+    POLL,
+    CONTACT
   }
 
   /**

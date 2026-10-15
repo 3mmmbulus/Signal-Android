@@ -143,6 +143,10 @@ class SelectContactViewModel(
         _state.update { it.copy(showPermissionDeniedSheet = true) }
       }
 
+      SelectContactEvent.TellomiReturnedFromShare -> {
+        _state.update { it.copy(isLoading = false) }
+      }
+
       SelectContactEvent.PermissionDeniedSheetDismissed -> {
         _state.update { it.copy(showPermissionDeniedSheet = false) }
       }

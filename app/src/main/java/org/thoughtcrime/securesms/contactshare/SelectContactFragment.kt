@@ -96,7 +96,7 @@ class SelectContactFragment : ComposeFragment() {
 }
 
 /** Picks limited contact data, since we do not have contacts permission. */
-private object PickPhoneNumber : ActivityResultContract<Unit, Uri?>() {
+internal object PickPhoneNumber : ActivityResultContract<Unit, Uri?>() {
   override fun createIntent(context: Context, input: Unit): Intent {
     return Intent(Intent.ACTION_PICK, ContactsContract.CommonDataKinds.Phone.CONTENT_URI)
   }

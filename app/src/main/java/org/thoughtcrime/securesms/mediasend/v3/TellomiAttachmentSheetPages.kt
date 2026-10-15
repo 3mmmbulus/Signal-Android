@@ -33,15 +33,18 @@ import org.thoughtcrime.securesms.polls.Poll
  * Tellomi（2026-10-16）：附件 Sheet 里由 app 画的页。照 Telegram 两端，dock 的「投票」不再收起 Sheet、另开整屏对话框，
  * 而是在同一个 Sheet 里换成这一页（安卓 `ChatAttachAlert.showLayout(pollLayout)`，iOS `ChatControllerOpenAttachmentMenu` `.poll`）。
  * 投票的内容沿用上游的 [CreatePollScreen]；发出后带回会话页去发（`ConversationFragment.sendPoll`），✕ 收起整个 Sheet。
+ * 「联系人」同理（[TellomiAttachmentContactPage]）。
  */
 object TellomiAttachmentSheetPages : AttachmentExtraPages {
 
   const val POLL_PAGE_TEST_TAG = "tellomi-attachment-poll-page"
+  const val CONTACT_PAGE_TEST_TAG = "tellomi-attachment-contact-page"
 
   @Composable
-  override fun Content(page: AttachmentPage, onClose: () -> Unit, onResult: (Bundle) -> Unit, modifier: Modifier) {
+  override fun Content(page: AttachmentPage, recipientId: Long?, onClose: () -> Unit, onResult: (Bundle) -> Unit, modifier: Modifier) {
     when (page) {
       AttachmentPage.POLL -> PollPage(onClose = onClose, onResult = onResult, modifier = modifier)
+      AttachmentPage.CONTACT -> TellomiAttachmentContactPage(recipientId = recipientId, onClose = onClose, onResult = onResult, modifier = modifier)
       AttachmentPage.GALLERY, AttachmentPage.FILES -> Unit
     }
   }

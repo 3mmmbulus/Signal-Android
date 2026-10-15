@@ -106,13 +106,16 @@ private val CARD_PROMPT_ICON_SIZE = 64.dp
 fun SelectContactScreen(
   state: SelectContactState,
   rows: LazyPagingItems<SelectContactRow>,
-  onEvent: (SelectContactEvent) -> Unit
+  onEvent: (SelectContactEvent) -> Unit,
+  // Tellomi（2026-10-16）：嵌在附件 Sheet 里时左上角是 ✕（收起整个 Sheet），同「文件」「投票」页
+  navigationIconRes: Int = CoreUiR.drawable.symbol_arrow_start_24,
+  navigationContentDescription: String = stringResource(R.string.DefaultTopAppBar__navigate_up_content_description)
 ) {
   Scaffolds.Default(
     title = stringResource(R.string.SelectContactScreen__select_contact),
     onNavigationClick = { onEvent(SelectContactEvent.BackClicked) },
-    navigationIconRes = CoreUiR.drawable.symbol_arrow_start_24,
-    navigationContentDescription = stringResource(R.string.DefaultTopAppBar__navigate_up_content_description)
+    navigationIconRes = navigationIconRes,
+    navigationContentDescription = navigationContentDescription
   ) { contentPadding ->
     val listState = rememberLazyListState()
     val keyboardController = LocalSoftwareKeyboardController.current

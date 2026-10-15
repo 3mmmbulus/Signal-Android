@@ -294,6 +294,23 @@ class SelectContactViewModelTest {
     assertThat(viewModel.state.value.isLoading).isFalse()
   }
 
+  /** Tellomi：附件 Sheet 里从确认页返回到列表，撤掉点人时置的「加载中」，搜索词留着。 */
+  @Test
+  fun `returning from the share step in the attachment sheet stops loading and keeps the query`() = runTest(testDispatcher) {
+    val resolved = SharedContactSource.SignalContact(RecipientId.from(7))
+    val viewModel = SelectContactViewModel(fakeSource(contacts = contacts("Andrew Bell"), resolvesTo = resolved))
+    viewModel.collectActions(this)
+
+    viewModel.onEvent(SelectContactEvent.QueryChanged("And"))
+    viewModel.onEvent(SelectContactEvent.ContactClicked(contacts("Andrew Bell").first()))
+    assertThat(viewModel.state.value.isLoading).isTrue()
+
+    viewModel.onEvent(SelectContactEvent.TellomiReturnedFromShare)
+
+    assertThat(viewModel.state.value.isLoading).isFalse()
+    assertThat(viewModel.state.value.query).isEqualTo("And")
+  }
+
   @Test
   fun `back exits`() = runTest(testDispatcher) {
     val viewModel = SelectContactViewModel(fakeSource(contacts = contacts("Andrew Bell")))

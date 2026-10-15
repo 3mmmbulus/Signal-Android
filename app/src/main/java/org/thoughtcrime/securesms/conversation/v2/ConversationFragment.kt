@@ -6028,14 +6028,12 @@ class ConversationFragment :
   }
 
   /**
-   * 附件 Sheet 的 dock（tellomi/tellomi#1115）里不在 Sheet 里换页的格子：联系人、位置。
-   * 相册、文件、投票在 Sheet 里换页，付款不在 dock 里，都走不到这里（2026-10-16 两端对齐清单 C-8；上游附件键盘已删）。
-   * 联系人、位置这两条等安卓的联系人页 / 位置页（高德 #1124）进了 Sheet 再删。
+   * 附件 Sheet 的 dock（tellomi/tellomi#1115）里不在 Sheet 里换页的格子：只剩位置。
+   * 相册、文件、投票、联系人（2026-10-16）在 Sheet 里换页，付款不在 dock 里，都走不到这里（两端对齐清单 C-8；上游附件键盘已删）。
+   * 位置这一条等安卓的位置页（高德 #1124）进了 Sheet 再删。
    */
   private fun onAttachmentButton(button: AttachmentKeyboardButton, recipient: Recipient) {
     when (button) {
-      AttachmentKeyboardButton.CONTACT -> conversationActivityResultContracts.launchSelectContact()
-
       AttachmentKeyboardButton.LOCATION -> if (BuildConfig.MAPS_AVAILABLE) {
         conversationActivityResultContracts.launchSelectLocation(recipient.chatColors)
       } else {
@@ -6046,6 +6044,7 @@ class ConversationFragment :
       AttachmentKeyboardButton.GALLERY,
       AttachmentKeyboardButton.FILE,
       AttachmentKeyboardButton.POLL,
+      AttachmentKeyboardButton.CONTACT,
       AttachmentKeyboardButton.PAYMENT -> Log.w(TAG, "Attachment sheet button handled inside the sheet or not in the dock: $button")
     }
   }

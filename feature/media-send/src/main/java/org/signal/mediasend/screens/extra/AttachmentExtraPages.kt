@@ -53,11 +53,12 @@ interface AttachmentExtraPages {
   /**
    * 画 [page] 这一页。
    *
+   * @param recipientId 这个会话的对方（`RecipientId` 的数值），没有时是 null；联系人页用它画「发给谁」和会话颜色。
    * @param onClose 收起整个 Sheet（✕）。
    * @param onResult 做完了（例如投票发出），[Bundle] 原样交给会话页，Sheet 收起。
    */
   @Composable
-  fun Content(page: AttachmentPage, onClose: () -> Unit, onResult: (Bundle) -> Unit, modifier: Modifier)
+  fun Content(page: AttachmentPage, recipientId: Long?, onClose: () -> Unit, onResult: (Bundle) -> Unit, modifier: Modifier)
 }
 
 /**
@@ -79,6 +80,7 @@ internal fun dockEventFor(entry: DockEntry): MediaSendFlowEvent {
 @Composable
 internal fun AttachmentExtraPageHost(
   page: AttachmentPage,
+  recipientId: Long?,
   dock: List<DockEntry>,
   onDockClick: (DockEntry) -> Unit,
   onClose: () -> Unit,
@@ -97,7 +99,7 @@ internal fun AttachmentExtraPageHost(
       .background(MaterialTheme.colorScheme.surface)
   ) {
     Box(modifier = Modifier.weight(1f).fillMaxWidth()) {
-      MediaSendDependencies.attachmentExtraPages.Content(page = page, onClose = onClose, onResult = onResult, modifier = Modifier.fillMaxSize())
+      MediaSendDependencies.attachmentExtraPages.Content(page = page, recipientId = recipientId, onClose = onClose, onResult = onResult, modifier = Modifier.fillMaxSize())
     }
 
     if (dock.isNotEmpty() && !WindowInsets.isImeVisible) {

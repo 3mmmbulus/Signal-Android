@@ -592,11 +592,16 @@ object RemoteConfig {
 
   /**
    * Whether to use the rewritten contact sharing flow, which lists Signal connections alongside the address book and can share a contact by ACI.
+   *
+   * Tellomi（owner 2026-10-16 定，`docs/product/specs/attachment-sheet-inline-pages.md` §四-1 选 A）：Tellomi 构建默认打开。
+   * Tellomi 服务端不下发 `android.contactSharingV2`（deploy / server 里都没有这个 key），所以实际就是一直开着；仍走上游的
+   * 远程开关写法，出问题时服务端能关、上游单测也照样能改它。附件 Sheet 的「联系人」要在 Sheet 里换页，只有新的选择器能嵌进去
+   * （旧的是系统通讯录，属于别的 App）。分享出去的联系人卡多带 ACI、昵称这两个可选字段，旧版本客户端会忽略。
    */
   @JvmStatic
   val contactSharingV2: Boolean by remoteBoolean(
     key = "android.contactSharingV2",
-    defaultValue = false,
+    defaultValue = true,
     hotSwappable = true
   )
 
