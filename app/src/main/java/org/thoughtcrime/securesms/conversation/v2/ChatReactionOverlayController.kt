@@ -7,6 +7,7 @@ package org.thoughtcrime.securesms.conversation.v2
 
 import android.content.Context
 import android.graphics.PointF
+import android.graphics.RectF
 import android.graphics.drawable.Drawable
 import android.view.HapticFeedbackConstants
 import android.view.MotionEvent
@@ -43,7 +44,8 @@ class ChatReactionOverlayController(
   private val context: Context,
   private val hapticView: () -> View,
   private val menuAnchor: () -> View,
-  private val onReactionSelected: (MessageRecord, String) -> Unit,
+  /** Tellomi (A-07): the third argument is where the chosen emoji is on screen for it to fly from, or null when it should not fly. */
+  private val onReactionSelected: (MessageRecord, String, RectF?) -> Unit,
   private val onCustomReactionSelected: (MessageRecord, Boolean) -> Unit,
   private val onActionSelected: (ReactionAction) -> Unit,
   private val onStartHide: (View?) -> Unit,
@@ -86,6 +88,9 @@ class ChatReactionOverlayController(
   private var menuPlaced = false
   private var pendingAction: ReactionAction? = null
 
+  /** Tellomi (A-07 fly-in): each slot's untransformed bounds in window coordinates, as last placed. */
+  private val slotBounds = Array(REACTION_EMOJI_COUNT) { RectF() }
+
   private data class Strip(
     val emojiStrings: List<String>,
     val drawables: List<Drawable?>,
@@ -127,6 +132,7 @@ class ChatReactionOverlayController(
     this.strip = buildStrip(record)
     this.menuPlaced = false
     this.pendingAction = null
+    this.slotBounds.forEach { it.setEmpty() }
     this.menu = ConversationContextMenu(menuAnchor(), builtMenu.items)
 
     selectedIndex = ReactionScrubber.NO_SELECTION
@@ -262,9 +268,29 @@ class ChatReactionOverlayController(
       onCustomReactionSelected(record, strip.customSlotHasEmoji)
     } else {
       strip.emojiStrings.getOrNull(index)?.let { emoji ->
-        onReactionSelected(record, SignalStore.emoji.getPreferredVariation(emoji))
+        // Tellomi (A-07): taking a reaction back does not fly anywhere.
+        val flyInSource = if (index != strip.appliedIndex) flyInSource(index) else null
+        onReactionSelected(record, SignalStore.emoji.getPreferredVariation(emoji), flyInSource)
       }
     }
+  }
+
+  fun onSlotPlaced(index: Int, bounds: RectF) {
+    slotBounds.getOrNull(index)?.set(bounds)
+  }
+
+  /**
+   * Tellomi (A-07 fly-in): where the emoji at [index] is drawn while it is under the thumb — [EMOJI_WIDTH] grown by
+   * [GROW_SCALE] and lifted by the scrub translation, centred in its slot — in window coordinates.
+   */
+  private fun flyInSource(index: Int): RectF? {
+    val slot = slotBounds.getOrNull(index)?.takeUnless { it.isEmpty } ?: return null
+    val size = EMOJI_WIDTH.value * context.resources.displayMetrics.density * GROW_SCALE
+    val lift = context.resources.getDimension(R.dimen.conversation_reaction_scrub_vertical_translation)
+    val centerX = slot.centerX()
+    val centerY = slot.centerY() - lift
+
+    return RectF(centerX - size / 2f, centerY - size / 2f, centerX + size / 2f, centerY + size / 2f)
   }
 
   private fun onMenuAction(action: ReactionAction) {

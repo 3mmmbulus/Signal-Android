@@ -45,6 +45,8 @@ public class ReactionsConversationView extends LinearLayout {
   private static final long    NO_MESSAGE          = -1;
   private long                 messageId           = NO_MESSAGE;
   private Map<String, TellomiReactionPillAnimator.PillState> pillStates = new HashMap<>();
+  // Tellomi (A-07 fly-in): each pill's emoji, by canonical emoji, for a chosen reaction to fly onto.
+  private Map<String, View>                                  pillEmojiViews = new HashMap<>();
 
   public ReactionsConversationView(Context context) {
     super(context);
@@ -75,7 +77,14 @@ public class ReactionsConversationView extends LinearLayout {
     this.bubbleWidth = 0;
     this.messageId   = messageId;
     this.pillStates  = new HashMap<>();
+    this.pillEmojiViews = new HashMap<>();
     removeAllViews();
+  }
+
+  /** Tellomi (A-07 fly-in): the emoji in the pill showing [emoji], if there is one of its own (not folded into "+N"). */
+  public @Nullable View findPillEmojiView(@NonNull String emoji) {
+    View view = pillEmojiViews.get(EmojiUtil.getCanonicalRepresentation(emoji));
+    return view != null && view.getParent() != null ? view : null;
   }
 
   @Override
@@ -157,7 +166,8 @@ public class ReactionsConversationView extends LinearLayout {
 
     removeAllViews();
 
-    Map<String, TellomiReactionPillAnimator.PillState> after = new HashMap<>();
+    Map<String, TellomiReactionPillAnimator.PillState> after      = new HashMap<>();
+    Map<String, View>                                  emojiViews = new HashMap<>();
 
     for (Reaction reaction : reactions) {
       View pill = buildPill(getContext(), this, reaction);
@@ -167,12 +177,21 @@ public class ReactionsConversationView extends LinearLayout {
       TellomiReactionPillAnimator.PillState state = new TellomiReactionPillAnimator.PillState(reaction.count, reaction.userWasSender);
       after.put(key, state);
 
+      if (reaction.baseEmoji != null) {
+        View emojiView = pill.findViewById(R.id.reactions_pill_emoji);
+        emojiViews.put(key, emojiView);
+
+        // Tellomi (A-07): the reaction just chosen is still flying here; its emoji shows when it lands.
+        TellomiReactionFlyIn.holdUntilLanded(messageId, reaction.baseEmoji, emojiView);
+      }
+
       if (sameMessage) {
         TellomiReactionPillAnimator.animate(pill, pill.findViewById(R.id.reactions_pill_count), TellomiReactionPillAnimator.changeFor(before.get(key), state));
       }
     }
 
-    pillStates = after;
+    pillStates     = after;
+    pillEmojiViews = emojiViews;
 
     return true;
   }

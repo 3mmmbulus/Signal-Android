@@ -23,6 +23,7 @@ import android.graphics.PointF
 import android.graphics.PorterDuff
 import android.graphics.PorterDuffColorFilter
 import android.graphics.Rect
+import android.graphics.RectF
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
@@ -126,6 +127,7 @@ import org.signal.core.ui.compose.theme.SignalTheme
 import org.signal.core.ui.getWindowSizeClass
 import org.signal.core.ui.isSplitPane
 import org.signal.core.ui.logging.LoggingFragment
+import org.signal.core.ui.motion.TellomiMotion
 import org.signal.core.ui.permissions.Permissions
 import org.signal.core.ui.view.Stub
 import org.signal.core.util.ByteLimitInputFilter
@@ -148,6 +150,8 @@ import org.signal.core.util.requireParcelableCompat
 import org.signal.core.util.setActionItemTint
 import org.signal.donations.InAppPaymentType
 import org.signal.emoji.EmojiEventListener
+import org.signal.emoji.EmojiProvider
+import org.signal.emoji.EmojiUtil
 import org.signal.mediasend.MediaSendFlowActivityContract
 import org.signal.mediasend.screens.files.PickedFileGrants
 import org.signal.ringrtc.CallLinkRootKey
@@ -243,6 +247,7 @@ import org.thoughtcrime.securesms.conversation.drafts.DraftViewModel
 import org.thoughtcrime.securesms.conversation.mutiselect.ConversationItemAnimator
 import org.thoughtcrime.securesms.conversation.mutiselect.MultiselectItemDecoration
 import org.thoughtcrime.securesms.conversation.mutiselect.MultiselectPart
+import org.thoughtcrime.securesms.conversation.mutiselect.Multiselectable
 import org.thoughtcrime.securesms.conversation.mutiselect.forward.MultiselectForwardBottomSheet
 import org.thoughtcrime.securesms.conversation.mutiselect.forward.MultiselectForwardFragmentArgs
 import org.thoughtcrime.securesms.conversation.mutiselect.forward.MultiselectForwardRepository
@@ -350,6 +355,8 @@ import org.thoughtcrime.securesms.profiles.spoofing.ReviewCardDialogFragment
 import org.thoughtcrime.securesms.ratelimit.RecaptchaProofBottomSheetFragment
 import org.thoughtcrime.securesms.ratelimit.RecaptchaRequiredEvent
 import org.thoughtcrime.securesms.reactions.ReactionsBottomSheetDialogFragment
+import org.thoughtcrime.securesms.reactions.ReactionsConversationView
+import org.thoughtcrime.securesms.reactions.TellomiReactionFlyIn
 import org.thoughtcrime.securesms.reactions.any.ReactWithAnyEmojiBottomSheetDialogFragment
 import org.thoughtcrime.securesms.recipients.Recipient
 import org.thoughtcrime.securesms.recipients.RecipientExporter
@@ -693,7 +700,10 @@ class ConversationFragment :
       context = requireContext(),
       hapticView = { chatHost },
       menuAnchor = { reactionMenuAnchor },
-      onReactionSelected = { messageRecord, emoji ->
+      onReactionSelected = { messageRecord, emoji, flyInSource ->
+        if (flyInSource != null) {
+          startReactionFlyIn(messageRecord.id, emoji, flyInSource)
+        }
         reactionOverlay.hide()
         disposables += viewModel.updateReaction(messageRecord, emoji).subscribe()
       },
@@ -4819,6 +4829,59 @@ class ConversationFragment :
         .setNegativeButton(android.R.string.cancel, null)
         .show()
     }
+  }
+
+  /**
+   * Tellomi (interaction audit A-07, Android half of Signal-iOS#79): the chosen emoji flies from the reaction strip onto
+   * its pill under the message once the overlay has closed and the pill is on screen. See [TellomiReactionFlyIn].
+   */
+  private fun startReactionFlyIn(messageId: Long, emoji: String, source: RectF) {
+    if (!TellomiMotion.allowsFlourish(TellomiMotion.tier(requireContext()))) {
+      return
+    }
+
+    TellomiReactionFlyIn.start(
+      host = requireActivity().window.decorView,
+      messageId = messageId,
+      baseEmoji = EmojiUtil.getCanonicalRepresentation(emoji),
+      drawable = EmojiProvider.getEmojiDrawable(requireContext(), emoji, true),
+      sourceInWindow = source,
+      isReadyToLand = { !reactionOverlay.isShowing },
+      findTarget = { findReactionPillEmoji(messageId, emoji) }
+    )
+  }
+
+  /** Tellomi (A-07): the emoji in [emoji]'s pill under message [messageId], if that message is on screen. */
+  private fun findReactionPillEmoji(messageId: Long, emoji: String): View? {
+    if (view == null) {
+      return null
+    }
+
+    val recycler = binding.conversationItemRecycler
+    for (index in 0 until recycler.childCount) {
+      val child = recycler.getChildAt(index)
+      // V2 rows are Multiselectable through their view holder, older rows through the view (as MultiselectItemDecoration does).
+      val item = recycler.getChildViewHolder(child) as? Multiselectable ?: child as? Multiselectable
+      if (item?.conversationMessage?.messageRecord?.id == messageId) {
+        return child.findReactionsView()?.findPillEmojiView(emoji)
+      }
+    }
+
+    return null
+  }
+
+  private fun View.findReactionsView(): ReactionsConversationView? {
+    if (this is ReactionsConversationView) {
+      return this
+    }
+
+    if (this is ViewGroup) {
+      for (index in 0 until childCount) {
+        getChildAt(index).findReactionsView()?.let { return it }
+      }
+    }
+
+    return null
   }
 
   private fun onCustomReactionSelected(messageRecord: MessageRecord, hasAddedCustomEmoji: Boolean) {

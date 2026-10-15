@@ -5,6 +5,7 @@
 
 package org.thoughtcrime.securesms.conversation.v2
 
+import android.graphics.RectF
 import android.graphics.drawable.Drawable
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.Easing
@@ -65,8 +66,10 @@ import org.signal.core.ui.R as CoreUiR
 const val REACTION_EMOJI_COUNT = 7
 
 private const val GROW_DURATION_MS = 200
-private const val GROW_SCALE = 1.5f
-private val EMOJI_WIDTH = 32.dp
+
+/** Tellomi (A-07 fly-in): also used by [ChatReactionOverlayController] to know how big the emoji under the thumb is drawn. */
+internal const val GROW_SCALE = 1.5f
+internal val EMOJI_WIDTH = 32.dp
 private val EMOJI_HEIGHT = 48.dp
 private val SELECTION_INDICATOR_SIZE = 52.dp
 private val STRIP_CORNER_RADIUS = 30.dp
@@ -333,6 +336,7 @@ fun ChatReactionOverlay(
           reveal = emojiReveal[index].value,
           indicatorAlpha = indicatorReveal.value,
           selectedIndex = { controller.selectedIndex },
+          onSlotPlaced = { bounds -> controller.onSlotPlaced(index, bounds) },
           onEdgeMeasured = { left, right ->
             // Layout direction order, so under RTL start is the greater edge.
             if (index == 0) {
@@ -357,6 +361,7 @@ fun ChatReactionOverlay(
  * Its own composable so that [selectedIndex], which changes as fast as a thumb moves, invalidates
  * seven small scopes rather than the whole overlay.
  *
+ * @param onSlotPlaced Tellomi (A-07 fly-in): the slot's untransformed bounds, in window coordinates.
  * @param onEdgeMeasured The slot's untransformed leading and trailing edges, in window coordinates.
  */
 @Composable
@@ -367,6 +372,7 @@ private fun ReactionEmoji(
   reveal: Float,
   indicatorAlpha: Float,
   selectedIndex: () -> Int,
+  onSlotPlaced: (RectF) -> Unit,
   onEdgeMeasured: (Float, Float) -> Unit
 ) {
   val density = LocalDensity.current
@@ -393,8 +399,10 @@ private fun ReactionEmoji(
       // Measured here rather than on the emoji, whose graphicsLayer scale would otherwise move the
       // reported edges as it grows and shift the segment boundaries under a stationary thumb.
       .onGloballyPositioned { coordinates ->
-        val left = coordinates.positionInWindow().x
+        val position = coordinates.positionInWindow()
+        val left = position.x
 
+        onSlotPlaced(RectF(left, position.y, left + coordinates.size.width, position.y + coordinates.size.height))
         onEdgeMeasured(left, left + coordinates.size.width)
       },
     contentAlignment = Alignment.Center
