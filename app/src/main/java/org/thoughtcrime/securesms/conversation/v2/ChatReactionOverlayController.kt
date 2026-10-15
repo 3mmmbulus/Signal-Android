@@ -49,7 +49,9 @@ class ChatReactionOverlayController(
   private val onCustomReactionSelected: (MessageRecord, Boolean) -> Unit,
   private val onActionSelected: (ReactionAction) -> Unit,
   private val onStartHide: (View?) -> Unit,
-  private val onHidden: () -> Unit
+  private val onHidden: () -> Unit,
+  /** Tellomi (interaction audit A-06, Q-03 = B): the shade's progress, 0 hidden to 1 shown, for blurring what is behind it. */
+  private val onShadeChanged: (Float) -> Unit = {}
 ) {
 
   var selection: ReactionOverlaySelection? by mutableStateOf(null)
@@ -204,6 +206,10 @@ class ChatReactionOverlayController(
     if (action != null) {
       onActionSelected(action)
     }
+  }
+
+  fun onShadeProgress(progress: Float) {
+    onShadeChanged(progress)
   }
 
   /** Corrects the offsets from overlay coordinates into the anchor's, which is all the move costs. */

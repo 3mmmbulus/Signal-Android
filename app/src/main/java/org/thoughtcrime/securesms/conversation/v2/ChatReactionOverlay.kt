@@ -33,6 +33,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.AbsoluteAlignment
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -230,6 +231,14 @@ fun ChatReactionOverlay(
 
     DisposableEffect(Unit) {
       onDispose { controller.onHideFinished() }
+    }
+
+    // Tellomi (A-06, Q-03 = B): the conversation behind blurs in step with the shade (the fragment decides whether it can).
+    LaunchedEffect(selection) {
+      snapshotFlow { shade.value }.collect { controller.onShadeProgress(it) }
+    }
+    DisposableEffect(selection) {
+      onDispose { controller.onShadeProgress(0f) }
     }
 
     LaunchedEffect(selection, isRevealed) {

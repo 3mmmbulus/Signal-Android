@@ -24,6 +24,8 @@ import android.graphics.PorterDuff
 import android.graphics.PorterDuffColorFilter
 import android.graphics.Rect
 import android.graphics.RectF
+import android.graphics.RenderEffect
+import android.graphics.Shader
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
@@ -464,6 +466,9 @@ class ConversationFragment :
     private const val EMOJI_SEARCH_FRAGMENT_TAG = "EmojiSearchFragment"
     private const val MESSAGE_DETAILS_TAG = "MessageDetailsFragment"
 
+    /** Tellomi (A-06): blur radius behind the long-press overlay once its shade is fully in. */
+    private const val OVERLAY_BLUR_RADIUS_DP = 12f
+
     private const val SCROLL_HEADER_ANIMATION_DURATION: Long = 100L
     private const val SCROLL_HEADER_CLOSE_DELAY: Long = SCROLL_HEADER_ANIMATION_DURATION * 4
     private const val IS_SCROLLED_TO_BOTTOM_THRESHOLD: Int = 2
@@ -715,7 +720,8 @@ class ConversationFragment :
       },
       onActionSelected = { action -> reactionActionListener?.onActionSelected(action) },
       onStartHide = { focusedView -> reactionHideListener?.startHide(focusedView) },
-      onHidden = { reactionHideListener?.onHide() }
+      onHidden = { reactionHideListener?.onHide() },
+      onShadeChanged = ::applyOverlayBlur
     )
   }
 
@@ -4869,6 +4875,37 @@ class ConversationFragment :
 
     @Suppress("DEPRECATION")
     binding.root.announceForAccessibility(text)
+  }
+
+  /** Tellomi (A-06): whether this long press blurs the conversation; decided when the shade starts, not every frame. */
+  private var overlayBlurAllowed: Boolean? = null
+
+  /**
+   * Tellomi (interaction audit A-06, owner Q-03 = B "按档位模糊"): with the long-press overlay up, the conversation and its
+   * wallpaper behind the shade blur in step with it — only where live blur is affordable ([TellomiMotion.allowsLiveBlur]:
+   * the full motion tier on Android 12+). The overlay itself is drawn by the composition above, so it stays sharp.
+   */
+  private fun applyOverlayBlur(progress: Float) {
+    if (Build.VERSION.SDK_INT < 31 || view == null) {
+      return
+    }
+
+    if (progress <= 0f) {
+      overlayBlurAllowed = null
+      conversationContent.setRenderEffect(null)
+      conversationBackground.setRenderEffect(null)
+      return
+    }
+
+    val allowed = overlayBlurAllowed ?: TellomiMotion.allowsLiveBlur(TellomiMotion.tier(requireContext())).also { overlayBlurAllowed = it }
+    if (!allowed) {
+      return
+    }
+
+    val radius = progress * OVERLAY_BLUR_RADIUS_DP * resources.displayMetrics.density
+    val effect = if (radius < 0.5f) null else RenderEffect.createBlurEffect(radius, radius, Shader.TileMode.CLAMP)
+    conversationContent.setRenderEffect(effect)
+    conversationBackground.setRenderEffect(effect)
   }
 
   /** Tellomi (A-20): held here because [TellomiMediaReturnTarget] only keeps a weak reference to it. */
