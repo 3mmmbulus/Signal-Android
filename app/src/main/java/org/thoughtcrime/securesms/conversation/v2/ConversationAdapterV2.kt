@@ -363,6 +363,16 @@ class ConversationAdapterV2(
     updateSelected()
   }
 
+  /** Tellomi（交互审计 A-15）：拖选时把一整条消息设成选中 / 不选中（不是来回切）。 */
+  fun setSelected(parts: Set<MultiselectPart>, selected: Boolean) {
+    if (selected) {
+      _selected.addAll(parts)
+    } else {
+      _selected.removeAll(parts)
+    }
+    updateSelected()
+  }
+
   fun removeFromSelection(expired: Set<MultiselectPart>) {
     _selected.removeAll(expired)
     updateSelected()

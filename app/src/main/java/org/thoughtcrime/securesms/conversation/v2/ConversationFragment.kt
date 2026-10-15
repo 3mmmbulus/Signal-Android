@@ -610,6 +610,7 @@ class ConversationFragment :
   private lateinit var conversationActivityResultContracts: ConversationActivityResultContracts
   private lateinit var scrollToPositionDelegate: ScrollToPositionDelegate
   private lateinit var adapter: ConversationAdapterV2
+  private var dragSelect: TellomiDragSelect? = null
   private lateinit var typingIndicatorAdapter: ConversationTypingIndicatorAdapter
   private lateinit var recyclerViewColorizer: RecyclerViewColorizer
   private lateinit var attachmentManager: AttachmentManager
@@ -1397,6 +1398,23 @@ class ConversationFragment :
 
     setCorrectActionModeMenuVisibility()
     binding.conversationItemRecycler.invalidateItemDecorations()
+  }
+
+  /** Tellomi（交互审计 A-15）：拖选途中每改一次都更新标题和底栏；全取消了等松手再退出多选。 */
+  private fun onDragSelectionChanged(finished: Boolean) {
+    if (!isActionModeStarted()) {
+      return
+    }
+
+    binding.conversationItemRecycler.invalidateItemDecorations()
+    if (adapter.selectedItems.isEmpty()) {
+      if (finished) {
+        finishActionMode()
+      }
+    } else {
+      setCorrectActionModeMenuVisibility()
+      setActionModeTitle(calculateSelectedItemCount())
+    }
   }
 
   private fun setActionModeTitle(title: String) {
@@ -2579,6 +2597,10 @@ class ConversationFragment :
     viewModel.recipientSnapshot?.chatColors?.let { recyclerViewColorizer.setChatColors(it) }
 
     binding.conversationItemRecycler.adapter = ConcatAdapter(typingIndicatorAdapter, adapter)
+    // Tellomi（交互审计 A-15）：多选模式里长按一条后不抬手往上 / 往下拖，连着选。
+    dragSelect = TellomiDragSelect(binding.conversationItemRecycler, adapter, ::onDragSelectionChanged).also {
+      binding.conversationItemRecycler.addOnItemTouchListener(it)
+    }
     multiselectItemDecoration = MultiselectItemDecoration(
       requireContext()
     ) { viewModel.wallpaperSnapshot }
@@ -4421,6 +4443,8 @@ class ConversationFragment :
     override fun onItemLongClick(itemView: View, item: MultiselectPart) {
       Log.d(TAG, "onItemLongClick")
       if (isActionModeStarted()) {
+        // Tellomi（交互审计 A-15）：多选模式里长按 = 切换这一条并拿起拖选。
+        dragSelect?.start(itemView)
         return
       }
 
