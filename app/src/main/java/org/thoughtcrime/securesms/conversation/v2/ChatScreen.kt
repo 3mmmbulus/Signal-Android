@@ -38,7 +38,6 @@ import org.thoughtcrime.securesms.components.compose.mediakeyboard.MediaKeyboard
 import org.thoughtcrime.securesms.components.compose.mediakeyboard.MediaKeyboardEvents
 import org.thoughtcrime.securesms.components.compose.mediakeyboard.MediaKeyboardHeight
 import org.thoughtcrime.securesms.components.compose.mediakeyboard.MediaKeyboardScaffold
-import org.thoughtcrime.securesms.conversation.v2.keyboard.AttachmentKeyboardFragment
 import org.thoughtcrime.securesms.keyboard.KeyboardPagerFragment
 import kotlin.math.roundToInt
 
@@ -69,7 +68,6 @@ fun ChatScreen(
   val minimumHeight = dimensionResource(R.dimen.default_custom_keyboard_size)
   val topMargin = dimensionResource(R.dimen.min_custom_keyboard_top_margin_portrait)
   val mediaKeyboardColor = Color(ThemeUtil.getThemedColor(LocalContext.current, R.attr.mediaKeyboardBottomBarBackgroundColor))
-  val attachmentKeyboardColor = scrims.attachmentKeyboardColor
 
   val keyboardHeight = remember(minimumHeight, topMargin, isBubble) {
     MediaKeyboardHeight(
@@ -116,16 +114,6 @@ fun ChatScreen(
         ) {
           AndroidFragment(
             clazz = KeyboardPagerFragment::class.java,
-            modifier = Modifier.fillMaxSize()
-          )
-        }
-
-        keyboard(
-          key = ChatKeyboards.Attachment,
-          containerColor = attachmentKeyboardColor
-        ) {
-          AndroidFragment(
-            clazz = AttachmentKeyboardFragment::class.java,
             modifier = Modifier.fillMaxSize()
           )
         }

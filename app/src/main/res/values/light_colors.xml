@@ -69,7 +69,6 @@
     <color name="signal_inverse_transparent_80">@color/transparent_black_80</color>
 
     <!-- Stuff -->
-    <color name="attachment_keyboard_button_foreground">@color/core_grey_65</color>
 
     <color name="audio_seek_bar_sent_played_color">@color/core_grey_60</color>
     <color name="audio_seek_bar_sent_unplayed_color">@color/core_grey_25</color>

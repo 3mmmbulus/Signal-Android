@@ -10,5 +10,4 @@ import org.thoughtcrime.securesms.components.compose.mediakeyboard.MediaKeyboard
 /** The keyboards the conversation offers in place of the system keyboard. */
 object ChatKeyboards {
   val Media = MediaKeyboardKey("conversation.media")
-  val Attachment = MediaKeyboardKey("conversation.attachment")
 }

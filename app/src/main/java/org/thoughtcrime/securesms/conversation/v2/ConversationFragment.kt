@@ -79,7 +79,6 @@ import androidx.core.view.isInvisible
 import androidx.core.view.isVisible
 import androidx.core.view.updatePadding
 import androidx.fragment.app.DialogFragment
-import androidx.fragment.app.FragmentResultListener
 import androidx.fragment.app.activityViewModels
 import androidx.fragment.app.commit
 import androidx.fragment.app.viewModels
@@ -274,7 +273,6 @@ import org.thoughtcrime.securesms.conversation.v2.groups.ConversationGroupCallVi
 import org.thoughtcrime.securesms.conversation.v2.groups.ConversationGroupViewModel
 import org.thoughtcrime.securesms.conversation.v2.items.ChatColorsDrawable
 import org.thoughtcrime.securesms.conversation.v2.items.InteractiveConversationElement
-import org.thoughtcrime.securesms.conversation.v2.keyboard.AttachmentKeyboardFragment
 import org.thoughtcrime.securesms.database.DraftTable
 import org.thoughtcrime.securesms.database.SignalDatabase
 import org.thoughtcrime.securesms.database.model.IdentityRecord
@@ -1640,7 +1638,6 @@ class ConversationFragment :
       container.addKeyboardStateListener(it)
     }
 
-    childFragmentManager.setFragmentResultListener(AttachmentKeyboardFragment.RESULT_KEY, viewLifecycleOwner, AttachmentKeyboardFragmentListener())
     motionEventRelay.setDrain(MotionEventRelayDrain(this))
 
     val audioRecorder = AudioRecorder(requireContext(), inputPanel)
@@ -2286,12 +2283,6 @@ class ConversationFragment :
     }
 
     chatScrims.navigationBarColor = ContextCompat.getColor(requireContext(), navColor)
-    chatScrims.attachmentKeyboardColor = androidx.compose.ui.graphics.Color(
-      ContextCompat.getColor(
-        requireContext(),
-        if (hasWallpaper) R.color.wallpaper_compose_background else R.color.signal_background_primary
-      )
-    )
   }
 
   private fun presentChatColors(chatColors: ChatColors) {
@@ -6037,58 +6028,25 @@ class ConversationFragment :
   }
 
   /**
-   * 附件键盘和附件 Sheet 的 dock（tellomi/tellomi#1115）里的格子走同一套处理。
-   * 返回 false：这一格现在用不了（只提示了一句），附件面板留着。
+   * 附件 Sheet 的 dock（tellomi/tellomi#1115）里不在 Sheet 里换页的格子：联系人、位置。
+   * 相册、文件、投票在 Sheet 里换页，付款不在 dock 里，都走不到这里（2026-10-16 两端对齐清单 C-8；上游附件键盘已删）。
+   * 联系人、位置这两条等安卓的联系人页 / 位置页（高德 #1124）进了 Sheet 再删。
    */
-  private fun onAttachmentButton(button: AttachmentKeyboardButton, recipient: Recipient): Boolean {
+  private fun onAttachmentButton(button: AttachmentKeyboardButton, recipient: Recipient) {
     when (button) {
-      AttachmentKeyboardButton.GALLERY -> conversationActivityResultContracts.launchGallery(recipient.id, composeText.textTrimmed, inputPanel.quote.isPresent)
-
       AttachmentKeyboardButton.CONTACT -> conversationActivityResultContracts.launchSelectContact()
 
       AttachmentKeyboardButton.LOCATION -> if (BuildConfig.MAPS_AVAILABLE) {
         conversationActivityResultContracts.launchSelectLocation(recipient.chatColors)
       } else {
-        // Tellomi（tellomi/tellomi#1235、#1124）：高德接上之前不提供发送位置，格子已置灰（AttachmentKeyboardButtonAdapter）
+        // Tellomi（tellomi/tellomi#1235、#1124）：高德接上之前不提供发送位置，dock 里这格已置灰（TellomiAttachmentSheetDock）
         toast(R.string.TellomiLocation__coming_soon, Toast.LENGTH_SHORT)
-        return false
       }
 
-      AttachmentKeyboardButton.PAYMENT -> AttachmentManager.selectPayment(this@ConversationFragment, recipient)
-
-      AttachmentKeyboardButton.FILE -> {
-        if (!conversationActivityResultContracts.launchSelectFile()) {
-          toast(R.string.AttachmentManager_cant_open_media_selection, Toast.LENGTH_LONG)
-        }
-      }
-
-      AttachmentKeyboardButton.POLL -> {
-        CreatePollFragment.show(childFragmentManager)
-        childFragmentManager.setFragmentResultListener(CreatePollFragment.REQUEST_KEY, requireActivity()) { _, bundle ->
-          sendPoll(recipient, Poll.fromBundle(bundle))
-        }
-      }
-    }
-    return true
-  }
-
-  private inner class AttachmentKeyboardFragmentListener : FragmentResultListener {
-    @Suppress("DEPRECATION")
-    override fun onFragmentResult(requestKey: String, result: Bundle) {
-      val recipient = viewModel.recipientSnapshot ?: return
-      val button: AttachmentKeyboardButton? = result.getSerializable(AttachmentKeyboardFragment.BUTTON_RESULT) as? AttachmentKeyboardButton
-      val media: Media? = result.getParcelable(AttachmentKeyboardFragment.MEDIA_RESULT)
-
-      if (button != null) {
-        if (!onAttachmentButton(button, recipient)) {
-          // 点一个用不了的格子不收起附件面板，下面的 container.hideInput() 不走（taishi 审查 b9 不阻塞 2）
-          return
-        }
-      } else if (media != null) {
-        conversationActivityResultContracts.launchMediaEditor(listOf(media), recipient.id, composeText.textTrimmed)
-      }
-
-      container.hideInput()
+      AttachmentKeyboardButton.GALLERY,
+      AttachmentKeyboardButton.FILE,
+      AttachmentKeyboardButton.POLL,
+      AttachmentKeyboardButton.PAYMENT -> Log.w(TAG, "Attachment sheet button handled inside the sheet or not in the dock: $button")
     }
   }
 
