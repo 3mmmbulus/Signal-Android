@@ -224,7 +224,7 @@ class ChatReactionOverlayController(
     val offsetX = originInWindow.x - anchorOrigin[0] + placement.menuOffsetX
     val offsetY = originInWindow.y - anchorOrigin[1] + placement.menuOffsetY
 
-    menu.show(offsetX.roundToInt(), offsetY.roundToInt())
+    menu.show(offsetX.roundToInt(), offsetY.roundToInt(), growFromLeft = selection?.isMessageOnLeft ?: true)
     menuPlaced = true
   }
 

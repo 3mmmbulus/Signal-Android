@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Copyright 2026 重庆半格智能科技有限公司
+  SPDX-License-Identifier: AGPL-3.0-only
+
+  Tellomi（交互审计 A-06 Android）：长按消息的菜单不用窗口进场动画（原来是延迟 150 ms 的淡入），由 ConversationContextMenu
+  自己从消息那一侧的上角弹簧展开；退场照上游缩小淡出。
+-->
+<resources>
+    <style name="TellomiConversationContextMenuAnimation" parent="@android:style/Animation">
+        <item name="android:windowEnterAnimation">@null</item>
+        <item name="android:windowExitAnimation">@anim/shrink_fade_out</item>
+    </style>
+</resources>

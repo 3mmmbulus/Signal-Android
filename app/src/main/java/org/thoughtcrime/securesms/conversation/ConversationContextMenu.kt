@@ -8,6 +8,10 @@ import android.view.View
 import android.view.ViewGroup
 import android.widget.PopupWindow
 import androidx.core.content.ContextCompat
+import androidx.core.view.doOnPreDraw
+import androidx.dynamicanimation.animation.DynamicAnimation
+import androidx.dynamicanimation.animation.SpringAnimation
+import org.signal.core.ui.motion.TellomiMotion
 import org.thoughtcrime.securesms.R
 import org.thoughtcrime.securesms.components.menu.ActionItem
 import org.thoughtcrime.securesms.components.menu.ContextMenuList
@@ -52,7 +56,47 @@ class ConversationContextMenu(private val anchor: View, items: List<ActionItem>)
   fun getMaxWidth(): Int = contentView.measuredWidth
   fun getMaxHeight(): Int = contentView.measuredHeight
 
-  fun show(offsetX: Int, offsetY: Int) {
+  /**
+   * Tellomi（交互审计 A-06 Android，审计「Android 菜单不从消息长出来」）：菜单从消息那一侧的上角弹簧展开——[growFromLeft]
+   * 为 true（消息在左边）从左上角，否则右上角；缩放用 Move（带一点回弹），透明度用 Fade。省电 / 关了动画照上游淡入。
+   */
+  fun show(offsetX: Int, offsetY: Int, growFromLeft: Boolean) {
+    val grow = TellomiMotion.tier(context) != TellomiMotion.Tier.MINIMAL
+    animationStyle = if (grow) R.style.TellomiConversationContextMenuAnimation else R.style.ConversationContextMenuAnimation
     showAsDropDown(anchor, offsetX, offsetY, Gravity.TOP or Gravity.START)
+    if (grow) {
+      growIn(contentView.rootView, growFromLeft)
+    }
+  }
+
+  private fun growIn(root: View, fromLeft: Boolean) {
+    root.scaleX = GROW_FROM_SCALE
+    root.scaleY = GROW_FROM_SCALE
+    root.alpha = 0f
+    root.doOnPreDraw {
+      it.pivotX = if (fromLeft) 0f else it.width.toFloat()
+      it.pivotY = 0f
+    }
+    spring(root, DynamicAnimation.SCALE_X, TellomiMotion.Move)
+    spring(root, DynamicAnimation.SCALE_Y, TellomiMotion.Move)
+    spring(root, DynamicAnimation.ALPHA, TellomiMotion.Fade)
+  }
+
+  private fun spring(view: View, property: DynamicAnimation.ViewProperty, token: TellomiMotion.SpringToken) {
+    SpringAnimation(view, property, 1f).apply {
+      spring.stiffness = token.stiffness
+      spring.dampingRatio = token.dampingRatio
+      if (property == DynamicAnimation.ALPHA) {
+        setMinimumVisibleChange(DynamicAnimation.MIN_VISIBLE_CHANGE_ALPHA)
+      } else {
+        setMinimumVisibleChange(DynamicAnimation.MIN_VISIBLE_CHANGE_SCALE)
+      }
+      start()
+    }
+  }
+
+  companion object {
+    /** Tellomi (A-06): how small the menu starts as it grows out of the message. */
+    private const val GROW_FROM_SCALE = 0.6f
   }
 }
