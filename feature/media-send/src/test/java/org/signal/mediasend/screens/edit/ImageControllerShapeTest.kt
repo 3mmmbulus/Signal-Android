@@ -6,10 +6,14 @@
 package org.signal.mediasend.screens.edit
 
 import android.app.Application
+import android.graphics.Bitmap
+import android.graphics.Canvas
 import android.graphics.Color
 import android.graphics.Matrix
 import android.graphics.Point
+import android.graphics.PointF
 import android.graphics.RectF
+import android.graphics.Typeface
 import android.net.Uri
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -18,11 +22,15 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
+import org.robolectric.RuntimeEnvironment
 import org.robolectric.annotation.Config
 import org.robolectric.annotation.GraphicsMode
 import org.signal.imageeditor.core.Bounds
+import org.signal.imageeditor.core.ImageEditorTouchHandler
+import org.signal.imageeditor.core.RendererContext
 import org.signal.imageeditor.core.model.EditorElement
 import org.signal.imageeditor.core.model.EditorModel
+import org.signal.imageeditor.core.model.ThumbRenderer
 import org.signal.imageeditor.core.renderers.ShapeRenderer
 import org.signal.imageeditor.core.renderers.UriGlideRenderer
 import org.signal.mediasend.screens.edit.image.BrushTool
@@ -117,6 +125,58 @@ class ImageControllerShapeTest {
     controller.pickColor(0x8012AB34.toInt())
 
     assertEquals(0xFF12AB34.toInt(), selectedShape().color)
+  }
+
+  @Test
+  fun `pulling an arrow tip keeps the start where it was, even though the guide's thumb is on the tip`() {
+    controller.beginDrawEdit()
+    controller.insertShape(ShapeRenderer.Kind.ARROW)
+    val element = controller.selectedElement!!
+    val renderer = element.renderer as ShapeRenderer
+    val viewMatrix = Matrix()
+    val start = toView(element, viewMatrix, -renderer.width / 2f, 0f)
+    val end = toView(element, viewMatrix, renderer.width / 2f, 0f)
+    val target = PointF(end.x + 0.2f, end.y + 0.3f)
+
+    // The selection guide's scale / rotate thumb sits right on the arrow's tip (thumbs and handles size themselves when
+    // drawn, so draw once); the tip's handle still wins.
+    draw(viewMatrix)
+    assertTrue(model.findElementAtPoint(end, viewMatrix, Matrix())?.renderer is ThumbRenderer)
+
+    val touchHandler = ImageEditorTouchHandler {}
+    touchHandler.setDrawing(false, false)
+    touchHandler.onDown(model, viewMatrix, end)
+    assertTrue(touchHandler.isShapeHandleSession())
+    touchHandler.onMove(model, arrayOf(PointF((end.x + target.x) / 2f, (end.y + target.y) / 2f)))
+    touchHandler.onMove(model, arrayOf(target))
+    touchHandler.onUp(model)
+
+    val newStart = toView(element, viewMatrix, -renderer.width / 2f, 0f)
+    val newEnd = toView(element, viewMatrix, renderer.width / 2f, 0f)
+    assertEquals("the start stays", start.x, newStart.x, 0.001f)
+    assertEquals("the start stays", start.y, newStart.y, 0.001f)
+    assertEquals("the tip follows the finger", target.x, newEnd.x, 0.001f)
+    assertEquals("the tip follows the finger", target.y, newEnd.y, 0.001f)
+  }
+
+  private fun draw(viewMatrix: Matrix) {
+    val context = RendererContext(
+      RuntimeEnvironment.getApplication(),
+      Canvas(Bitmap.createBitmap(10, 10, Bitmap.Config.ARGB_8888)),
+      RendererContext.Ready.NULL,
+      RendererContext.Invalidate.NULL
+    ) { _, _, _ -> Typeface.DEFAULT }
+    context.canvasMatrix.initial(viewMatrix)
+    context.setIsEditing(true)
+    model.draw(context, null)
+  }
+
+  private fun toView(element: EditorElement, viewMatrix: Matrix, x: Float, y: Float): PointF {
+    val toView = Matrix()
+    model.findElementInverseMatrix(element, viewMatrix)!!.invert(toView)
+    val point = floatArrayOf(x, y)
+    toView.mapPoints(point)
+    return PointF(point[0], point[1])
   }
 
   private fun selectedShape(): ShapeRenderer = controller.selectedElement!!.renderer as ShapeRenderer

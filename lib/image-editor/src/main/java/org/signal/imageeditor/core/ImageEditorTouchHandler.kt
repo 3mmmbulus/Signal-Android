@@ -12,6 +12,7 @@ import org.signal.imageeditor.core.model.EditorElement
 import org.signal.imageeditor.core.model.EditorModel
 import org.signal.imageeditor.core.model.ThumbRenderer
 import org.signal.imageeditor.core.renderers.BezierDrawingRenderer
+import org.signal.imageeditor.core.renderers.ShapeRenderer
 import org.signal.imageeditor.core.renderers.TrashRenderer
 
 /**
@@ -148,6 +149,11 @@ class ImageEditorTouchHandler(
     return drawingSession
   }
 
+  /** Tellomi (tellomi/tellomi#1522 E-3b): true when the gesture pulls a selected shape's handle, which is not a drag to the trash. */
+  fun isShapeHandleSession(): Boolean {
+    return editSession is ShapeHandleEditSession
+  }
+
   /** Whether [point] is over the trash, growing or shrinking it to match. False while the trash is hidden. */
   fun checkTrashIntersect(model: EditorModel, point: PointF): Boolean {
     if (drawingSession) {
@@ -176,6 +182,29 @@ class ImageEditorTouchHandler(
     point: PointF,
     selected: EditorElement?
   ): EditSession? {
+    // Tellomi (tellomi/tellomi#1522 E-3b): a finger on a selected shape's handle pulls that handle -- also when the
+    // selection guide's scale / rotate thumb sits on the same spot (an arrow's ends are exactly where the thumbs are).
+    val shapeElement = when (val renderer = selected?.renderer) {
+      is ShapeRenderer -> selected
+      is ThumbRenderer -> model.findById(renderer.elementToControl)?.takeIf { it.renderer is ShapeRenderer }
+      else -> null
+    }
+    val shape = shapeElement?.renderer as? ShapeRenderer
+    val shapeInverse = when {
+      shapeElement == null -> null
+      shapeElement === selected -> inverse
+      else -> model.findElementInverseMatrix(shapeElement, viewMatrix)
+    }
+    if (shapeElement != null && shape != null && shapeInverse != null) {
+      val local = FloatArray(2)
+      shapeInverse.mapPoints(local, floatArrayOf(point.x, point.y))
+      val handle = shape.handleAt(local[0], local[1])
+      if (handle != null) {
+        drawingSession = false
+        return ShapeHandleEditSession(shapeElement, shape, handle, Matrix(shapeInverse))
+      }
+    }
+
     val session = startMoveAndResizeSession(model, viewMatrix, inverse, point, selected, rotationSnapListener)
     if (session == null && drawing) {
       drawingSession = true

@@ -292,6 +292,8 @@ private fun Modifier.imageEditorPointerInput(
       var draggedElement: EditorElement? = null
       var droppedOnTrash = false
       var didPinch = false
+      // Tellomi (tellomi/tellomi#1522 E-3b): a pulled shape handle changed the shape.
+      var pulledHandle = false
       var zoomPointers: Pair<Offset, Offset>? = null
 
       // Tellomi (tellomi/tellomi#1522 E-2): a stroke whose finger stays put long enough becomes a fill.
@@ -334,7 +336,7 @@ private fun Modifier.imageEditorPointerInput(
 
             // A tap that neither painted, dragged nor pinched leaves the model exactly as it found it, so it must not
             // count as an edit -- otherwise merely selecting something would arm the "Discard changes?" prompt.
-            val didModifyModel = inDrag || didPinch || touchHandler.isDrawingSession()
+            val didModifyModel = inDrag || didPinch || pulledHandle || touchHandler.isDrawingSession()
             val wasSingleTap = !didModifyModel
 
             touchHandler.onUp(state.editorModel)
@@ -389,10 +391,20 @@ private fun Modifier.imageEditorPointerInput(
           val position = currentPressed.first().position
           if (inDrag) {
             controller.onDragMoved(draggedElement, touchHandler.checkTrashIntersect(state.editorModel, position.toPointF()))
-          } else if (!canZoomCanvas && currentCount == 1 && !touchHandler.isDrawingSession() && (position - down.position).getDistanceSquared() > MAX_MOVE_SQUARED_BEFORE_DRAG) {
+          } else if (
+            !canZoomCanvas &&
+            currentCount == 1 &&
+            !touchHandler.isDrawingSession() &&
+            // Tellomi (E-3b): pulling a shape's handle is not a drag towards the trash.
+            !touchHandler.isShapeHandleSession() &&
+            (position - down.position).getDistanceSquared() > MAX_MOVE_SQUARED_BEFORE_DRAG
+          ) {
             inDrag = true
             draggedElement = touchHandler.getSelected()
             controller.onDragStarted(draggedElement)
+          }
+          if (touchHandler.isShapeHandleSession() && (position - down.position).getDistanceSquared() > MAX_MOVE_SQUARED_BEFORE_DRAG) {
+            pulledHandle = true
           }
 
           event.changes.forEach { it.consume() }

@@ -94,6 +94,7 @@ class ShapeRendererTest {
     assertFalse(ShapeRenderer(ShapeRenderer.Kind.ARROW, Color.RED, true, 40f).isFilled)
 
     val shape = ShapeRenderer(ShapeRenderer.Kind.BUBBLE, Color.BLUE, true, 42f)
+    shape.apply(ShapeHandles.Shape(ShapeRenderer.Kind.BUBBLE, 1234f, 0.9f, tailX = 0.7f, bodyFraction = 0.6f, bend = 0.1f))
     val parcel = Parcel.obtain()
     val back = try {
       shape.writeToParcel(parcel, 0)
@@ -106,6 +107,38 @@ class ShapeRendererTest {
     assertEquals(Color.BLUE, back.color)
     assertTrue(back.isFilled)
     assertEquals(42f, back.thickness, 0f)
+    assertEquals("the handles' edits come back too", shape.shape, back.shape)
+  }
+
+  @Test
+  fun `a bent arrow passes through its bend point and a moved tail tip is drawn where it was moved`() {
+    val root = EditorElement(PhotoRenderer(Color.GRAY))
+    // 弯过的红箭头：宽 2000 缩一半 = 1000，放在 (0, -500)；中间往下弯 0.2 × 1000 = 200。
+    val arrow = ShapeRenderer(ShapeRenderer.Kind.ARROW, Color.RED, false, 120f)
+    arrow.apply(ShapeHandles.Shape(ShapeRenderer.Kind.ARROW, 2000f, ShapeRenderer.arrowAspect(0.2f), bend = 0.2f))
+    root.addElement(
+      EditorElement(arrow, EditorModel.Z_STICKERS).apply {
+        localMatrix.setScale(0.5f, 0.5f)
+        localMatrix.postTranslate(0f, -500f)
+      }
+    )
+    // 实心蓝气泡，尾巴尖挪到右边 0.85：宽 1000、高 700，放在 (0, 500)。
+    val bubble = ShapeRenderer(ShapeRenderer.Kind.BUBBLE, Color.BLUE, true, 40f)
+    bubble.apply(ShapeHandles.Shape(ShapeRenderer.Kind.BUBBLE, 2000f, 0.7f, tailX = 0.85f))
+    root.addElement(
+      EditorElement(bubble, EditorModel.Z_STICKERS).apply {
+        localMatrix.setScale(0.5f, 0.5f)
+        localMatrix.postTranslate(0f, 500f)
+      }
+    )
+
+    val bitmap = render(root)
+
+    assertEquals("the bent arrow passes through its bend point", Color.RED, bitmap.getPixel(at(0f), at(-300f)))
+    assertEquals("and not through the straight line", Color.GRAY, bitmap.getPixel(at(0f), at(-500f)))
+    // 气泡框 y 150…850，尖在 x = -500 + 0.85 × 1000 = 350、框底往上 30 的地方还在尾巴里。
+    assertEquals("the tail tip moved to the right", Color.BLUE, bitmap.getPixel(at(350f), at(820f)))
+    assertEquals("nothing left at the old tip", Color.GRAY, bitmap.getPixel(at(-380f), at(820f)))
   }
 
   @Test
