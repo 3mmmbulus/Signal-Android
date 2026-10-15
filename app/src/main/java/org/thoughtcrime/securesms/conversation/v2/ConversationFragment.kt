@@ -705,6 +705,7 @@ class ConversationFragment :
         if (flyInSource != null) {
           startReactionFlyIn(messageRecord.id, emoji, flyInSource)
         }
+        announceReaction(messageRecord, emoji)
         reactionOverlay.hide()
         disposables += viewModel.updateReaction(messageRecord, emoji).subscribe()
       },
@@ -4852,6 +4853,22 @@ class ConversationFragment :
       isReadyToLand = { !reactionOverlay.isShowing },
       findTarget = { findReactionPillEmoji(messageId, emoji) }
     )
+  }
+
+  /**
+   * Tellomi (interaction audit A-07, "读屏公告「已回应 ❤️」"): TalkBack hears what the reaction did — the pill changing says
+   * nothing on its own. Taking back your own reaction with the same emoji removes it, as [ConversationViewModel.updateReaction] does.
+   */
+  private fun announceReaction(messageRecord: MessageRecord, emoji: String) {
+    val removing = messageRecord.reactions.any { it.author == Recipient.self().id && it.emoji == emoji }
+    val text = if (removing) {
+      getString(R.string.ConversationFragment__tellomi_reaction_removed)
+    } else {
+      getString(R.string.ConversationFragment__tellomi_reacted_with, emoji)
+    }
+
+    @Suppress("DEPRECATION")
+    binding.root.announceForAccessibility(text)
   }
 
   /** Tellomi (A-20): held here because [TellomiMediaReturnTarget] only keeps a weak reference to it. */

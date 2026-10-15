@@ -576,6 +576,10 @@
 
     <!-- ConversationFragment -->
     <!-- Toast text when contacts activity is not found -->
+    <!-- Tellomi (interaction audit A-07): read out by TalkBack after choosing a reaction. %1$s is the emoji. -->
+    <string name="ConversationFragment__tellomi_reacted_with">Reacted with %1$s</string>
+    <!-- Tellomi (interaction audit A-07): read out by TalkBack after taking a reaction back. -->
+    <string name="ConversationFragment__tellomi_reaction_removed">Reaction removed</string>
     <string name="ConversationFragment__contacts_app_not_found">Contacts app not found.</string>
     <plurals name="ConversationFragment_delete_selected_messages">
         <item quantity="one">Delete selected message?</item>

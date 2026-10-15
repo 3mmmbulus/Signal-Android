@@ -550,6 +550,8 @@
 
     <!-- ConversationFragment -->
     <!-- Toast text when contacts activity is not found -->
+    <string name="ConversationFragment__tellomi_reacted_with">已回应 %1$s</string>
+    <string name="ConversationFragment__tellomi_reaction_removed">已取消回应</string>
     <string name="ConversationFragment__contacts_app_not_found">找不到联系人应用。</string>
     <plurals name="ConversationFragment_delete_selected_messages">
         <item quantity="other">删除已选消息？</item>
