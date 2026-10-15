@@ -151,6 +151,8 @@ public final class MicrophoneRecorderView extends FrameLayout implements View.On
           if (handler != null) handler.onRecordMoved(floatingRecordButton.lastOffsetX, event.getRawX());
 
           int dimensionPixelSize = getResources().getDimensionPixelSize(R.dimen.recording_voice_lock_target);
+          // Tellomi（交互审计 A-12）：往上走得越近锁定线，锁图标越大。
+          lockDropTarget.setLockProgress(TellomiRecordingGesture.lockProgress(floatingRecordButton.lastOffsetY, dimensionPixelSize));
           if (floatingRecordButton.lastOffsetY <= dimensionPixelSize) {
             lockAction();
           }
@@ -163,6 +165,11 @@ public final class MicrophoneRecorderView extends FrameLayout implements View.On
 
   public void setHandler(@Nullable AudioRecordingHandler handler) {
     this.handler = handler;
+  }
+
+  /** Tellomi（交互审计 A-12）：往取消线走了多少（0–1），录音按钮跟着变淡变小。 */
+  public void setCancelProgress(float progress) {
+    floatingRecordButton.setCancelProgress(progress);
   }
 
   private static class FloatingRecordButton {
@@ -185,6 +192,7 @@ public final class MicrophoneRecorderView extends FrameLayout implements View.On
       this.startPositionX = x;
       this.startPositionY = y;
 
+      setCancelProgress(0f);
       recordButtonFab.setVisibility(View.VISIBLE);
 
       AnimationSet animation = new AnimationSet(true);
@@ -201,6 +209,13 @@ public final class MicrophoneRecorderView extends FrameLayout implements View.On
       animation.setInterpolator(new OvershootInterpolator());
 
       recordButtonFab.startAnimation(animation);
+    }
+
+    void setCancelProgress(float progress) {
+      float scale = TellomiRecordingGesture.lerp(1f, TellomiRecordingGesture.BUTTON_MIN_SCALE, progress);
+      recordButtonFab.setAlpha(TellomiRecordingGesture.lerp(1f, TellomiRecordingGesture.BUTTON_MIN_ALPHA, progress));
+      recordButtonFab.setScaleX(scale);
+      recordButtonFab.setScaleY(scale);
     }
 
     void moveTo(float x, float y) {
@@ -277,6 +292,13 @@ public final class MicrophoneRecorderView extends FrameLayout implements View.On
                     .translationY(dropTargetPosition)
                     .alpha(1)
                     .start();
+    }
+
+    void setLockProgress(float progress) {
+      if (lockDropTarget.getAlpha() < 1f) return; // still appearing
+      float scale = 1f + TellomiRecordingGesture.LOCK_GROWTH * progress;
+      lockDropTarget.setScaleX(scale);
+      lockDropTarget.setScaleY(scale);
     }
 
     void hide() {

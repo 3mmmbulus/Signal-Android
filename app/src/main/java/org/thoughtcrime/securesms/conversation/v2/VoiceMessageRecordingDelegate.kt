@@ -16,7 +16,7 @@ import io.reactivex.rxjava3.core.SingleObserver
 import io.reactivex.rxjava3.disposables.CompositeDisposable
 import io.reactivex.rxjava3.disposables.Disposable
 import io.reactivex.rxjava3.schedulers.Schedulers
-import org.signal.core.util.ServiceUtil
+import org.signal.core.ui.motion.TellomiHaptics
 import org.signal.core.util.concurrent.LifecycleDisposable
 import org.signal.core.util.concurrent.addTo
 import org.signal.core.util.logging.Log
@@ -59,15 +59,17 @@ class VoiceMessageRecordingDelegate(
     fragment.requireActivity().requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_LOCKED
   }
 
+  // Tellomi（交互审计 A-12）：触感统一走 TellomiHaptics、跟系统开关（原来直接调 Vibrator 20 / 50 ms）。
+  // 开始录音给 LONG_PRESS；过取消线、锁定、太短的触感在 InputPanel 里按发生的那一刻给；发送和存草稿不给（标准第五节：发送成功不给）。
   fun onRecorderFinished() {
     voiceRecorderWakeLock.release()
-    vibrateAndResetOrientation(20)
+    resetOrientation()
     session?.completeRecording()
   }
 
   fun onRecorderCanceled(byUser: Boolean) {
     voiceRecorderWakeLock.release()
-    vibrateAndResetOrientation(50)
+    resetOrientation()
 
     if (byUser) {
       session?.discardRecording()
@@ -78,26 +80,20 @@ class VoiceMessageRecordingDelegate(
 
   fun onRecordSaveDraft() {
     voiceRecorderWakeLock.release()
-    vibrateAndResetOrientation(50)
+    resetOrientation()
     session?.saveDraft()
   }
 
-  @Suppress("DEPRECATION")
-  private fun vibrateAndResetOrientation(milliseconds: Long) {
+  private fun resetOrientation() {
     val activity = fragment.activity
     if (activity != null) {
-      val vibrator = ServiceUtil.getVibrator(activity)
-      vibrator.vibrate(milliseconds)
-
       activity.window.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
       activity.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED
     }
   }
 
-  @Suppress("DEPRECATION")
   private fun beginRecording() {
-    val vibrator = ServiceUtil.getVibrator(fragment.requireContext())
-    vibrator.vibrate(20)
+    fragment.view?.let { TellomiHaptics.perform(it, TellomiHaptics.Event.LONG_PRESS) }
 
     fragment.requireActivity().window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
     fragment.requireActivity().requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_LOCKED

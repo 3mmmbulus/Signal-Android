@@ -46,6 +46,7 @@ import org.signal.core.util.concurrent.ListenableFuture;
 import org.signal.core.util.concurrent.SettableFuture;
 import org.signal.core.util.logging.Log;
 import org.signal.glide.decryptableuri.DecryptableUri;
+import org.signal.core.ui.motion.TellomiHaptics;
 import org.thoughtcrime.securesms.R;
 import org.thoughtcrime.securesms.animation.AnimationCompleteListener;
 import org.thoughtcrime.securesms.animation.AnimationStartListener;
@@ -694,7 +695,9 @@ public class InputPanel extends ConstraintLayout
       if (elapsedTime > 1000) {
         listener.onRecorderFinished();
       } else {
-        Toast.makeText(getContext(), R.string.InputPanel_tap_and_hold_to_record_a_voice_message_release_to_send, Toast.LENGTH_LONG).show();
+        // Tellomi（交互审计 A-12「按住不到 1 s 只弹 Toast」）：在录音键上方出一行提示，配「错误」触感（标准第五节：录音太短）。
+        TellomiHaptics.INSTANCE.perform(this, TellomiHaptics.Event.REJECT);
+        showRecordTooShortHint();
         listener.onRecorderCanceled(true);
       }
     }
@@ -706,9 +709,17 @@ public class InputPanel extends ConstraintLayout
 
     float position  = absoluteX / recordingContainer.getWidth();
 
+    // Tellomi（交互审计 A-12）：往取消线走了多少，按钮和提示就淡多少；过线取消时给一次越过阈值的触感。
+    float cancelX  = recordingContainer.getWidth() * (ViewUtil.isLtr(this) ? 0.5f : 0.6f);
+    float startX   = absoluteX - offsetX;
+    float progress = TellomiRecordingGesture.cancelProgress(startX, absoluteX, cancelX);
+    slideToCancel.setCancelProgress(progress);
+    microphoneRecorderView.setCancelProgress(progress);
+
     if (ViewUtil.isLtr(this) && position <= 0.5 ||
         ViewUtil.isRtl(this) && position >= 0.6)
     {
+      TellomiHaptics.INSTANCE.perform(this, TellomiHaptics.Event.THRESHOLD_ACTIVATE);
       this.microphoneRecorderView.cancelAction(true);
     }
   }
@@ -722,6 +733,8 @@ public class InputPanel extends ConstraintLayout
 
   @Override
   public void onRecordLocked() {
+    // Tellomi（交互审计 A-12，标准第五节：录音锁定是「需要确认的完成」）。
+    TellomiHaptics.INSTANCE.perform(this, TellomiHaptics.Event.CONFIRM);
     slideToCancel.hide();
     recordLockCancel.setVisibility(View.VISIBLE);
     fadeIn(buttonToggle);
@@ -938,6 +951,17 @@ public class InputPanel extends ConstraintLayout
     void onQuickCameraToggleClicked();
   }
 
+  /** Tellomi（交互审计 A-12）：录音太短的提示，在录音键上方，几秒后自己收起。 */
+  private void showRecordTooShortHint() {
+    View          anchor = quickAudioToggle;
+    TooltipPopup  hint   = TooltipPopup.forTarget(anchor)
+                                       .setText(R.string.InputPanel_tap_and_hold_to_record_a_voice_message_release_to_send)
+                                       .show(TooltipPopup.POSITION_ABOVE);
+    anchor.postDelayed(hint::dismiss, RECORD_TOO_SHORT_HINT_MS);
+  }
+
+  private static final long RECORD_TOO_SHORT_HINT_MS = 2500;
+
   private static class SlideToCancel {
 
     private final View slideToCancelView;
@@ -947,7 +971,13 @@ public class InputPanel extends ConstraintLayout
     }
 
     public void display() {
+      slideToCancelView.setAlpha(1f);
       ViewUtil.fadeIn(this.slideToCancelView, FADE_TIME);
+    }
+
+    /** Tellomi（交互审计 A-12）：往取消线走得越近，提示越淡。 */
+    void setCancelProgress(float progress) {
+      slideToCancelView.setAlpha(TellomiRecordingGesture.lerp(1f, TellomiRecordingGesture.HINT_MIN_ALPHA, progress));
     }
 
     public ListenableFuture<Void> hide() {
