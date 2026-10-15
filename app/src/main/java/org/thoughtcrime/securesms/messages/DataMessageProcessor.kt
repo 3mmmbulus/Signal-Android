@@ -90,6 +90,7 @@ import org.thoughtcrime.securesms.mms.MmsException
 import org.thoughtcrime.securesms.mms.QuoteModel
 import org.thoughtcrime.securesms.notifications.v2.ConversationId
 import org.thoughtcrime.securesms.polls.Poll
+import org.thoughtcrime.securesms.profiles.TellomiProfileRefresh
 import org.thoughtcrime.securesms.recipients.Recipient
 import org.thoughtcrime.securesms.recipients.Recipient.HiddenState
 import org.thoughtcrime.securesms.recipients.RecipientId
@@ -212,6 +213,9 @@ object DataMessageProcessor {
     if (message.profileKey.isNotEmpty()) {
       handleProfileKey(envelope.clientTimestamp!!, message.profileKey!!.toByteArray(), senderRecipient)
     }
+
+    // Tellomi (tellomi/tellomi#1366): a 1:1 message is a cheap hint to see whether the sender changed their avatar or name.
+    TellomiProfileRefresh.onIncomingMessage(senderRecipient, isGroupMessage = groupId != null)
 
     if (groupId == null && senderRecipient.hiddenState == HiddenState.HIDDEN) {
       SignalDatabase.recipients.markHidden(senderRecipient.id, clearProfileKey = false, showMessageRequest = true)

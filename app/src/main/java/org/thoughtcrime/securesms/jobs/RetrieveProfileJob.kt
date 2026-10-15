@@ -34,6 +34,7 @@ import org.thoughtcrime.securesms.keyvalue.SignalStore
 import org.thoughtcrime.securesms.net.SignalNetwork
 import org.thoughtcrime.securesms.notifications.v2.ConversationId.Companion.forConversation
 import org.thoughtcrime.securesms.profiles.ProfileName
+import org.thoughtcrime.securesms.profiles.TellomiProfileRefresh
 import org.thoughtcrime.securesms.recipients.Recipient
 import org.thoughtcrime.securesms.recipients.RecipientCreator
 import org.thoughtcrime.securesms.recipients.RecipientId
@@ -655,7 +656,8 @@ class RetrieveProfileJob private constructor(parameters: Parameters, private val
       }
 
       val timeSinceRefresh = System.currentTimeMillis() - SignalStore.misc.lastProfileRefreshTime
-      if (timeSinceRefresh < TimeUnit.HOURS.toMillis(12)) {
+      // Tellomi (tellomi/tellomi#1366): more often than upstream's 12 hours / 1 day, so avatar and name changes show up sooner.
+      if (timeSinceRefresh < TellomiProfileRefresh.ROUTINE_INTERVAL.inWholeMilliseconds) {
         Log.i(TAG, "Too soon to refresh. Did the last refresh $timeSinceRefresh ms ago.")
         return
       }
@@ -664,7 +666,7 @@ class RetrieveProfileJob private constructor(parameters: Parameters, private val
         val current = System.currentTimeMillis()
         val ids: List<RecipientId> = SignalDatabase.recipients.getRecipientsForRoutineProfileFetch(
           lastInteractionThreshold = current - TimeUnit.DAYS.toMillis(30),
-          lastProfileFetchThreshold = current - TimeUnit.DAYS.toMillis(1),
+          lastProfileFetchThreshold = current - TellomiProfileRefresh.ROUTINE_STALE_AFTER.inWholeMilliseconds,
           limit = 50
         ) + Recipient.self().id
 
