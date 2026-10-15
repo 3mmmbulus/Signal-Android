@@ -1388,6 +1388,7 @@ class ConversationFragment :
     actionModeTopBarView.isVisible = true
     actionModeTopBarView.onCloseClick = this::finishActionMode
     actionModeTopBarView.title = calculateSelectedItemCount()
+    TellomiContextualBars.fadeIn(actionModeTopBarView)
 
     searchMenuItem?.collapseActionView()
     binding.toolbar.isInvisible = true
@@ -1434,6 +1435,7 @@ class ConversationFragment :
     setBottomActionBarVisibility(false)
 
     binding.toolbar.isInvisible = false
+    TellomiContextualBars.fadeIn(binding.toolbar)
     if (reShowScheduleMessagesBar) {
       scheduledMessagesStub.visibility = View.VISIBLE
       reShowScheduleMessagesBar = false
