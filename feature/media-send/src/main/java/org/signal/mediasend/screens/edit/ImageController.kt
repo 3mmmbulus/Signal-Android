@@ -17,6 +17,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshots.SnapshotStateMap
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import org.signal.imageeditor.core.Bounds
 import org.signal.imageeditor.core.Renderer
 import org.signal.imageeditor.core.SelectableRenderer
 import org.signal.imageeditor.core.TappableRenderer
@@ -25,6 +26,7 @@ import org.signal.imageeditor.core.model.EditorModel
 import org.signal.imageeditor.core.model.ImageAdjustments
 import org.signal.imageeditor.core.renderers.BezierDrawingRenderer
 import org.signal.imageeditor.core.renderers.MultiLineTextRenderer
+import org.signal.imageeditor.core.renderers.ShapeRenderer
 import org.signal.mediasend.screens.edit.image.AVAILABLE_TOOLS
 import org.signal.mediasend.screens.edit.image.BrushTool
 import org.signal.mediasend.screens.edit.image.BrushWidthsState
@@ -51,6 +53,9 @@ internal class ImageController(
   companion object {
     /** Size of a new sticker, relative to the visible area of the image. */
     private const val STICKER_SCALE = 0.4f
+
+    /** Tellomi（tellomi/tellomi#1522 E-3）：新形状的宽，看得见的这块图的一半（Telegram iOS 也是一半，安卓是短边的 0.4）。 */
+    internal const val SHAPE_SCALE = 0.5f
   }
 
   val isUserInEdit: Boolean by derivedStateOf { mode.isEditing }
@@ -670,10 +675,60 @@ internal class ImageController(
     imageEditorState.drawColor = brushTool?.applyAlpha(color) ?: color
   }
 
+  /** 色条动了：笔换颜色，选中的形状也跟着变（Tellomi E-3，照两端 Telegram）。 */
+  fun onDrawColorChanged(color: Int) {
+    setDrawColor(color)
+    recolorSelectedShape(color)
+  }
+
   fun setBrushWidthFraction(fraction: Float) {
     val tool = brushTool ?: return
     brushWidths.set(tool, fraction)
     imageEditorState.drawThickness = tool.thicknessAt(fraction)
+    resizeSelectedShapeLine()
+  }
+
+  /**
+   * Tellomi（tellomi/tellomi#1522 E-3，照 Telegram 安卓画笔一排最后的「+」、iOS 的形状菜单）：新形状填充还是描边，默认描边；
+   * 只管之后加的形状，这次编辑里记着（照 Telegram 安卓的全局开关，不存盘，D9）。
+   */
+  var fillsShapes: Boolean by mutableStateOf(false)
+
+  /**
+   * Tellomi（tellomi/tellomi#1522 E-3）：在看得见的这块图中间加一个形状，摆正，颜色取色条、线宽取笔的粗细；加出来就是选中的，
+   * 和刚放的贴纸一样接手指（拖、捏、转、拖到垃圾桶），点别处放下、接着画。
+   */
+  fun insertShape(kind: ShapeRenderer.Kind) {
+    val renderer = ShapeRenderer(kind, drawColorBarState.color, fillsShapes, shapeThickness(SHAPE_SCALE))
+    val element = EditorElement(renderer, EditorModel.Z_STICKERS)
+    editorModel.addElementCentered(element, SHAPE_SCALE)
+    drawSessionDirty = true
+    selectElement(element)
+  }
+
+  private val selectedShape: ShapeRenderer?
+    get() = selectedElement?.renderer as? ShapeRenderer
+
+  /** 和笔一样粗：笔的粗细是整张宽的比例（[BrushTool.MARKER]），形状自己缩放了 [scale] 倍，所以除掉。 */
+  private fun shapeThickness(scale: Float): Float {
+    val fraction = if (brushTool != null) brushWidthFraction else brushWidths[BrushTool.MARKER]
+    return BrushTool.MARKER.thicknessAt(fraction) * (Bounds.RIGHT - Bounds.LEFT) / scale.coerceAtLeast(0.01f)
+  }
+
+  private fun recolorSelectedShape(color: Int) {
+    val shape = selectedShape ?: return
+    shape.color = color or 0xFF000000.toInt()
+    drawSessionDirty = true
+    imageEditorState.invalidate()
+  }
+
+  private fun resizeSelectedShapeLine() {
+    val element = selectedElement ?: return
+    val shape = selectedShape ?: return
+    val scale = editorModel.findRelativeMatrix(element, editorModel.root)?.mapRadius(1f) ?: SHAPE_SCALE
+    shape.thickness = shapeThickness(scale)
+    drawSessionDirty = true
+    imageEditorState.invalidate()
   }
 
   private fun syncDrawingState() {
@@ -799,7 +854,7 @@ internal class ImageController(
       setTextColor(opaque)
     } else {
       drawColorBarState.customColor = opaque
-      setDrawColor(opaque)
+      onDrawColorChanged(opaque)
     }
     imageEditorState.invalidate()
   }

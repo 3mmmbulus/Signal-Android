@@ -173,6 +173,15 @@
   <string name="DrawModeColorBar__arrow">Arrow</string>
   <string name="DrawModeColorBar__neon">Neon</string>
   <string name="DrawModeColorBar__eraser">Eraser</string>
+  <!-- Tellomi (tellomi/tellomi#1522 E-3): the brush menu's last item; it opens the shapes (circle, rectangle, star, bubble, arrow) and the fill switch. -->
+  <string name="DrawModeColorBar__shapes">Shapes</string>
+  <string name="DrawModeColorBar__shape_circle">Circle</string>
+  <string name="DrawModeColorBar__shape_rectangle">Rectangle</string>
+  <string name="DrawModeColorBar__shape_star">Star</string>
+  <string name="DrawModeColorBar__shape_bubble">Bubble</string>
+  <string name="DrawModeColorBar__shape_arrow">Arrow</string>
+  <!-- Tellomi (tellomi/tellomi#1522 E-3): switch in the shapes menu; new shapes come out filled instead of outlined. -->
+  <string name="DrawModeColorBar__shape_fill">Fill</string>
 
   <!-- Content description for the crop toggle when the crop area is currently constrained to a fixed aspect ratio. Tapping it removes the constraint. -->
   <string name="ImageEditorToolbar__aspect_ratio_locked">Aspect ratio locked</string>

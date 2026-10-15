@@ -8,12 +8,16 @@ package org.signal.mediasend.screens.edit.image
 import androidx.compose.foundation.layout.Arrangement.spacedBy
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -28,6 +32,7 @@ import org.signal.core.ui.compose.Previews
 import org.signal.core.ui.compose.SignalIcons
 import org.signal.core.ui.compose.theme.SignalTheme
 import org.signal.imageeditor.core.model.EditorModel
+import org.signal.imageeditor.core.renderers.ShapeRenderer
 import org.signal.mediasend.R
 import org.signal.mediasend.screens.edit.ImageController
 import org.signal.mediasend.test.TestTags
@@ -44,7 +49,7 @@ internal fun DrawModeColorBar(
   ) {
     HSVColorBar(
       state = imageEditorController.drawColorBarState,
-      onColorChanged = imageEditorController::setDrawColor,
+      onColorChanged = imageEditorController::onDrawColorChanged,
       orientation = ColorBarOrientation.HORIZONTAL,
       modifier = Modifier.weight(1f, fill = false)
     )
@@ -63,10 +68,15 @@ internal fun DrawModeColorBar(
 private fun BrushMenuButton(imageEditorController: ImageController) {
   val menuController = remember { DropdownMenus.MenuController() }
   val current = imageEditorController.currentBrush
+  // Tellomi（E-3）：菜单最后一项「形状」把菜单换成形状的那一页。
+  var showsShapes by remember { mutableStateOf(false) }
 
   Box {
     IconButtons.IconButton(
-      onClick = menuController::show,
+      onClick = {
+        showsShapes = false
+        menuController.show()
+      },
       colors = IconButtons.iconButtonColors(
         containerColor = SignalTheme.colors.colorSurface5
       ),
@@ -80,36 +90,155 @@ private fun BrushMenuButton(imageEditorController: ImageController) {
     }
 
     DropdownMenus.Menu(controller = menuController, offsetX = 0.dp) {
-      DrawBrush.entries.forEach { brush ->
-        DropdownMenus.Item(
-          modifier = Modifier.testTag(TestTags.imageEditorBrush(brush)),
-          text = {
-            Row(
-              horizontalArrangement = spacedBy(16.dp),
-              verticalAlignment = Alignment.CenterVertically
-            ) {
-              Icon(
-                imageVector = brush.icon(),
-                contentDescription = null,
-                tint = MaterialTheme.colorScheme.onSurface
-              )
-              Text(text = stringResource(brush.label()))
-              if (brush == current) {
-                Icon(
-                  imageVector = SignalIcons.Check.imageVector,
-                  contentDescription = null,
-                  tint = MaterialTheme.colorScheme.onSurface
-                )
-              }
-            }
-          },
-          onClick = {
-            menuController.hide()
-            imageEditorController.selectBrush(brush)
-          }
-        )
+      if (showsShapes) {
+        ShapeMenuItems(imageEditorController, onShapeAdded = menuController::hide)
+      } else {
+        BrushMenuItems(imageEditorController, current, onBrushSelected = menuController::hide, onShowShapes = { showsShapes = true })
       }
     }
+  }
+}
+
+@Composable
+private fun BrushMenuItems(
+  imageEditorController: ImageController,
+  current: DrawBrush,
+  onBrushSelected: () -> Unit,
+  onShowShapes: () -> Unit
+) {
+  DrawBrush.entries.forEach { brush ->
+    DropdownMenus.Item(
+      modifier = Modifier.testTag(TestTags.imageEditorBrush(brush)),
+      text = {
+        Row(
+          horizontalArrangement = spacedBy(16.dp),
+          verticalAlignment = Alignment.CenterVertically
+        ) {
+          Icon(
+            imageVector = brush.icon(),
+            contentDescription = null,
+            tint = MaterialTheme.colorScheme.onSurface
+          )
+          Text(text = stringResource(brush.label()))
+          if (brush == current) {
+            Icon(
+              imageVector = SignalIcons.Check.imageVector,
+              contentDescription = null,
+              tint = MaterialTheme.colorScheme.onSurface
+            )
+          }
+        }
+      },
+      onClick = {
+        onBrushSelected()
+        imageEditorController.selectBrush(brush)
+      }
+    )
+  }
+
+  HorizontalDivider()
+  DropdownMenus.Item(
+    modifier = Modifier.testTag(TestTags.IMAGE_EDITOR_SHAPES),
+    text = {
+      Row(
+        horizontalArrangement = spacedBy(16.dp),
+        verticalAlignment = Alignment.CenterVertically
+      ) {
+        Icon(
+          imageVector = ImageVector.vectorResource(R.drawable.tellomi_shapes_24),
+          contentDescription = null,
+          tint = MaterialTheme.colorScheme.onSurface
+        )
+        Text(text = stringResource(R.string.DrawModeColorBar__shapes))
+      }
+    },
+    onClick = onShowShapes
+  )
+}
+
+/** Tellomi（tellomi/tellomi#1522 E-3）：照 Telegram 安卓的形状菜单次序——圆、矩形、星形、气泡、箭头。 */
+internal val SHAPE_MENU_ORDER = listOf(
+  ShapeRenderer.Kind.CIRCLE,
+  ShapeRenderer.Kind.RECTANGLE,
+  ShapeRenderer.Kind.STAR,
+  ShapeRenderer.Kind.BUBBLE,
+  ShapeRenderer.Kind.ARROW
+)
+
+/**
+ * Tellomi（tellomi/tellomi#1522 E-3）：形状那一页——五种形状，点了就加到图上；最后一个「填充」开关，开着时图标是实心的
+ * （Telegram 安卓是长按菜单项切换、图标跟着变；这里做成一个看得见的开关）。
+ */
+@Composable
+private fun ShapeMenuItems(imageEditorController: ImageController, onShapeAdded: () -> Unit) {
+  val filled = imageEditorController.fillsShapes
+  SHAPE_MENU_ORDER.forEach { kind ->
+    DropdownMenus.Item(
+      modifier = Modifier.testTag(TestTags.imageEditorShape(kind)),
+      text = {
+        Row(
+          horizontalArrangement = spacedBy(16.dp),
+          verticalAlignment = Alignment.CenterVertically
+        ) {
+          Icon(
+            imageVector = ImageVector.vectorResource(kind.icon(filled)),
+            contentDescription = null,
+            tint = MaterialTheme.colorScheme.onSurface
+          )
+          Text(text = stringResource(kind.label()))
+        }
+      },
+      onClick = {
+        onShapeAdded()
+        imageEditorController.insertShape(kind)
+      }
+    )
+  }
+
+  HorizontalDivider()
+  DropdownMenus.Item(
+    modifier = Modifier.testTag(TestTags.IMAGE_EDITOR_SHAPE_FILL),
+    text = {
+      Row(
+        horizontalArrangement = spacedBy(16.dp),
+        verticalAlignment = Alignment.CenterVertically
+      ) {
+        Icon(
+          imageVector = ImageVector.vectorResource(R.drawable.tellomi_shape_circle_fill_24),
+          contentDescription = null,
+          tint = MaterialTheme.colorScheme.onSurface
+        )
+        Text(text = stringResource(R.string.DrawModeColorBar__shape_fill))
+        if (filled) {
+          Icon(
+            imageVector = SignalIcons.Check.imageVector,
+            contentDescription = null,
+            tint = MaterialTheme.colorScheme.onSurface
+          )
+        }
+      }
+    },
+    onClick = { imageEditorController.fillsShapes = !filled }
+  )
+}
+
+private fun ShapeRenderer.Kind.icon(filled: Boolean): Int {
+  return when (this) {
+    ShapeRenderer.Kind.CIRCLE -> if (filled) R.drawable.tellomi_shape_circle_fill_24 else R.drawable.tellomi_shape_circle_24
+    ShapeRenderer.Kind.RECTANGLE -> if (filled) R.drawable.tellomi_shape_rectangle_fill_24 else R.drawable.tellomi_shape_rectangle_24
+    ShapeRenderer.Kind.STAR -> if (filled) R.drawable.tellomi_shape_star_fill_24 else R.drawable.tellomi_shape_star_24
+    ShapeRenderer.Kind.BUBBLE -> if (filled) R.drawable.tellomi_shape_bubble_fill_24 else R.drawable.tellomi_shape_bubble_24
+    ShapeRenderer.Kind.ARROW -> R.drawable.tellomi_shape_arrow_24
+  }
+}
+
+private fun ShapeRenderer.Kind.label(): Int {
+  return when (this) {
+    ShapeRenderer.Kind.CIRCLE -> R.string.DrawModeColorBar__shape_circle
+    ShapeRenderer.Kind.RECTANGLE -> R.string.DrawModeColorBar__shape_rectangle
+    ShapeRenderer.Kind.STAR -> R.string.DrawModeColorBar__shape_star
+    ShapeRenderer.Kind.BUBBLE -> R.string.DrawModeColorBar__shape_bubble
+    ShapeRenderer.Kind.ARROW -> R.string.DrawModeColorBar__shape_arrow
   }
 }
 

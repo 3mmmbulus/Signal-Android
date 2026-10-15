@@ -5,6 +5,7 @@
 
 package org.signal.mediasend.test
 
+import org.signal.imageeditor.core.renderers.ShapeRenderer
 import org.signal.mediasend.screens.edit.image.DrawBrush
 
 /**
@@ -62,6 +63,10 @@ object TestTags {
   const val IMAGE_EDITOR_BRUSH_MENU = "image_editor_brush_menu"
 
   fun imageEditorBrush(brush: DrawBrush): String = "image_editor_brush_${brush.name.lowercase()}"
+  const val IMAGE_EDITOR_SHAPES = "image_editor_shapes"
+  const val IMAGE_EDITOR_SHAPE_FILL = "image_editor_shape_fill"
+
+  fun imageEditorShape(kind: ShapeRenderer.Kind): String = "image_editor_shape_${kind.name.lowercase()}"
   const val MEDIA_PICKER_NO_ACCESS_CAMERA = "media_picker_no_access_camera"
   const val MEDIA_PICKER_SEND_BAR = "media_picker_send_bar"
 

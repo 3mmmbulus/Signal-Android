@@ -120,6 +120,9 @@ class MediaEditViewModelTest {
       message = "hello",
       sentMediaQuality = SentMediaQuality.HIGH,
       videoTranscodingTiers = tiers,
+      // Tellomi (V-7): set here rather than left to MediaSendDependencies, which other test classes in this JVM may
+      // have pointed at a repository with a real limit.
+      tellomiVideoMaxUploadBytes = VIDEO_MAX_UPLOAD_BYTES,
       isStory = false,
       isReply = true,
       isSending = true,
@@ -143,6 +146,7 @@ class MediaEditViewModelTest {
         message = "hello",
         sentMediaQuality = SentMediaQuality.HIGH,
         videoTranscodingTiers = tiers,
+        videoMaxUploadBytes = VIDEO_MAX_UPLOAD_BYTES,
         isStory = false,
         isReply = true,
         isSending = true,
@@ -341,6 +345,8 @@ class MediaEditViewModelTest {
   }
 
   private companion object {
+    private const val VIDEO_MAX_UPLOAD_BYTES = 52_428_800L
+
     private val MEDIA = Media(
       uri = "content://media/1".toUri(),
       contentType = "image/jpeg",
