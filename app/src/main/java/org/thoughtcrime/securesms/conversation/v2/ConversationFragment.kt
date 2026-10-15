@@ -59,6 +59,7 @@ import androidx.activity.result.ActivityResultLauncher
 import androidx.annotation.MainThread
 import androidx.annotation.StringRes
 import androidx.appcompat.content.res.AppCompatResources
+import androidx.appcompat.widget.ActionMenuView
 import androidx.appcompat.widget.SearchView
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.geometry.Offset
@@ -72,6 +73,7 @@ import androidx.core.content.pm.ShortcutManagerCompat
 import androidx.core.net.toUri
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
+import androidx.core.view.children
 import androidx.core.view.doOnPreDraw
 import androidx.core.view.isInvisible
 import androidx.core.view.isVisible
@@ -194,6 +196,7 @@ import org.thoughtcrime.securesms.components.location.SignalPlace
 import org.thoughtcrime.securesms.components.mention.MentionAnnotation
 import org.thoughtcrime.securesms.components.menu.ActionItem
 import org.thoughtcrime.securesms.components.menu.SignalBottomActionBar
+import org.thoughtcrime.securesms.components.menu.SignalContextMenu
 import org.thoughtcrime.securesms.components.settings.app.AppSettingsActivity
 import org.thoughtcrime.securesms.components.settings.app.subscription.donate.CheckoutFlowActivity
 import org.thoughtcrime.securesms.components.settings.app.subscription.donate.DonateToSignalFragment
@@ -4821,7 +4824,21 @@ class ConversationFragment :
     }
 
     override fun handleMuteNotifications() {
-      MuteDialog.show(requireContext(), childFragmentManager, viewLifecycleOwner, viewModel::muteConversation)
+      // Tellomi（交互审计 A-39）：时长菜单锚在右上角「···」上，在刚收起的那个菜单原处（按钮下方、离右边 16 dp）展开。等它收完再弹。
+      val toolbar = binding.toolbar
+      toolbar.post {
+        if (view == null) {
+          return@post
+        }
+
+        val overflow = toolbar.children.filterIsInstance<ActionMenuView>().firstOrNull()?.takeIf { it.childCount > 0 }?.let { it.getChildAt(it.childCount - 1) }
+        val anchor = overflow ?: toolbar
+        val menu = SignalContextMenu.Builder(anchor, binding.root)
+          .preferredHorizontalPosition(SignalContextMenu.HorizontalPosition.END)
+          .offsetX(ViewUtil.dpToPx(16))
+
+        MuteDialog.showAnchored(menu, childFragmentManager, viewLifecycleOwner, viewModel::muteConversation)
+      }
     }
 
     override fun handleUnmuteNotifications() {

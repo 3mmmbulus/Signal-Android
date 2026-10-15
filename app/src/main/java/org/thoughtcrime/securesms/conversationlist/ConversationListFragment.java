@@ -1320,6 +1320,32 @@ public class ConversationListFragment extends MainFragment implements Conversati
     MuteDialog.show(requireContext(), getChildFragmentManager(), getViewLifecycleOwner(), until -> updateMute(conversations, until));
   }
 
+  /** Tellomi（交互审计 A-39）：静音时长锚在长按的那一行上，和长按菜单同一个位置；行已经不在了就退回对话框。 */
+  private void showMuteMenu(@NonNull Collection<Conversation> conversations, @NonNull View view) {
+    if (list == null || activeContextMenu != null || !view.isAttachedToWindow() || getView() == null) {
+      if (getView() != null) {
+        handleMute(conversations);
+      }
+      return;
+    }
+
+    view.setSelected(true);
+
+    SignalContextMenu.Builder menu = new SignalContextMenu.Builder(view, list)
+        .offsetX(ViewUtil.dpToPx(12))
+        .offsetY(ViewUtil.dpToPx(12))
+        .onDismiss(() -> {
+          activeContextMenu = null;
+          view.setSelected(false);
+          if (list != null) {
+            list.suppressLayout(false);
+          }
+        });
+
+    activeContextMenu = MuteDialog.showAnchored(menu, getChildFragmentManager(), getViewLifecycleOwner(), until -> updateMute(conversations, until));
+    list.suppressLayout(true);
+  }
+
   private void handleUnmute(@NonNull Collection<Conversation> conversations) {
     updateMute(conversations, 0);
   }
@@ -1446,7 +1472,8 @@ public class ConversationListFragment extends MainFragment implements Conversati
       if (conversation.getThreadRecord().getRecipient().live().get().isMuted()) {
         items.add(new ActionItem(R.drawable.symbol_bell_24, getResources().getString(R.string.ConversationListFragment_unmute), () -> handleUnmute(Collections.singleton(conversation))));
       } else {
-        items.add(new ActionItem(R.drawable.symbol_bell_slash_24, getResources().getString(R.string.ConversationListFragment_mute), () -> handleMute(Collections.singleton(conversation))));
+        // Tellomi（交互审计 A-39）：时长菜单在这一行上展开。等这个菜单收完再弹（它的收起回调会清掉 activeContextMenu、取消选中）。
+        items.add(new ActionItem(R.drawable.symbol_bell_slash_24, getResources().getString(R.string.ConversationListFragment_mute), () -> view.post(() -> showMuteMenu(Collections.singleton(conversation), view))));
       }
 
       if (SignalStore.labs().getIncognito()) {
