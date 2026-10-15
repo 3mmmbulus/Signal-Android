@@ -5,6 +5,7 @@
 
 package org.signal.core.ui.compose.split
 
+import androidx.compose.animation.AnimatedContent
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.Orientation
 import androidx.compose.foundation.gestures.draggable
@@ -44,6 +45,7 @@ import androidx.navigation3.scene.Scene
 import androidx.navigation3.scene.SceneStrategy
 import androidx.navigation3.scene.SceneStrategyScope
 import org.signal.core.ui.R
+import org.signal.core.ui.motion.TellomiFadeThrough
 import kotlin.math.max
 
 /**
@@ -77,7 +79,7 @@ internal class ListDetailScene(
               .clip(layout.shape)
               .minContentWidth(layout.minPaneContentWidth)
           ) {
-            ListPaneContent { listEntry.Content() }
+            ListPaneContent { ListEntryContent(listEntry) }
           }
 
           Spacer(modifier = Modifier.width(layout.partitionWidth))
@@ -212,6 +214,22 @@ private fun ListPaneContent(content: @Composable () -> Unit) {
 }
 
 /**
+ * Tellomi（交互审计 A-23）：列表那一格换了内容（底栏切 Tab、进出归档）时淡出旧的、淡入新的（[TellomiFadeThrough]）。
+ * 场景 key 照旧固定，外面的工具栏、底栏、悬浮按钮不动，只换中间这块；每个 Tab 有自己的栈和状态，淡出的那块照常画到动画结束。
+ */
+@Composable
+private fun ListEntryContent(entry: NavEntry<NavKey>) {
+  AnimatedContent(
+    targetState = entry,
+    contentKey = { it.contentKey },
+    transitionSpec = { TellomiFadeThrough.transform() },
+    label = "ListEntryContent"
+  ) { shown ->
+    shown.Content()
+  }
+}
+
+/**
  * Single-pane counterpart to [ListDetailScene]. We roll our own because otherwise animations get weird when swapping
  * between lists.
  */
@@ -227,7 +245,7 @@ internal class SinglePaneScene(
 
   override val content: @Composable () -> Unit = {
     if (isList) {
-      ListPaneContent { entry.Content() }
+      ListPaneContent { ListEntryContent(entry) }
     } else {
       entry.Content()
     }
