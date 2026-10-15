@@ -11,8 +11,10 @@ import androidx.recyclerview.widget.RecyclerView
 import assertk.assertThat
 import assertk.assertions.isCloseTo
 import assertk.assertions.isEqualTo
+import assertk.assertions.isFalse
 import assertk.assertions.isGreaterThan
 import assertk.assertions.isLessThan
+import assertk.assertions.isTrue
 import io.mockk.every
 import io.mockk.mockk
 import org.junit.Test
@@ -81,5 +83,54 @@ class TellomiSwipeToReplyTest {
   fun `reply direction sign is negative left-to-right and positive right-to-left`() {
     assertThat(TellomiSwipeToReply.replySign(isRtl = false)).isEqualTo(-1f)
     assertThat(TellomiSwipeToReply.replySign(isRtl = true)).isEqualTo(1f)
+  }
+
+  // 交互审计 A-10：松手用投射落点判定、弹簧从手指速度起步、不在系统返回手势的边缘区起手。
+
+  @Test
+  fun `releasing past the trigger without moving still replies`() {
+    assertThat(TellomiSwipeToReply.shouldReply(fingerOffset = 50f, fingerVelocity = 0f, trigger = 45f)).isTrue()
+    assertThat(TellomiSwipeToReply.shouldReply(fingerOffset = 40f, fingerVelocity = 0f, trigger = 45f)).isFalse()
+  }
+
+  @Test
+  fun `a quick flick that has not reached the trigger yet replies`() {
+    // 30 + 800 × 0.1 = 110 > 45
+    assertThat(TellomiSwipeToReply.shouldReply(fingerOffset = 30f, fingerVelocity = 800f, trigger = 45f)).isTrue()
+    // 12 + 200 × 0.1 = 32 < 45：轻微晃动不算
+    assertThat(TellomiSwipeToReply.shouldReply(fingerOffset = 12f, fingerVelocity = 200f, trigger = 45f)).isFalse()
+  }
+
+  @Test
+  fun `flicking back from past the trigger cancels the reply`() {
+    // 70 − 400 × 0.1 = 30 < 60
+    assertThat(TellomiSwipeToReply.shouldReply(fingerOffset = 70f, fingerVelocity = -400f, trigger = 60f)).isFalse()
+  }
+
+  @Test
+  fun `the bubble moves with the finger speed up to the trigger and slower in the rubber band`() {
+    assertThat(TellomiSwipeToReply.bubbleVelocity(30f, 500f, 45f, 100f, 180f)).isEqualTo(500f)
+    // 过阈值 100：斜率 0.4 / (100 × 0.4 / 100 + 1)² = 0.4 / 1.96
+    assertThat(TellomiSwipeToReply.bubbleVelocity(145f, 500f, 45f, 100f, 180f)).isCloseTo(500f * 0.4f / 1.96f, 0.01f)
+    assertThat(TellomiSwipeToReply.bubbleVelocity(145f, -500f, 45f, 100f, 180f)).isLessThan(0f)
+  }
+
+  @Test
+  fun `the bubble does not move when it is held at the cap or has not left yet`() {
+    assertThat(TellomiSwipeToReply.bubbleVelocity(10_000f, 500f, 45f, 100f, 50f)).isEqualTo(0f)
+    assertThat(TellomiSwipeToReply.bubbleVelocity(-5f, 500f, 45f, 100f, 180f)).isEqualTo(0f)
+  }
+
+  @Test
+  fun `a press inside the system back gesture edges does not start a reply swipe`() {
+    assertThat(TellomiSwipeToReply.startsInGestureEdge(xInWindow = 10f, windowWidth = 1080, leftEdge = 63, rightEdge = 63)).isTrue()
+    assertThat(TellomiSwipeToReply.startsInGestureEdge(xInWindow = 1030f, windowWidth = 1080, leftEdge = 63, rightEdge = 63)).isTrue()
+    assertThat(TellomiSwipeToReply.startsInGestureEdge(xInWindow = 540f, windowWidth = 1080, leftEdge = 63, rightEdge = 63)).isFalse()
+  }
+
+  @Test
+  fun `with button navigation there are no gesture edges`() {
+    assertThat(TellomiSwipeToReply.startsInGestureEdge(xInWindow = 0f, windowWidth = 1080, leftEdge = 0, rightEdge = 0)).isFalse()
+    assertThat(TellomiSwipeToReply.startsInGestureEdge(xInWindow = 1079f, windowWidth = 1080, leftEdge = 0, rightEdge = 0)).isFalse()
   }
 }

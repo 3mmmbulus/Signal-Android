@@ -35,13 +35,41 @@ final class ConversationSwipeAnimationHelper {
 
   public static void update(@NonNull InteractiveConversationElement interactiveConversationElement, float dx, float sign) {
     float triggerDx    = ConversationItemSwipeCallback.triggerDx(interactiveConversationElement);
-    float progress     = dx / triggerDx;
     float bubbleOffset = TellomiSwipeToReply.bubbleOffset(dx, triggerDx, RUBBER_BAND_RANGE, MAX_DX);
 
+    apply(interactiveConversationElement, dx / triggerDx, bubbleOffset, dx < triggerDx, sign);
+  }
+
+  /**
+   * Tellomi（交互审计 A-10）：松手回位的弹簧走在气泡位移上，按气泡位移画。阈值以内气泡和手指 1:1，阈值以外图标等都已到头，
+   * 所以和 {@link #update} 画出来一样；弹簧越过原位时（负值）气泡往反方向多走一点，图标保持隐藏。
+   */
+  static void updateReturning(@NonNull InteractiveConversationElement interactiveConversationElement, float bubbleOffset, float sign) {
+    float triggerDx = ConversationItemSwipeCallback.triggerDx(interactiveConversationElement);
+
+    apply(interactiveConversationElement, bubbleOffset / triggerDx, bubbleOffset, bubbleOffset < triggerDx, sign);
+  }
+
+  /** Tellomi（交互审计 A-10）：手指在 {@code dx} 处时气泡的位移。 */
+  static float bubbleOffset(@NonNull InteractiveConversationElement interactiveConversationElement, float dx) {
+    return TellomiSwipeToReply.bubbleOffset(dx, ConversationItemSwipeCallback.triggerDx(interactiveConversationElement), RUBBER_BAND_RANGE, MAX_DX);
+  }
+
+  /** Tellomi（交互审计 A-10）：手指在 {@code dx} 处以 {@code fingerVelocity} 移动时气泡的速度。 */
+  static float bubbleVelocity(@NonNull InteractiveConversationElement interactiveConversationElement, float dx, float fingerVelocity) {
+    return TellomiSwipeToReply.bubbleVelocity(dx, fingerVelocity, ConversationItemSwipeCallback.triggerDx(interactiveConversationElement), RUBBER_BAND_RANGE, MAX_DX);
+  }
+
+  private static void apply(@NonNull InteractiveConversationElement interactiveConversationElement,
+                            float progress,
+                            float bubbleOffset,
+                            boolean beforeTrigger,
+                            float sign)
+  {
     updateBodyBubbleTransition(interactiveConversationElement.getBubbleViews(), bubbleOffset, sign);
     updateReactionsTransition(interactiveConversationElement.getReactionsView(), bubbleOffset, sign);
     updateQuotedIndicatorTransition(interactiveConversationElement.getQuotedIndicatorView(), bubbleOffset, progress, sign);
-    updateReplyIconTransition(interactiveConversationElement.getReplyView(), dx < triggerDx, progress, sign);
+    updateReplyIconTransition(interactiveConversationElement.getReplyView(), beforeTrigger, progress, sign);
     updateContactPhotoHolderTransition(interactiveConversationElement.getContactPhotoHolderView(), progress, sign);
     updateContactPhotoHolderTransition(interactiveConversationElement.getBadgeImageView(), progress, sign);
   }
