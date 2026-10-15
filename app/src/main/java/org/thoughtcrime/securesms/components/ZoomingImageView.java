@@ -163,6 +163,17 @@ public class ZoomingImageView extends FrameLayout {
     subsamplingImageView.setImage(ImageSource.uri(uri));
   }
 
+  /**
+   * Tellomi (interaction audit A-20): whether the image is at its resting zoom, so a vertical drag may start drag-to-dismiss
+   * instead of panning a zoomed image. A small tolerance absorbs rounding after a zoom-out animation.
+   */
+  public boolean isAtMinimumZoom() {
+    if (subsamplingImageView.getVisibility() == View.VISIBLE) {
+      return !subsamplingImageView.isReady() || subsamplingImageView.getScale() <= subsamplingImageView.getMinScale() * 1.01f;
+    }
+    return gifView.getScale() <= gifView.getMinimumScale() * 1.01f;
+  }
+
   public void cleanup() {
     gifView.setImageDrawable(null);
     subsamplingImageView.recycle();

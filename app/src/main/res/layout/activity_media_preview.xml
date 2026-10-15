@@ -1,5 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
-<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<!-- Tellomi (interaction audit A-20): the outer layer handles drag-to-dismiss -->
+<org.thoughtcrime.securesms.mediapreview.TellomiDragDismissLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/media_preview_drag_dismiss_layout"
     android:layout_width="match_parent"
     android:layout_height="match_parent">
 
@@ -18,4 +20,4 @@
         android:importantForAccessibility="no"
         android:transitionName="thumb" />
 
-</FrameLayout>
+</org.thoughtcrime.securesms.mediapreview.TellomiDragDismissLayout>

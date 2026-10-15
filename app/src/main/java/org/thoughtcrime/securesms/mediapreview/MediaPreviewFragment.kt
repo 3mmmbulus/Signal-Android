@@ -671,6 +671,59 @@ class MediaPreviewFragment :
     }
   }
 
+  // Tellomi（交互审计 A-20 Android 半边）：拖拽关闭。手势在 MediaPreviewActivity 外层的 TellomiDragDismissLayout，这里只管
+  // 「能不能起手」和拖动时的样子：媒体跟手位移、缩小；顶栏 / 说明 / 中间按钮跟着变淡；背景变淡露出后面的聊天。
+  private var dragChromeAlphas: Map<View, Float>? = null
+
+  private val dragChromeViews: List<View>
+    get() = listOf(binding.toolbarLayout, binding.mediaPreviewDetailsContainer, binding.mediaPreviewCenterControls, binding.mediaPreviewScrubPreview)
+
+  /** 按下点（屏幕坐标）能不能开始拖拽关闭：开场转场没播完、图放大了、按在顶栏或说明 / 进度条上都不行。 */
+  fun canStartDragDismiss(rawX: Float, rawY: Float): Boolean {
+    if (!isAdded || view == null || viewModel.isInSharedAnimation) {
+      return false
+    }
+    val page = getMediaPreviewFragmentFromChildFragmentManager(binding.mediaPager.currentItem) ?: return false
+    if (!page.canStartDragDismiss()) {
+      return false
+    }
+    return listOf(binding.toolbarLayout, binding.mediaPreviewDetailsContainer).none { it.isShown && it.alpha > 0f && it.containsRawPoint(rawX, rawY) }
+  }
+
+  fun onDragDismissStarted() {
+    // 显隐按钮的动画（轻点一下、自动收起）还在跑的话会一直改透明度，先停在当前值，拖动期间由这里接管
+    dragChromeViews.forEach { it.animate().cancel() }
+    // 弹回途中又抓住时已经存过（那时的透明度是淡了一半的），不再覆盖
+    if (dragChromeAlphas == null) {
+      dragChromeAlphas = dragChromeViews.associateWith { it.alpha }
+    }
+    binding.mediaPreviewScrubPreview.dismiss()
+    // 资源里的 ColorDrawable 共用一份状态，改透明度前先 mutate，免得别处同色的背景跟着变
+    binding.root.background?.mutate()
+  }
+
+  /** [progress] 0…1：0 = 原样，1 = 拖满（背景全透明、按钮全淡）。 */
+  fun applyDragDismiss(offset: Float, scale: Float, progress: Float) {
+    binding.mediaPager.translationY = offset
+    binding.mediaPager.scaleX = scale
+    binding.mediaPager.scaleY = scale
+    // 按钮比背景淡得快：拖一半就看不见了
+    val chromeFactor = (1f - progress * 2f).coerceIn(0f, 1f)
+    dragChromeAlphas?.forEach { (chromeView, alpha) -> chromeView.alpha = alpha * chromeFactor }
+    binding.root.background?.alpha = ((1f - progress) * 255).toInt()
+  }
+
+  fun onDragDismissEnded() {
+    dragChromeAlphas?.forEach { (chromeView, alpha) -> chromeView.alpha = alpha }
+    dragChromeAlphas = null
+  }
+
+  private fun View.containsRawPoint(rawX: Float, rawY: Float): Boolean {
+    val location = IntArray(2)
+    getLocationOnScreen(location)
+    return rawX >= location[0] && rawX < location[0] + width && rawY >= location[1] && rawY < location[1] + height
+  }
+
   private fun getMediaPreviewFragmentFromChildFragmentManager(currentPosition: Int): MediaPreviewPageFragment? {
     return childFragmentManager.findFragmentByTag(pagerAdapter.getFragmentTag(currentPosition)) as? MediaPreviewPageFragment
   }

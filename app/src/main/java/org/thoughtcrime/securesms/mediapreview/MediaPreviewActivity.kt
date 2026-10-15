@@ -1,24 +1,33 @@
 package org.thoughtcrime.securesms.mediapreview
 
+import android.animation.ValueAnimator
 import android.content.Context
 import android.content.pm.ActivityInfo
+import android.graphics.Color
+import android.graphics.drawable.ColorDrawable
 import android.os.Build
 import android.os.Bundle
 import android.view.MotionEvent
 import android.view.View
 import android.view.ViewGroup.LayoutParams
+import android.view.animation.DecelerateInterpolator
 import android.widget.ImageView
 import androidx.activity.viewModels
 import androidx.annotation.RequiresApi
 import androidx.appcompat.app.AppCompatDelegate
+import androidx.core.animation.doOnEnd
 import androidx.core.transition.addListener
 import androidx.core.view.animation.PathInterpolatorCompat
 import androidx.core.view.updateLayoutParams
+import androidx.dynamicanimation.animation.FloatValueHolder
+import androidx.dynamicanimation.animation.SpringAnimation
+import androidx.dynamicanimation.animation.SpringForce
 import androidx.fragment.app.commit
 import com.google.android.material.shape.ShapeAppearanceModel
 import com.google.android.material.transition.platform.MaterialContainerTransform
 import com.google.android.material.transition.platform.MaterialContainerTransformSharedElementCallback
 import io.reactivex.rxjava3.android.schedulers.AndroidSchedulers
+import org.signal.core.ui.motion.TellomiMotion
 import org.signal.core.util.concurrent.LifecycleDisposable
 import org.signal.core.util.logging.Log
 import org.thoughtcrime.securesms.PassphraseRequiredActivity
@@ -47,8 +56,16 @@ class MediaPreviewActivity : PassphraseRequiredActivity(), VoiceNoteMediaControl
   }
 
   private lateinit var transitionImageView: ImageView
+  private lateinit var dragDismissLayout: TellomiDragDismissLayout
 
   private var isWindowStarted = false
+
+  // Tellomi（交互审计 A-20 Android 半边）：拖拽关闭的状态。
+  private var hasSharedElementTransition = false
+  private var dragOffset = 0f
+  private var dragBaseOffset = 0f
+  private var dragSpring: SpringAnimation? = null
+  private var isDismissingByDrag = false
 
   override fun attachBaseContext(newBase: Context) {
     delegate.localNightMode = AppCompatDelegate.MODE_NIGHT_YES
@@ -56,7 +73,8 @@ class MediaPreviewActivity : PassphraseRequiredActivity(), VoiceNoteMediaControl
   }
 
   override fun onCreate(savedInstanceState: Bundle?, ready: Boolean) {
-    if (MediaPreviewCache.drawable != null && !args.skipSharedElementTransition) {
+    hasSharedElementTransition = MediaPreviewCache.drawable != null && !args.skipSharedElementTransition
+    if (hasSharedElementTransition) {
       val originalCorners = ShapeAppearanceModel.Builder()
         .setTopLeftCornerSize(args.sharedElementArgs.topLeft)
         .setTopRightCornerSize(args.sharedElementArgs.topRight)
@@ -106,6 +124,11 @@ class MediaPreviewActivity : PassphraseRequiredActivity(), VoiceNoteMediaControl
     setContentView(R.layout.activity_media_preview)
 
     transitionImageView = findViewById(R.id.transition_image_view)
+    // Tellomi（A-20）：窗口是半透明的（Theme.Signal.MediaPreview.Translucent），拖拽时背景变淡能看到后面的聊天；
+    // 上面 setTheme 换上的 TextSecure.MediaPreview 带了不透明的 windowBackground，这里换回透明，平时的黑底由内容自己画。
+    window.setBackgroundDrawable(ColorDrawable(Color.TRANSPARENT))
+    dragDismissLayout = findViewById(R.id.media_preview_drag_dismiss_layout)
+    dragDismissLayout.callback = DragDismissCallback()
     val cacheDrawable = MediaPreviewCache.drawable?.let { RecycledBitmapGuardDrawable(it) }
     if (cacheDrawable != null && !args.skipSharedElementTransition) {
       val bounds = cacheDrawable.bounds
@@ -199,6 +222,105 @@ class MediaPreviewActivity : PassphraseRequiredActivity(), VoiceNoteMediaControl
     }
   }
 
+  private fun previewFragment(): MediaPreviewFragment? {
+    return supportFragmentManager.findFragmentByTag(FRAGMENT_TAG) as? MediaPreviewFragment
+  }
+
+  /** Tellomi（A-20）：把拖拽位移画出来——媒体跟手、缩小，按钮和背景变淡；转场用的那张图跟着走，关的时候从这里缩回缩略图。 */
+  private fun applyDragOffset(offset: Float) {
+    dragOffset = offset
+    val density = resources.displayMetrics.density
+    val progress = TellomiDragDismiss.progress(offset, density)
+    val scale = TellomiDragDismiss.scale(progress)
+    previewFragment()?.applyDragDismiss(offset, scale, progress)
+    findViewById<View>(R.id.fragment_container_view).background?.alpha = ((1f - progress) * 255).toInt()
+    transitionImageView.translationY = offset
+    transitionImageView.scaleX = scale
+    transitionImageView.scaleY = scale
+  }
+
+  private fun springBack(offset: Float, velocity: Float) {
+    if (TellomiMotion.tier(this) == TellomiMotion.Tier.MINIMAL) {
+      applyDragOffset(0f)
+      previewFragment()?.onDragDismissEnded()
+      return
+    }
+    dragSpring = SpringAnimation(FloatValueHolder(offset)).apply {
+      spring = SpringForce(0f)
+        .setStiffness(TellomiMotion.Release.stiffness)
+        .setDampingRatio(TellomiMotion.Release.dampingRatio)
+      setStartVelocity(velocity)
+      addUpdateListener { _, value, _ -> applyDragOffset(value) }
+      addEndListener { _, canceled, _, _ ->
+        dragSpring = null
+        if (!canceled) {
+          applyDragOffset(0f)
+          previewFragment()?.onDragDismissEnded()
+        }
+      }
+      start()
+    }
+  }
+
+  /**
+   * 还停在点开的那一张、开场有共享元素、动效满档：走原来的 finishAfterTransition，从拖到的位置缩回聊天里的缩略图；
+   * 否则（翻过页、省电 / 关了动画）顺着甩的方向飞出屏幕，背景淡掉，直接关。
+   */
+  private fun dismissByDrag(offset: Float, velocity: Float) {
+    isDismissingByDrag = true
+    val tier = TellomiMotion.tier(this)
+    if (hasSharedElementTransition && tier == TellomiMotion.Tier.FULL && viewModel.shouldFinishAfterTransition(args.initialMediaUri)) {
+      finishAfterTransition()
+      return
+    }
+    val direction = TellomiDragDismiss.dismissDirection(offset, velocity)
+    val target = direction * dragDismissLayout.height.toFloat()
+    ValueAnimator.ofFloat(offset, target).apply {
+      duration = if (tier == TellomiMotion.Tier.MINIMAL) 0L else FLY_OUT_DURATION_MS
+      interpolator = DecelerateInterpolator()
+      addUpdateListener { applyDragOffset(it.animatedValue as Float) }
+      doOnEnd {
+        finish()
+        @Suppress("DEPRECATION")
+        overridePendingTransition(0, 0)
+      }
+      start()
+    }
+  }
+
+  private inner class DragDismissCallback : TellomiDragDismissLayout.Callback {
+    override fun canStartDragDismiss(x: Float, y: Float): Boolean {
+      if (isDismissingByDrag || isFinishing) {
+        return false
+      }
+      val location = IntArray(2)
+      dragDismissLayout.getLocationOnScreen(location)
+      return previewFragment()?.canStartDragDismiss(x + location[0], y + location[1]) == true
+    }
+
+    override fun onDragDismissStarted() {
+      // 弹回途中又抓住：从它现在的位置接着拖
+      dragSpring?.cancel()
+      dragBaseOffset = dragOffset
+      previewFragment()?.onDragDismissStarted()
+      findViewById<View>(R.id.fragment_container_view).background?.mutate()
+    }
+
+    override fun onDragDismissMoved(offset: Float) {
+      applyDragOffset(dragBaseOffset + offset)
+    }
+
+    override fun onDragDismissReleased(offset: Float, velocity: Float) {
+      val total = dragBaseOffset + offset
+      dragBaseOffset = 0f
+      if (TellomiDragDismiss.shouldDismiss(total, velocity, resources.displayMetrics.density)) {
+        dismissByDrag(total, velocity)
+      } else {
+        springBack(total, velocity)
+      }
+    }
+  }
+
   /**
    * Applies the desired window color mode. This activity is the sole writer of [android.view.Window.setColorMode].
    *
@@ -247,5 +369,8 @@ class MediaPreviewActivity : PassphraseRequiredActivity(), VoiceNoteMediaControl
 
     /** How long the page selection must stay put before we pay for a color mode change. */
     private const val COLOR_MODE_SETTLE_DELAY_MS = 200L
+
+    /** Tellomi (A-20): flying the dragged media off screen when there is no thumbnail to return to. */
+    private const val FLY_OUT_DURATION_MS = 200L
   }
 }

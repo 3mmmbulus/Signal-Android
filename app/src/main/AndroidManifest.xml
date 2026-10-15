@@ -800,7 +800,7 @@
             android:exported="false"
             android:label="@string/AndroidManifest__media_preview"
             android:launchMode="singleTask"
-            android:theme="@style/Theme.Signal.DayNight.NoActionBar"
+            android:theme="@style/Theme.Signal.MediaPreview.Translucent"
             android:windowSoftInputMode="stateHidden" />
 
         <!-- Tellomi（交互审计 A-22）：共享元素返回，暂不接预测性返回（系统先放跨页预览，松手后又放一遍返回动画）；返回动画能跟手后再打开 -->

@@ -49,6 +49,10 @@ class MediaPreviewViewModel : ViewModel() {
   val currentPosition: Int
     get() = store.state.position
 
+  /** Tellomi (interaction audit A-20): no drag-to-dismiss while the opening container transform is still running. */
+  val isInSharedAnimation: Boolean
+    get() = store.state.isInSharedAnimation
+
   fun setIsInSharedAnimation(isInSharedAnimation: Boolean) {
     store.update { it.copy(isInSharedAnimation = isInSharedAnimation) }
   }

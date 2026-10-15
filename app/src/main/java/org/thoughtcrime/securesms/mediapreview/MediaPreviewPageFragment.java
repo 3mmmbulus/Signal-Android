@@ -47,6 +47,11 @@ public abstract class MediaPreviewPageFragment extends Fragment {
   }
 
   public void autoPlayIfNeeded() {}
+
+  /** Tellomi (interaction audit A-20): whether a vertical drag on this page may start drag-to-dismiss. */
+  public boolean canStartDragDismiss() {
+    return true;
+  }
   public abstract void cleanUp();
   public abstract void pause();
   public abstract void setBottomButtonControls(MediaPreviewPlayerControlView playerControlView);

@@ -195,6 +195,12 @@ public final class ImageMediaPreviewPageFragment extends MediaPreviewPageFragmen
   }
 
   @Override
+  public boolean canStartDragDismiss() {
+    // Tellomi (interaction audit A-20): a zoomed image pans; only a resting one can be dragged away.
+    return zoomingImageView == null || zoomingImageView.isAtMinimumZoom();
+  }
+
+  @Override
   public void pause() {
     if (liveVideo != null) {
       liveVideo.stop(false);

@@ -48,6 +48,13 @@
         <!-- leave empty to allow overriding -->
     </style>
 
+    <!-- Tellomi (interaction audit A-20): the media viewer's window is translucent so the chat shows through while the
+         viewer is dragged away; at rest the content draws its own dark background. -->
+    <style name="Theme.Signal.MediaPreview.Translucent" parent="@style/Theme.Signal.DayNight.NoActionBar">
+        <item name="android:windowIsTranslucent">true</item>
+        <item name="android:windowBackground">@android:color/transparent</item>
+    </style>
+
     <style name="Theme.Signal.WallpaperCropper" parent="@style/TextSecure.DarkNoActionBar">
         <item name="colorPrimaryDark">@color/wallpaper_preview_background</item>
         <item name="android:windowLightStatusBar" tools:ignore="NewApi">false</item>
