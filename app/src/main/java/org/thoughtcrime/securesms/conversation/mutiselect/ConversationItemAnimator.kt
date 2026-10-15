@@ -2,9 +2,14 @@ package org.thoughtcrime.securesms.conversation.mutiselect
 
 import android.animation.Animator
 import android.animation.AnimatorSet
+import android.animation.ObjectAnimator
 import android.animation.ValueAnimator
+import android.view.View
+import androidx.annotation.VisibleForTesting
 import androidx.core.animation.doOnEnd
+import androidx.core.view.animation.PathInterpolatorCompat
 import androidx.recyclerview.widget.RecyclerView
+import org.signal.core.ui.motion.TellomiMotion
 import org.signal.core.util.logging.Log
 import org.thoughtcrime.securesms.conversation.ConversationAdapter
 
@@ -38,6 +43,10 @@ class ConversationItemAnimator(
   private val pendingSlideAnimations: MutableMap<RecyclerView.ViewHolder, TweeningInfo> = mutableMapOf()
   private val slideAnimations: MutableMap<RecyclerView.ViewHolder, AnimationInfo> = mutableMapOf()
 
+  // Tellomi (interaction audit A-05): removed messages fade out instead of vanishing in the same frame.
+  private val pendingFadeOuts: MutableList<RecyclerView.ViewHolder> = mutableListOf()
+  private val fadeOutAnimations: MutableMap<RecyclerView.ViewHolder, Animator> = mutableMapOf()
+
   override fun animateDisappearance(viewHolder: RecyclerView.ViewHolder, preLayoutInfo: ItemHolderInfo, postLayoutInfo: ItemHolderInfo?): Boolean {
     if (viewHolder is ConversationAdapter.HeaderViewHolder &&
       !pendingSlideAnimations.containsKey(viewHolder) &&
@@ -46,6 +55,21 @@ class ConversationItemAnimator(
       isParentFilled()
     ) {
       pendingSlideAnimations[viewHolder] = TweeningInfo(0f, viewHolder.itemView.height.toFloat())
+      dispatchAnimationStarted(viewHolder)
+      return true
+    }
+
+    if (isRemoval(postLayoutInfo, viewHolder.absoluteAdapterPosition) &&
+      viewHolder !in fadeOutAnimations &&
+      viewHolder !in pendingFadeOuts &&
+      !isInMultiSelectMode() &&
+      shouldPlayMessageAnimations() &&
+      // Only when the others slide into its place too: in a list that does not fill the screen they jump, and a message
+      // fading out on top of the one that jumped into its spot reads as a glitch rather than a removal.
+      isParentFilled() &&
+      TellomiMotion.tier(viewHolder.itemView.context) != TellomiMotion.Tier.MINIMAL
+    ) {
+      pendingFadeOuts += viewHolder
       dispatchAnimationStarted(viewHolder)
       return true
     }
@@ -119,7 +143,27 @@ class ConversationItemAnimator(
 
   override fun runPendingAnimations() {
     Log.d(TAG, "Starting ${pendingSlideAnimations.size} animations.")
+    runPendingFadeOuts()
     runPendingSlideAnimations()
+  }
+
+  /** Tellomi (A-05): like Telegram's ChatListItemAnimator, a removed message fades out while the others move into its place. */
+  private fun runPendingFadeOuts() {
+    for (viewHolder in pendingFadeOuts) {
+      val view: View = viewHolder.itemView
+      val animator = ObjectAnimator.ofFloat(view, View.ALPHA, view.alpha, 0f)
+      animator.duration = FADE_OUT_DURATION_MS
+      animator.doOnEnd {
+        view.alpha = 1f
+        if (fadeOutAnimations.remove(viewHolder) != null) {
+          dispatchAnimationFinished(viewHolder)
+          dispatchFinishedWhenDone()
+        }
+      }
+      fadeOutAnimations[viewHolder] = animator
+      animator.start()
+    }
+    pendingFadeOuts.clear()
   }
 
   private fun runPendingSlideAnimations() {
@@ -127,7 +171,10 @@ class ConversationItemAnimator(
     for ((viewHolder, tweeningInfo) in pendingSlideAnimations) {
       val animator = ValueAnimator.ofFloat(0f, 1f)
       slideAnimations[viewHolder] = AnimationInfo(animator, tweeningInfo)
-      animator.duration = 150L
+      // Tellomi (A-05): 250 ms on a decelerating curve (Telegram's ChatListItemAnimator moves over 250 ms) instead of
+      // 150 ms, so the rows filling a removed message's place or making room for a new one read as one movement.
+      animator.duration = SLIDE_DURATION_MS
+      animator.interpolator = SLIDE_INTERPOLATOR
       animator.addUpdateListener {
         if (viewHolder in slideAnimations) {
           viewHolder.itemView.translationY = tweeningInfo.lerp(it.animatedFraction)
@@ -159,15 +206,28 @@ class ConversationItemAnimator(
 
   override fun endAnimation(item: RecyclerView.ViewHolder) {
     endSlideAnimation(item)
+    if (pendingFadeOuts.remove(item)) {
+      item.itemView.alpha = 1f
+      dispatchAnimationFinished(item)
+    }
+    fadeOutAnimations[item]?.end()
   }
 
   override fun endAnimations() {
     endSlideAnimations()
+    pendingFadeOuts.forEach {
+      it.itemView.alpha = 1f
+      dispatchAnimationFinished(it)
+    }
+    pendingFadeOuts.clear()
+    fadeOutAnimations.values.toList().forEach { it.end() }
     dispatchAnimationsFinished()
   }
 
   override fun isRunning(): Boolean {
-    return slideAnimations.values.any { it.sharedAnimator.isRunning }
+    return pendingFadeOuts.isNotEmpty() ||
+      fadeOutAnimations.values.any { it.isRunning } ||
+      slideAnimations.values.any { it.sharedAnimator.isRunning }
   }
 
   override fun onAnimationFinished(viewHolder: RecyclerView.ViewHolder) {
@@ -194,5 +254,18 @@ class ConversationItemAnimator(
 
   companion object {
     private val TAG = Log.tag(ConversationItemAnimator::class.java)
+
+    private const val FADE_OUT_DURATION_MS = 150L
+    private const val SLIDE_DURATION_MS = 250L
+    private val SLIDE_INTERPOLATOR = PathInterpolatorCompat.create(0.2f, 0f, 0f, 1f)
+
+    /**
+     * Tellomi (A-05): a disappearing holder is a real removal (fade it) only when it has no adapter position and no layout
+     * after the change; a holder merely pushed off screen still has a position and keeps the old behaviour.
+     */
+    @VisibleForTesting
+    fun isRemoval(postLayoutInfo: RecyclerView.ItemAnimator.ItemHolderInfo?, adapterPosition: Int): Boolean {
+      return postLayoutInfo == null && adapterPosition == RecyclerView.NO_POSITION
+    }
   }
 }
