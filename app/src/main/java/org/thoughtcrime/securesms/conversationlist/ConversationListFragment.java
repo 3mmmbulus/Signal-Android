@@ -439,6 +439,12 @@ public class ConversationListFragment extends MainFragment implements Conversati
 
     list.setLayoutManager(new LinearLayoutManager(requireActivity()));
     list.setItemAnimator(itemAnimator);
+    list.addOnScrollListener(new RecyclerView.OnScrollListener() {
+      @Override
+      public void onScrollStateChanged(@NonNull RecyclerView recyclerView, int newState) {
+        itemAnimator.setListScrolling(newState != RecyclerView.SCROLL_STATE_IDLE);
+      }
+    });
     list.addItemDecoration(archiveDecoration);
     CachedInflater.from(list.getContext()).cacheUntilLimit(R.layout.conversation_list_item_view, list, 10);
 
