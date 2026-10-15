@@ -5,6 +5,7 @@
 
 package org.thoughtcrime.securesms.main
 
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateContentSize
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -19,7 +20,9 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalResources
+import androidx.compose.ui.unit.dp
 import org.signal.core.ui.NavigationType
 import org.signal.core.ui.compose.BreakpointPreviews
 import org.signal.core.ui.compose.Previews
@@ -74,19 +77,31 @@ fun MainBottomChrome(
       .animateContentSize()
       .then(if (navigationType == NavigationType.RAIL) Modifier.windowInsetsPadding(WindowInsets.navigationBarsCompat) else Modifier)
   ) {
-    if (state.mainToolbarMode == MainToolbarMode.FULL && navigationType != NavigationType.RAIL) {
-      Box(
-        contentAlignment = Alignment.CenterEnd,
-        modifier = Modifier.fillMaxWidth()
+    // Tellomi（交互审计 A-23）：进搜索、多选、归档时悬浮按钮滑下淡出、Megaphone 收起，不再同一帧删掉。
+    val fabTravelPx = with(LocalDensity.current) { TellomiMainChromeMotion.FAB_TRAVEL_DP.dp.roundToPx() }
+    if (navigationType != NavigationType.RAIL) {
+      AnimatedVisibility(
+        visible = state.mainToolbarMode == MainToolbarMode.FULL,
+        enter = TellomiMainChromeMotion.fabEnter(fabTravelPx),
+        exit = TellomiMainChromeMotion.fabExit(fabTravelPx)
       ) {
-        MainFloatingActionButtons(
-          destination = state.destination,
-          callback = callback
-        )
+        Box(
+          contentAlignment = Alignment.CenterEnd,
+          modifier = Modifier.fillMaxWidth()
+        ) {
+          MainFloatingActionButtons(
+            destination = state.destination,
+            callback = callback
+          )
+        }
       }
     }
 
-    if (state.mainToolbarMode == MainToolbarMode.FULL) {
+    AnimatedVisibility(
+      visible = state.mainToolbarMode == MainToolbarMode.FULL,
+      enter = TellomiMainChromeMotion.megaphoneEnter,
+      exit = TellomiMainChromeMotion.megaphoneExit
+    ) {
       MainMegaphoneContainer(
         state = state.megaphoneState,
         controller = megaphoneActionController,

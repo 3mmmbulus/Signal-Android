@@ -285,7 +285,8 @@ private fun NavigationDestinationIcon(
 
   LottieAnimation(
     composition = composition,
-    progress = { if (selected) progress else 0f },
+    // Tellomi（交互审计 A-23）：取消选中时图标倒着播回去，不再一下跳回第 0 帧。
+    progress = { progress },
     dynamicProperties = dynamicProperties,
     modifier = Modifier.size(LOTTIE_SIZE)
   )

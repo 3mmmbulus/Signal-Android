@@ -167,6 +167,7 @@ import org.thoughtcrime.securesms.main.MainToolbarMode
 import org.thoughtcrime.securesms.main.MainToolbarState
 import org.thoughtcrime.securesms.main.MainToolbarViewModel
 import org.thoughtcrime.securesms.main.Material3OnScrollHelperBinder
+import org.thoughtcrime.securesms.main.TellomiMainChromeMotion
 import org.thoughtcrime.securesms.main.rememberDecoratedDetailEntries
 import org.thoughtcrime.securesms.mediasend.MediaSendLauncher
 import org.thoughtcrime.securesms.megaphone.Megaphone
@@ -640,27 +641,34 @@ class MainActivity :
           )
         }
 
-        if (navigationType == NavigationType.BAR && mainToolbarState.mode == MainToolbarMode.FULL) {
-          Column(
-            modifier = Modifier
-              .clip(contentLayoutData.navigationBarShape)
-              .background(color = SignalTheme.colors.colorSurface2)
+        // Tellomi（交互审计 A-23）：进搜索、多选、归档时底栏收起、回来展开，列表高度跟着平滑变化，不再同一帧删掉。
+        if (navigationType == NavigationType.BAR) {
+          AnimatedVisibility(
+            visible = mainToolbarState.mode == MainToolbarMode.FULL,
+            enter = TellomiMainChromeMotion.barEnter,
+            exit = TellomiMainChromeMotion.barExit
           ) {
-            // Tellomi（M11 动态，第三节第 46 条）：动态页往下滚时底栏和动态页顶栏同帧收起；系统导航条那一条留着
-            val feedChrome = FeedChromeState.shared
-            AnimatedVisibility(
-              visible = mainToolbarState.destination != MainListRoute.Feed || feedChrome?.visible != false,
-              enter = expandVertically(animationSpec = tween(FeedChromeState.SHOW_MILLIS), expandFrom = Alignment.Top),
-              exit = shrinkVertically(animationSpec = tween(FeedChromeState.HIDE_MILLIS), shrinkTowards = Alignment.Top)
+            Column(
+              modifier = Modifier
+                .clip(contentLayoutData.navigationBarShape)
+                .background(color = SignalTheme.colors.colorSurface2)
             ) {
-              MainNavigationBar(
-                state = mainNavigationState,
-                onDestinationSelected = mainNavigationCallback
-              )
-            }
+              // Tellomi（M11 动态，第三节第 46 条）：动态页往下滚时底栏和动态页顶栏同帧收起；系统导航条那一条留着
+              val feedChrome = FeedChromeState.shared
+              AnimatedVisibility(
+                visible = mainToolbarState.destination != MainListRoute.Feed || feedChrome?.visible != false,
+                enter = expandVertically(animationSpec = tween(FeedChromeState.SHOW_MILLIS), expandFrom = Alignment.Top),
+                exit = shrinkVertically(animationSpec = tween(FeedChromeState.HIDE_MILLIS), shrinkTowards = Alignment.Top)
+              ) {
+                MainNavigationBar(
+                  state = mainNavigationState,
+                  onDestinationSelected = mainNavigationCallback
+                )
+              }
 
-            if (!isSplitPane) {
-              Spacer(Modifier.windowInsetsPadding(WindowInsets.navigationBarsCompat))
+              if (!isSplitPane) {
+                Spacer(Modifier.windowInsetsPadding(WindowInsets.navigationBarsCompat))
+              }
             }
           }
         }
