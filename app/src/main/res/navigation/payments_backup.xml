@@ -14,26 +14,26 @@
         <action
             android:id="@+id/action_paymentsRecoveryStart_to_paymentsRecoveryPhrase"
             app:destination="@id/paymentsRecoveryPhrase"
-            app:enterAnim="@anim/fragment_open_enter"
-            app:exitAnim="@anim/fragment_close_exit"
-            app:popEnterAnim="@anim/fragment_close_enter"
-            app:popExitAnim="@anim/fragment_close_exit" />
+            app:enterAnim="@animator/tellomi_fragment_open_enter"
+            app:exitAnim="@animator/tellomi_fragment_close_exit"
+            app:popEnterAnim="@animator/tellomi_fragment_close_enter"
+            app:popExitAnim="@animator/tellomi_fragment_close_exit" />
 
         <action
             android:id="@+id/action_paymentsRecoveryStart_to_paymentsRecoveryEntry"
             app:destination="@id/paymentsRecoveryEntry"
-            app:enterAnim="@anim/fragment_open_enter"
-            app:exitAnim="@anim/fragment_close_exit"
-            app:popEnterAnim="@anim/fragment_close_enter"
-            app:popExitAnim="@anim/fragment_close_exit" />
+            app:enterAnim="@animator/tellomi_fragment_open_enter"
+            app:exitAnim="@animator/tellomi_fragment_close_exit"
+            app:popEnterAnim="@animator/tellomi_fragment_close_enter"
+            app:popExitAnim="@animator/tellomi_fragment_close_exit" />
 
         <action
             android:id="@+id/action_paymentsRecoveryStart_to_paymentsRecoveryPaste"
             app:destination="@id/paymentsRecoveryPaste"
-            app:enterAnim="@anim/fragment_open_enter"
-            app:exitAnim="@anim/fragment_close_exit"
-            app:popEnterAnim="@anim/fragment_close_enter"
-            app:popExitAnim="@anim/fragment_close_exit" />
+            app:enterAnim="@animator/tellomi_fragment_open_enter"
+            app:exitAnim="@animator/tellomi_fragment_close_exit"
+            app:popEnterAnim="@animator/tellomi_fragment_close_enter"
+            app:popExitAnim="@animator/tellomi_fragment_close_exit" />
 
         <argument
             android:name="is_restore"
@@ -77,10 +77,10 @@
         <action
             android:id="@+id/action_paymentsRecoveryPhrase_to_paymentsRecoveryPhraseConfirm"
             app:destination="@id/paymentsRecoveryPhraseConfirm"
-            app:enterAnim="@anim/fragment_open_enter"
-            app:exitAnim="@anim/fragment_close_exit"
-            app:popEnterAnim="@anim/fragment_close_enter"
-            app:popExitAnim="@anim/fragment_close_exit" />
+            app:enterAnim="@animator/tellomi_fragment_open_enter"
+            app:exitAnim="@animator/tellomi_fragment_close_exit"
+            app:popEnterAnim="@animator/tellomi_fragment_close_enter"
+            app:popExitAnim="@animator/tellomi_fragment_close_exit" />
 
         <argument
             android:name="finish_on_confirm"
@@ -103,10 +103,10 @@
         <action
             android:id="@+id/action_paymentsRecoveryEntry_to_paymentsRecoveryPhrase"
             app:destination="@id/paymentsRecoveryPhrase"
-            app:enterAnim="@anim/fragment_open_enter"
-            app:exitAnim="@anim/fragment_close_exit"
-            app:popEnterAnim="@anim/fragment_close_enter"
-            app:popExitAnim="@anim/fragment_close_exit" />
+            app:enterAnim="@animator/tellomi_fragment_open_enter"
+            app:exitAnim="@animator/tellomi_fragment_close_exit"
+            app:popEnterAnim="@animator/tellomi_fragment_close_enter"
+            app:popExitAnim="@animator/tellomi_fragment_close_exit" />
     </fragment>
 
     <fragment
@@ -118,10 +118,10 @@
         <action
             android:id="@+id/action_paymentsRecoveryEntry_to_paymentsRecoveryPhrase"
             app:destination="@id/paymentsRecoveryPhrase"
-            app:enterAnim="@anim/fragment_open_enter"
-            app:exitAnim="@anim/fragment_close_exit"
-            app:popEnterAnim="@anim/fragment_close_enter"
-            app:popExitAnim="@anim/fragment_close_exit" />
+            app:enterAnim="@animator/tellomi_fragment_open_enter"
+            app:exitAnim="@animator/tellomi_fragment_close_exit"
+            app:popEnterAnim="@animator/tellomi_fragment_close_enter"
+            app:popExitAnim="@animator/tellomi_fragment_close_exit" />
     </fragment>
 
     <fragment

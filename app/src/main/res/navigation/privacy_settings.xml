@@ -17,38 +17,38 @@
         <action
             android:id="@+id/action_privacySettingsFragment_to_blockedUsersActivity"
             app:destination="@id/blockedUsersActivity"
-            app:enterAnim="@anim/fragment_open_enter"
-            app:exitAnim="@anim/fragment_open_exit"
-            app:popEnterAnim="@anim/fragment_close_enter"
-            app:popExitAnim="@anim/fragment_close_exit" />
+            app:enterAnim="@animator/tellomi_fragment_open_enter"
+            app:exitAnim="@animator/tellomi_fragment_open_exit"
+            app:popEnterAnim="@animator/tellomi_fragment_close_enter"
+            app:popExitAnim="@animator/tellomi_fragment_close_exit" />
         <action
             android:id="@+id/action_privacySettingsFragment_to_advancedPrivacySettingsFragment"
             app:destination="@id/advancedPrivacySettingsFragment"
-            app:enterAnim="@anim/fragment_open_enter"
-            app:exitAnim="@anim/fragment_open_exit"
-            app:popEnterAnim="@anim/fragment_close_enter"
-            app:popExitAnim="@anim/fragment_close_exit" />
+            app:enterAnim="@animator/tellomi_fragment_open_enter"
+            app:exitAnim="@animator/tellomi_fragment_open_exit"
+            app:popEnterAnim="@animator/tellomi_fragment_close_enter"
+            app:popExitAnim="@animator/tellomi_fragment_close_exit" />
         <action
             android:id="@+id/action_privacySettingsFragment_to_disappearingMessagesTimerSelectFragment"
             app:destination="@id/app_settings_expire_timer"
-            app:enterAnim="@anim/fragment_open_enter"
-            app:exitAnim="@anim/fragment_open_exit"
-            app:popEnterAnim="@anim/fragment_close_enter"
-            app:popExitAnim="@anim/fragment_close_exit" />
+            app:enterAnim="@animator/tellomi_fragment_open_enter"
+            app:exitAnim="@animator/tellomi_fragment_open_exit"
+            app:popEnterAnim="@animator/tellomi_fragment_close_enter"
+            app:popExitAnim="@animator/tellomi_fragment_close_exit" />
         <action
             android:id="@+id/action_privacySettingsFragment_to_phoneNumberPrivacySettingsFragment"
             app:destination="@id/phoneNumberPrivacySettingsFragment"
-            app:enterAnim="@anim/fragment_open_enter"
-            app:exitAnim="@anim/fragment_open_exit"
-            app:popEnterAnim="@anim/fragment_close_enter"
-            app:popExitAnim="@anim/fragment_close_exit" />
+            app:enterAnim="@animator/tellomi_fragment_open_enter"
+            app:exitAnim="@animator/tellomi_fragment_open_exit"
+            app:popEnterAnim="@animator/tellomi_fragment_close_enter"
+            app:popExitAnim="@animator/tellomi_fragment_close_exit" />
         <action
             android:id="@+id/action_privacySettingsFragment_to_screenLockSettingsFragment"
             app:destination="@id/screenLockSettingsFragment"
-            app:enterAnim="@anim/fragment_open_enter"
-            app:exitAnim="@anim/fragment_open_exit"
-            app:popEnterAnim="@anim/fragment_close_enter"
-            app:popExitAnim="@anim/fragment_close_exit" />
+            app:enterAnim="@animator/tellomi_fragment_open_enter"
+            app:exitAnim="@animator/tellomi_fragment_open_exit"
+            app:popEnterAnim="@animator/tellomi_fragment_close_enter"
+            app:popExitAnim="@animator/tellomi_fragment_close_exit" />
 
     </fragment>
 

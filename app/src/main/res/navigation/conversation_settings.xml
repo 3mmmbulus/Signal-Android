@@ -14,10 +14,10 @@
         <action
             android:id="@+id/action_conversationSettingsFragment_to_app_settings_expire_timer"
             app:destination="@id/app_settings_expire_timer"
-            app:enterAnim="@anim/fragment_open_enter"
-            app:exitAnim="@anim/fragment_open_exit"
-            app:popEnterAnim="@anim/fragment_close_enter"
-            app:popExitAnim="@anim/fragment_close_exit">
+            app:enterAnim="@animator/tellomi_fragment_open_enter"
+            app:exitAnim="@animator/tellomi_fragment_open_exit"
+            app:popEnterAnim="@animator/tellomi_fragment_close_enter"
+            app:popExitAnim="@animator/tellomi_fragment_close_exit">
 
             <argument
                 android:name="recipient_id"
@@ -59,10 +59,10 @@
         <action
             android:id="@+id/action_conversationSettingsFragment_to_soundsAndNotificationsSettingsFragment"
             app:destination="@id/soundsAndNotificationsSettingsFragment"
-            app:enterAnim="@anim/fragment_open_enter"
-            app:exitAnim="@anim/fragment_open_exit"
-            app:popEnterAnim="@anim/fragment_close_enter"
-            app:popExitAnim="@anim/fragment_close_exit">
+            app:enterAnim="@animator/tellomi_fragment_open_enter"
+            app:exitAnim="@animator/tellomi_fragment_open_exit"
+            app:popEnterAnim="@animator/tellomi_fragment_close_enter"
+            app:popExitAnim="@animator/tellomi_fragment_close_exit">
 
             <argument
                 android:name="recipient_id"
@@ -73,10 +73,10 @@
         <action
             android:id="@+id/action_conversationSettingsFragment_to_permissionsSettingsFragment"
             app:destination="@id/permissionsSettingsFragment"
-            app:enterAnim="@anim/fragment_open_enter"
-            app:exitAnim="@anim/fragment_open_exit"
-            app:popEnterAnim="@anim/fragment_close_enter"
-            app:popExitAnim="@anim/fragment_close_exit">
+            app:enterAnim="@animator/tellomi_fragment_open_enter"
+            app:exitAnim="@animator/tellomi_fragment_open_exit"
+            app:popEnterAnim="@animator/tellomi_fragment_close_enter"
+            app:popExitAnim="@animator/tellomi_fragment_close_exit">
 
             <argument
                 android:name="group_id"
@@ -87,10 +87,10 @@
         <action
             android:id="@+id/action_conversationSettingsFragment_to_internalDetailsSettingsFragment"
             app:destination="@id/internalDetailsSettingsFragment"
-            app:enterAnim="@anim/fragment_open_enter"
-            app:exitAnim="@anim/fragment_open_exit"
-            app:popEnterAnim="@anim/fragment_close_enter"
-            app:popExitAnim="@anim/fragment_close_exit">
+            app:enterAnim="@animator/tellomi_fragment_open_enter"
+            app:exitAnim="@animator/tellomi_fragment_open_exit"
+            app:popEnterAnim="@animator/tellomi_fragment_close_enter"
+            app:popExitAnim="@animator/tellomi_fragment_close_exit">
 
             <argument
                 android:name="recipient_id"
@@ -101,18 +101,18 @@
         <action
             android:id="@+id/action_conversationSettingsFragment_to_shareableGroupLinkFragment"
             app:destination="@id/shareableGroupLinkFragment"
-            app:enterAnim="@anim/fragment_open_enter"
-            app:exitAnim="@anim/fragment_open_exit"
-            app:popEnterAnim="@anim/fragment_close_enter"
-            app:popExitAnim="@anim/fragment_close_exit" />
+            app:enterAnim="@animator/tellomi_fragment_open_enter"
+            app:exitAnim="@animator/tellomi_fragment_open_exit"
+            app:popEnterAnim="@animator/tellomi_fragment_close_enter"
+            app:popExitAnim="@animator/tellomi_fragment_close_exit" />
 
         <action
             android:id="@+id/action_conversationSettingsFragment_to_memberLabelFragment"
             app:destination="@id/memberLabelFragment"
-            app:enterAnim="@anim/fragment_open_enter"
-            app:exitAnim="@anim/fragment_open_exit"
-            app:popEnterAnim="@anim/fragment_close_enter"
-            app:popExitAnim="@anim/fragment_close_exit">
+            app:enterAnim="@animator/tellomi_fragment_open_enter"
+            app:exitAnim="@animator/tellomi_fragment_open_exit"
+            app:popEnterAnim="@animator/tellomi_fragment_close_enter"
+            app:popExitAnim="@animator/tellomi_fragment_close_exit">
 
             <argument
                 android:name="group_id"
@@ -123,10 +123,10 @@
         <action
             android:id="@+id/action_conversationSettingsFragment_to_memberSearchFragment"
             app:destination="@id/memberSearchFragment"
-            app:enterAnim="@anim/fragment_open_enter"
-            app:exitAnim="@anim/fragment_open_exit"
-            app:popEnterAnim="@anim/fragment_close_enter"
-            app:popExitAnim="@anim/fragment_close_exit">
+            app:enterAnim="@animator/tellomi_fragment_open_enter"
+            app:exitAnim="@animator/tellomi_fragment_open_exit"
+            app:popEnterAnim="@animator/tellomi_fragment_close_enter"
+            app:popExitAnim="@animator/tellomi_fragment_close_exit">
 
             <argument
                 android:name="group_id"
@@ -155,18 +155,18 @@
         <action
             android:id="@+id/action_soundsAndNotificationsSettingsFragment_to_customNotificationsSettingsFragment"
             app:destination="@id/customNotificationsSettingsFragment"
-            app:enterAnim="@anim/fragment_open_enter"
-            app:exitAnim="@anim/fragment_open_exit"
-            app:popEnterAnim="@anim/fragment_close_enter"
-            app:popExitAnim="@anim/fragment_close_exit" />
+            app:enterAnim="@animator/tellomi_fragment_open_enter"
+            app:exitAnim="@animator/tellomi_fragment_open_exit"
+            app:popEnterAnim="@animator/tellomi_fragment_close_enter"
+            app:popExitAnim="@animator/tellomi_fragment_close_exit" />
 
         <action
             android:id="@+id/action_soundsAndNotificationsSettingsFragment_to_mutedNotificationsFragment"
             app:destination="@id/mutedNotificationsFragment"
-            app:enterAnim="@anim/fragment_open_enter"
-            app:exitAnim="@anim/fragment_open_exit"
-            app:popEnterAnim="@anim/fragment_close_enter"
-            app:popExitAnim="@anim/fragment_close_exit" />
+            app:enterAnim="@animator/tellomi_fragment_open_enter"
+            app:exitAnim="@animator/tellomi_fragment_open_exit"
+            app:popEnterAnim="@animator/tellomi_fragment_close_enter"
+            app:popExitAnim="@animator/tellomi_fragment_close_exit" />
 
     </fragment>
 

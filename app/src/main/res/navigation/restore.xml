@@ -11,30 +11,30 @@
     <action
         android:id="@+id/go_directly_to_device_transfer"
         app:destination="@id/newDeviceTransferInstructions"
-        app:enterAnim="@anim/fragment_open_enter"
-        app:exitAnim="@anim/fragment_open_exit"
-        app:popEnterAnim="@anim/fragment_close_enter"
-        app:popExitAnim="@anim/fragment_close_exit"
+        app:enterAnim="@animator/tellomi_fragment_open_enter"
+        app:exitAnim="@animator/tellomi_fragment_open_exit"
+        app:popEnterAnim="@animator/tellomi_fragment_close_enter"
+        app:popExitAnim="@animator/tellomi_fragment_close_exit"
         app:popUpTo="@id/restore"
         app:popUpToInclusive="true" />
 
     <action
         android:id="@+id/go_directly_to_choose_local_backup"
         app:destination="@id/choose_local_backup_fragment"
-        app:enterAnim="@anim/fragment_open_enter"
-        app:exitAnim="@anim/fragment_open_exit"
-        app:popEnterAnim="@anim/fragment_close_enter"
-        app:popExitAnim="@anim/fragment_close_exit"
+        app:enterAnim="@animator/tellomi_fragment_open_enter"
+        app:exitAnim="@animator/tellomi_fragment_open_exit"
+        app:popEnterAnim="@animator/tellomi_fragment_close_enter"
+        app:popExitAnim="@animator/tellomi_fragment_close_exit"
         app:popUpTo="@id/restore"
         app:popUpToInclusive="true" />
 
     <action
         android:id="@+id/go_directly_to_restore_local_backup"
         app:destination="@id/restore_local_backup_fragment"
-        app:enterAnim="@anim/fragment_open_enter"
-        app:exitAnim="@anim/fragment_open_exit"
-        app:popEnterAnim="@anim/fragment_close_enter"
-        app:popExitAnim="@anim/fragment_close_exit"
+        app:enterAnim="@animator/tellomi_fragment_open_enter"
+        app:exitAnim="@animator/tellomi_fragment_open_exit"
+        app:popEnterAnim="@animator/tellomi_fragment_close_enter"
+        app:popExitAnim="@animator/tellomi_fragment_close_exit"
         app:popUpTo="@id/restore"
         app:popUpToInclusive="true" />
 

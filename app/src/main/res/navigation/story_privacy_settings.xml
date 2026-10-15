@@ -17,17 +17,17 @@
         <action
             android:id="@+id/action_storyPrivacySettings_to_myStorySettings"
             app:destination="@id/my_story_settings"
-            app:enterAnim="@anim/fragment_open_enter"
-            app:exitAnim="@anim/fragment_open_exit"
-            app:popEnterAnim="@anim/fragment_close_enter"
-            app:popExitAnim="@anim/fragment_close_exit" />
+            app:enterAnim="@animator/tellomi_fragment_open_enter"
+            app:exitAnim="@animator/tellomi_fragment_open_exit"
+            app:popEnterAnim="@animator/tellomi_fragment_close_enter"
+            app:popExitAnim="@animator/tellomi_fragment_close_exit" />
         <action
             android:id="@+id/action_storyPrivacySettings_to_privateStorySettings"
             app:destination="@id/private_story_settings"
-            app:enterAnim="@anim/fragment_open_enter"
-            app:exitAnim="@anim/fragment_open_exit"
-            app:popEnterAnim="@anim/fragment_close_enter"
-            app:popExitAnim="@anim/fragment_close_exit">
+            app:enterAnim="@animator/tellomi_fragment_open_enter"
+            app:exitAnim="@animator/tellomi_fragment_open_exit"
+            app:popEnterAnim="@animator/tellomi_fragment_close_enter"
+            app:popExitAnim="@animator/tellomi_fragment_close_exit">
 
             <argument
                 android:name="distribution_list_id"
@@ -38,10 +38,10 @@
         <action
             android:id="@+id/action_storyPrivacySettings_to_groupStorySettings"
             app:destination="@id/groupStorySettingsFragment"
-            app:enterAnim="@anim/fragment_open_enter"
-            app:exitAnim="@anim/fragment_open_exit"
-            app:popEnterAnim="@anim/fragment_close_enter"
-            app:popExitAnim="@anim/fragment_close_exit">
+            app:enterAnim="@animator/tellomi_fragment_open_enter"
+            app:exitAnim="@animator/tellomi_fragment_open_exit"
+            app:popEnterAnim="@animator/tellomi_fragment_close_enter"
+            app:popExitAnim="@animator/tellomi_fragment_close_exit">
 
             <argument
                 android:name="group_id"

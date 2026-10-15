@@ -40,8 +40,11 @@ open class DSLSettingsActivity : PassphraseRequiredActivity() {
 
       val fragment: NavHostFragment = NavHostFragment.create(navGraphId, resolveStartBundle())
 
+      // Tellomi（交互审计 A-22 第三步）：设成主导航 Fragment，子页的返回才交给它的 FragmentManager——
+      // 只有那条路会把返回手势的进度传给转场（Animator 版 tellomi_fragment_*），拖的时候先看到上一页。
       supportFragmentManager.beginTransaction()
         .replace(R.id.nav_host_fragment, fragment)
+        .setPrimaryNavigationFragment(fragment)
         .commitNow()
 
       navController = fragment.navController
@@ -54,11 +57,10 @@ open class DSLSettingsActivity : PassphraseRequiredActivity() {
 
     val onBackPressed = OnBackPressed()
     onBackPressedDispatcher.addCallback(this, onBackPressed)
-    if (usesSystemBackAtRoot) {
-      // Tellomi（交互审计 A-22）：根页的返回交给系统，拖返回手势时才看得到上一页（预测性返回）；子页照旧由这里弹栈。
-      navController.addOnDestinationChangedListener { controller, _, _ ->
-        onBackPressed.isEnabled = controller.previousBackStackEntry != null
-      }
+    // Tellomi（交互审计 A-22）：子页的返回交给导航 Fragment 的 FragmentManager（跟手、可取消，见上）；
+    // 根页的返回交给系统（第二步，拖返回手势时看得到上一页），或者——不交给系统的页面——由这里 finish。
+    navController.addOnDestinationChangedListener { controller, _, _ ->
+      onBackPressed.isEnabled = !usesSystemBackAtRoot && controller.previousBackStackEntry == null
     }
   }
 

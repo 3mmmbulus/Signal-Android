@@ -13,24 +13,24 @@
         <action
             android:id="@+id/action_appSettingsFragment_to_backupsSettingsFragment"
             app:destination="@id/backupsSettingsFragment"
-            app:enterAnim="@anim/fragment_open_enter"
-            app:exitAnim="@anim/fragment_open_exit"
-            app:popEnterAnim="@anim/fragment_close_enter"
-            app:popExitAnim="@anim/fragment_close_exit" />
+            app:enterAnim="@animator/tellomi_fragment_open_enter"
+            app:exitAnim="@animator/tellomi_fragment_open_exit"
+            app:popEnterAnim="@animator/tellomi_fragment_close_enter"
+            app:popExitAnim="@animator/tellomi_fragment_close_exit" />
         <action
             android:id="@+id/action_appSettingsFragment_to_usernameLinkSettingsFragment"
             app:destination="@id/username_link_settings"
-            app:enterAnim="@anim/fragment_open_enter"
-            app:exitAnim="@anim/fragment_open_exit"
-            app:popEnterAnim="@anim/fragment_close_enter"
-            app:popExitAnim="@anim/fragment_close_exit" />
+            app:enterAnim="@animator/tellomi_fragment_open_enter"
+            app:exitAnim="@animator/tellomi_fragment_open_exit"
+            app:popEnterAnim="@animator/tellomi_fragment_close_enter"
+            app:popExitAnim="@animator/tellomi_fragment_close_exit" />
         <action
             android:id="@+id/action_appSettingsFragment_to_usernameEducationFragment"
             app:destination="@id/manageProfileActivity"
-            app:enterAnim="@anim/fragment_open_enter"
-            app:exitAnim="@anim/fragment_open_exit"
-            app:popEnterAnim="@anim/fragment_close_enter"
-            app:popExitAnim="@anim/fragment_close_exit">
+            app:enterAnim="@animator/tellomi_fragment_open_enter"
+            app:exitAnim="@animator/tellomi_fragment_open_exit"
+            app:popEnterAnim="@animator/tellomi_fragment_close_enter"
+            app:popExitAnim="@animator/tellomi_fragment_close_exit">
             <argument
                 android:name="start_at_username"
                 android:defaultValue="true"
@@ -39,137 +39,137 @@
         <action
             android:id="@+id/action_appSettingsFragment_to_accountSettingsFragment"
             app:destination="@id/accountSettingsFragment"
-            app:enterAnim="@anim/fragment_open_enter"
-            app:exitAnim="@anim/fragment_open_exit"
-            app:popEnterAnim="@anim/fragment_close_enter"
-            app:popExitAnim="@anim/fragment_close_exit" />
+            app:enterAnim="@animator/tellomi_fragment_open_enter"
+            app:exitAnim="@animator/tellomi_fragment_open_exit"
+            app:popEnterAnim="@animator/tellomi_fragment_close_enter"
+            app:popExitAnim="@animator/tellomi_fragment_close_exit" />
         <action
             android:id="@+id/action_appSettingsFragment_to_linkedDeviceAccountSettingsFragment"
             app:destination="@id/linkedDeviceAccountSettingsFragment"
-            app:enterAnim="@anim/fragment_open_enter"
-            app:exitAnim="@anim/fragment_open_exit"
-            app:popEnterAnim="@anim/fragment_close_enter"
-            app:popExitAnim="@anim/fragment_close_exit" />
+            app:enterAnim="@animator/tellomi_fragment_open_enter"
+            app:exitAnim="@animator/tellomi_fragment_open_exit"
+            app:popEnterAnim="@animator/tellomi_fragment_close_enter"
+            app:popExitAnim="@animator/tellomi_fragment_close_exit" />
         <action
             android:id="@+id/action_appSettingsFragment_to_remoteBackupsSettingsFragment"
             app:destination="@id/remoteBackupsSettingsFragment"
-            app:enterAnim="@anim/fragment_open_enter"
-            app:exitAnim="@anim/fragment_open_exit"
-            app:popEnterAnim="@anim/fragment_close_enter"
-            app:popExitAnim="@anim/fragment_close_exit" />
+            app:enterAnim="@animator/tellomi_fragment_open_enter"
+            app:exitAnim="@animator/tellomi_fragment_open_exit"
+            app:popEnterAnim="@animator/tellomi_fragment_close_enter"
+            app:popExitAnim="@animator/tellomi_fragment_close_exit" />
         <action
             android:id="@+id/action_appSettingsFragment_to_linkDeviceFragment"
             app:destination="@id/linkDeviceFragment"
-            app:enterAnim="@anim/fragment_open_enter"
-            app:exitAnim="@anim/fragment_open_exit"
-            app:popEnterAnim="@anim/fragment_close_enter"
-            app:popExitAnim="@anim/fragment_close_exit" />
+            app:enterAnim="@animator/tellomi_fragment_open_enter"
+            app:exitAnim="@animator/tellomi_fragment_open_exit"
+            app:popEnterAnim="@animator/tellomi_fragment_close_enter"
+            app:popExitAnim="@animator/tellomi_fragment_close_exit" />
         <action
             android:id="@+id/action_appSettingsFragment_to_paymentsActivity"
             app:destination="@id/paymentsActivity"
-            app:enterAnim="@anim/fragment_open_enter"
-            app:exitAnim="@anim/fragment_open_exit"
-            app:popEnterAnim="@anim/fragment_close_enter"
-            app:popExitAnim="@anim/fragment_close_exit" />
+            app:enterAnim="@animator/tellomi_fragment_open_enter"
+            app:exitAnim="@animator/tellomi_fragment_open_exit"
+            app:popEnterAnim="@animator/tellomi_fragment_close_enter"
+            app:popExitAnim="@animator/tellomi_fragment_close_exit" />
         <action
             android:id="@+id/action_appSettingsFragment_to_appearanceSettingsFragment"
             app:destination="@id/appearanceSettingsFragment"
-            app:enterAnim="@anim/fragment_open_enter"
-            app:exitAnim="@anim/fragment_open_exit"
-            app:popEnterAnim="@anim/fragment_close_enter"
-            app:popExitAnim="@anim/fragment_close_exit" />
+            app:enterAnim="@animator/tellomi_fragment_open_enter"
+            app:exitAnim="@animator/tellomi_fragment_open_exit"
+            app:popEnterAnim="@animator/tellomi_fragment_close_enter"
+            app:popExitAnim="@animator/tellomi_fragment_close_exit" />
         <action
             android:id="@+id/action_appSettingsFragment_to_chatsSettingsFragment"
             app:destination="@id/chatsSettingsFragment"
-            app:enterAnim="@anim/fragment_open_enter"
-            app:exitAnim="@anim/fragment_open_exit"
-            app:popEnterAnim="@anim/fragment_close_enter"
-            app:popExitAnim="@anim/fragment_close_exit" />
+            app:enterAnim="@animator/tellomi_fragment_open_enter"
+            app:exitAnim="@animator/tellomi_fragment_open_exit"
+            app:popEnterAnim="@animator/tellomi_fragment_close_enter"
+            app:popExitAnim="@animator/tellomi_fragment_close_exit" />
         <action
             android:id="@+id/action_appSettingsFragment_to_notificationsSettingsFragment"
             app:destination="@id/notificationsSettingsFragment"
-            app:enterAnim="@anim/fragment_open_enter"
-            app:exitAnim="@anim/fragment_open_exit"
-            app:popEnterAnim="@anim/fragment_close_enter"
-            app:popExitAnim="@anim/fragment_close_exit" />
+            app:enterAnim="@animator/tellomi_fragment_open_enter"
+            app:exitAnim="@animator/tellomi_fragment_open_exit"
+            app:popEnterAnim="@animator/tellomi_fragment_close_enter"
+            app:popExitAnim="@animator/tellomi_fragment_close_exit" />
         <action
             android:id="@+id/action_appSettingsFragment_to_privacySettingsFragment"
             app:destination="@id/privacy_settings"
-            app:enterAnim="@anim/fragment_open_enter"
-            app:exitAnim="@anim/fragment_open_exit"
-            app:popEnterAnim="@anim/fragment_close_enter"
-            app:popExitAnim="@anim/fragment_close_exit" />
+            app:enterAnim="@animator/tellomi_fragment_open_enter"
+            app:exitAnim="@animator/tellomi_fragment_open_exit"
+            app:popEnterAnim="@animator/tellomi_fragment_close_enter"
+            app:popExitAnim="@animator/tellomi_fragment_close_exit" />
         <action
             android:id="@+id/action_appSettingsFragment_to_dataAndStorageSettingsFragment"
             app:destination="@id/dataAndStorageSettingsFragment"
-            app:enterAnim="@anim/fragment_open_enter"
-            app:exitAnim="@anim/fragment_open_exit"
-            app:popEnterAnim="@anim/fragment_close_enter"
-            app:popExitAnim="@anim/fragment_close_exit" />
+            app:enterAnim="@animator/tellomi_fragment_open_enter"
+            app:exitAnim="@animator/tellomi_fragment_open_exit"
+            app:popEnterAnim="@animator/tellomi_fragment_close_enter"
+            app:popExitAnim="@animator/tellomi_fragment_close_exit" />
         <action
             android:id="@+id/action_appSettingsFragment_to_manageProfileActivity"
             app:destination="@id/manageProfileActivity"
-            app:enterAnim="@anim/fragment_open_enter"
-            app:exitAnim="@anim/fragment_open_exit"
-            app:popEnterAnim="@anim/fragment_close_enter"
-            app:popExitAnim="@anim/fragment_close_exit" />
+            app:enterAnim="@animator/tellomi_fragment_open_enter"
+            app:exitAnim="@animator/tellomi_fragment_open_exit"
+            app:popEnterAnim="@animator/tellomi_fragment_close_enter"
+            app:popExitAnim="@animator/tellomi_fragment_close_exit" />
         <action
             android:id="@+id/action_appSettingsFragment_to_helpSettingsFragment"
             app:destination="@id/helpSettingsFragment"
-            app:enterAnim="@anim/fragment_open_enter"
-            app:exitAnim="@anim/fragment_open_exit"
-            app:popEnterAnim="@anim/fragment_close_enter"
-            app:popExitAnim="@anim/fragment_close_exit" />
+            app:enterAnim="@animator/tellomi_fragment_open_enter"
+            app:exitAnim="@animator/tellomi_fragment_open_exit"
+            app:popEnterAnim="@animator/tellomi_fragment_close_enter"
+            app:popExitAnim="@animator/tellomi_fragment_close_exit" />
         <!-- Tellomi（tellomi/tellomi#1165）：「关于 Tellomi」 -->
         <action
             android:id="@+id/action_appSettingsFragment_to_aboutSettingsFragment"
             app:destination="@id/aboutSettingsFragment"
-            app:enterAnim="@anim/fragment_open_enter"
-            app:exitAnim="@anim/fragment_open_exit"
-            app:popEnterAnim="@anim/fragment_close_enter"
-            app:popExitAnim="@anim/fragment_close_exit" />
+            app:enterAnim="@animator/tellomi_fragment_open_enter"
+            app:exitAnim="@animator/tellomi_fragment_open_exit"
+            app:popEnterAnim="@animator/tellomi_fragment_close_enter"
+            app:popExitAnim="@animator/tellomi_fragment_close_exit" />
         <action
             android:id="@+id/action_appSettingsFragment_to_inviteFragment"
             app:destination="@id/inviteFragment"
-            app:enterAnim="@anim/fragment_open_enter"
-            app:exitAnim="@anim/fragment_open_exit"
-            app:popEnterAnim="@anim/fragment_close_enter"
-            app:popExitAnim="@anim/fragment_close_exit" />
+            app:enterAnim="@animator/tellomi_fragment_open_enter"
+            app:exitAnim="@animator/tellomi_fragment_open_exit"
+            app:popEnterAnim="@animator/tellomi_fragment_close_enter"
+            app:popExitAnim="@animator/tellomi_fragment_close_exit" />
         <action
             android:id="@+id/action_appSettingsFragment_to_appUpdatesSettingsFragment"
             app:destination="@id/appUpdatesFragment"
-            app:enterAnim="@anim/fragment_open_enter"
-            app:exitAnim="@anim/fragment_open_exit"
-            app:popEnterAnim="@anim/fragment_close_enter"
-            app:popExitAnim="@anim/fragment_close_exit" />
+            app:enterAnim="@animator/tellomi_fragment_open_enter"
+            app:exitAnim="@animator/tellomi_fragment_open_exit"
+            app:popEnterAnim="@animator/tellomi_fragment_close_enter"
+            app:popExitAnim="@animator/tellomi_fragment_close_exit" />
         <action
             android:id="@+id/action_appSettingsFragment_to_internalSettingsFragment"
             app:destination="@id/internalSettingsFragment"
-            app:enterAnim="@anim/fragment_open_enter"
-            app:exitAnim="@anim/fragment_open_exit"
-            app:popEnterAnim="@anim/fragment_close_enter"
-            app:popExitAnim="@anim/fragment_close_exit" />
+            app:enterAnim="@animator/tellomi_fragment_open_enter"
+            app:exitAnim="@animator/tellomi_fragment_open_exit"
+            app:popEnterAnim="@animator/tellomi_fragment_close_enter"
+            app:popExitAnim="@animator/tellomi_fragment_close_exit" />
         <action
             android:id="@+id/action_appSettingsFragment_to_labsSettingsFragment"
             app:destination="@id/labsSettingsFragment"
-            app:enterAnim="@anim/fragment_open_enter"
-            app:exitAnim="@anim/fragment_open_exit"
-            app:popEnterAnim="@anim/fragment_close_enter"
-            app:popExitAnim="@anim/fragment_close_exit" />
+            app:enterAnim="@animator/tellomi_fragment_open_enter"
+            app:exitAnim="@animator/tellomi_fragment_open_exit"
+            app:popEnterAnim="@animator/tellomi_fragment_close_enter"
+            app:popExitAnim="@animator/tellomi_fragment_close_exit" />
         <action
             android:id="@+id/action_appSettingsFragment_to_manageDonationsFragment"
             app:destination="@id/manageDonationsFragment"
-            app:enterAnim="@anim/fragment_open_enter"
-            app:exitAnim="@anim/fragment_open_exit"
-            app:popEnterAnim="@anim/fragment_close_enter"
-            app:popExitAnim="@anim/fragment_close_exit" />
+            app:enterAnim="@animator/tellomi_fragment_open_enter"
+            app:exitAnim="@animator/tellomi_fragment_open_exit"
+            app:popEnterAnim="@animator/tellomi_fragment_close_enter"
+            app:popExitAnim="@animator/tellomi_fragment_close_exit" />
         <action
             android:id="@+id/action_appSettingsFragment_to_storyPrivacySettings"
             app:destination="@+id/story_privacy_settings"
-            app:enterAnim="@anim/fragment_open_enter"
-            app:exitAnim="@anim/fragment_open_exit"
-            app:popEnterAnim="@anim/fragment_close_enter"
-            app:popExitAnim="@anim/fragment_close_exit">
+            app:enterAnim="@animator/tellomi_fragment_open_enter"
+            app:exitAnim="@animator/tellomi_fragment_open_exit"
+            app:popEnterAnim="@animator/tellomi_fragment_close_enter"
+            app:popExitAnim="@animator/tellomi_fragment_close_exit">
 
             <argument
                 android:name="title_id"
@@ -192,67 +192,67 @@
         <action
             android:id="@+id/action_accountSettingsFragment_to_changePhoneNumberFragment"
             app:destination="@id/app_settings_change_number"
-            app:enterAnim="@anim/fragment_open_enter"
-            app:exitAnim="@anim/fragment_open_exit"
-            app:popEnterAnim="@anim/fragment_close_enter"
-            app:popExitAnim="@anim/fragment_close_exit" />
+            app:enterAnim="@animator/tellomi_fragment_open_enter"
+            app:exitAnim="@animator/tellomi_fragment_open_exit"
+            app:popEnterAnim="@animator/tellomi_fragment_close_enter"
+            app:popExitAnim="@animator/tellomi_fragment_close_exit" />
         <action
             android:id="@+id/action_accountSettingsFragment_to_deleteAccountFragment"
             app:destination="@id/deleteAccountFragment"
-            app:enterAnim="@anim/fragment_open_enter"
-            app:exitAnim="@anim/fragment_open_exit"
-            app:popEnterAnim="@anim/fragment_close_enter"
-            app:popExitAnim="@anim/fragment_close_exit" />
+            app:enterAnim="@animator/tellomi_fragment_open_enter"
+            app:exitAnim="@animator/tellomi_fragment_open_exit"
+            app:popEnterAnim="@animator/tellomi_fragment_close_enter"
+            app:popExitAnim="@animator/tellomi_fragment_close_exit" />
         <!-- Tellomi（ADR-0072，tellomi/tellomi#1414）：账号页最底部的「退出登录」 -->
         <action
             android:id="@+id/action_accountSettingsFragment_to_logoutFragment"
             app:destination="@id/logoutFragment"
-            app:enterAnim="@anim/fragment_open_enter"
-            app:exitAnim="@anim/fragment_open_exit"
-            app:popEnterAnim="@anim/fragment_close_enter"
-            app:popExitAnim="@anim/fragment_close_exit" />
+            app:enterAnim="@animator/tellomi_fragment_open_enter"
+            app:exitAnim="@animator/tellomi_fragment_open_exit"
+            app:popEnterAnim="@animator/tellomi_fragment_close_enter"
+            app:popExitAnim="@animator/tellomi_fragment_close_exit" />
         <action
             android:id="@+id/action_accountSettingsFragment_to_advancedPinSettingsActivity"
             app:destination="@id/advancedPinSettingsFragment"
-            app:enterAnim="@anim/fragment_open_enter"
-            app:exitAnim="@anim/fragment_open_exit"
-            app:popEnterAnim="@anim/fragment_close_enter"
-            app:popExitAnim="@anim/fragment_close_exit" />
+            app:enterAnim="@animator/tellomi_fragment_open_enter"
+            app:exitAnim="@animator/tellomi_fragment_open_exit"
+            app:popEnterAnim="@animator/tellomi_fragment_close_enter"
+            app:popExitAnim="@animator/tellomi_fragment_close_exit" />
         <action
             android:id="@+id/action_accountSettingsFragment_to_oldDeviceTransferActivity"
             app:destination="@id/oldDeviceTransferActivity"
-            app:enterAnim="@anim/fragment_open_enter"
-            app:exitAnim="@anim/fragment_open_exit"
-            app:popEnterAnim="@anim/fragment_close_enter"
-            app:popExitAnim="@anim/fragment_close_exit" />
+            app:enterAnim="@animator/tellomi_fragment_open_enter"
+            app:exitAnim="@animator/tellomi_fragment_open_exit"
+            app:popEnterAnim="@animator/tellomi_fragment_close_enter"
+            app:popExitAnim="@animator/tellomi_fragment_close_exit" />
         <action
             android:id="@+id/action_accountSettingsFragment_to_exportAccountFragment"
             app:destination="@id/exportAccountDataFragment"
-            app:enterAnim="@anim/fragment_open_enter"
-            app:exitAnim="@anim/fragment_open_exit"
-            app:popEnterAnim="@anim/fragment_close_enter"
-            app:popExitAnim="@anim/fragment_close_exit" />
+            app:enterAnim="@animator/tellomi_fragment_open_enter"
+            app:exitAnim="@animator/tellomi_fragment_open_exit"
+            app:popEnterAnim="@animator/tellomi_fragment_close_enter"
+            app:popExitAnim="@animator/tellomi_fragment_close_exit" />
         <action
             android:id="@+id/action_accountSettingsFragment_to_settingsSignalLoginDetailsFragment"
             app:destination="@id/settingsSignalLoginDetailsFragment"
-            app:enterAnim="@anim/fragment_open_enter"
-            app:exitAnim="@anim/fragment_open_exit"
-            app:popEnterAnim="@anim/fragment_close_enter"
-            app:popExitAnim="@anim/fragment_close_exit" />
+            app:enterAnim="@animator/tellomi_fragment_open_enter"
+            app:exitAnim="@animator/tellomi_fragment_open_exit"
+            app:popEnterAnim="@animator/tellomi_fragment_close_enter"
+            app:popExitAnim="@animator/tellomi_fragment_close_exit" />
         <action
             android:id="@+id/action_accountSettingsFragment_to_authenticatorSetupFragment"
             app:destination="@id/authenticatorSetupFragment"
-            app:enterAnim="@anim/fragment_open_enter"
-            app:exitAnim="@anim/fragment_open_exit"
-            app:popEnterAnim="@anim/fragment_close_enter"
-            app:popExitAnim="@anim/fragment_close_exit" />
+            app:enterAnim="@animator/tellomi_fragment_open_enter"
+            app:exitAnim="@animator/tellomi_fragment_open_exit"
+            app:popEnterAnim="@animator/tellomi_fragment_close_enter"
+            app:popExitAnim="@animator/tellomi_fragment_close_exit" />
         <action
             android:id="@+id/action_accountSettingsFragment_to_authenticatorNameFragment"
             app:destination="@id/authenticatorNameFragment"
-            app:enterAnim="@anim/fragment_open_enter"
-            app:exitAnim="@anim/fragment_open_exit"
-            app:popEnterAnim="@anim/fragment_close_enter"
-            app:popExitAnim="@anim/fragment_close_exit" />
+            app:enterAnim="@animator/tellomi_fragment_open_enter"
+            app:exitAnim="@animator/tellomi_fragment_open_exit"
+            app:popEnterAnim="@animator/tellomi_fragment_close_enter"
+            app:popExitAnim="@animator/tellomi_fragment_close_exit" />
     </fragment>
 
     <!-- Tellomi（ADR-0072，tellomi/tellomi#1414）：「退出登录」替代方案页。三条替代方案打开现有的页面。 -->
@@ -263,24 +263,24 @@
         <action
             android:id="@+id/action_logoutFragment_to_privacySettings"
             app:destination="@id/privacy_settings"
-            app:enterAnim="@anim/fragment_open_enter"
-            app:exitAnim="@anim/fragment_open_exit"
-            app:popEnterAnim="@anim/fragment_close_enter"
-            app:popExitAnim="@anim/fragment_close_exit" />
+            app:enterAnim="@animator/tellomi_fragment_open_enter"
+            app:exitAnim="@animator/tellomi_fragment_open_exit"
+            app:popEnterAnim="@animator/tellomi_fragment_close_enter"
+            app:popExitAnim="@animator/tellomi_fragment_close_exit" />
         <action
             android:id="@+id/action_logoutFragment_to_storagePreferenceFragment"
             app:destination="@id/storagePreferenceFragment"
-            app:enterAnim="@anim/fragment_open_enter"
-            app:exitAnim="@anim/fragment_open_exit"
-            app:popEnterAnim="@anim/fragment_close_enter"
-            app:popExitAnim="@anim/fragment_close_exit" />
+            app:enterAnim="@animator/tellomi_fragment_open_enter"
+            app:exitAnim="@animator/tellomi_fragment_open_exit"
+            app:popEnterAnim="@animator/tellomi_fragment_close_enter"
+            app:popExitAnim="@animator/tellomi_fragment_close_exit" />
         <action
             android:id="@+id/action_logoutFragment_to_changePhoneNumberFragment"
             app:destination="@id/app_settings_change_number"
-            app:enterAnim="@anim/fragment_open_enter"
-            app:exitAnim="@anim/fragment_open_exit"
-            app:popEnterAnim="@anim/fragment_close_enter"
-            app:popExitAnim="@anim/fragment_close_exit" />
+            app:enterAnim="@animator/tellomi_fragment_open_enter"
+            app:exitAnim="@animator/tellomi_fragment_open_exit"
+            app:popEnterAnim="@animator/tellomi_fragment_close_enter"
+            app:popExitAnim="@animator/tellomi_fragment_close_exit" />
     </fragment>
 
     <fragment
@@ -290,10 +290,10 @@
         <action
             android:id="@+id/action_settingsSignalLoginDetailsFragment_to_backupKeyDisplayFragment"
             app:destination="@id/backupKeyDisplayFragment"
-            app:enterAnim="@anim/fragment_open_enter"
-            app:exitAnim="@anim/fragment_open_exit"
-            app:popEnterAnim="@anim/fragment_close_enter"
-            app:popExitAnim="@anim/fragment_close_exit" />
+            app:enterAnim="@animator/tellomi_fragment_open_enter"
+            app:exitAnim="@animator/tellomi_fragment_open_exit"
+            app:popEnterAnim="@animator/tellomi_fragment_close_enter"
+            app:popExitAnim="@animator/tellomi_fragment_close_exit" />
     </fragment>
 
     <fragment
@@ -303,10 +303,10 @@
         <action
             android:id="@+id/action_authenticatorSetupFragment_to_authenticatorCodeEntryFragment"
             app:destination="@id/authenticatorCodeEntryFragment"
-            app:enterAnim="@anim/fragment_open_enter"
-            app:exitAnim="@anim/fragment_open_exit"
-            app:popEnterAnim="@anim/fragment_close_enter"
-            app:popExitAnim="@anim/fragment_close_exit" />
+            app:enterAnim="@animator/tellomi_fragment_open_enter"
+            app:exitAnim="@animator/tellomi_fragment_open_exit"
+            app:popEnterAnim="@animator/tellomi_fragment_close_enter"
+            app:popExitAnim="@animator/tellomi_fragment_close_exit" />
     </fragment>
 
     <fragment
@@ -316,10 +316,10 @@
         <action
             android:id="@+id/action_authenticatorCodeEntryFragment_to_authenticatorNameFragment"
             app:destination="@id/authenticatorNameFragment"
-            app:enterAnim="@anim/fragment_open_enter"
-            app:exitAnim="@anim/fragment_open_exit"
-            app:popEnterAnim="@anim/fragment_close_enter"
-            app:popExitAnim="@anim/fragment_close_exit" />
+            app:enterAnim="@animator/tellomi_fragment_open_enter"
+            app:exitAnim="@animator/tellomi_fragment_open_exit"
+            app:popEnterAnim="@animator/tellomi_fragment_close_enter"
+            app:popExitAnim="@animator/tellomi_fragment_close_exit" />
     </fragment>
 
     <fragment
@@ -358,10 +358,10 @@
         <action
             android:id="@+id/action_advancedPinSettingsFragment_to_backupKeyDisplayFragment"
             app:destination="@id/backupKeyDisplayFragment"
-            app:enterAnim="@anim/fragment_open_enter"
-            app:exitAnim="@anim/fragment_open_exit"
-            app:popEnterAnim="@anim/fragment_close_enter"
-            app:popExitAnim="@anim/fragment_close_exit" />
+            app:enterAnim="@animator/tellomi_fragment_open_enter"
+            app:exitAnim="@animator/tellomi_fragment_open_exit"
+            app:popEnterAnim="@animator/tellomi_fragment_close_enter"
+            app:popExitAnim="@animator/tellomi_fragment_close_exit" />
     </fragment>
 
     <fragment
@@ -372,10 +372,10 @@
         <action
             android:id="@+id/action_deleteAccountFragment_to_deleteAccountCountryFragment"
             app:destination="@id/deleteAccountCountryFragment"
-            app:enterAnim="@anim/fragment_open_enter"
-            app:exitAnim="@anim/fragment_open_exit"
-            app:popEnterAnim="@anim/fragment_close_enter"
-            app:popExitAnim="@anim/fragment_close_exit" />
+            app:enterAnim="@animator/tellomi_fragment_open_enter"
+            app:exitAnim="@animator/tellomi_fragment_open_exit"
+            app:popEnterAnim="@animator/tellomi_fragment_close_enter"
+            app:popExitAnim="@animator/tellomi_fragment_close_exit" />
 
     </fragment>
 
@@ -406,17 +406,17 @@
         <action
             android:id="@+id/action_linkDeviceFragment_to_addLinkDeviceFragment"
             app:destination="@id/addLinkDeviceFragment"
-            app:enterAnim="@anim/fragment_open_enter"
-            app:exitAnim="@anim/fragment_open_exit"
-            app:popEnterAnim="@anim/fragment_close_enter"
-            app:popExitAnim="@anim/fragment_close_exit" />
+            app:enterAnim="@animator/tellomi_fragment_open_enter"
+            app:exitAnim="@animator/tellomi_fragment_open_exit"
+            app:popEnterAnim="@animator/tellomi_fragment_close_enter"
+            app:popExitAnim="@animator/tellomi_fragment_close_exit" />
         <action
             android:id="@+id/action_linkDeviceFragment_to_editDeviceNameFragment"
             app:destination="@id/editDeviceNameFragment"
-            app:enterAnim="@anim/fragment_open_enter"
-            app:exitAnim="@anim/fragment_open_exit"
-            app:popEnterAnim="@anim/fragment_close_enter"
-            app:popExitAnim="@anim/fragment_close_exit" />
+            app:enterAnim="@animator/tellomi_fragment_open_enter"
+            app:exitAnim="@animator/tellomi_fragment_open_exit"
+            app:popEnterAnim="@animator/tellomi_fragment_close_enter"
+            app:popExitAnim="@animator/tellomi_fragment_close_exit" />
         <action
             android:id="@+id/action_linkDeviceFragment_to_linkDeviceFinishedSheet"
             app:destination="@id/linkDeviceFinishedSheet" />
@@ -474,18 +474,18 @@
         <action
             android:id="@+id/action_appearanceSettings_to_wallpaperActivity"
             app:destination="@id/wallpaperActivity"
-            app:enterAnim="@anim/fragment_open_enter"
-            app:exitAnim="@anim/fragment_open_exit"
-            app:popEnterAnim="@anim/fragment_close_enter"
-            app:popExitAnim="@anim/fragment_close_exit" />
+            app:enterAnim="@animator/tellomi_fragment_open_enter"
+            app:exitAnim="@animator/tellomi_fragment_open_exit"
+            app:popEnterAnim="@animator/tellomi_fragment_close_enter"
+            app:popExitAnim="@animator/tellomi_fragment_close_exit" />
 
         <action
             android:id="@+id/action_appearanceSettings_to_appIconActivity"
             app:destination="@id/appIconSelectionFragment"
-            app:enterAnim="@anim/fragment_open_enter"
-            app:exitAnim="@anim/fragment_open_exit"
-            app:popEnterAnim="@anim/fragment_close_enter"
-            app:popExitAnim="@anim/fragment_close_exit" />
+            app:enterAnim="@animator/tellomi_fragment_open_enter"
+            app:exitAnim="@animator/tellomi_fragment_open_exit"
+            app:popEnterAnim="@animator/tellomi_fragment_close_enter"
+            app:popExitAnim="@animator/tellomi_fragment_close_exit" />
     </fragment>
 
     <activity
@@ -502,10 +502,10 @@
         <action
             android:id="@+id/action_appIconSelectionFragment_to_appIconTutorialFragment"
             app:destination="@id/appIconTutorialFragment"
-            app:enterAnim="@anim/fragment_open_enter"
-            app:exitAnim="@anim/fragment_open_exit"
-            app:popEnterAnim="@anim/fragment_close_enter"
-            app:popExitAnim="@anim/fragment_close_exit" />
+            app:enterAnim="@animator/tellomi_fragment_open_enter"
+            app:exitAnim="@animator/tellomi_fragment_open_exit"
+            app:popEnterAnim="@animator/tellomi_fragment_close_enter"
+            app:popExitAnim="@animator/tellomi_fragment_close_exit" />
     </fragment>
     <fragment
         android:id="@+id/appIconTutorialFragment"
@@ -524,24 +524,24 @@
         <action
             android:id="@+id/action_chatsSettingsFragment_to_editReactionsFragment"
             app:destination="@id/editReactionsFragment"
-            app:enterAnim="@anim/fragment_open_enter"
-            app:exitAnim="@anim/fragment_open_exit"
-            app:popEnterAnim="@anim/fragment_close_enter"
-            app:popExitAnim="@anim/fragment_close_exit" />
+            app:enterAnim="@animator/tellomi_fragment_open_enter"
+            app:exitAnim="@animator/tellomi_fragment_open_exit"
+            app:popEnterAnim="@animator/tellomi_fragment_close_enter"
+            app:popExitAnim="@animator/tellomi_fragment_close_exit" />
         <action
             android:id="@+id/action_chatsSettingsFragment_to_chatFoldersFragment"
             app:destination="@id/chatFoldersFragment"
-            app:enterAnim="@anim/fragment_open_enter"
-            app:exitAnim="@anim/fragment_open_exit"
-            app:popEnterAnim="@anim/fragment_close_enter"
-            app:popExitAnim="@anim/fragment_close_exit" />
+            app:enterAnim="@animator/tellomi_fragment_open_enter"
+            app:exitAnim="@animator/tellomi_fragment_open_exit"
+            app:popEnterAnim="@animator/tellomi_fragment_close_enter"
+            app:popExitAnim="@animator/tellomi_fragment_close_exit" />
         <action
             android:id="@+id/action_chatsSettingsFragment_to_remoteBackupsSettingsFragment"
             app:destination="@id/remoteBackupsSettingsFragment"
-            app:enterAnim="@anim/fragment_open_enter"
-            app:exitAnim="@anim/fragment_open_exit"
-            app:popEnterAnim="@anim/fragment_close_enter"
-            app:popExitAnim="@anim/fragment_close_exit" />
+            app:enterAnim="@animator/tellomi_fragment_open_enter"
+            app:exitAnim="@animator/tellomi_fragment_open_exit"
+            app:popEnterAnim="@animator/tellomi_fragment_close_enter"
+            app:popExitAnim="@animator/tellomi_fragment_close_exit" />
     </fragment>
 
     <fragment
@@ -553,10 +553,10 @@
         <action
             android:id="@+id/action_backupsPreferenceFragment_to_localBackupsFragment"
             app:destination="@id/localBackupsFragment"
-            app:enterAnim="@anim/fragment_open_enter"
-            app:exitAnim="@anim/fragment_open_exit"
-            app:popEnterAnim="@anim/fragment_close_enter"
-            app:popExitAnim="@anim/fragment_close_exit" />
+            app:enterAnim="@animator/tellomi_fragment_open_enter"
+            app:exitAnim="@animator/tellomi_fragment_open_exit"
+            app:popEnterAnim="@animator/tellomi_fragment_close_enter"
+            app:popExitAnim="@animator/tellomi_fragment_close_exit" />
     </fragment>
 
     <fragment
@@ -567,18 +567,18 @@
         <action
             android:id="@+id/action_backupsPreferenceFragment_to_backupKeyDisplayFragment"
             app:destination="@id/backupKeyDisplayFragment"
-            app:enterAnim="@anim/fragment_open_enter"
-            app:exitAnim="@anim/fragment_open_exit"
-            app:popEnterAnim="@anim/fragment_close_enter"
-            app:popExitAnim="@anim/fragment_close_exit" />
+            app:enterAnim="@animator/tellomi_fragment_open_enter"
+            app:exitAnim="@animator/tellomi_fragment_open_exit"
+            app:popEnterAnim="@animator/tellomi_fragment_close_enter"
+            app:popExitAnim="@animator/tellomi_fragment_close_exit" />
 
         <action
             android:id="@+id/action_localBackupsFragment_to_settingsSignalLoginDetailsFragment"
             app:destination="@id/settingsSignalLoginDetailsFragment"
-            app:enterAnim="@anim/fragment_open_enter"
-            app:exitAnim="@anim/fragment_open_exit"
-            app:popEnterAnim="@anim/fragment_close_enter"
-            app:popExitAnim="@anim/fragment_close_exit" />
+            app:enterAnim="@animator/tellomi_fragment_open_enter"
+            app:exitAnim="@animator/tellomi_fragment_open_exit"
+            app:popEnterAnim="@animator/tellomi_fragment_close_enter"
+            app:popExitAnim="@animator/tellomi_fragment_close_exit" />
 
         <argument
             android:name="trigger_update_flow"
@@ -599,10 +599,10 @@
         <action
             android:id="@+id/action_chatFoldersFragment_to_createFoldersFragment"
             app:destination="@id/createFoldersFragment"
-            app:enterAnim="@anim/fragment_open_enter"
-            app:exitAnim="@anim/fragment_open_exit"
-            app:popEnterAnim="@anim/fragment_close_enter"
-            app:popExitAnim="@anim/fragment_close_exit" />
+            app:enterAnim="@animator/tellomi_fragment_open_enter"
+            app:exitAnim="@animator/tellomi_fragment_open_exit"
+            app:popEnterAnim="@animator/tellomi_fragment_close_enter"
+            app:popExitAnim="@animator/tellomi_fragment_close_exit" />
         <action
             android:id="@+id/action_chatFoldersFragment_to_chatFoldersEducationSheet"
             app:destination="@id/chatFoldersEducationSheet" />
@@ -629,10 +629,10 @@
         <action
             android:id="@+id/action_createFoldersFragment_to_chooseChatsFragment"
             app:destination="@id/chooseChatsFragment"
-            app:enterAnim="@anim/fragment_open_enter"
-            app:exitAnim="@anim/fragment_open_exit"
-            app:popEnterAnim="@anim/fragment_close_enter"
-            app:popExitAnim="@anim/fragment_close_exit">
+            app:enterAnim="@animator/tellomi_fragment_open_enter"
+            app:exitAnim="@animator/tellomi_fragment_open_exit"
+            app:popEnterAnim="@animator/tellomi_fragment_close_enter"
+            app:popExitAnim="@animator/tellomi_fragment_close_exit">
             <argument
                 android:name="include_chats"
                 app:argType="boolean" />
@@ -659,18 +659,18 @@
         <action
             android:id="@+id/action_notificationsSettingsFragment_to_notificationProfilesFragment"
             app:destination="@id/notificationProfilesFragment"
-            app:enterAnim="@anim/fragment_open_enter"
-            app:exitAnim="@anim/fragment_open_exit"
-            app:popEnterAnim="@anim/fragment_close_enter"
-            app:popExitAnim="@anim/fragment_close_exit" />
+            app:enterAnim="@animator/tellomi_fragment_open_enter"
+            app:exitAnim="@animator/tellomi_fragment_open_exit"
+            app:popEnterAnim="@animator/tellomi_fragment_close_enter"
+            app:popExitAnim="@animator/tellomi_fragment_close_exit" />
 
         <action
             android:id="@+id/action_notificationsSettingsFragment_to_mutedNotificationsFragment"
             app:destination="@id/mutedNotificationsFragment"
-            app:enterAnim="@anim/fragment_open_enter"
-            app:exitAnim="@anim/fragment_open_exit"
-            app:popEnterAnim="@anim/fragment_close_enter"
-            app:popExitAnim="@anim/fragment_close_exit" />
+            app:enterAnim="@animator/tellomi_fragment_open_enter"
+            app:exitAnim="@animator/tellomi_fragment_open_exit"
+            app:popEnterAnim="@animator/tellomi_fragment_close_enter"
+            app:popExitAnim="@animator/tellomi_fragment_close_exit" />
 
     </fragment>
 
@@ -687,17 +687,17 @@
         <action
             android:id="@+id/action_dataAndStorageSettingsFragment_to_storagePreferenceFragment"
             app:destination="@id/storagePreferenceFragment"
-            app:enterAnim="@anim/fragment_open_enter"
-            app:exitAnim="@anim/fragment_open_exit"
-            app:popEnterAnim="@anim/fragment_close_enter"
-            app:popExitAnim="@anim/fragment_close_exit" />
+            app:enterAnim="@animator/tellomi_fragment_open_enter"
+            app:exitAnim="@animator/tellomi_fragment_open_exit"
+            app:popEnterAnim="@animator/tellomi_fragment_close_enter"
+            app:popExitAnim="@animator/tellomi_fragment_close_exit" />
         <action
             android:id="@+id/action_dataAndStorageSettingsFragment_to_editProxyFragment"
             app:destination="@id/edit_proxy"
-            app:enterAnim="@anim/fragment_open_enter"
-            app:exitAnim="@anim/fragment_open_exit"
-            app:popEnterAnim="@anim/fragment_close_enter"
-            app:popExitAnim="@anim/fragment_close_exit" />
+            app:enterAnim="@animator/tellomi_fragment_open_enter"
+            app:exitAnim="@animator/tellomi_fragment_open_exit"
+            app:popEnterAnim="@animator/tellomi_fragment_close_enter"
+            app:popExitAnim="@animator/tellomi_fragment_close_exit" />
     </fragment>
 
     <fragment
@@ -717,24 +717,24 @@
         <action
             android:id="@+id/action_helpSettingsFragment_to_helpFragment"
             app:destination="@id/helpFragment"
-            app:enterAnim="@anim/fragment_open_enter"
-            app:exitAnim="@anim/fragment_open_exit"
-            app:popEnterAnim="@anim/fragment_close_enter"
-            app:popExitAnim="@anim/fragment_close_exit" />
+            app:enterAnim="@animator/tellomi_fragment_open_enter"
+            app:exitAnim="@animator/tellomi_fragment_open_exit"
+            app:popEnterAnim="@animator/tellomi_fragment_close_enter"
+            app:popExitAnim="@animator/tellomi_fragment_close_exit" />
         <action
             android:id="@+id/action_helpSettingsFragment_to_submitDebugLogActivity"
             app:destination="@id/submitDebugLogActivity"
-            app:enterAnim="@anim/fragment_open_enter"
-            app:exitAnim="@anim/fragment_open_exit"
-            app:popEnterAnim="@anim/fragment_close_enter"
-            app:popExitAnim="@anim/fragment_close_exit" />
+            app:enterAnim="@animator/tellomi_fragment_open_enter"
+            app:exitAnim="@animator/tellomi_fragment_open_exit"
+            app:popEnterAnim="@animator/tellomi_fragment_close_enter"
+            app:popExitAnim="@animator/tellomi_fragment_close_exit" />
         <action
             android:id="@+id/action_helpSettingsFragment_to_licenseFragment"
             app:destination="@id/licenseFragment"
-            app:enterAnim="@anim/fragment_open_enter"
-            app:exitAnim="@anim/fragment_open_exit"
-            app:popEnterAnim="@anim/fragment_close_enter"
-            app:popExitAnim="@anim/fragment_close_exit" />
+            app:enterAnim="@animator/tellomi_fragment_open_enter"
+            app:exitAnim="@animator/tellomi_fragment_open_exit"
+            app:popEnterAnim="@animator/tellomi_fragment_close_enter"
+            app:popExitAnim="@animator/tellomi_fragment_close_exit" />
     </fragment>
 
     <fragment
@@ -757,10 +757,10 @@
         <action
             android:id="@+id/action_aboutSettingsFragment_to_licenseFragment"
             app:destination="@id/licenseFragment"
-            app:enterAnim="@anim/fragment_open_enter"
-            app:exitAnim="@anim/fragment_open_exit"
-            app:popEnterAnim="@anim/fragment_close_enter"
-            app:popExitAnim="@anim/fragment_close_exit" />
+            app:enterAnim="@animator/tellomi_fragment_open_enter"
+            app:exitAnim="@animator/tellomi_fragment_open_exit"
+            app:popEnterAnim="@animator/tellomi_fragment_close_enter"
+            app:popExitAnim="@animator/tellomi_fragment_close_exit" />
     </fragment>
 
     <fragment
@@ -784,18 +784,18 @@
     <action
         android:id="@+id/action_direct_to_storagePreferenceFragment"
         app:destination="@id/storagePreferenceFragment"
-        app:enterAnim="@anim/fragment_open_enter"
-        app:exitAnim="@anim/fragment_open_exit"
-        app:popEnterAnim="@anim/fragment_close_enter"
-        app:popExitAnim="@anim/fragment_close_exit" />
+        app:enterAnim="@animator/tellomi_fragment_open_enter"
+        app:exitAnim="@animator/tellomi_fragment_open_exit"
+        app:popEnterAnim="@animator/tellomi_fragment_close_enter"
+        app:popExitAnim="@animator/tellomi_fragment_close_exit" />
 
     <action
         android:id="@+id/action_direct_to_backupsPreferenceFragment"
         app:destination="@id/backupsPreferenceFragment"
-        app:enterAnim="@anim/fragment_open_enter"
-        app:exitAnim="@anim/fragment_open_exit"
-        app:popEnterAnim="@anim/fragment_close_enter"
-        app:popExitAnim="@anim/fragment_close_exit">
+        app:enterAnim="@animator/tellomi_fragment_open_enter"
+        app:exitAnim="@animator/tellomi_fragment_open_exit"
+        app:popEnterAnim="@animator/tellomi_fragment_close_enter"
+        app:popExitAnim="@animator/tellomi_fragment_close_exit">
 
         <argument
             android:name="trigger_update_flow"
@@ -806,10 +806,10 @@
     <action
         android:id="@+id/action_direct_to_localBackupsFragment"
         app:destination="@id/localBackupsFragment"
-        app:enterAnim="@anim/fragment_open_enter"
-        app:exitAnim="@anim/fragment_open_exit"
-        app:popEnterAnim="@anim/fragment_close_enter"
-        app:popExitAnim="@anim/fragment_close_exit">
+        app:enterAnim="@animator/tellomi_fragment_open_enter"
+        app:exitAnim="@animator/tellomi_fragment_open_exit"
+        app:popEnterAnim="@animator/tellomi_fragment_close_enter"
+        app:popExitAnim="@animator/tellomi_fragment_close_exit">
 
         <argument
             android:name="trigger_update_flow"
@@ -820,44 +820,44 @@
     <action
         android:id="@+id/action_direct_to_helpFragment"
         app:destination="@id/helpFragment"
-        app:enterAnim="@anim/fragment_open_enter"
-        app:exitAnim="@anim/fragment_open_exit"
-        app:popEnterAnim="@anim/fragment_close_enter"
-        app:popExitAnim="@anim/fragment_close_exit"
+        app:enterAnim="@animator/tellomi_fragment_open_enter"
+        app:exitAnim="@animator/tellomi_fragment_open_exit"
+        app:popEnterAnim="@animator/tellomi_fragment_close_enter"
+        app:popExitAnim="@animator/tellomi_fragment_close_exit"
         app:popUpTo="@id/app_settings"
         app:popUpToInclusive="true" />
 
     <action
         android:id="@+id/action_direct_to_editProxyFragment"
         app:destination="@id/edit_proxy"
-        app:enterAnim="@anim/fragment_open_enter"
-        app:exitAnim="@anim/fragment_open_exit"
-        app:popEnterAnim="@anim/fragment_close_enter"
-        app:popExitAnim="@anim/fragment_close_exit" />
+        app:enterAnim="@animator/tellomi_fragment_open_enter"
+        app:exitAnim="@animator/tellomi_fragment_open_exit"
+        app:popEnterAnim="@animator/tellomi_fragment_close_enter"
+        app:popExitAnim="@animator/tellomi_fragment_close_exit" />
 
     <action
         android:id="@+id/action_direct_to_notificationsSettingsFragment"
         app:destination="@id/notificationsSettingsFragment"
-        app:enterAnim="@anim/fragment_open_enter"
-        app:exitAnim="@anim/fragment_open_exit"
-        app:popEnterAnim="@anim/fragment_close_enter"
-        app:popExitAnim="@anim/fragment_close_exit" />
+        app:enterAnim="@animator/tellomi_fragment_open_enter"
+        app:exitAnim="@animator/tellomi_fragment_open_exit"
+        app:popEnterAnim="@animator/tellomi_fragment_close_enter"
+        app:popExitAnim="@animator/tellomi_fragment_close_exit" />
 
     <action
         android:id="@+id/action_direct_to_changeNumberFragment"
         app:destination="@id/app_settings_change_number"
-        app:enterAnim="@anim/fragment_open_enter"
-        app:exitAnim="@anim/fragment_open_exit"
-        app:popEnterAnim="@anim/fragment_close_enter"
-        app:popExitAnim="@anim/fragment_close_exit" />
+        app:enterAnim="@animator/tellomi_fragment_open_enter"
+        app:exitAnim="@animator/tellomi_fragment_open_exit"
+        app:popEnterAnim="@animator/tellomi_fragment_close_enter"
+        app:popExitAnim="@animator/tellomi_fragment_close_exit" />
 
     <action
         android:id="@+id/action_direct_to_manageDonations"
         app:destination="@id/manageDonationsFragment"
-        app:enterAnim="@anim/fragment_open_enter"
-        app:exitAnim="@anim/fragment_open_exit"
-        app:popEnterAnim="@anim/fragment_close_enter"
-        app:popExitAnim="@anim/fragment_close_exit"
+        app:enterAnim="@animator/tellomi_fragment_open_enter"
+        app:exitAnim="@animator/tellomi_fragment_open_exit"
+        app:popEnterAnim="@animator/tellomi_fragment_close_enter"
+        app:popExitAnim="@animator/tellomi_fragment_close_exit"
         app:popUpTo="@id/app_settings"
         app:popUpToInclusive="true">
 
@@ -870,68 +870,68 @@
     <action
         android:id="@+id/action_direct_to_notificationProfiles"
         app:destination="@id/notificationProfilesFragment"
-        app:enterAnim="@anim/fragment_open_enter"
-        app:exitAnim="@anim/fragment_open_exit"
-        app:popEnterAnim="@anim/fragment_close_enter"
-        app:popExitAnim="@anim/fragment_close_exit" />
+        app:enterAnim="@animator/tellomi_fragment_open_enter"
+        app:exitAnim="@animator/tellomi_fragment_open_exit"
+        app:popEnterAnim="@animator/tellomi_fragment_close_enter"
+        app:popExitAnim="@animator/tellomi_fragment_close_exit" />
 
     <action
         android:id="@+id/action_direct_to_createNotificationProfiles"
         app:destination="@id/editNotificationProfileFragment"
-        app:enterAnim="@anim/fragment_open_enter"
-        app:exitAnim="@anim/fragment_open_exit"
-        app:popEnterAnim="@anim/fragment_close_enter"
-        app:popExitAnim="@anim/fragment_close_exit"
+        app:enterAnim="@animator/tellomi_fragment_open_enter"
+        app:exitAnim="@animator/tellomi_fragment_open_exit"
+        app:popEnterAnim="@animator/tellomi_fragment_close_enter"
+        app:popExitAnim="@animator/tellomi_fragment_close_exit"
         app:popUpTo="@id/app_settings"
         app:popUpToInclusive="true" />
 
     <action
         android:id="@+id/action_direct_to_notificationProfileDetails"
         app:destination="@id/notificationProfileDetailsFragment"
-        app:enterAnim="@anim/fragment_open_enter"
-        app:exitAnim="@anim/fragment_open_exit"
-        app:popEnterAnim="@anim/fragment_close_enter"
-        app:popExitAnim="@anim/fragment_close_exit"
+        app:enterAnim="@animator/tellomi_fragment_open_enter"
+        app:exitAnim="@animator/tellomi_fragment_open_exit"
+        app:popEnterAnim="@animator/tellomi_fragment_close_enter"
+        app:popExitAnim="@animator/tellomi_fragment_close_exit"
         app:popUpTo="@id/app_settings"
         app:popUpToInclusive="true" />
 
     <action
         android:id="@+id/action_direct_to_privacy"
         app:destination="@id/privacy_settings"
-        app:enterAnim="@anim/fragment_open_enter"
-        app:exitAnim="@anim/fragment_open_exit"
-        app:popEnterAnim="@anim/fragment_close_enter"
-        app:popExitAnim="@anim/fragment_close_exit"
+        app:enterAnim="@animator/tellomi_fragment_open_enter"
+        app:exitAnim="@animator/tellomi_fragment_open_exit"
+        app:popEnterAnim="@animator/tellomi_fragment_close_enter"
+        app:popExitAnim="@animator/tellomi_fragment_close_exit"
         app:popUpTo="@id/app_settings"
         app:popUpToInclusive="true" />
 
     <action
         android:id="@+id/action_direct_to_devices"
         app:destination="@id/linkDeviceFragment"
-        app:enterAnim="@anim/fragment_open_enter"
-        app:exitAnim="@anim/fragment_open_exit"
-        app:popEnterAnim="@anim/fragment_close_enter"
-        app:popExitAnim="@anim/fragment_close_exit"
+        app:enterAnim="@animator/tellomi_fragment_open_enter"
+        app:exitAnim="@animator/tellomi_fragment_open_exit"
+        app:popEnterAnim="@animator/tellomi_fragment_close_enter"
+        app:popExitAnim="@animator/tellomi_fragment_close_exit"
         app:popUpTo="@id/app_settings"
         app:popUpToInclusive="true" />
 
     <action
         android:id="@+id/action_direct_to_usernameLinkSettings"
         app:destination="@id/username_link_settings"
-        app:enterAnim="@anim/fragment_open_enter"
-        app:exitAnim="@anim/fragment_open_exit"
-        app:popEnterAnim="@anim/fragment_close_enter"
-        app:popExitAnim="@anim/fragment_close_exit"
+        app:enterAnim="@animator/tellomi_fragment_open_enter"
+        app:exitAnim="@animator/tellomi_fragment_open_exit"
+        app:popEnterAnim="@animator/tellomi_fragment_close_enter"
+        app:popExitAnim="@animator/tellomi_fragment_close_exit"
         app:popUpTo="@id/app_settings"
         app:popUpToInclusive="true" />
 
     <action
         android:id="@+id/action_direct_to_usernameRecovery"
         app:destination="@id/createUsernameFragment"
-        app:enterAnim="@anim/fragment_open_enter"
-        app:exitAnim="@anim/fragment_open_exit"
-        app:popEnterAnim="@anim/fragment_close_enter"
-        app:popExitAnim="@anim/fragment_close_exit"
+        app:enterAnim="@animator/tellomi_fragment_open_enter"
+        app:exitAnim="@animator/tellomi_fragment_open_exit"
+        app:popEnterAnim="@animator/tellomi_fragment_close_enter"
+        app:popExitAnim="@animator/tellomi_fragment_close_exit"
         app:popUpTo="@id/app_settings"
         app:popUpToInclusive="true">
         <argument
@@ -943,10 +943,10 @@
     <action
         android:id="@+id/action_direct_to_remoteBackupsSettingsFragment"
         app:destination="@id/remoteBackupsSettingsFragment"
-        app:enterAnim="@anim/fragment_open_enter"
-        app:exitAnim="@anim/fragment_open_exit"
-        app:popEnterAnim="@anim/fragment_close_enter"
-        app:popExitAnim="@anim/fragment_close_exit"
+        app:enterAnim="@animator/tellomi_fragment_open_enter"
+        app:exitAnim="@animator/tellomi_fragment_open_exit"
+        app:popEnterAnim="@animator/tellomi_fragment_close_enter"
+        app:popExitAnim="@animator/tellomi_fragment_close_exit"
         app:popUpTo="@id/app_settings"
         app:popUpToInclusive="true">
         <argument
@@ -959,30 +959,30 @@
     <action
         android:id="@+id/action_direct_to_chatFoldersFragment"
         app:destination="@id/chatFoldersFragment"
-        app:enterAnim="@anim/fragment_open_enter"
-        app:exitAnim="@anim/fragment_open_exit"
-        app:popEnterAnim="@anim/fragment_close_enter"
-        app:popExitAnim="@anim/fragment_close_exit"
+        app:enterAnim="@animator/tellomi_fragment_open_enter"
+        app:exitAnim="@animator/tellomi_fragment_open_exit"
+        app:popEnterAnim="@animator/tellomi_fragment_close_enter"
+        app:popExitAnim="@animator/tellomi_fragment_close_exit"
         app:popUpTo="@id/app_settings"
         app:popUpToInclusive="true" />
 
     <action
         android:id="@+id/action_direct_to_createFoldersFragment"
         app:destination="@id/createFoldersFragment"
-        app:enterAnim="@anim/fragment_open_enter"
-        app:exitAnim="@anim/fragment_open_exit"
-        app:popEnterAnim="@anim/fragment_close_enter"
-        app:popExitAnim="@anim/fragment_close_exit"
+        app:enterAnim="@animator/tellomi_fragment_open_enter"
+        app:exitAnim="@animator/tellomi_fragment_open_exit"
+        app:popEnterAnim="@animator/tellomi_fragment_close_enter"
+        app:popExitAnim="@animator/tellomi_fragment_close_exit"
         app:popUpTo="@id/app_settings"
         app:popUpToInclusive="true" />
 
     <action
         android:id="@+id/action_direct_to_backupsSettingsFragment"
         app:destination="@id/backupsSettingsFragment"
-        app:enterAnim="@anim/fragment_open_enter"
-        app:exitAnim="@anim/fragment_open_exit"
-        app:popEnterAnim="@anim/fragment_close_enter"
-        app:popExitAnim="@anim/fragment_close_exit"
+        app:enterAnim="@animator/tellomi_fragment_open_enter"
+        app:exitAnim="@animator/tellomi_fragment_open_exit"
+        app:popEnterAnim="@animator/tellomi_fragment_close_enter"
+        app:popExitAnim="@animator/tellomi_fragment_close_exit"
         app:popUpTo="@id/app_settings"
         app:popUpToInclusive="true">
 
@@ -995,40 +995,40 @@
     <action
         android:id="@+id/action_direct_to_chatsSettingsFragment"
         app:destination="@id/chatsSettingsFragment"
-        app:enterAnim="@anim/fragment_open_enter"
-        app:exitAnim="@anim/fragment_open_exit"
-        app:popEnterAnim="@anim/fragment_close_enter"
-        app:popExitAnim="@anim/fragment_close_exit"
+        app:enterAnim="@animator/tellomi_fragment_open_enter"
+        app:exitAnim="@animator/tellomi_fragment_open_exit"
+        app:popEnterAnim="@animator/tellomi_fragment_close_enter"
+        app:popExitAnim="@animator/tellomi_fragment_close_exit"
         app:popUpTo="@id/app_settings"
         app:popUpToInclusive="true" />
 
     <action
         android:id="@+id/action_direct_to_inviteFragment"
         app:destination="@id/inviteFragment"
-        app:enterAnim="@anim/fragment_open_enter"
-        app:exitAnim="@anim/fragment_open_exit"
-        app:popEnterAnim="@anim/fragment_close_enter"
-        app:popExitAnim="@anim/fragment_close_exit"
+        app:enterAnim="@animator/tellomi_fragment_open_enter"
+        app:exitAnim="@animator/tellomi_fragment_open_exit"
+        app:popEnterAnim="@animator/tellomi_fragment_close_enter"
+        app:popExitAnim="@animator/tellomi_fragment_close_exit"
         app:popUpTo="@id/app_settings"
         app:popUpToInclusive="true" />
 
     <action
         android:id="@+id/action_direct_to_accountSettingsFragment"
         app:destination="@id/accountSettingsFragment"
-        app:enterAnim="@anim/fragment_open_enter"
-        app:exitAnim="@anim/fragment_open_exit"
-        app:popEnterAnim="@anim/fragment_close_enter"
-        app:popExitAnim="@anim/fragment_close_exit"
+        app:enterAnim="@animator/tellomi_fragment_open_enter"
+        app:exitAnim="@animator/tellomi_fragment_open_exit"
+        app:popEnterAnim="@animator/tellomi_fragment_close_enter"
+        app:popExitAnim="@animator/tellomi_fragment_close_exit"
         app:popUpTo="@id/app_settings"
         app:popUpToInclusive="true" />
 
     <action
         android:id="@+id/action_direct_to_linkedDeviceAccountSettingsFragment"
         app:destination="@id/linkedDeviceAccountSettingsFragment"
-        app:enterAnim="@anim/fragment_open_enter"
-        app:exitAnim="@anim/fragment_open_exit"
-        app:popEnterAnim="@anim/fragment_close_enter"
-        app:popExitAnim="@anim/fragment_close_exit"
+        app:enterAnim="@animator/tellomi_fragment_open_enter"
+        app:exitAnim="@animator/tellomi_fragment_open_exit"
+        app:popEnterAnim="@animator/tellomi_fragment_close_enter"
+        app:popExitAnim="@animator/tellomi_fragment_close_exit"
         app:popUpTo="@id/app_settings"
         app:popUpToInclusive="true" />
 
@@ -1173,17 +1173,17 @@
         <action
             android:id="@+id/action_manageDonationsFragment_to_manage_badges"
             app:destination="@id/manage_badges"
-            app:enterAnim="@anim/fragment_open_enter"
-            app:exitAnim="@anim/fragment_open_exit"
-            app:popEnterAnim="@anim/fragment_close_enter"
-            app:popExitAnim="@anim/fragment_close_exit" />
+            app:enterAnim="@animator/tellomi_fragment_open_enter"
+            app:exitAnim="@animator/tellomi_fragment_open_exit"
+            app:popEnterAnim="@animator/tellomi_fragment_close_enter"
+            app:popExitAnim="@animator/tellomi_fragment_close_exit" />
         <action
             android:id="@+id/action_manageDonationsFragment_to_donationReceiptListFragment"
             app:destination="@id/donationReceiptListFragment"
-            app:enterAnim="@anim/fragment_open_enter"
-            app:exitAnim="@anim/fragment_open_exit"
-            app:popEnterAnim="@anim/fragment_close_enter"
-            app:popExitAnim="@anim/fragment_close_exit" />
+            app:enterAnim="@animator/tellomi_fragment_open_enter"
+            app:exitAnim="@animator/tellomi_fragment_open_exit"
+            app:popEnterAnim="@animator/tellomi_fragment_close_enter"
+            app:popExitAnim="@animator/tellomi_fragment_close_exit" />
         <action
             android:id="@+id/action_manageDonationsFragment_to_subscribeLearnMoreBottomSheetDialog"
             app:destination="@id/subscribeLearnMoreBottomSheetDialog" />
@@ -1201,10 +1201,10 @@
         <action
             android:id="@+id/action_donationReceiptListFragment_to_donationReceiptDetailFragment"
             app:destination="@id/donationReceiptDetailFragment"
-            app:enterAnim="@anim/fragment_open_enter"
-            app:exitAnim="@anim/fragment_open_exit"
-            app:popEnterAnim="@anim/fragment_close_enter"
-            app:popExitAnim="@anim/fragment_close_exit" />
+            app:enterAnim="@animator/tellomi_fragment_open_enter"
+            app:exitAnim="@animator/tellomi_fragment_open_exit"
+            app:popEnterAnim="@animator/tellomi_fragment_close_enter"
+            app:popExitAnim="@animator/tellomi_fragment_close_exit" />
     </fragment>
 
     <fragment
@@ -1241,18 +1241,18 @@
         <action
             android:id="@+id/action_notificationProfilesFragment_to_editNotificationProfileFragment"
             app:destination="@id/editNotificationProfileFragment"
-            app:enterAnim="@anim/fragment_open_enter"
-            app:exitAnim="@anim/fragment_open_exit"
-            app:popEnterAnim="@anim/fragment_close_enter"
-            app:popExitAnim="@anim/fragment_close_exit" />
+            app:enterAnim="@animator/tellomi_fragment_open_enter"
+            app:exitAnim="@animator/tellomi_fragment_open_exit"
+            app:popEnterAnim="@animator/tellomi_fragment_close_enter"
+            app:popExitAnim="@animator/tellomi_fragment_close_exit" />
 
         <action
             android:id="@+id/action_notificationProfilesFragment_to_notificationProfileDetailsFragment"
             app:destination="@id/notificationProfileDetailsFragment"
-            app:enterAnim="@anim/fragment_open_enter"
-            app:exitAnim="@anim/fragment_open_exit"
-            app:popEnterAnim="@anim/fragment_close_enter"
-            app:popExitAnim="@anim/fragment_close_exit" />
+            app:enterAnim="@animator/tellomi_fragment_open_enter"
+            app:exitAnim="@animator/tellomi_fragment_open_exit"
+            app:popEnterAnim="@animator/tellomi_fragment_close_enter"
+            app:popExitAnim="@animator/tellomi_fragment_close_exit" />
     </fragment>
 
     <fragment
@@ -1268,10 +1268,10 @@
         <action
             android:id="@+id/action_editNotificationProfileFragment_to_addAllowedMembersFragment"
             app:destination="@id/addAllowedMembersFragment"
-            app:enterAnim="@anim/fragment_open_enter"
-            app:exitAnim="@anim/fragment_open_exit"
-            app:popEnterAnim="@anim/fragment_close_enter"
-            app:popExitAnim="@anim/fragment_close_exit"
+            app:enterAnim="@animator/tellomi_fragment_open_enter"
+            app:exitAnim="@animator/tellomi_fragment_open_exit"
+            app:popEnterAnim="@animator/tellomi_fragment_close_enter"
+            app:popExitAnim="@animator/tellomi_fragment_close_exit"
             app:popUpTo="@id/editNotificationProfileFragment"
             app:popUpToInclusive="true" />
 
@@ -1288,18 +1288,18 @@
         <action
             android:id="@+id/action_addAllowedMembersFragment_to_selectRecipientsFragment"
             app:destination="@id/selectRecipientsFragment"
-            app:enterAnim="@anim/fragment_open_enter"
-            app:exitAnim="@anim/fragment_open_exit"
-            app:popEnterAnim="@anim/fragment_close_enter"
-            app:popExitAnim="@anim/fragment_close_exit" />
+            app:enterAnim="@animator/tellomi_fragment_open_enter"
+            app:exitAnim="@animator/tellomi_fragment_open_exit"
+            app:popEnterAnim="@animator/tellomi_fragment_close_enter"
+            app:popExitAnim="@animator/tellomi_fragment_close_exit" />
 
         <action
             android:id="@+id/action_addAllowedMembersFragment_to_editNotificationProfileScheduleFragment"
             app:destination="@id/editNotificationProfileScheduleFragment"
-            app:enterAnim="@anim/fragment_open_enter"
-            app:exitAnim="@anim/fragment_open_exit"
-            app:popEnterAnim="@anim/fragment_close_enter"
-            app:popExitAnim="@anim/fragment_close_exit" />
+            app:enterAnim="@animator/tellomi_fragment_open_enter"
+            app:exitAnim="@animator/tellomi_fragment_open_exit"
+            app:popEnterAnim="@animator/tellomi_fragment_close_enter"
+            app:popExitAnim="@animator/tellomi_fragment_close_exit" />
 
     </fragment>
 
@@ -1332,26 +1332,26 @@
         <action
             android:id="@+id/action_notificationProfileDetailsFragment_to_selectRecipientsFragment"
             app:destination="@id/selectRecipientsFragment"
-            app:enterAnim="@anim/fragment_open_enter"
-            app:exitAnim="@anim/fragment_open_exit"
-            app:popEnterAnim="@anim/fragment_close_enter"
-            app:popExitAnim="@anim/fragment_close_exit" />
+            app:enterAnim="@animator/tellomi_fragment_open_enter"
+            app:exitAnim="@animator/tellomi_fragment_open_exit"
+            app:popEnterAnim="@animator/tellomi_fragment_close_enter"
+            app:popExitAnim="@animator/tellomi_fragment_close_exit" />
 
         <action
             android:id="@+id/action_notificationProfileDetailsFragment_to_editNotificationProfileFragment"
             app:destination="@id/editNotificationProfileFragment"
-            app:enterAnim="@anim/fragment_open_enter"
-            app:exitAnim="@anim/fragment_open_exit"
-            app:popEnterAnim="@anim/fragment_close_enter"
-            app:popExitAnim="@anim/fragment_close_exit" />
+            app:enterAnim="@animator/tellomi_fragment_open_enter"
+            app:exitAnim="@animator/tellomi_fragment_open_exit"
+            app:popEnterAnim="@animator/tellomi_fragment_close_enter"
+            app:popExitAnim="@animator/tellomi_fragment_close_exit" />
 
         <action
             android:id="@+id/action_notificationProfileDetailsFragment_to_editNotificationProfileScheduleFragment"
             app:destination="@id/editNotificationProfileScheduleFragment"
-            app:enterAnim="@anim/fragment_open_enter"
-            app:exitAnim="@anim/fragment_open_exit"
-            app:popEnterAnim="@anim/fragment_close_enter"
-            app:popExitAnim="@anim/fragment_close_exit" />
+            app:enterAnim="@animator/tellomi_fragment_open_enter"
+            app:exitAnim="@animator/tellomi_fragment_open_exit"
+            app:popEnterAnim="@animator/tellomi_fragment_close_enter"
+            app:popExitAnim="@animator/tellomi_fragment_close_exit" />
 
     </fragment>
 
@@ -1371,10 +1371,10 @@
         <action
             android:id="@+id/action_editNotificationProfileScheduleFragment_to_notificationProfileCreatedFragment"
             app:destination="@id/notificationProfileCreatedFragment"
-            app:enterAnim="@anim/fragment_open_enter"
-            app:exitAnim="@anim/fragment_open_exit"
-            app:popEnterAnim="@anim/fragment_close_enter"
-            app:popExitAnim="@anim/fragment_close_exit"
+            app:enterAnim="@animator/tellomi_fragment_open_enter"
+            app:exitAnim="@animator/tellomi_fragment_open_exit"
+            app:popEnterAnim="@animator/tellomi_fragment_close_enter"
+            app:popExitAnim="@animator/tellomi_fragment_close_exit"
             app:popUpTo="@id/addAllowedMembersFragment"
             app:popUpToInclusive="true" />
 
@@ -1392,10 +1392,10 @@
         <action
             android:id="@+id/action_notificationProfileCreatedFragment_to_notificationProfileDetailsFragment"
             app:destination="@id/notificationProfileDetailsFragment"
-            app:enterAnim="@anim/fragment_open_enter"
-            app:exitAnim="@anim/fragment_open_exit"
-            app:popEnterAnim="@anim/fragment_close_enter"
-            app:popExitAnim="@anim/fragment_close_exit"
+            app:enterAnim="@animator/tellomi_fragment_open_enter"
+            app:exitAnim="@animator/tellomi_fragment_open_exit"
+            app:popEnterAnim="@animator/tellomi_fragment_close_enter"
+            app:popExitAnim="@animator/tellomi_fragment_close_exit"
             app:popUpTo="@id/notificationProfileCreatedFragment"
             app:popUpToInclusive="true" />
 
@@ -1419,26 +1419,26 @@
         <action
             android:id="@+id/action_backupsSettingsFragment_to_backupsPreferenceFragment"
             app:destination="@id/backupsPreferenceFragment"
-            app:enterAnim="@anim/fragment_open_enter"
-            app:exitAnim="@anim/fragment_open_exit"
-            app:popEnterAnim="@anim/fragment_close_enter"
-            app:popExitAnim="@anim/fragment_close_exit" />
+            app:enterAnim="@animator/tellomi_fragment_open_enter"
+            app:exitAnim="@animator/tellomi_fragment_open_exit"
+            app:popEnterAnim="@animator/tellomi_fragment_close_enter"
+            app:popExitAnim="@animator/tellomi_fragment_close_exit" />
 
         <action
             android:id="@+id/action_backupsSettingsFragment_to_localBackupsFragment"
             app:destination="@id/localBackupsFragment"
-            app:enterAnim="@anim/fragment_open_enter"
-            app:exitAnim="@anim/fragment_open_exit"
-            app:popEnterAnim="@anim/fragment_close_enter"
-            app:popExitAnim="@anim/fragment_close_exit" />
+            app:enterAnim="@animator/tellomi_fragment_open_enter"
+            app:exitAnim="@animator/tellomi_fragment_open_exit"
+            app:popEnterAnim="@animator/tellomi_fragment_close_enter"
+            app:popExitAnim="@animator/tellomi_fragment_close_exit" />
 
         <action
             android:id="@+id/action_backupsSettingsFragment_to_remoteBackupsSettingsFragment"
             app:destination="@id/remoteBackupsSettingsFragment"
-            app:enterAnim="@anim/fragment_open_enter"
-            app:exitAnim="@anim/fragment_open_exit"
-            app:popEnterAnim="@anim/fragment_close_enter"
-            app:popExitAnim="@anim/fragment_close_exit" />
+            app:enterAnim="@animator/tellomi_fragment_open_enter"
+            app:exitAnim="@animator/tellomi_fragment_open_exit"
+            app:popEnterAnim="@animator/tellomi_fragment_close_enter"
+            app:popExitAnim="@animator/tellomi_fragment_close_exit" />
 
         <argument
             android:name="launchCheckoutFlow"
@@ -1454,18 +1454,18 @@
         <action
             android:id="@+id/action_remoteBackupsSettingsFragment_to_backupKeyDisplayFragment"
             app:destination="@id/backupKeyDisplayFragment"
-            app:enterAnim="@anim/fragment_open_enter"
-            app:exitAnim="@anim/fragment_open_exit"
-            app:popEnterAnim="@anim/fragment_close_enter"
-            app:popExitAnim="@anim/fragment_close_exit" />
+            app:enterAnim="@animator/tellomi_fragment_open_enter"
+            app:exitAnim="@animator/tellomi_fragment_open_exit"
+            app:popEnterAnim="@animator/tellomi_fragment_close_enter"
+            app:popExitAnim="@animator/tellomi_fragment_close_exit" />
 
         <action
             android:id="@+id/action_remoteBackupsSettingsFragment_to_settingsSignalLoginDetailsFragment"
             app:destination="@id/settingsSignalLoginDetailsFragment"
-            app:enterAnim="@anim/fragment_open_enter"
-            app:exitAnim="@anim/fragment_open_exit"
-            app:popEnterAnim="@anim/fragment_close_enter"
-            app:popExitAnim="@anim/fragment_close_exit" />
+            app:enterAnim="@animator/tellomi_fragment_open_enter"
+            app:exitAnim="@animator/tellomi_fragment_open_exit"
+            app:popEnterAnim="@animator/tellomi_fragment_close_enter"
+            app:popExitAnim="@animator/tellomi_fragment_close_exit" />
 
         <argument
             android:name="backup_later_selected"

@@ -224,10 +224,10 @@
         <action
             android:id="@+id/action_donateToSignalFragment_to_setCurrencyFragment"
             app:destination="@id/setCurrencyFragment"
-            app:enterAnim="@anim/fragment_open_enter"
-            app:exitAnim="@anim/fragment_open_exit"
-            app:popEnterAnim="@anim/fragment_close_enter"
-            app:popExitAnim="@anim/fragment_close_exit" />
+            app:enterAnim="@animator/tellomi_fragment_open_enter"
+            app:exitAnim="@animator/tellomi_fragment_open_exit"
+            app:popEnterAnim="@animator/tellomi_fragment_close_enter"
+            app:popExitAnim="@animator/tellomi_fragment_close_exit" />
 
         <action
             android:id="@+id/action_donateToSignalFragment_to_gatewaySelectorBottomSheetDialog"
@@ -327,10 +327,10 @@
         <action
             android:id="@+id/action_giftFlowStartFragment_to_giftFlowRecipientSelectionFragment"
             app:destination="@id/giftFlowRecipientSelectionFragment"
-            app:enterAnim="@anim/fragment_open_enter"
-            app:exitAnim="@anim/fragment_open_exit"
-            app:popEnterAnim="@anim/fragment_close_enter"
-            app:popExitAnim="@anim/fragment_close_exit" />
+            app:enterAnim="@animator/tellomi_fragment_open_enter"
+            app:exitAnim="@animator/tellomi_fragment_open_exit"
+            app:popEnterAnim="@animator/tellomi_fragment_close_enter"
+            app:popExitAnim="@animator/tellomi_fragment_close_exit" />
     </fragment>
 
     <fragment
@@ -340,10 +340,10 @@
         <action
             android:id="@+id/action_giftFlowRecipientSelectionFragment_to_giftFlowConfirmationFragment"
             app:destination="@id/giftFlowConfirmationFragment"
-            app:enterAnim="@anim/fragment_open_enter"
-            app:exitAnim="@anim/fragment_open_exit"
-            app:popEnterAnim="@anim/fragment_close_enter"
-            app:popExitAnim="@anim/fragment_close_exit" />
+            app:enterAnim="@animator/tellomi_fragment_open_enter"
+            app:exitAnim="@animator/tellomi_fragment_open_exit"
+            app:popEnterAnim="@animator/tellomi_fragment_close_enter"
+            app:popExitAnim="@animator/tellomi_fragment_close_exit" />
     </fragment>
 
     <fragment

@@ -12,10 +12,10 @@
         <action
             android:id="@+id/action_changePhoneNumberFragment_to_enterPhoneNumberChangeFragment"
             app:destination="@id/enterPhoneNumberChangeFragment"
-            app:enterAnim="@anim/fragment_open_enter"
-            app:exitAnim="@anim/fragment_open_exit"
-            app:popEnterAnim="@anim/fragment_close_enter"
-            app:popExitAnim="@anim/fragment_close_exit" />
+            app:enterAnim="@animator/tellomi_fragment_open_enter"
+            app:exitAnim="@animator/tellomi_fragment_open_exit"
+            app:popEnterAnim="@animator/tellomi_fragment_close_enter"
+            app:popExitAnim="@animator/tellomi_fragment_close_exit" />
     </fragment>
 
     <fragment
@@ -26,18 +26,18 @@
         <action
             android:id="@+id/action_enterPhoneNumberChangeFragment_to_changePhoneNumberConfirmFragment"
             app:destination="@id/changePhoneNumberConfirmFragment"
-            app:enterAnim="@anim/fragment_open_enter"
-            app:exitAnim="@anim/fragment_open_exit"
-            app:popEnterAnim="@anim/fragment_close_enter"
-            app:popExitAnim="@anim/fragment_close_exit" />
+            app:enterAnim="@animator/tellomi_fragment_open_enter"
+            app:exitAnim="@animator/tellomi_fragment_open_exit"
+            app:popEnterAnim="@animator/tellomi_fragment_close_enter"
+            app:popExitAnim="@animator/tellomi_fragment_close_exit" />
 
         <action
             android:id="@+id/action_enterPhoneNumberChangeFragment_to_countryPickerFragment"
             app:destination="@id/countryPickerFragment"
-            app:enterAnim="@anim/fragment_open_enter"
-            app:exitAnim="@anim/fragment_open_exit"
-            app:popEnterAnim="@anim/fragment_close_enter"
-            app:popExitAnim="@anim/fragment_close_exit" />
+            app:enterAnim="@animator/tellomi_fragment_open_enter"
+            app:exitAnim="@animator/tellomi_fragment_open_exit"
+            app:popEnterAnim="@animator/tellomi_fragment_close_enter"
+            app:popExitAnim="@animator/tellomi_fragment_close_exit" />
     </fragment>
 
     <fragment
@@ -48,10 +48,10 @@
         <action
             android:id="@+id/action_changePhoneNumberConfirmFragment_to_changePhoneNumberVerifyFragment"
             app:destination="@id/changePhoneNumberVerifyFragment"
-            app:enterAnim="@anim/fragment_open_enter"
-            app:exitAnim="@anim/fragment_open_exit"
-            app:popEnterAnim="@anim/fragment_close_enter"
-            app:popExitAnim="@anim/fragment_close_exit"
+            app:enterAnim="@animator/tellomi_fragment_open_enter"
+            app:exitAnim="@animator/tellomi_fragment_open_exit"
+            app:popEnterAnim="@animator/tellomi_fragment_close_enter"
+            app:popExitAnim="@animator/tellomi_fragment_close_exit"
             app:popUpTo="@+id/enterPhoneNumberChangeFragment" />
     </fragment>
 
@@ -82,27 +82,27 @@
         <action
             android:id="@+id/action_changePhoneNumberVerifyFragment_to_captchaFragment"
             app:destination="@id/captchaFragment"
-            app:enterAnim="@anim/fragment_open_enter"
-            app:exitAnim="@anim/fragment_open_exit"
-            app:popEnterAnim="@anim/fragment_close_enter"
-            app:popExitAnim="@anim/fragment_close_exit" />
+            app:enterAnim="@animator/tellomi_fragment_open_enter"
+            app:exitAnim="@animator/tellomi_fragment_open_exit"
+            app:popEnterAnim="@animator/tellomi_fragment_close_enter"
+            app:popExitAnim="@animator/tellomi_fragment_close_exit" />
 
         <action
             android:id="@+id/action_changePhoneNumberVerifyFragment_to_changeNumberEnterCodeFragment"
             app:destination="@id/changeNumberEnterCodeFragment"
-            app:enterAnim="@anim/fragment_open_enter"
-            app:exitAnim="@anim/fragment_open_exit"
-            app:popEnterAnim="@anim/fragment_close_enter"
-            app:popExitAnim="@anim/fragment_close_exit"
+            app:enterAnim="@animator/tellomi_fragment_open_enter"
+            app:exitAnim="@animator/tellomi_fragment_open_exit"
+            app:popEnterAnim="@animator/tellomi_fragment_close_enter"
+            app:popExitAnim="@animator/tellomi_fragment_close_exit"
             app:popUpTo="@+id/enterPhoneNumberChangeFragment" />
 
         <action
             android:id="@+id/action_changePhoneNumberVerifyFragment_to_changeNumberRegistrationLock"
             app:destination="@id/changeNumberRegistrationLock"
-            app:enterAnim="@anim/fragment_open_enter"
-            app:exitAnim="@anim/fragment_open_exit"
-            app:popEnterAnim="@anim/fragment_close_enter"
-            app:popExitAnim="@anim/fragment_close_exit"
+            app:enterAnim="@animator/tellomi_fragment_open_enter"
+            app:exitAnim="@animator/tellomi_fragment_open_exit"
+            app:popEnterAnim="@animator/tellomi_fragment_close_enter"
+            app:popExitAnim="@animator/tellomi_fragment_close_exit"
             app:popUpTo="@+id/enterPhoneNumberChangeFragment" />
     </fragment>
 
@@ -119,27 +119,27 @@
         <action
             android:id="@+id/action_changeNumberEnterCodeFragment_to_captchaFragment"
             app:destination="@id/captchaFragment"
-            app:enterAnim="@anim/fragment_open_enter"
-            app:exitAnim="@anim/fragment_open_exit"
-            app:popEnterAnim="@anim/fragment_close_enter"
-            app:popExitAnim="@anim/fragment_close_exit" />
+            app:enterAnim="@animator/tellomi_fragment_open_enter"
+            app:exitAnim="@animator/tellomi_fragment_open_exit"
+            app:popEnterAnim="@animator/tellomi_fragment_close_enter"
+            app:popExitAnim="@animator/tellomi_fragment_close_exit" />
 
         <action
             android:id="@+id/action_changeNumberEnterCodeFragment_to_changeNumberRegistrationLock"
             app:destination="@id/changeNumberRegistrationLock"
-            app:enterAnim="@anim/fragment_open_enter"
-            app:exitAnim="@anim/fragment_open_exit"
-            app:popEnterAnim="@anim/fragment_close_enter"
-            app:popExitAnim="@anim/fragment_close_exit"
+            app:enterAnim="@animator/tellomi_fragment_open_enter"
+            app:exitAnim="@animator/tellomi_fragment_open_exit"
+            app:popEnterAnim="@animator/tellomi_fragment_close_enter"
+            app:popExitAnim="@animator/tellomi_fragment_close_exit"
             app:popUpTo="@id/enterPhoneNumberChangeFragment" />
 
         <action
             android:id="@+id/action_changeNumberEnterCodeFragment_to_changeNumberAccountLocked"
             app:destination="@id/changeNumberAccountLocked"
-            app:enterAnim="@anim/fragment_open_enter"
-            app:exitAnim="@anim/fragment_open_exit"
-            app:popEnterAnim="@anim/fragment_close_enter"
-            app:popExitAnim="@anim/fragment_close_exit"
+            app:enterAnim="@animator/tellomi_fragment_open_enter"
+            app:exitAnim="@animator/tellomi_fragment_open_exit"
+            app:popEnterAnim="@animator/tellomi_fragment_close_enter"
+            app:popExitAnim="@animator/tellomi_fragment_close_exit"
             app:popUpTo="@id/enterPhoneNumberChangeFragment" />
 
     </fragment>
@@ -156,19 +156,19 @@
         <action
             android:id="@+id/action_changeNumberRegistrationLock_to_changeNumberAccountLocked"
             app:destination="@id/changeNumberAccountLocked"
-            app:enterAnim="@anim/fragment_open_enter"
-            app:exitAnim="@anim/fragment_open_exit"
-            app:popEnterAnim="@anim/fragment_close_enter"
-            app:popExitAnim="@anim/fragment_close_exit"
+            app:enterAnim="@animator/tellomi_fragment_open_enter"
+            app:exitAnim="@animator/tellomi_fragment_open_exit"
+            app:popEnterAnim="@animator/tellomi_fragment_close_enter"
+            app:popExitAnim="@animator/tellomi_fragment_close_exit"
             app:popUpTo="@id/enterPhoneNumberChangeFragment" />
 
         <action
             android:id="@+id/action_changeNumberRegistrationLock_to_changeNumberPinDiffers"
             app:destination="@id/changeNumberPinDiffers"
-            app:enterAnim="@anim/fragment_open_enter"
-            app:exitAnim="@anim/fragment_open_exit"
-            app:popEnterAnim="@anim/fragment_close_enter"
-            app:popExitAnim="@anim/fragment_close_exit"
+            app:enterAnim="@animator/tellomi_fragment_open_enter"
+            app:exitAnim="@animator/tellomi_fragment_open_exit"
+            app:popEnterAnim="@animator/tellomi_fragment_close_enter"
+            app:popExitAnim="@animator/tellomi_fragment_close_exit"
             app:popUpTo="@id/enterPhoneNumberChangeFragment" />
 
     </fragment>

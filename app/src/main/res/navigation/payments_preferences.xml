@@ -18,58 +18,58 @@
         <action
             android:id="@+id/action_paymentsHome_to_paymentsAllActivity"
             app:destination="@id/paymentsAllActivity"
-            app:enterAnim="@anim/fragment_open_enter"
-            app:exitAnim="@anim/fragment_open_exit"
-            app:popEnterAnim="@anim/fragment_close_enter"
-            app:popExitAnim="@anim/fragment_close_exit" />
+            app:enterAnim="@animator/tellomi_fragment_open_enter"
+            app:exitAnim="@animator/tellomi_fragment_open_exit"
+            app:popEnterAnim="@animator/tellomi_fragment_close_enter"
+            app:popExitAnim="@animator/tellomi_fragment_close_exit" />
 
         <action
             android:id="@+id/action_paymentsHome_to_paymentsAddMoney"
             app:destination="@id/paymentsAddMoney"
-            app:enterAnim="@anim/fragment_open_enter"
-            app:exitAnim="@anim/fragment_open_exit"
-            app:popEnterAnim="@anim/fragment_close_enter"
-            app:popExitAnim="@anim/fragment_close_exit" />
+            app:enterAnim="@animator/tellomi_fragment_open_enter"
+            app:exitAnim="@animator/tellomi_fragment_open_exit"
+            app:popEnterAnim="@animator/tellomi_fragment_close_enter"
+            app:popExitAnim="@animator/tellomi_fragment_close_exit" />
 
         <action
             android:id="@+id/action_paymentsHome_to_paymentRecipientSelectionFragment"
             app:destination="@id/paymentRecipientSelectionFragment"
-            app:enterAnim="@anim/fragment_open_enter"
-            app:exitAnim="@anim/fragment_open_exit"
-            app:popEnterAnim="@anim/fragment_close_enter"
-            app:popExitAnim="@anim/fragment_close_exit" />
+            app:enterAnim="@animator/tellomi_fragment_open_enter"
+            app:exitAnim="@animator/tellomi_fragment_open_exit"
+            app:popEnterAnim="@animator/tellomi_fragment_close_enter"
+            app:popExitAnim="@animator/tellomi_fragment_close_exit" />
 
         <action
             android:id="@+id/action_paymentsHome_to_paymentsTransfer"
             app:destination="@id/payments_transfer"
-            app:enterAnim="@anim/fragment_open_enter"
-            app:exitAnim="@anim/fragment_open_exit"
-            app:popEnterAnim="@anim/fragment_close_enter"
-            app:popExitAnim="@anim/fragment_close_exit" />
+            app:enterAnim="@animator/tellomi_fragment_open_enter"
+            app:exitAnim="@animator/tellomi_fragment_open_exit"
+            app:popEnterAnim="@animator/tellomi_fragment_close_enter"
+            app:popExitAnim="@animator/tellomi_fragment_close_exit" />
 
         <action
             android:id="@+id/action_paymentsHome_to_setCurrency"
             app:destination="@id/setCurrency"
-            app:enterAnim="@anim/fragment_open_enter"
-            app:exitAnim="@anim/fragment_open_exit"
-            app:popEnterAnim="@anim/fragment_close_enter"
-            app:popExitAnim="@anim/fragment_close_exit" />
+            app:enterAnim="@animator/tellomi_fragment_open_enter"
+            app:exitAnim="@animator/tellomi_fragment_open_exit"
+            app:popEnterAnim="@animator/tellomi_fragment_close_enter"
+            app:popExitAnim="@animator/tellomi_fragment_close_exit" />
 
         <action
             android:id="@+id/action_paymentsHome_to_deactivateWallet"
             app:destination="@id/deactivateWallet"
-            app:enterAnim="@anim/fragment_open_enter"
-            app:exitAnim="@anim/fragment_open_exit"
-            app:popEnterAnim="@anim/fragment_close_enter"
-            app:popExitAnim="@anim/fragment_close_exit" />
+            app:enterAnim="@animator/tellomi_fragment_open_enter"
+            app:exitAnim="@animator/tellomi_fragment_open_exit"
+            app:popEnterAnim="@animator/tellomi_fragment_close_enter"
+            app:popExitAnim="@animator/tellomi_fragment_close_exit" />
 
         <action
             android:id="@+id/action_paymentsHome_to_paymentsBackup"
             app:destination="@id/payments_backup"
-            app:enterAnim="@anim/fragment_open_enter"
-            app:exitAnim="@anim/fragment_open_exit"
-            app:popEnterAnim="@anim/fragment_close_enter"
-            app:popExitAnim="@anim/fragment_close_exit">
+            app:enterAnim="@animator/tellomi_fragment_open_enter"
+            app:exitAnim="@animator/tellomi_fragment_open_exit"
+            app:popEnterAnim="@animator/tellomi_fragment_close_enter"
+            app:popExitAnim="@animator/tellomi_fragment_close_exit">
 
             <argument
                 android:name="is_restore"
@@ -101,10 +101,10 @@
         <action
             android:id="@+id/action_paymentsHome_to_privacySettings"
             app:destination="@id/privacy_settings"
-            app:enterAnim="@anim/fragment_open_enter"
-            app:exitAnim="@anim/fragment_open_exit"
-            app:popEnterAnim="@anim/fragment_close_enter"
-            app:popExitAnim="@anim/fragment_close_exit">
+            app:enterAnim="@animator/tellomi_fragment_open_enter"
+            app:exitAnim="@animator/tellomi_fragment_open_exit"
+            app:popEnterAnim="@animator/tellomi_fragment_close_enter"
+            app:popExitAnim="@animator/tellomi_fragment_close_exit">
 
             <argument
                 android:name="show_payment_lock"
@@ -115,10 +115,10 @@
         <action
             android:id="@+id/action_paymentsHome_to_securitySetup"
             app:destination="@id/paymentsSecuritySetup"
-            app:enterAnim="@anim/fragment_open_enter"
-            app:exitAnim="@anim/fragment_open_exit"
-            app:popEnterAnim="@anim/fragment_close_enter"
-            app:popExitAnim="@anim/fragment_close_exit" />
+            app:enterAnim="@animator/tellomi_fragment_open_enter"
+            app:exitAnim="@animator/tellomi_fragment_open_exit"
+            app:popEnterAnim="@animator/tellomi_fragment_close_enter"
+            app:popExitAnim="@animator/tellomi_fragment_close_exit" />
 
     </fragment>
 
@@ -153,10 +153,10 @@
         <action
             android:id="@+id/action_paymentRecipientSelection_to_createPayment"
             app:destination="@id/payments_create"
-            app:enterAnim="@anim/fragment_open_enter"
-            app:exitAnim="@anim/fragment_open_exit"
-            app:popEnterAnim="@anim/fragment_close_enter"
-            app:popExitAnim="@anim/fragment_close_exit">
+            app:enterAnim="@animator/tellomi_fragment_open_enter"
+            app:exitAnim="@animator/tellomi_fragment_open_exit"
+            app:popEnterAnim="@animator/tellomi_fragment_close_enter"
+            app:popExitAnim="@animator/tellomi_fragment_close_exit">
 
             <argument
                 android:name="payee"
@@ -191,10 +191,10 @@
         <action
             android:id="@+id/action_deactivateWallet_to_paymentsTransfer"
             app:destination="@id/payments_transfer"
-            app:enterAnim="@anim/fragment_open_enter"
-            app:exitAnim="@anim/fragment_open_exit"
-            app:popEnterAnim="@anim/fragment_close_enter"
-            app:popExitAnim="@anim/fragment_close_exit"
+            app:enterAnim="@animator/tellomi_fragment_open_enter"
+            app:exitAnim="@animator/tellomi_fragment_open_exit"
+            app:popEnterAnim="@animator/tellomi_fragment_close_enter"
+            app:popExitAnim="@animator/tellomi_fragment_close_exit"
             app:popUpTo="@id/paymentsHome"
             app:popUpToInclusive="false" />
 
@@ -208,10 +208,10 @@
         <action
             android:id="@+id/action_paymentsHome_to_privacySettings"
             app:destination="@id/privacy_settings"
-            app:enterAnim="@anim/fragment_open_enter"
-            app:exitAnim="@anim/fragment_open_exit"
-            app:popEnterAnim="@anim/fragment_close_enter"
-            app:popExitAnim="@anim/fragment_close_exit"
+            app:enterAnim="@animator/tellomi_fragment_open_enter"
+            app:exitAnim="@animator/tellomi_fragment_open_exit"
+            app:popEnterAnim="@animator/tellomi_fragment_close_enter"
+            app:popExitAnim="@animator/tellomi_fragment_close_exit"
             app:popUpTo="@id/paymentsHome">
 
             <argument
@@ -225,10 +225,10 @@
     <action
         android:id="@+id/action_directly_to_createPayment"
         app:destination="@id/payments_create"
-        app:enterAnim="@anim/fragment_open_enter"
-        app:exitAnim="@anim/fragment_open_exit"
-        app:popEnterAnim="@anim/fragment_close_enter"
-        app:popExitAnim="@anim/fragment_close_exit"
+        app:enterAnim="@animator/tellomi_fragment_open_enter"
+        app:exitAnim="@animator/tellomi_fragment_open_exit"
+        app:popEnterAnim="@animator/tellomi_fragment_close_enter"
+        app:popExitAnim="@animator/tellomi_fragment_close_exit"
         app:popUpTo="@id/paymentsHome"
         app:popUpToInclusive="true">
 
@@ -253,10 +253,10 @@
     <action
         android:id="@+id/action_directly_to_paymentsHome"
         app:destination="@id/paymentsHome"
-        app:enterAnim="@anim/fragment_open_enter"
-        app:exitAnim="@anim/fragment_open_exit"
-        app:popEnterAnim="@anim/fragment_close_enter"
-        app:popExitAnim="@anim/fragment_close_exit"
+        app:enterAnim="@animator/tellomi_fragment_open_enter"
+        app:exitAnim="@animator/tellomi_fragment_open_exit"
+        app:popEnterAnim="@animator/tellomi_fragment_close_enter"
+        app:popExitAnim="@animator/tellomi_fragment_close_exit"
         app:popUpTo="@id/paymentsHome"
         app:popUpToInclusive="false">
 
@@ -269,26 +269,26 @@
     <action
         android:id="@+id/action_directly_to_paymentDetails"
         app:destination="@id/paymentDetails"
-        app:enterAnim="@anim/fragment_open_enter"
-        app:exitAnim="@anim/fragment_open_exit"
-        app:popEnterAnim="@anim/fragment_close_enter"
-        app:popExitAnim="@anim/fragment_close_exit" />
+        app:enterAnim="@animator/tellomi_fragment_open_enter"
+        app:exitAnim="@animator/tellomi_fragment_open_exit"
+        app:popEnterAnim="@animator/tellomi_fragment_close_enter"
+        app:popExitAnim="@animator/tellomi_fragment_close_exit" />
 
     <action
         android:id="@+id/action_directly_to_paymentsTransfer"
         app:destination="@id/payments_transfer"
-        app:enterAnim="@anim/fragment_open_enter"
-        app:exitAnim="@anim/fragment_open_exit"
-        app:popEnterAnim="@anim/fragment_close_enter"
-        app:popExitAnim="@anim/fragment_close_exit" />
+        app:enterAnim="@animator/tellomi_fragment_open_enter"
+        app:exitAnim="@animator/tellomi_fragment_open_exit"
+        app:popEnterAnim="@animator/tellomi_fragment_close_enter"
+        app:popExitAnim="@animator/tellomi_fragment_close_exit" />
 
     <action
         android:id="@+id/action_directly_to_paymentsBackup"
         app:destination="@id/payments_backup"
-        app:enterAnim="@anim/fragment_open_enter"
-        app:exitAnim="@anim/fragment_open_exit"
-        app:popEnterAnim="@anim/fragment_close_enter"
-        app:popExitAnim="@anim/fragment_close_exit" />
+        app:enterAnim="@animator/tellomi_fragment_open_enter"
+        app:exitAnim="@animator/tellomi_fragment_open_exit"
+        app:popEnterAnim="@animator/tellomi_fragment_close_enter"
+        app:popExitAnim="@animator/tellomi_fragment_close_exit" />
 
     <include app:graph="@navigation/payments_create" />
 

@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Copyright 2026 重庆半格智能科技有限公司
+  SPDX-License-Identifier: AGPL-3.0-only
+
+  Tellomi（交互审计 A-22 第三步）：res/anim/fragment_open_exit.xml 的 Animator 版，数值一样（离开的旧页：从 1 放大到 1.15，35 ms 后 50 ms 淡出）。
+  View 动画（@anim）不能被拖，Animator 能：Fragment 1.7+ 在 Android 14+ 上按返回手势的进度 seek 它，
+  所以导航图换成这一版之后，设置等子页拖返回手势时就能「先看再退」。
+  延迟淡变用「先保持、再变」的顺序集合，保证延迟期间透明度已经在起点（@anim 版靠 fillBefore）。
+-->
+<set xmlns:android="http://schemas.android.com/apk/res/android">
+    <set android:ordering="sequentially">
+        <objectAnimator
+            android:duration="35"
+            android:interpolator="@android:anim/linear_interpolator"
+            android:propertyName="alpha"
+            android:valueFrom="1.0"
+            android:valueTo="1.0" />
+        <objectAnimator
+            android:duration="50"
+            android:interpolator="@android:anim/linear_interpolator"
+            android:propertyName="alpha"
+            android:valueFrom="1.0"
+            android:valueTo="0.0" />
+    </set>
+    <objectAnimator
+        android:duration="300"
+        android:interpolator="@anim/fragment_fast_out_extra_slow_in"
+        android:propertyName="scaleX"
+        android:valueFrom="1.0"
+        android:valueTo="1.15" />
+    <objectAnimator
+        android:duration="300"
+        android:interpolator="@anim/fragment_fast_out_extra_slow_in"
+        android:propertyName="scaleY"
+        android:valueFrom="1.0"
+        android:valueTo="1.15" />
+</set>
