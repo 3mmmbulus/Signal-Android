@@ -9,6 +9,7 @@ import androidx.appcompat.widget.AppCompatImageButton;
 
 import org.signal.core.util.ContextUtil;
 import org.thoughtcrime.securesms.R;
+import org.thoughtcrime.securesms.components.TellomiIconSwap;
 import org.thoughtcrime.securesms.keyboard.KeyboardPage;
 import org.thoughtcrime.securesms.util.TextSecurePreferences;
 
@@ -20,6 +21,9 @@ public class EmojiToggle extends AppCompatImageButton implements MediaKeyboard.M
 
   private Drawable mediaToggle;
   private Drawable imeToggle;
+
+  /** Tellomi（交互审计 A-11）：正在显示（或正淡入）的那张图标；换图标有交叉淡入，期间 getDrawable() 是过渡用的组合图。 */
+  private Drawable shownToggle;
 
 
   public EmojiToggle(Context context) {
@@ -38,11 +42,20 @@ public class EmojiToggle extends AppCompatImageButton implements MediaKeyboard.M
   }
 
   public void setToMedia() {
-    setImageDrawable(mediaToggle);
+    show(mediaToggle);
   }
 
   public void setToIme() {
-    setImageDrawable(imeToggle);
+    show(imeToggle);
+  }
+
+  /** Tellomi（交互审计 A-11）：表情 ↔ 键盘图标交叉淡入 + 弹一下，不再直接替换。 */
+  private void show(@NonNull Drawable toggle) {
+    if (toggle == shownToggle) return;
+
+    Drawable previous = shownToggle;
+    shownToggle = toggle;
+    TellomiIconSwap.swap(this, previous, toggle);
   }
 
   private void initialize() {
@@ -72,7 +85,7 @@ public class EmojiToggle extends AppCompatImageButton implements MediaKeyboard.M
         break;
     }
 
-    if (getDrawable() != imeToggle) {
+    if (shownToggle != imeToggle) {
       setToMedia();
     }
   }

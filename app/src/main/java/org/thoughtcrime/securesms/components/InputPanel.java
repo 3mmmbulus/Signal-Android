@@ -27,6 +27,7 @@ import androidx.annotation.MainThread;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.appcompat.app.AlertDialog;
+import androidx.constraintlayout.widget.Barrier;
 import androidx.constraintlayout.widget.ConstraintLayout;
 import androidx.core.content.ContextCompat;
 import androidx.lifecycle.Observer;
@@ -74,6 +75,7 @@ import org.thoughtcrime.securesms.util.MessageRecordUtil;
 import org.thoughtcrime.securesms.util.ViewUtil;
 import org.thoughtcrime.securesms.util.concurrent.AssertedSuccessListener;
 
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Objects;
@@ -420,6 +422,49 @@ public class InputPanel extends ConstraintLayout
     return mediaKeyboard;
   }
 
+  /** Tellomi（交互审计 A-11）：输入区高度动画里跟着上沿移动的气泡底。 */
+  public @NonNull View getComposeBubble() {
+    return composeContainer;
+  }
+
+  /** Tellomi（交互审计 A-11）：输入框外面那层（裁剪输入框；高度动画时字在里面滑）。 */
+  public @NonNull View getComposeTextContainer() {
+    return composeTextContainer;
+  }
+
+  /** Tellomi（交互审计 A-11）：气泡里文字上方的条——编辑标题、引用、链接预览；高度动画时原有的跟着上沿移动，新出现的被上沿揭开。 */
+  public @NonNull List<View> getTellomiTopBars() {
+    List<View> bars = new ArrayList<>(4);
+    bars.add(editMessageTitle);
+    bars.add(editMessageThumbnail);
+    if (quoteViewStub.resolved()) {
+      bars.add(quoteViewStub.get());
+    }
+    if (linkPreviewStub.resolved()) {
+      bars.add(linkPreviewStub.get());
+    }
+    return bars;
+  }
+
+  /** Tellomi（交互审计 A-11）：引用条、编辑态是上游自己逐帧改高度做的动画；这期间输入区高度动画不接手。 */
+  public boolean isAnimatingOwnHeight() {
+    return (quoteAnimator != null && quoteAnimator.isRunning()) || (editMessageAnimator != null && editMessageAnimator.isRunning());
+  }
+
+  /**
+   * Tellomi（交互审计 A-11）：输入框的右边界只跟「要显示的那组按钮」走（{@code visibleGroup}；都不显示时传 null，照上游看两组）。
+   * 换组时输入框一开始就到最终宽度，不再等要收起的那组 150 ms 动画播完、GONE 之后才突然变宽——那时长文本会重新折行、
+   * 输入区高度跟着跳。收起的那组照旧缩小淡出，叠在输入框末端上面。Telegram 同序：`updateFieldRight` 在收起动画开始时就调。
+   */
+  public void setTrailingControls(@Nullable View visibleGroup) {
+    Barrier barrier = findViewById(R.id.attachment_barrier);
+    int[]   ids     = visibleGroup != null ? new int[] { visibleGroup.getId() }
+                                           : new int[] { R.id.quick_attachment_toggle, R.id.inline_attachment_container };
+    if (!Arrays.equals(barrier.getReferencedIds(), ids)) {
+      barrier.setReferencedIds(ids);
+    }
+  }
+
   public void setWallpaperEnabled(boolean enabled) {
     final int iconTint;
     final int textColor;
@@ -431,7 +476,8 @@ public class InputPanel extends ConstraintLayout
       textHintColor = getContext().getResources().getColor(org.signal.core.ui.R.color.signal_colorOnSurfaceVariant);
 
       setBackground(null);
-      composeContainer.setBackground(Objects.requireNonNull(ContextCompat.getDrawable(getContext(), R.drawable.compose_background_wallpaper)));
+      // Tellomi（交互审计 A-11）：气泡底图包一层，输入区高度动画时上沿跟着走。
+      composeContainer.setBackground(new TellomiOffsetTopDrawable(Objects.requireNonNull(ContextCompat.getDrawable(getContext(), R.drawable.compose_background_wallpaper))));
       quickAudioToggle.setColorFilter(iconTint);
       quickCameraToggle.setColorFilter(iconTint);
     } else {
@@ -439,8 +485,9 @@ public class InputPanel extends ConstraintLayout
       textColor = getContext().getResources().getColor(org.signal.core.ui.R.color.signal_colorOnSurface);
       textHintColor = getContext().getResources().getColor(org.signal.core.ui.R.color.signal_colorOnSurfaceVariant);
 
-      setBackground(new ColorDrawable(getContext().getResources().getColor(org.signal.core.ui.R.color.signal_colorSurface)));
-      composeContainer.setBackground(Objects.requireNonNull(ContextCompat.getDrawable(getContext(), R.drawable.compose_background)));
+      // Tellomi（交互审计 A-11）：输入区底色和气泡底图都包一层，输入区高度动画时上沿跟着走。
+      setBackground(new TellomiOffsetTopDrawable(new ColorDrawable(getContext().getResources().getColor(org.signal.core.ui.R.color.signal_colorSurface))));
+      composeContainer.setBackground(new TellomiOffsetTopDrawable(Objects.requireNonNull(ContextCompat.getDrawable(getContext(), R.drawable.compose_background))));
     }
 
     mediaKeyboard.setColorFilter(iconTint);

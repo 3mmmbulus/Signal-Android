@@ -692,6 +692,9 @@ class ConversationFragment :
   private val inputPanel: InputPanel
     get() = binding.conversationInputPanel.root
 
+  /** Tellomi（交互审计 A-11）：输入区高度变化（多一行、链接预览）时输入区和列表一起滑过去。 */
+  private var composerHeightAnimator: TellomiComposerHeightAnimator? = null
+
   private val composeText: ComposeText
     get() = binding.conversationInputPanel.embeddedTextEditor
 
@@ -859,6 +862,7 @@ class ConversationFragment :
       incognito = args.isIncognito
     )
     conversationToolbarOnScrollHelper.attach(binding.conversationItemRecycler)
+    composerHeightAnimator = TellomiComposerHeightAnimator(inputPanel, binding.conversationItemRecyclerFrame, composeText).also { it.attach() }
     presentConversationTitle(viewModel.recipientSnapshot)
     viewModel.recipientSnapshot?.takeIf { it.isGroup }?.let { group ->
       presentGroupConversationSubtitle(tellomiGroupMemberSubtitle(resources, group))
@@ -1072,6 +1076,8 @@ class ConversationFragment :
   }
 
   override fun onDestroyView() {
+    composerHeightAnimator?.detach()
+    composerHeightAnimator = null
     viewModel.collapseAllEvents()
     keyboardEvents?.let {
       container.removeInputListener(it)
@@ -2716,12 +2722,14 @@ class ConversationFragment :
         buttonToggle.display(sendButton)
         quickAttachment.show()
         inlineAttachment.hide(true)
+        inputPanel.setTrailingControls(quickAttachment)
       }
 
       inputPanel.inEditMessageMode() -> {
         buttonToggle.display(sendEditButton)
         quickAttachment.hide(false)
         inlineAttachment.hide(false)
+        inputPanel.setTrailingControls(null)
       }
 
       // An in-progress recording snapshots itself into the draft, but its UI lives in quickAttachment and must stay visible.
@@ -2729,12 +2737,14 @@ class ConversationFragment :
         buttonToggle.display(sendButton)
         quickAttachment.hide(true)
         inlineAttachment.hide(true)
+        inputPanel.setTrailingControls(null)
       }
 
       composeText.text.isNullOrBlank() && !attachmentManager.isAttachmentPresent -> {
         buttonToggle.display(binding.conversationInputPanel.attachButton)
         quickAttachment.show()
         inlineAttachment.hide(true)
+        inputPanel.setTrailingControls(quickAttachment)
       }
 
       else -> {
@@ -2743,8 +2753,10 @@ class ConversationFragment :
 
         if (!attachmentManager.isAttachmentPresent && !linkPreviewViewModel.hasLinkPreviewUi) {
           inlineAttachment.show()
+          inputPanel.setTrailingControls(inlineAttachment)
         } else {
           inlineAttachment.hide(true)
+          inputPanel.setTrailingControls(null)
         }
       }
     }

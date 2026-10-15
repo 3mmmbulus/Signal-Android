@@ -11,4 +11,7 @@
         <item name="android:windowEnterAnimation">@null</item>
         <item name="android:windowExitAnimation">@anim/shrink_fade_out</item>
     </style>
+
+    <!-- Tellomi（交互审计 A-11）：TellomiIconSwap 记「交叉淡入结束后换回单张图标」的回调。 -->
+    <item name="tellomi_icon_swap_finish" type="id" />
 </resources>
