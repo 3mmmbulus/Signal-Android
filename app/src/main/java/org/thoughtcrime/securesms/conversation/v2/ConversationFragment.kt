@@ -3148,8 +3148,14 @@ class ConversationFragment :
       focusedView = focusedView
     )
     viewModel.setIsReactionDelegateShowing(true)
-    composeText.clearFocus()
+    // Tellomi (A-06): the field keeps focus while the keyboard stays up, or the keyboard would be left typing into nothing.
+    if (!keepsKeyboardForReaction) {
+      composeText.clearFocus()
+    }
   }
+
+  /** Tellomi (A-06, Q-05 = A): the current long press left the system keyboard up. */
+  private var keepsKeyboardForReaction = false
 
   //region Message Request Helpers
 
@@ -4392,11 +4398,14 @@ class ConversationFragment :
         }
 
         if (target != null) {
-          // Read before anything is asked to hide, or the keyboard cannot be brought back on dismiss.
-          val focusedView = if (container.isInputShowing || !container.isKeyboardShowing) null else itemView.rootView.findFocus()
-
-          container.hideAll(composeText)
-          showReactionOverlay(item, target, focusedView)
+          // Tellomi (interaction audit A-06, owner Q-05 = A): the system keyboard stays where it is and the overlay is placed
+          // above it. Upstream put it away here and brought it back on dismiss, so the bottom of the chat jumped twice.
+          // The in-app keyboards (emoji, attachments) still close, as do floating keyboards that claim no space.
+          keepsKeyboardForReaction = container.isKeyboardShowing && !container.isInputShowing
+          if (!keepsKeyboardForReaction) {
+            container.hideAll(composeText)
+          }
+          showReactionOverlay(item, target, focusedView = null)
         }
       } else if (item.conversationMessage.isActiveCollapsedHead) {
         viewModel.onExpandEvents(item.conversationMessage.messageRecord.id)

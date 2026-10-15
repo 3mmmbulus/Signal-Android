@@ -60,16 +60,17 @@ class ConversationContextMenu(private val anchor: View, items: List<ActionItem>)
    * Tellomi（交互审计 A-06 Android，审计「Android 菜单不从消息长出来」）：菜单从消息那一侧的上角弹簧展开——[growFromLeft]
    * 为 true（消息在左边）从左上角，否则右上角；缩放用 Move（带一点回弹），透明度用 Fade。省电 / 关了动画照上游淡入。
    */
-  fun show(offsetX: Int, offsetY: Int, growFromLeft: Boolean) {
+  fun show(offsetX: Int, offsetY: Int, growFromLeft: Boolean, growDelayMs: Long = 0L) {
     val grow = TellomiMotion.tier(context) != TellomiMotion.Tier.MINIMAL
     animationStyle = if (grow) R.style.TellomiConversationContextMenuAnimation else R.style.ConversationContextMenuAnimation
     showAsDropDown(anchor, offsetX, offsetY, Gravity.TOP or Gravity.START)
     if (grow) {
-      growIn(contentView.rootView, growFromLeft)
+      growIn(contentView.rootView, growFromLeft, growDelayMs)
     }
   }
 
-  private fun growIn(root: View, fromLeft: Boolean) {
+  /** [delayMs]: the menu stays invisible this long first, while the message moves into place (see the controller). */
+  private fun growIn(root: View, fromLeft: Boolean, delayMs: Long) {
     root.scaleX = GROW_FROM_SCALE
     root.scaleY = GROW_FROM_SCALE
     root.alpha = 0f
@@ -77,9 +78,16 @@ class ConversationContextMenu(private val anchor: View, items: List<ActionItem>)
       it.pivotX = if (fromLeft) 0f else it.width.toFloat()
       it.pivotY = 0f
     }
-    spring(root, DynamicAnimation.SCALE_X, TellomiMotion.Move)
-    spring(root, DynamicAnimation.SCALE_Y, TellomiMotion.Move)
-    spring(root, DynamicAnimation.ALPHA, TellomiMotion.Fade)
+    val start = Runnable {
+      spring(root, DynamicAnimation.SCALE_X, TellomiMotion.Move)
+      spring(root, DynamicAnimation.SCALE_Y, TellomiMotion.Move)
+      spring(root, DynamicAnimation.ALPHA, TellomiMotion.Fade)
+    }
+    if (delayMs > 0L) {
+      root.postDelayed(start, delayMs)
+    } else {
+      start.run()
+    }
   }
 
   private fun spring(view: View, property: DynamicAnimation.ViewProperty, token: TellomiMotion.SpringToken) {

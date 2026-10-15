@@ -21,6 +21,7 @@ import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.absoluteOffset
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.ime
 import androidx.compose.foundation.layout.requiredSize
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -61,6 +62,7 @@ import org.thoughtcrime.securesms.conversation.ReactionOverlayPlacement
 import org.thoughtcrime.securesms.conversation.ReactionScrubber
 import kotlin.math.PI
 import kotlin.math.cos
+import kotlin.math.max
 import kotlin.math.roundToInt
 import org.signal.core.ui.R as CoreUiR
 
@@ -168,7 +170,9 @@ fun ChatReactionOverlay(
     val overlayWidthPx = with(density) { maxWidth.roundToPx() }
     val overlayHeightPx = with(density) { maxHeight.roundToPx() }
     val statusBarPx = overlayTop.floatValue.roundToInt()
-    val navigationBarPx = WindowInsets.navigationBarsCompat.getBottom(density)
+    // Tellomi (interaction audit A-06, owner Q-05 = A): a long press leaves the system keyboard up, so the message, the
+    // strip and the menu are placed above it; the keyboard's inset already counts the navigation bar it sits on.
+    val navigationBarPx = max(WindowInsets.navigationBarsCompat.getBottom(density), WindowInsets.ime.getBottom(density))
     val scrubBelowTouchPx = with(density) { scrubDistanceBelowTouch.toPx() }
 
     val placement = remember(

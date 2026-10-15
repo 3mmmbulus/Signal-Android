@@ -31,6 +31,7 @@ import org.thoughtcrime.securesms.conversation.ReactionScrubber
 import org.thoughtcrime.securesms.database.model.MessageRecord
 import org.thoughtcrime.securesms.keyvalue.SignalStore
 import org.thoughtcrime.securesms.recipients.Recipient
+import kotlin.math.abs
 import kotlin.math.roundToInt
 
 /**
@@ -230,7 +231,15 @@ class ChatReactionOverlayController(
     val offsetX = originInWindow.x - anchorOrigin[0] + placement.menuOffsetX
     val offsetY = originInWindow.y - anchorOrigin[1] + placement.menuOffsetY
 
-    menu.show(offsetX.roundToInt(), offsetY.roundToInt(), growFromLeft = selection?.isMessageOnLeft ?: true)
+    // Tellomi (A-06): when the message has to travel to make room (the keyboard is up, it sits near an edge), the menu waits
+    // for it to land and then grows out of it; growing at once would put the menu over the message's old place mid-move.
+    val travel = abs(placement.snapshotY - (selection?.bubbleY ?: placement.snapshotY))
+    val growDelayMs = if (travel > MENU_WAIT_TRAVEL_DP * context.resources.displayMetrics.density) {
+      context.resources.getInteger(R.integer.reaction_scrubber_reveal_duration).toLong()
+    } else {
+      0L
+    }
+    menu.show(offsetX.roundToInt(), offsetY.roundToInt(), growFromLeft = selection?.isMessageOnLeft ?: true, growDelayMs = growDelayMs)
     menuPlaced = true
   }
 
@@ -349,6 +358,9 @@ class ChatReactionOverlayController(
     )
   }
 }
+
+/** Tellomi (A-06): how far the message may move into place before the menu waits for it. */
+private const val MENU_WAIT_TRAVEL_DP = 8f
 
 /** What the overlay reports back as it goes away, matching the pair the view code had. */
 interface ReactionOverlayHideListener {
