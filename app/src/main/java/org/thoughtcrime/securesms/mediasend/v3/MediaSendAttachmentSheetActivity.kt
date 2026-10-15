@@ -6,7 +6,10 @@
 package org.thoughtcrime.securesms.mediasend.v3
 
 import android.os.Build
+import androidx.lifecycle.Lifecycle
 import org.thoughtcrime.securesms.R
+import org.thoughtcrime.securesms.components.TellomiFeatureIntro
+import org.thoughtcrime.securesms.components.TellomiFeatureIntroBottomSheet
 import org.thoughtcrime.securesms.util.DynamicTheme
 
 /**
@@ -17,7 +20,28 @@ import org.thoughtcrime.securesms.util.DynamicTheme
  */
 class MediaSendAttachmentSheetActivity : MediaSendV3Activity() {
 
+  companion object {
+    /** 等 Sheet 从底部滑上来再弹提示卡。 */
+    private const val FEATURE_INTRO_DELAY_MS = 400L
+  }
+
+  private var featureIntroChecked = false
+
   override fun createDynamicTheme(): DynamicTheme = AttachmentSheetTheme()
+
+  override fun onResume() {
+    super.onResume()
+    // 新功能提示卡（docs/product/specs/whats-new-cards.md）：第一次打开面板（默认是相册页）时弹「选图」。
+    // 安卓没有卡 1「附件面板」：位置、联系人还没进面板。
+    if (!featureIntroChecked) {
+      featureIntroChecked = true
+      window.decorView.postDelayed({
+        if (!isFinishing && lifecycle.currentState.isAtLeast(Lifecycle.State.RESUMED)) {
+          TellomiFeatureIntroBottomSheet.showFirstDue(supportFragmentManager, listOf(TellomiFeatureIntro.PHOTO_PICKER))
+        }
+      }, FEATURE_INTRO_DELAY_MS)
+    }
+  }
 
   override fun finish() {
     super.finish()

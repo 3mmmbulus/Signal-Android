@@ -1763,6 +1763,13 @@
     <string name="TellomiNotificationPrimer__title">即時收到新訊息</string>
     <string name="TellomiNotificationPrimer__body">Tellomi 不在前景時，會用系統通知告訴你有新訊息和來電。點「繼續」後系統會詢問一次，之後隨時可以在系統設定中更改。</string>
     <string name="TellomiNotificationPrimer__continue">繼續</string>
+    <string name="TellomiFeatureIntro__photo_picker_title">傳送圖片更方便了</string>
+    <string name="TellomiFeatureIntro__photo_picker_item_order">多選並依序傳送：選中的照片會顯示序號</string>
+    <string name="TellomiFeatureIntro__photo_picker_item_schedule">長按傳送：長按傳送鍵可以排程傳送</string>
+    <string name="TellomiFeatureIntro__photo_picker_item_edit">傳送前編輯：裁切、塗鴉、調整，一步到位</string>
+    <string name="TellomiFeatureIntro__forward_grid_title">轉發更直觀</string>
+    <string name="TellomiFeatureIntro__forward_grid_item_many">一次選多個聊天，頭像一目瞭然</string>
+    <string name="TellomiFeatureIntro__got_it">知道了</string>
     <string name="NotificationsDisabledBanner__notifications_are_off">通知已關閉</string>
     <string name="NotificationsDisabledBanner__you_wont_be_alerted">Tellomi 不在前景時，你不會收到新訊息和來電的提醒。</string>
     <string name="NotificationsDisabledBanner__go_to_settings">前往設定</string>

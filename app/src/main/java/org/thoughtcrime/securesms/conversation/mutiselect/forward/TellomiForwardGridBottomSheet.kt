@@ -53,6 +53,8 @@ import org.signal.core.ui.compose.theme.SignalTheme
 import org.signal.core.util.getParcelableCompat
 import org.signal.core.util.logging.Log
 import org.thoughtcrime.securesms.R
+import org.thoughtcrime.securesms.components.TellomiFeatureIntro
+import org.thoughtcrime.securesms.components.TellomiFeatureIntroBottomSheet
 import org.thoughtcrime.securesms.contacts.paged.ContactSearchKey
 import org.thoughtcrime.securesms.recipients.Recipient
 import org.thoughtcrime.securesms.safety.SafetyNumberBottomSheet
@@ -153,6 +155,15 @@ class TellomiForwardGridBottomSheet :
           }
         }
         viewModel.state.collect { state -> onStage(state.stage) }
+      }
+    }
+
+    // 新功能提示卡「转发给多个聊天」（docs/product/specs/whats-new-cards.md），只在第一次打开时弹。
+    if (savedInstanceState == null) {
+      view.post {
+        if (isAdded && !childFragmentManager.isStateSaved) {
+          TellomiFeatureIntroBottomSheet.showFirstDue(childFragmentManager, listOf(TellomiFeatureIntro.FORWARD_GRID))
+        }
       }
     }
   }

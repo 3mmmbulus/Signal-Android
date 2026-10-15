@@ -1844,6 +1844,14 @@
     <string name="TellomiNotificationPrimer__title">Know when messages arrive</string>
     <string name="TellomiNotificationPrimer__body">When Tellomi isn\'t open, notifications tell you about new messages and calls. After you tap Continue, Android will ask once. You can change this anytime in system settings.</string>
     <string name="TellomiNotificationPrimer__continue">Continue</string>
+    <!-- Tellomi (docs/product/specs/whats-new-cards.md): one-time "what's new" cards -->
+    <string name="TellomiFeatureIntro__photo_picker_title">Sending photos just got easier</string>
+    <string name="TellomiFeatureIntro__photo_picker_item_order">Pick several and send them in order: each selected photo shows its number</string>
+    <string name="TellomiFeatureIntro__photo_picker_item_schedule">Long-press Send to schedule the message</string>
+    <string name="TellomiFeatureIntro__photo_picker_item_edit">Edit before sending: crop, draw and adjust in one place</string>
+    <string name="TellomiFeatureIntro__forward_grid_title">Forwarding, simplified</string>
+    <string name="TellomiFeatureIntro__forward_grid_item_many">Pick several chats at once and see everyone at a glance</string>
+    <string name="TellomiFeatureIntro__got_it">Got it</string>
     <string name="NotificationsDisabledBanner__notifications_are_off">Notifications are off</string>
     <string name="NotificationsDisabledBanner__you_wont_be_alerted">You won\'t be alerted to new messages or calls while Tellomi isn\'t open.</string>
     <string name="NotificationsDisabledBanner__go_to_settings">Go to settings</string>

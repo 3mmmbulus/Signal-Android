@@ -36,6 +36,8 @@ public class UiHintValues extends SignalStoreValues {
   private static final String DISMISSED_SET_UP_USERNAME_BANNER                  = "uihints.dismissed_set_up_username_banner";
   // Tellomi（tellomi/tellomi#1218 F-01）：首屏通知说明页只出一次
   private static final String HAS_SEEN_TELLOMI_NOTIFICATION_PRIMER              = "uihints.tellomi.has_seen_notification_primer";
+  // Tellomi（docs/product/specs/whats-new-cards.md）：新功能提示卡，每张卡一个 key（后面接功能 ID）
+  private static final String TELLOMI_FEATURE_INTRO_SEEN_PREFIX                 = "uihints.tellomi.feature_intro_seen.";
 
   UiHintValues(@NonNull KeyValueStore store) {
     super(store);
@@ -268,5 +270,13 @@ public class UiHintValues extends SignalStoreValues {
 
   public void markHasSeenTellomiNotificationPrimer() {
     putBoolean(HAS_SEEN_TELLOMI_NOTIFICATION_PRIMER, true);
+  }
+
+  public boolean hasSeenTellomiFeatureIntro(@NonNull String featureId) {
+    return getBoolean(TELLOMI_FEATURE_INTRO_SEEN_PREFIX + featureId, false);
+  }
+
+  public void markTellomiFeatureIntroSeen(@NonNull String featureId) {
+    putBoolean(TELLOMI_FEATURE_INTRO_SEEN_PREFIX + featureId, true);
   }
 }
