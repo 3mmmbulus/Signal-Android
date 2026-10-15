@@ -13,10 +13,10 @@
         <action
             android:id="@+id/action_oldDeviceTransferInstructions_to_oldDeviceTransferSetup"
             app:destination="@id/oldDeviceTransferSetup"
-            app:enterAnim="@anim/nav_default_enter_anim"
-            app:exitAnim="@anim/nav_default_exit_anim"
-            app:popEnterAnim="@anim/nav_default_pop_enter_anim"
-            app:popExitAnim="@anim/nav_default_pop_exit_anim" />
+            app:enterAnim="@animator/nav_default_enter_anim"
+            app:exitAnim="@animator/nav_default_exit_anim"
+            app:popEnterAnim="@animator/nav_default_pop_enter_anim"
+            app:popExitAnim="@animator/nav_default_pop_exit_anim" />
     </fragment>
 
     <fragment
@@ -27,10 +27,10 @@
         <action
             android:id="@+id/action_oldDeviceTransferSetup_to_oldDeviceTransfer"
             app:destination="@id/oldDeviceTransfer"
-            app:enterAnim="@anim/nav_default_enter_anim"
-            app:exitAnim="@anim/nav_default_exit_anim"
-            app:popEnterAnim="@anim/nav_default_pop_enter_anim"
-            app:popExitAnim="@anim/nav_default_pop_exit_anim"
+            app:enterAnim="@animator/nav_default_enter_anim"
+            app:exitAnim="@animator/nav_default_exit_anim"
+            app:popEnterAnim="@animator/nav_default_pop_enter_anim"
+            app:popExitAnim="@animator/nav_default_pop_exit_anim"
             app:popUpTo="@id/oldDeviceTransferInstructions" />
     </fragment>
 
@@ -42,10 +42,10 @@
         <action
             android:id="@+id/action_oldDeviceTransfer_to_oldDeviceTransferComplete"
             app:destination="@id/oldDeviceTransferComplete"
-            app:enterAnim="@anim/nav_default_enter_anim"
-            app:exitAnim="@anim/nav_default_exit_anim"
-            app:popEnterAnim="@anim/nav_default_pop_enter_anim"
-            app:popExitAnim="@anim/nav_default_pop_exit_anim"
+            app:enterAnim="@animator/nav_default_enter_anim"
+            app:exitAnim="@animator/nav_default_exit_anim"
+            app:popEnterAnim="@animator/nav_default_pop_enter_anim"
+            app:popExitAnim="@animator/nav_default_pop_exit_anim"
             app:popUpTo="@id/oldDeviceTransferInstructions"
             app:popUpToInclusive="true" />
     </fragment>
@@ -58,10 +58,10 @@
     <action
         android:id="@+id/action_directly_to_oldDeviceTransferInstructions"
         app:destination="@id/oldDeviceTransferInstructions"
-        app:enterAnim="@anim/nav_default_enter_anim"
-        app:exitAnim="@anim/nav_default_exit_anim"
-        app:popEnterAnim="@anim/nav_default_pop_enter_anim"
-        app:popExitAnim="@anim/nav_default_pop_exit_anim"
+        app:enterAnim="@animator/nav_default_enter_anim"
+        app:exitAnim="@animator/nav_default_exit_anim"
+        app:popEnterAnim="@animator/nav_default_pop_enter_anim"
+        app:popExitAnim="@animator/nav_default_pop_exit_anim"
         app:popUpTo="@id/oldDeviceTransferInstructions"
         app:popUpToInclusive="true" />
 

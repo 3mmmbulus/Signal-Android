@@ -14,8 +14,8 @@
         <action
             android:id="@+id/action_accountLocked"
             app:destination="@id/pinLockedFragment"
-            app:enterAnim="@anim/nav_default_enter_anim"
-            app:exitAnim="@anim/nav_default_exit_anim"
+            app:enterAnim="@animator/nav_default_enter_anim"
+            app:exitAnim="@animator/nav_default_exit_anim"
             app:popUpTo="@id/signup"
             app:popUpToInclusive="true" />
 
