@@ -216,7 +216,8 @@ fun ChatReactionOverlay(
       )
     }
 
-    val shade = remember(selection) { Animatable(1f) }
+    // Tellomi (interaction audit A-06): the shade fades in as it fades out, instead of appearing at full strength.
+    val shade = remember(selection) { Animatable(0f) }
     val emojiReveal = remember(selection) { List(REACTION_EMOJI_COUNT) { Animatable(0f) } }
     val indicatorReveal = remember(selection) { Animatable(0f) }
     val stripReveal = remember(selection) { Animatable(0f) }
@@ -231,6 +232,7 @@ fun ChatReactionOverlay(
     LaunchedEffect(selection, isRevealed) {
       if (isRevealed) {
         coroutineScope {
+          launch { shade.animateTo(1f, tween(hideDuration, easing = Decelerate)) }
           launch { snapshotX.animateTo(placement.snapshotX, tween(revealDuration, easing = AccelerateDecelerate)) }
           launch { snapshotY.animateTo(placement.snapshotY, tween(revealDuration, easing = AccelerateDecelerate)) }
           launch { snapshotScale.animateTo(placement.snapshotScale, tween(revealDuration, easing = AccelerateDecelerate)) }

@@ -17,6 +17,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.geometry.Offset
 import androidx.core.content.ContextCompat
+import org.signal.core.ui.motion.TellomiHaptics
 import org.signal.emoji.EmojiProvider
 import org.signal.emoji.EmojiUtil
 import org.thoughtcrime.securesms.R
@@ -161,6 +162,13 @@ class ChatReactionOverlayController(
     menu?.dismiss()
 
     onStartHide(if (pendingAction == ReactionAction.VIEW_INFO) null else focusedView)
+
+    // Tellomi (interaction audit A-06): the chosen menu action runs as the overlay starts to close rather than after the
+    // close animation has finished, so "Copy", "Reply" and the rest answer the tap at once.
+    pendingAction?.let { action ->
+      pendingAction = null
+      onActionSelected(action)
+    }
   }
 
   /**
@@ -246,6 +254,9 @@ class ChatReactionOverlayController(
 
   private fun commit(index: Int) {
     val record = messageRecord ?: return
+
+    // Tellomi (interaction audit A-07): lifting the thumb on a reaction confirms it, so it gets the confirm haptic.
+    TellomiHaptics.perform(hapticView(), TellomiHaptics.Event.CONFIRM)
 
     if (index == REACTION_EMOJI_COUNT - 1) {
       onCustomReactionSelected(record, strip.customSlotHasEmoji)

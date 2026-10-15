@@ -2236,7 +2236,7 @@ public final class ConversationItem extends RelativeLayout implements BindableCo
     bodyBubble.setOnSizeChangedListener(null);
 
     if (current.getReactions().isEmpty()) {
-      reactionsView.clear();
+      reactionsView.clear(current.getId());
       return;
     }
 
@@ -2245,7 +2245,7 @@ public final class ConversationItem extends RelativeLayout implements BindableCo
   }
 
   private void setReactionsWithWidth(@NonNull MessageRecord current, int width) {
-    reactionsView.setReactions(current.getReactions());
+    reactionsView.setReactions(current.getId(), current.getReactions());
     reactionsView.setBubbleWidth(width);
     reactionsView.setOnClickListener(v -> {
       if (eventListener == null) return;

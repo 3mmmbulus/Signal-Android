@@ -24,6 +24,7 @@ import org.thoughtcrime.securesms.util.ViewUtil;
 
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -37,6 +38,13 @@ public class ReactionsConversationView extends LinearLayout {
   private List<ReactionRecord> records;
   private int                  bubbleWidth;
   private boolean              isSettingBubbleWidth;
+
+  // Tellomi (interaction audit A-07): which message these pills belong to and how each pill looked, so a change to the
+  // same message's reactions can be animated while a recycled row bound to another message is not.
+  private static final String  OTHER_REACTIONS_KEY = "tellomi:other-reactions";
+  private static final long    NO_MESSAGE          = -1;
+  private long                 messageId           = NO_MESSAGE;
+  private Map<String, TellomiReactionPillAnimator.PillState> pillStates = new HashMap<>();
 
   public ReactionsConversationView(Context context) {
     super(context);
@@ -58,8 +66,15 @@ public class ReactionsConversationView extends LinearLayout {
   }
 
   public void clear() {
+    clear(NO_MESSAGE);
+  }
+
+  /** Tellomi (A-07): [messageId] is the message now shown without reactions, so its first reaction can pop in. */
+  public void clear(long messageId) {
     this.records.clear();
     this.bubbleWidth = 0;
+    this.messageId   = messageId;
+    this.pillStates  = new HashMap<>();
     removeAllViews();
   }
 
@@ -118,10 +133,22 @@ public class ReactionsConversationView extends LinearLayout {
   }
 
   public boolean setReactions(@NonNull List<ReactionRecord> records) {
-    if (records.equals(this.records)) {
+    return setReactions(NO_MESSAGE, records);
+  }
+
+  /**
+   * Tellomi (A-07): with the id of the message these reactions belong to, a change to the same message's reactions is
+   * animated (see {@link TellomiReactionPillAnimator}); binding a row to a different message is not.
+   */
+  public boolean setReactions(long messageId, @NonNull List<ReactionRecord> records) {
+    if (records.equals(this.records) && messageId == this.messageId) {
       return false;
     }
 
+    boolean                                            sameMessage = messageId != NO_MESSAGE && messageId == this.messageId;
+    Map<String, TellomiReactionPillAnimator.PillState> before      = pillStates;
+
+    this.messageId = messageId;
     bubbleWidth = -1;
     this.records.clear();
     this.records.addAll(records);
@@ -130,10 +157,22 @@ public class ReactionsConversationView extends LinearLayout {
 
     removeAllViews();
 
+    Map<String, TellomiReactionPillAnimator.PillState> after = new HashMap<>();
+
     for (Reaction reaction : reactions) {
       View pill = buildPill(getContext(), this, reaction);
       addView(pill);
+
+      String                                key   = reaction.baseEmoji != null ? reaction.baseEmoji : OTHER_REACTIONS_KEY;
+      TellomiReactionPillAnimator.PillState state = new TellomiReactionPillAnimator.PillState(reaction.count, reaction.userWasSender);
+      after.put(key, state);
+
+      if (sameMessage) {
+        TellomiReactionPillAnimator.animate(pill, pill.findViewById(R.id.reactions_pill_count), TellomiReactionPillAnimator.changeFor(before.get(key), state));
+      }
     }
+
+    pillStates = after;
 
     return true;
   }

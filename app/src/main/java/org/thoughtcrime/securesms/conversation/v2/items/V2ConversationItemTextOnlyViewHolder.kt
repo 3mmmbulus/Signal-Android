@@ -731,10 +731,10 @@ open class V2ConversationItemTextOnlyViewHolder<Model : MappingModel<Model>>(
 
   private fun presentReactions() {
     if (conversationMessage.messageRecord.reactions.isEmpty()) {
-      binding.reactions.clear()
+      binding.reactions.clear(conversationMessage.messageRecord.id)
       binding.root.removeOnMeasureListener(reactionMeasureListener)
     } else {
-      binding.reactions.setReactions(conversationMessage.messageRecord.reactions)
+      binding.reactions.setReactions(conversationMessage.messageRecord.id, conversationMessage.messageRecord.reactions)
       binding.root.addOnMeasureListener(reactionMeasureListener)
       binding.reactions.setOnClickListener {
         if (conversationContext.selectedItems.isEmpty()) {
