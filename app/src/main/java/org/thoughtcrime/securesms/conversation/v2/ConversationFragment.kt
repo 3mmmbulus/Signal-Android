@@ -181,6 +181,7 @@ import org.thoughtcrime.securesms.components.RotatedTiledDrawable
 import org.thoughtcrime.securesms.components.ScrollToPositionDelegate
 import org.thoughtcrime.securesms.components.SendButton
 import org.thoughtcrime.securesms.components.SignalProgressDialog
+import org.thoughtcrime.securesms.components.TellomiJumpScrollStrategy
 import org.thoughtcrime.securesms.components.ThumbnailView
 import org.thoughtcrime.securesms.components.ViewBinderDelegate
 import org.thoughtcrime.securesms.components.compose.ActionModeTopBarView
@@ -644,12 +645,22 @@ class ConversationFragment :
 
   private var applyToolbarPaddingRunnable: Runnable? = null
 
-  private val jumpAndPulseScrollStrategy = object : ScrollToPositionDelegate.ScrollStrategy {
-    override fun performScroll(recyclerView: RecyclerView, layoutManager: LinearLayoutManager, position: Int, smooth: Boolean) {
-      ScrollToPositionDelegate.JumpToPositionStrategy.performScroll(recyclerView, layoutManager, position, smooth)
+  // Tellomi (interaction audit A-08): glides to the message instead of jumping, and pulses it once it is there.
+  private val jumpAndPulseScrollStrategy = TellomiJumpScrollStrategy(
+    onArrived = { position ->
+      isJumpInFlight = false
       adapter.pulseAtPosition(position)
     }
-  }
+  )
+
+  /** Tellomi (A-08): a jump is gliding; passing through the bottom on the way does not count as having gone back there. */
+  private var isJumpInFlight = false
+
+  /**
+   * Tellomi (A-08, "跳走了回不来"): the message whose quote was just tapped. The scroll-to-bottom button's next tap goes back to
+   * it before going to the bottom, as Telegram's down arrow does; reaching the bottom forgets it.
+   */
+  private var quoteReturnMessageId: Long? = null
 
   private val motionEventRelay: MotionEventRelay by viewModels(ownerProducer = { requireActivity() })
 
@@ -1572,7 +1583,19 @@ class ConversationFragment :
 
     binding.scrollToBottom.setOnClickListener {
       binding.conversationItemRecycler.stopScroll()
-      scrollToPositionDelegate.resetScrollPosition()
+      val returnTo = quoteReturnMessageId
+      quoteReturnMessageId = null
+      if (returnTo == null) {
+        scrollToPositionDelegate.resetScrollPosition()
+      } else {
+        disposables += viewModel.moveToMessage(returnTo).subscribeBy { position ->
+          if (position >= 0) {
+            moveToPosition(position)
+          } else {
+            scrollToPositionDelegate.resetScrollPosition()
+          }
+        }
+      }
     }
 
     binding.scrollToMention.setOnClickListener {
@@ -3612,6 +3635,7 @@ class ConversationFragment :
    * Requests a jump to the desired position, and ensures that the position desired will be visible on the screen.
    */
   private fun moveToPosition(position: Int) {
+    isJumpInFlight = true
     scrollToPositionDelegate.requestScrollPosition(
       position = position,
       smooth = true,
@@ -3732,6 +3756,9 @@ class ConversationFragment :
 
     override fun onScrolled(recyclerView: RecyclerView, dx: Int, dy: Int) {
       if (isScrolledToBottom()) {
+        if (!isJumpInFlight) {
+          quoteReturnMessageId = null
+        }
         viewModel.setShowScrollButtonsForScrollPosition(showScrollButtons = false, willScrollToBottomOnNewMessage = true)
       } else if (isScrolledPastButtonThreshold()) {
         viewModel.setShowScrollButtonsForScrollPosition(showScrollButtons = true, willScrollToBottomOnNewMessage = false)
@@ -3844,6 +3871,7 @@ class ConversationFragment :
         return
       }
 
+      quoteReturnMessageId = messageRecord.id
       handleMoveToQuotePosition(quote.id, quote.author)
     }
 
