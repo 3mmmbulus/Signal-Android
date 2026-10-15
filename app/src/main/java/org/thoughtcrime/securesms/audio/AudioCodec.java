@@ -17,6 +17,7 @@ import org.signal.core.util.Util;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.nio.ByteBuffer;
+import java.util.concurrent.atomic.AtomicInteger;
 
 public class AudioCodec implements Recorder {
 
@@ -30,6 +31,8 @@ public class AudioCodec implements Recorder {
   private final int         bufferSize;
   private final MediaCodec  mediaCodec;
   private final AudioRecord audioRecord;
+
+  private final AtomicInteger maxAmplitude = new AtomicInteger();
 
   private boolean running  = true;
   private boolean failed   = false;
@@ -117,6 +120,11 @@ public class AudioCodec implements Recorder {
     return running;
   }
 
+  @Override
+  public int getMaxAmplitude() {
+    return maxAmplitude.getAndSet(0);
+  }
+
   private synchronized void setFinished() {
     finished = true;
     notifyAll();
@@ -128,6 +136,11 @@ public class AudioCodec implements Recorder {
   {
     int length                = audioRecord.read(audioRecordData, 0, audioRecordData.length);
     int codecInputBufferIndex = mediaCodec.dequeueInputBuffer(10 * 1000);
+
+    if (length > 0) {
+      int peak = TellomiVoiceLevel.peak(audioRecordData, length);
+      maxAmplitude.accumulateAndGet(peak, Math::max);
+    }
 
     if (codecInputBufferIndex >= 0) {
       ByteBuffer codecBuffer = codecInputBuffers[codecInputBufferIndex];

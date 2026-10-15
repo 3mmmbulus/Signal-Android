@@ -1623,11 +1623,14 @@ class ConversationFragment :
     childFragmentManager.setFragmentResultListener(AttachmentKeyboardFragment.RESULT_KEY, viewLifecycleOwner, AttachmentKeyboardFragmentListener())
     motionEventRelay.setDrain(MotionEventRelayDrain(this))
 
+    val audioRecorder = AudioRecorder(requireContext(), inputPanel)
     voiceMessageRecordingDelegate = VoiceMessageRecordingDelegate(
       this,
-      AudioRecorder(requireContext(), inputPanel),
+      audioRecorder,
       VoiceMessageRecordingSessionCallbacks()
     )
+    // Tellomi（交互审计 A-12）：按住录音时按钮后面的光晕跟着麦克风电平变。
+    inputPanel.setVoiceLevelSource { audioRecorder.maxAmplitude }
 
     val conversationBannerListener = ConversationBannerListener()
     binding.conversationBanner.listener = conversationBannerListener

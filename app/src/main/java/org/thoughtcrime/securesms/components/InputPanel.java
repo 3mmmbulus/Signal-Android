@@ -670,6 +670,11 @@ public class InputPanel extends ConstraintLayout
     if (listener != null) listener.onRecorderAlreadyInUse();
   }
 
+  /** Tellomi（交互审计 A-12）：录音时读麦克风电平的地方（见 {@link MicrophoneRecorderView#setLevelSource}）。 */
+  public void setVoiceLevelSource(@Nullable java.util.function.IntSupplier levelSource) {
+    microphoneRecorderView.setLevelSource(levelSource);
+  }
+
   @Override
   public void onRecordPressed() {
     if (listener != null) listener.onRecorderStarted();

@@ -36,10 +36,16 @@ public class AudioRecorder {
   private final AudioRecordingHandler     uiHandler;
   private final AudioRecorderFocusManager audioFocusManager;
 
-  private Recorder         recorder;
+  private volatile Recorder recorder;
   private Future<Uri>      recordingUriFuture;
   private volatile Uri     recordingUri;
   private SingleSubject<VoiceNoteDraft> recordingSubject;
+
+  /** Tellomi（交互审计 A-12）：上次调用以来的最大振幅，没在录时是 0。主线程调。 */
+  public int getMaxAmplitude() {
+    Recorder current = recorder;
+    return current != null ? current.getMaxAmplitude() : 0;
+  }
 
   public AudioRecorder(@NonNull Context context, @Nullable AudioRecordingHandler uiHandler) {
     this.context   = context;

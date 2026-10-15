@@ -20,7 +20,7 @@ public class MediaRecorderWrapper implements Recorder {
   private static final int    CHANNELS          = 1;
   private static final int    BIT_RATE          = 32000;
 
-  private MediaRecorder recorder = null;
+  private volatile MediaRecorder recorder = null;
   
   private ParcelFileDescriptor outputFileDescriptor;
 
@@ -48,6 +48,21 @@ public class MediaRecorderWrapper implements Recorder {
       StreamUtil.close(outputFileDescriptor);
       outputFileDescriptor = null;
       throw new IOException(e);
+    }
+  }
+
+  @Override
+  public int getMaxAmplitude() {
+    MediaRecorder current = recorder;
+    if (current == null) {
+      return 0;
+    }
+
+    try {
+      return current.getMaxAmplitude();
+    } catch (RuntimeException e) {
+      // 还没开始或刚被释放：MediaRecorder 抛 IllegalStateException，光晕当没声音。
+      return 0;
     }
   }
 

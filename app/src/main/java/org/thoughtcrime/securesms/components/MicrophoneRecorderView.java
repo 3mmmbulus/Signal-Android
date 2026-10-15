@@ -26,6 +26,7 @@ import org.thoughtcrime.securesms.R;
 import org.thoughtcrime.securesms.audio.AudioRecordingHandler;
 import org.signal.core.ui.permissions.Permissions;
 import org.thoughtcrime.securesms.util.ViewUtil;
+import java.util.function.IntSupplier;
 
 public final class MicrophoneRecorderView extends FrameLayout implements View.OnTouchListener {
 
@@ -58,7 +59,7 @@ public final class MicrophoneRecorderView extends FrameLayout implements View.On
   public void onFinishInflate() {
     super.onFinishInflate();
 
-    floatingRecordButton = new FloatingRecordButton(getContext(), findViewById(R.id.quick_audio_fab));
+    floatingRecordButton = new FloatingRecordButton(getContext(), findViewById(R.id.quick_audio_fab), findViewById(R.id.tellomi_voice_level_halo));
     lockDropTarget       = new LockDropTarget      (getContext(), findViewById(R.id.lock_drop_target));
 
     View recordButton = findViewById(R.id.quick_audio_toggle);
@@ -172,17 +173,24 @@ public final class MicrophoneRecorderView extends FrameLayout implements View.On
     floatingRecordButton.setCancelProgress(progress);
   }
 
+  /** Tellomi（交互审计 A-12）：麦克风电平从哪读（上次调用以来的最大振幅），按住录音时按钮后面的光晕跟着变。 */
+  public void setLevelSource(@Nullable IntSupplier levelSource) {
+    floatingRecordButton.levelHalo.setLevelSource(levelSource);
+  }
+
   private static class FloatingRecordButton {
 
     private final ImageView recordButtonFab;
+    private final TellomiVoiceLevelHalo levelHalo;
 
     private float startPositionX;
     private float startPositionY;
     private float lastOffsetX;
     private float lastOffsetY;
 
-    FloatingRecordButton(Context context, ImageView recordButtonFab) {
+    FloatingRecordButton(Context context, ImageView recordButtonFab, View levelHalo) {
       this.recordButtonFab = recordButtonFab;
+      this.levelHalo       = new TellomiVoiceLevelHalo(levelHalo, recordButtonFab);
       this.recordButtonFab.getBackground().setColorFilter(context.getResources()
                                                                  .getColor(R.color.red_500),
                                                           PorterDuff.Mode.SRC_IN);
@@ -194,6 +202,7 @@ public final class MicrophoneRecorderView extends FrameLayout implements View.On
 
       setCancelProgress(0f);
       recordButtonFab.setVisibility(View.VISIBLE);
+      levelHalo.show();
 
       AnimationSet animation = new AnimationSet(true);
       animation.addAnimation(new TranslateAnimation(Animation.ABSOLUTE, 0,
@@ -216,6 +225,7 @@ public final class MicrophoneRecorderView extends FrameLayout implements View.On
       recordButtonFab.setAlpha(TellomiRecordingGesture.lerp(1f, TellomiRecordingGesture.BUTTON_MIN_ALPHA, progress));
       recordButtonFab.setScaleX(scale);
       recordButtonFab.setScaleY(scale);
+      levelHalo.sync();
     }
 
     void moveTo(float x, float y) {
@@ -230,9 +240,11 @@ public final class MicrophoneRecorderView extends FrameLayout implements View.On
 
       recordButtonFab.setTranslationX(lastOffsetX);
       recordButtonFab.setTranslationY(lastOffsetY);
+      levelHalo.sync();
     }
 
     void hide() {
+      levelHalo.hide();
       recordButtonFab.setTranslationX(0);
       recordButtonFab.setTranslationY(0);
       if (recordButtonFab.getVisibility() != VISIBLE) return;
