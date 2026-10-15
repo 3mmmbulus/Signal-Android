@@ -14,4 +14,8 @@
 
     <!-- Tellomi（交互审计 A-11）：TellomiIconSwap 记「交叉淡入结束后换回单张图标」的回调。 -->
     <item name="tellomi_icon_swap_finish" type="id" />
+
+    <!-- Tellomi（交互审计 A-09）：TellomiPressFeedback 每个视图上的按下缩放弹簧。 -->
+    <item name="tellomi_press_scale_x" type="id" />
+    <item name="tellomi_press_scale_y" type="id" />
 </resources>

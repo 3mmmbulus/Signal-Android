@@ -508,9 +508,38 @@ public final class ConversationItem extends RelativeLayout implements BindableCo
     }
   }
 
+  /** Tellomi（交互审计 A-09）：引用、文件、联系人卡、回应胶囊、链接卡片按下即有反馈。 */
+  private final TellomiPressFeedback.Tracker pressTracker = new TellomiPressFeedback.Tracker(this, this::findPressTarget);
+
+  private @Nullable TellomiPressFeedback.Tracker.Target findPressTarget(float rawX, float rawY) {
+    View pill = TellomiPressFeedback.pillAt(reactionsView, rawX, rawY);
+    if (pill != null && reactionsView.hasOnClickListeners()) {
+      return new TellomiPressFeedback.Tracker.Target(pill, TellomiPressFeedback.PILL_SCALE);
+    }
+    if (quoteView != null && quoteView.hasOnClickListeners() && TellomiPressFeedback.hits(quoteView, rawX, rawY)) {
+      return new TellomiPressFeedback.Tracker.Target(quoteView, TellomiPressFeedback.BLOCK_SCALE);
+    }
+    if (linkPreviewStub.resolved() && TellomiPressFeedback.hits(linkPreviewStub.get(), rawX, rawY)) {
+      return new TellomiPressFeedback.Tracker.Target(linkPreviewStub.get(), null);
+    }
+    if (documentViewStub.resolved() && TellomiPressFeedback.hits(documentViewStub.get(), rawX, rawY)) {
+      return new TellomiPressFeedback.Tracker.Target(documentViewStub.get(), TellomiPressFeedback.BLOCK_SCALE);
+    }
+    if (sharedContactStub.resolved() && TellomiPressFeedback.hits(sharedContactStub.get(), rawX, rawY)) {
+      return new TellomiPressFeedback.Tracker.Target(sharedContactStub.get(), TellomiPressFeedback.BLOCK_SCALE);
+    }
+    return null;
+  }
+
   @Override
   public boolean dispatchTouchEvent(MotionEvent ev) {
     if (isSuppressedInteractionMode()) return super.dispatchTouchEvent(ev);
+
+    if (batchSelected.isEmpty()) {
+      pressTracker.onTouchEvent(ev);
+    } else {
+      pressTracker.release();
+    }
 
     switch (ev.getAction()) {
       case MotionEvent.ACTION_DOWN:

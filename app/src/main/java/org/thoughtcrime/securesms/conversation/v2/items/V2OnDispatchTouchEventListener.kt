@@ -9,6 +9,7 @@ import android.view.MotionEvent
 import android.view.View
 import android.view.ViewGroup
 import org.thoughtcrime.securesms.conversation.ConversationItemDisplayMode
+import org.thoughtcrime.securesms.conversation.TellomiPressFeedback
 
 /**
  * Responsible for the shrink-and-return feel of conversation bubbles when the user
@@ -32,6 +33,13 @@ class V2OnDispatchTouchEventListener(
     binding.reactions
   )
 
+  /** Tellomi（交互审计 A-09）：回应胶囊按下即有反馈（这种气泡里能点的就是回应条和正文链接；正文链接按下即高亮是上游已有的）。 */
+  private val pressTracker = TellomiPressFeedback.Tracker(binding.root) { rawX, rawY ->
+    TellomiPressFeedback.pillAt(binding.reactions, rawX, rawY)
+      ?.takeIf { conversationContext.selectedItems.isEmpty() && binding.reactions.hasOnClickListeners() }
+      ?.let { TellomiPressFeedback.Tracker.Target(it, TellomiPressFeedback.PILL_SCALE) }
+  }
+
   private val shrinkBubble = Runnable {
     binding.bodyWrapper.animate()
       .scaleX(LONG_PRESS_SCALE_FACTOR)
@@ -51,6 +59,8 @@ class V2OnDispatchTouchEventListener(
     if (conversationContext.displayMode is ConversationItemDisplayMode.Condensed) {
       return
     }
+
+    pressTracker.onTouchEvent(motionEvent)
 
     viewsToPivot.forEach {
       val deltaX = it.x - binding.bodyWrapper.x
