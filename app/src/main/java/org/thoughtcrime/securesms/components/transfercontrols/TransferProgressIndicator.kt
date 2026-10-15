@@ -7,7 +7,9 @@ package org.thoughtcrime.securesms.components.transfercontrols
 
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.SizeTransform
-import androidx.compose.animation.core.tween
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.spring
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.scaleIn
@@ -23,6 +25,7 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -38,6 +41,7 @@ import androidx.compose.ui.unit.dp
 import org.signal.core.ui.compose.DayNightPreviews
 import org.signal.core.ui.compose.Previews
 import org.signal.core.ui.compose.clickableContainer
+import org.signal.core.ui.motion.TellomiMotion
 import org.thoughtcrime.securesms.R
 import org.signal.core.ui.R as CoreUiR
 
@@ -60,10 +64,11 @@ fun TransferProgressIndicator(
     // Key on the state type, not the value, so that progress updates within InProgress recompose in place instead of
     // re-triggering the enter/exit transition on every tick (which would prevent the determinate fill from ever settling).
     contentKey = { it::class },
+    // Tellomi（交互审计 A-13「下载键约 1 秒才退完」）：原来 200 ms 延迟再 400–800 ms 补间，换个状态要一秒左右才走完；
+    // 改成标准里的交叉淡入（透明度 Fade、缩放 Snap，不另写时长、不延迟）：点下载马上换成进度环，下完马上换成完成图标。
     transitionSpec = {
-      val startDelay = 200
-      val enterTransition = fadeIn(tween(delayMillis = startDelay, durationMillis = 500)) + scaleIn(tween(delayMillis = startDelay, durationMillis = 400))
-      val exitTransition = fadeOut(tween(delayMillis = startDelay, durationMillis = 600)) + scaleOut(tween(delayMillis = startDelay, durationMillis = 800))
+      val enterTransition = fadeIn(TellomiMotion.spec(TellomiMotion.Fade)) + scaleIn(TellomiMotion.spec(TellomiMotion.Snap), initialScale = STATE_SWAP_SCALE)
+      val exitTransition = fadeOut(TellomiMotion.spec(TellomiMotion.Fade)) + scaleOut(TellomiMotion.spec(TellomiMotion.Snap), targetScale = STATE_SWAP_SCALE)
       enterTransition
         .togetherWith(exitTransition)
         .using(SizeTransform(clip = false))
@@ -152,7 +157,7 @@ private fun ProgressIndicator(
         }
       )
 
-    val progress = state.progress
+    val progress = state.progress?.let { animatedProgress(it) }
     if (progress == null) {
       CircularProgressIndicator(
         strokeWidth = 2.dp,
@@ -182,6 +187,23 @@ private fun ProgressIndicator(
       )
     }
   }
+}
+
+/** Tellomi（交互审计 A-13）：换状态时旧的缩到、新的从这个比例开始，配合交叉淡入。 */
+private const val STATE_SWAP_SCALE = 0.8f
+
+/**
+ * Tellomi（交互审计 A-13「进度环约 10 帧跳格」）：进度从视图那边每 100 ms 才来一次，环按帧插值过去，不再一格一格跳。
+ * 临界阻尼（不回弹、不越过真实进度），刚度取 [TellomiMotion.Fade]，跟得上 100 ms 一次的更新。
+ */
+@Composable
+private fun animatedProgress(target: Float): Float {
+  val animated by animateFloatAsState(
+    targetValue = target,
+    animationSpec = spring(dampingRatio = Spring.DampingRatioNoBouncy, stiffness = TellomiMotion.Fade.stiffness),
+    label = "transfer-progress"
+  )
+  return animated
 }
 
 @Composable
