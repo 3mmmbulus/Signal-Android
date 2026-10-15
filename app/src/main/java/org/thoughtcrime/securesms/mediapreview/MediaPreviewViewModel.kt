@@ -68,6 +68,17 @@ class MediaPreviewViewModel : ViewModel() {
   val shouldRenderHdr: Boolean
     get() = store.state.shouldRenderHdr
 
+  /** Tellomi (interaction audit A-20): the media on the page showing now, for closing onto its own thumbnail. */
+  fun currentMediaUri(): Uri? {
+    return store.state.mediaRecords.getOrNull(currentPosition)?.toMedia()?.uri
+  }
+
+  /** Tellomi (A-20): width / height of the media on the current page, or null when it is not known. */
+  fun currentMediaAspectRatio(): Float? {
+    val attachment = store.state.mediaRecords.getOrNull(currentPosition)?.attachment ?: return null
+    return if (attachment.width > 0 && attachment.height > 0) attachment.width.toFloat() / attachment.height else null
+  }
+
   fun shouldFinishAfterTransition(initialMediaUri: Uri): Boolean {
     return currentPosition in store.state.mediaRecords.indices && store.state.mediaRecords[currentPosition].toMedia()?.uri == initialMediaUri
   }

@@ -349,6 +349,11 @@ public class ThumbnailView extends FrameLayout {
     return image.getDrawable();
   }
 
+  /** Tellomi (interaction audit A-20): the media this thumbnail shows, so the viewer can come back to it after paging. */
+  public @Nullable Slide getSlide() {
+    return slide;
+  }
+
   public void setBounds(int minWidth, int maxWidth, int minHeight, int maxHeight) {
     final int oldMinWidth  = bounds[MIN_WIDTH];
     final int oldMaxWidth  = bounds[MAX_WIDTH];

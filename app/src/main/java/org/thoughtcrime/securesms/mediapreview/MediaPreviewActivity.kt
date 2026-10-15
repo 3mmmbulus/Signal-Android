@@ -5,6 +5,8 @@ import android.content.Context
 import android.content.pm.ActivityInfo
 import android.graphics.Color
 import android.graphics.drawable.ColorDrawable
+import android.graphics.drawable.Drawable
+import android.net.Uri
 import android.os.Build
 import android.os.Bundle
 import android.view.MotionEvent
@@ -34,10 +36,12 @@ import org.signal.core.util.concurrent.LifecycleDisposable
 import org.signal.core.util.logging.Log
 import org.thoughtcrime.securesms.PassphraseRequiredActivity
 import org.thoughtcrime.securesms.R
+import org.thoughtcrime.securesms.components.ThumbnailView
 import org.thoughtcrime.securesms.components.voice.VoiceNoteMediaController
 import org.thoughtcrime.securesms.components.voice.VoiceNoteMediaControllerOwner
 import org.thoughtcrime.securesms.util.WindowUtil
 import java.util.concurrent.TimeUnit
+import kotlin.math.roundToInt
 
 class MediaPreviewActivity : PassphraseRequiredActivity(), VoiceNoteMediaControllerOwner {
 
@@ -69,6 +73,10 @@ class MediaPreviewActivity : PassphraseRequiredActivity(), VoiceNoteMediaControl
   private var dragSpring: SpringAnimation? = null
   private var isDismissingByDrag = false
 
+  // Tellomi（A-20 余项：翻页后回到当前那张的缩略图）：这次是从聊天页打开的（能问它要别的缩略图），以及已经决定缩回别的一张。
+  private var canReturnToOtherThumbnail = false
+  private var isReturningToOtherThumbnail = false
+
   override fun attachBaseContext(newBase: Context) {
     delegate.localNightMode = AppCompatDelegate.MODE_NIGHT_YES
     super.attachBaseContext(newBase)
@@ -76,6 +84,7 @@ class MediaPreviewActivity : PassphraseRequiredActivity(), VoiceNoteMediaControl
 
   override fun onCreate(savedInstanceState: Bundle?, ready: Boolean) {
     hasSharedElementTransition = MediaPreviewCache.drawable != null && !args.skipSharedElementTransition
+    canReturnToOtherThumbnail = savedInstanceState == null && TellomiMediaReturnTarget.claim()
     if (hasSharedElementTransition) {
       val originalCorners = ShapeAppearanceModel.Builder()
         .setTopLeftCornerSize(args.sharedElementArgs.topLeft)
@@ -218,11 +227,60 @@ class MediaPreviewActivity : PassphraseRequiredActivity(), VoiceNoteMediaControl
     // Deliberately not applyWindowColorMode(false): that would rebuild the HWUI surface on the first frame of the
     // exit transition. onStop() clears it once the transition has finished.
     isWindowStarted = false
+    if (isReturningToOtherThumbnail) {
+      return
+    }
     if (viewModel.shouldFinishAfterTransition(args.initialMediaUri)) {
       super.finishAfterTransition()
-    } else {
-      super.finish()
+      return
     }
+    val other = otherThumbnailToReturnTo()
+    val drawable = other?.second?.imageDrawable
+    if (other == null || drawable == null) {
+      super.finish()
+      return
+    }
+    // Tellomi（A-20 余项）：转场用的那张图换成那张缩略图的画面，聊天页按 TellomiMediaReturnTarget 把共享元素换到它上面；
+    // 换了图要先排一次版，转场才量得到新的起点。
+    isReturningToOtherThumbnail = true
+    TellomiMediaReturnTarget.returnTo(other.first)
+    showTransitionImage(drawable, viewModel.currentMediaAspectRatio())
+    transitionImageView.post { super.finishAfterTransition() }
+  }
+
+  /**
+   * Tellomi（A-20 余项，Telegram 两端都是关在当前这张上）：翻到了别的一张、它的缩略图此刻在聊天里看得见，就返回那张缩略图；
+   * 开场没有共享元素、动效不是满档、不是从聊天页打开的，都不换（照旧飞出淡出）。
+   */
+  private fun otherThumbnailToReturnTo(): Pair<Uri, ThumbnailView>? {
+    if (!canReturnToOtherThumbnail || !hasSharedElementTransition || TellomiMotion.tier(this) != TellomiMotion.Tier.FULL) {
+      return null
+    }
+    val uri = viewModel.currentMediaUri()?.takeIf { it != args.initialMediaUri } ?: return null
+    val target = TellomiMediaReturnTarget.find(uri) ?: return null
+    return uri to target
+  }
+
+  /**
+   * 摆转场图：按**这一页媒体本身**的宽高比在屏幕里等比放到最大（和查看器显示它的位置一样），缩略图居中裁切填满。
+   * 不用缩略图自己的比例——相册格子里的缩略图已经裁成了格子的形状，按它摆，转场第一帧会从查看器里那张图跳成另一个大小。
+   */
+  private fun showTransitionImage(drawable: Drawable, mediaAspectRatio: Float?) {
+    val guarded = RecycledBitmapGuardDrawable(drawable)
+    val bounds = guarded.bounds
+    val aspectRatio = mediaAspectRatio ?: if (bounds.height() > 0) bounds.width().toFloat() / bounds.height() else 1f
+    val areaWidth = dragDismissLayout.width.takeIf { it > 0 } ?: resources.displayMetrics.widthPixels
+    val areaHeight = dragDismissLayout.height.takeIf { it > 0 } ?: resources.displayMetrics.heightPixels
+    val fitsWidth = aspectRatio > areaWidth.toFloat() / areaHeight
+    transitionImageView.updateLayoutParams<LayoutParams> {
+      width = if (fitsWidth) areaWidth else (areaHeight * aspectRatio).roundToInt()
+      height = if (fitsWidth) (areaWidth / aspectRatio).roundToInt() else areaHeight
+    }
+    transitionImageView.scaleType = ImageView.ScaleType.CENTER_CROP
+    val originalCallback = guarded.callback
+    transitionImageView.setImageDrawable(guarded)
+    guarded.callback = originalCallback
+    transitionImageView.visibility = View.VISIBLE
   }
 
   private fun previewFragment(): MediaPreviewFragment? {
@@ -275,7 +333,7 @@ class MediaPreviewActivity : PassphraseRequiredActivity(), VoiceNoteMediaControl
   private fun dismissByDrag(offset: Float, velocity: Float) {
     isDismissingByDrag = true
     val tier = TellomiMotion.tier(this)
-    if (hasSharedElementTransition && tier == TellomiMotion.Tier.FULL && viewModel.shouldFinishAfterTransition(args.initialMediaUri)) {
+    if (hasSharedElementTransition && tier == TellomiMotion.Tier.FULL && (viewModel.shouldFinishAfterTransition(args.initialMediaUri) || otherThumbnailToReturnTo() != null)) {
       finishAfterTransition()
       return
     }
@@ -353,7 +411,7 @@ class MediaPreviewActivity : PassphraseRequiredActivity(), VoiceNoteMediaControl
       }
       isDismissingByDrag = true
       val tier = TellomiMotion.tier(this@MediaPreviewActivity)
-      if (hasSharedElementTransition && tier == TellomiMotion.Tier.FULL && viewModel.shouldFinishAfterTransition(args.initialMediaUri)) {
+      if (hasSharedElementTransition && tier == TellomiMotion.Tier.FULL && (viewModel.shouldFinishAfterTransition(args.initialMediaUri) || otherThumbnailToReturnTo() != null)) {
         finishAfterTransition()
         return
       }

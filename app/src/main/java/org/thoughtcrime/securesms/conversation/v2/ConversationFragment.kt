@@ -97,7 +97,6 @@ import com.google.android.material.datepicker.MaterialDatePicker
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.google.android.material.snackbar.BaseTransientBottomBar.Duration
 import com.google.android.material.snackbar.Snackbar
-import com.google.android.material.transition.platform.MaterialContainerTransformSharedElementCallback
 import io.reactivex.rxjava3.android.schedulers.AndroidSchedulers
 import io.reactivex.rxjava3.core.Completable
 import io.reactivex.rxjava3.core.Single
@@ -180,6 +179,7 @@ import org.thoughtcrime.securesms.components.RotatedTiledDrawable
 import org.thoughtcrime.securesms.components.ScrollToPositionDelegate
 import org.thoughtcrime.securesms.components.SendButton
 import org.thoughtcrime.securesms.components.SignalProgressDialog
+import org.thoughtcrime.securesms.components.ThumbnailView
 import org.thoughtcrime.securesms.components.ViewBinderDelegate
 import org.thoughtcrime.securesms.components.compose.ActionModeTopBarView
 import org.thoughtcrime.securesms.components.compose.mediakeyboard.MediaKeyboardController
@@ -328,6 +328,7 @@ import org.thoughtcrime.securesms.mediaoverview.MediaOverviewActivity
 import org.thoughtcrime.securesms.mediapreview.MediaIntentFactory
 import org.thoughtcrime.securesms.mediapreview.MediaPreviewActivity
 import org.thoughtcrime.securesms.mediapreview.MediaPreviewCache
+import org.thoughtcrime.securesms.mediapreview.TellomiMediaReturnTarget
 import org.thoughtcrime.securesms.mediasend.MediaSendActivityResult
 import org.thoughtcrime.securesms.mediasend.TellomiMutedVideos
 import org.thoughtcrime.securesms.megaphone.ClientDeprecatedActivity
@@ -4297,7 +4298,9 @@ class ConversationFragment :
 
       sharedElement.transitionName = MediaPreviewActivity.SHARED_ELEMENT_TRANSITION_NAME
       MediaPreviewCache.replyTargetThreadId = args.threadId
-      requireActivity().setExitSharedElementCallback(MaterialContainerTransformSharedElementCallback())
+      // Tellomi (interaction audit A-20): if the viewer is closed on another page, it comes back to that page's thumbnail.
+      TellomiMediaReturnTarget.register(mediaReturnFinder)
+      requireActivity().setExitSharedElementCallback(TellomiMediaReturnTarget.ExitCallback(sharedElement))
       val options = ActivityOptions.makeSceneTransitionAnimation(requireActivity(), sharedElement, MediaPreviewActivity.SHARED_ELEMENT_TRANSITION_NAME)
       requireActivity().startActivity(MediaIntentFactory.create(requireActivity(), args), options.toBundle())
     }
@@ -4849,6 +4852,37 @@ class ConversationFragment :
       isReadyToLand = { !reactionOverlay.isShowing },
       findTarget = { findReactionPillEmoji(messageId, emoji) }
     )
+  }
+
+  /** Tellomi (A-20): held here because [TellomiMediaReturnTarget] only keeps a weak reference to it. */
+  private val mediaReturnFinder: (Uri) -> ThumbnailView? = { uri -> findMediaThumbnail(uri) }
+
+  /** Tellomi (A-20): the thumbnail showing [uri] in a row on screen, if there is one. */
+  private fun findMediaThumbnail(uri: Uri): ThumbnailView? {
+    if (view == null) {
+      return null
+    }
+
+    val recycler = binding.conversationItemRecycler
+    for (index in 0 until recycler.childCount) {
+      recycler.getChildAt(index).findThumbnail(uri)?.let { return it }
+    }
+
+    return null
+  }
+
+  private fun View.findThumbnail(uri: Uri): ThumbnailView? {
+    if (this is ThumbnailView) {
+      return takeIf { slide?.displayUri == uri }
+    }
+
+    if (this is ViewGroup) {
+      for (index in 0 until childCount) {
+        getChildAt(index).findThumbnail(uri)?.let { return it }
+      }
+    }
+
+    return null
   }
 
   /** Tellomi (A-07): the emoji in [emoji]'s pill under message [messageId], if that message is on screen. */
