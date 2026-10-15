@@ -267,6 +267,17 @@ open class MediaSendV3Activity :
                 setResult(RESULT_OK, Intent().putExtra(MediaSendLauncher.EXTRA_ATTACHMENT_FILES, it.result))
                 finish()
               }
+
+              // Tellomi（2026-10-16）：Sheet 里 app 画的页（投票）做完了，结果带回会话页。
+              is MediaSendFlowHudCommand.AttachmentPageResult -> {
+                setResult(
+                  RESULT_OK,
+                  Intent()
+                    .putExtra(MediaSendLauncher.EXTRA_ATTACHMENT_PAGE, it.page.name)
+                    .putExtra(MediaSendLauncher.EXTRA_ATTACHMENT_PAGE_RESULT, it.result)
+                )
+                finish()
+              }
             }
           }
         )

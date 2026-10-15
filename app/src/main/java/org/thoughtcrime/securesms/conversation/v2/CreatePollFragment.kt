@@ -133,9 +133,10 @@ class CreatePollFragment : ComposeDialogFragment() {
   }
 }
 
+/** Tellomi（2026-10-16）：附件 Sheet 的投票页（[org.thoughtcrime.securesms.mediasend.v3.TellomiAttachmentSheetPages]）也用这一屏。 */
 @OptIn(FlowPreview::class)
 @Composable
-private fun CreatePollScreen(
+internal fun CreatePollScreen(
   paddingValues: PaddingValues,
   onSend: (String, Boolean, List<String>) -> Unit = { _, _, _ -> },
   onShowErrorSnackbar: (Boolean, Boolean) -> Unit = { _, _ -> }

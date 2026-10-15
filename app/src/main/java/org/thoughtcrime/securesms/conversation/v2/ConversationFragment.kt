@@ -5424,6 +5424,11 @@ class ConversationFragment :
     override fun onAttachmentSheetFiles(result: MediaSendFlowActivityContract.AttachmentFilesResult) {
       sendAttachmentSheetFiles(result)
     }
+
+    override fun onAttachmentSheetPoll(poll: Poll) {
+      val recipient = viewModel.recipientSnapshot ?: return
+      sendPoll(recipient, poll)
+    }
   }
 
   //endregion

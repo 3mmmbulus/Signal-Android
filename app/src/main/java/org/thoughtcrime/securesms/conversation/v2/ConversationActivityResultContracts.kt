@@ -64,6 +64,7 @@ class ConversationActivityResultContracts(private val fragment: Fragment, privat
     when (result) {
       is AttachmentSheetResult.Dock -> callbacks.onAttachmentSheetButton(result.button)
       is AttachmentSheetResult.Files -> callbacks.onAttachmentSheetFiles(result.result)
+      is AttachmentSheetResult.Poll -> callbacks.onAttachmentSheetPoll(result.poll)
       is AttachmentSheetResult.Media -> callbacks.onMediaSend(result.result)
       null -> callbacks.onMediaSend(null)
     }
@@ -188,6 +189,7 @@ class ConversationActivityResultContracts(private val fragment: Fragment, privat
   private sealed interface AttachmentSheetResult {
     data class Media(val result: MediaSendActivityResult) : AttachmentSheetResult
     data class Files(val result: MediaSendFlowActivityContract.AttachmentFilesResult) : AttachmentSheetResult
+    data class Poll(val poll: org.thoughtcrime.securesms.polls.Poll) : AttachmentSheetResult
     data class Dock(val button: AttachmentKeyboardButton) : AttachmentSheetResult
   }
 
@@ -206,6 +208,11 @@ class ConversationActivityResultContracts(private val fragment: Fragment, privat
       val files = MediaSendLauncher.parseAttachmentFiles(resultCode, intent)
       if (files != null) {
         return AttachmentSheetResult.Files(files)
+      }
+
+      val poll = MediaSendLauncher.parseAttachmentPoll(resultCode, intent)
+      if (poll != null) {
+        return AttachmentSheetResult.Poll(org.thoughtcrime.securesms.polls.Poll.fromBundle(poll))
       }
 
       return MediaSendLauncher.parseResult(resultCode, intent)?.let { AttachmentSheetResult.Media(it) }
@@ -338,5 +345,8 @@ class ConversationActivityResultContracts(private val fragment: Fragment, privat
 
     /** Tellomi（tellomi/tellomi#1121）：附件 Sheet「文件」页选好了要发的文件。 */
     fun onAttachmentSheetFiles(result: MediaSendFlowActivityContract.AttachmentFilesResult)
+
+    /** Tellomi（2026-10-16）：附件 Sheet 投票页发出的投票。 */
+    fun onAttachmentSheetPoll(poll: org.thoughtcrime.securesms.polls.Poll)
   }
 }

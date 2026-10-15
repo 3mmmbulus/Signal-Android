@@ -176,7 +176,7 @@ class AttachmentSheetScreenshots {
   }
 
   @Test
-  fun dockFileStaysInTheSheetAndPollLeavesItForItsOwnScreen() {
+  fun dockFileAndPollStayInTheSheet() {
     val other = harness.others[0]
     val threadId = SignalDatabase.threads.getOrCreateThreadIdFor(Recipient.resolved(other))
     val conversation = openConversation(other, threadId)
@@ -197,7 +197,8 @@ class AttachmentSheetScreenshots {
       click(dockNode(harness.context.getString(R.string.AttachmentKeyboard_poll)))
       val newPoll = harness.context.getString(R.string.CreatePollFragment__new_poll)
       waitFor("新建投票页") { nodes { it.text?.toString() == newPoll }.isNotEmpty() }
-      assertTrue("点「投票」Sheet 收起", resumedActivity() !is MediaSendAttachmentSheetActivity)
+      // 2026-10-16：投票也在同一个 Sheet 里换页（照 Telegram 两端），不再收起 Sheet 另开整屏对话框
+      assertTrue("点「投票」Sheet 留着", resumedActivity() is MediaSendAttachmentSheetActivity)
       settle(800)
       shot("sheet-7-poll")
       instrumentation.uiAutomation.performGlobalAction(AccessibilityService.GLOBAL_ACTION_BACK)

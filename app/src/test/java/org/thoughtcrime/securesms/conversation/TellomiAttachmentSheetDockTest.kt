@@ -22,7 +22,7 @@ import org.thoughtcrime.securesms.R
 class TellomiAttachmentSheetDockTest {
 
   @Test
-  fun `the dock is gallery, file, location, poll and contact, with gallery and file as pages of the sheet`() {
+  fun `the dock is gallery, file, location, poll and contact, with gallery, file and poll as pages of the sheet`() {
     val entries = TellomiAttachmentSheetDock.entries(isLocationAvailable = true)
 
     assertThat(entries.map { it.id }).containsExactly("GALLERY", "FILE", "LOCATION", "POLL", "CONTACT")
@@ -30,7 +30,7 @@ class TellomiAttachmentSheetDockTest {
       MediaSendFlowActivityContract.AttachmentPage.GALLERY,
       MediaSendFlowActivityContract.AttachmentPage.FILES,
       null,
-      null,
+      MediaSendFlowActivityContract.AttachmentPage.POLL,
       null
     )
     assertThat(entries.map { it.title }).containsExactly(

@@ -8,6 +8,7 @@ package org.thoughtcrime.securesms.mediasend
 import android.app.Activity
 import android.content.Context
 import android.content.Intent
+import android.os.Bundle
 import android.os.Parcelable
 import org.signal.core.models.media.Media
 import org.signal.core.util.getParcelableExtraCompat
@@ -159,6 +160,10 @@ object MediaSendLauncher {
   /** Tellomi（tellomi/tellomi#1121）：附件 Sheet「文件」页要发的文件（[MediaSendFlowActivityContract.AttachmentFilesResult]）。 */
   const val EXTRA_ATTACHMENT_FILES = "tellomi.attachment_files"
 
+  /** Tellomi（2026-10-16）：附件 Sheet 里 app 画的哪一页做完了（[MediaSendFlowActivityContract.AttachmentPage] 的名字）和它的结果。 */
+  const val EXTRA_ATTACHMENT_PAGE = "tellomi.attachment_page"
+  const val EXTRA_ATTACHMENT_PAGE_RESULT = "tellomi.attachment_page_result"
+
   /**
    * Tellomi（tellomi/tellomi#1115）：会话页「+」打开的附件 Sheet——选图网格做成半屏 Sheet（聊天露在上面），底部 dock 是 [dock] 里的格子。
    * 发了照片的结果同 [gallery]；点了 dock 的别的格子，结果里带 [EXTRA_ATTACHMENT_DOCK_ENTRY]（[parseAttachmentDockEntry]）。
@@ -199,6 +204,19 @@ object MediaSendLauncher {
     }
 
     return data.getParcelableExtraCompat(EXTRA_ATTACHMENT_FILES, MediaSendFlowActivityContract.AttachmentFilesResult::class.java)
+  }
+
+  /** Tellomi（2026-10-16）：附件 Sheet 投票页发出的投票（[org.thoughtcrime.securesms.polls.Poll.toBundle]）；不是这种结果时是 null。 */
+  fun parseAttachmentPoll(resultCode: Int, data: Intent?): Bundle? {
+    if (resultCode != Activity.RESULT_OK || data == null) {
+      return null
+    }
+
+    if (data.getStringExtra(EXTRA_ATTACHMENT_PAGE) != MediaSendFlowActivityContract.AttachmentPage.POLL.name) {
+      return null
+    }
+
+    return data.getBundleExtra(EXTRA_ATTACHMENT_PAGE_RESULT)
   }
 
   /**

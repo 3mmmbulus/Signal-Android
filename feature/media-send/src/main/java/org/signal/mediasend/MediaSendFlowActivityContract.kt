@@ -136,10 +136,15 @@ class MediaSendFlowActivityContract(private val clazz: Class<out Activity>) : Ac
     @get:StringRes val comingSoonMessage: Int? = null
   ) : Parcelable
 
-  /** Tellomi（tellomi/tellomi#1121 F-1）：附件 Sheet 里的页。dock 的「相册」「文件」在同一个 Sheet 里换页，不收起 Sheet。 */
+  /**
+   * Tellomi（tellomi/tellomi#1121 F-1）：附件 Sheet 里的页。dock 的「相册」「文件」在同一个 Sheet 里换页，不收起 Sheet。
+   * [POLL]（2026-10-16）：照 Telegram 两端（安卓 ChatAttachAlertPollLayout、iOS ChatControllerOpenAttachmentMenu `.poll`）
+   * 也在 Sheet 里换页；内容由 app 提供（[MediaSendDependencies.attachmentExtraPages]）。
+   */
   enum class AttachmentPage {
     GALLERY,
-    FILES
+    FILES,
+    POLL
   }
 
   /**

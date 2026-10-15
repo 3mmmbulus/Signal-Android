@@ -9,6 +9,7 @@ import android.app.Application
 import androidx.media3.exoplayer.ExoPlayer
 import org.signal.core.util.contentproviders.BlobProvider
 import org.signal.mediasend.preupload.PreUploadRepository
+import org.signal.mediasend.screens.extra.AttachmentExtraPages
 import org.signal.mediasend.screens.files.AttachmentFilesRepository
 import org.signal.video.exo.ExoPlayerPool
 import org.thoughtcrime.securesms.video.interfaces.MediaInputFactory
@@ -55,6 +56,10 @@ object MediaSendDependencies {
   val attachmentFilesRepository: AttachmentFilesRepository
     get() = _provider.provideAttachmentFilesRepository()
 
+  /** Tellomi（2026-10-16）：附件 Sheet 里由 app 画的页（投票……），见 [AttachmentExtraPages]。 */
+  val attachmentExtraPages: AttachmentExtraPages
+    get() = _provider.provideAttachmentExtraPages()
+
   interface Provider {
     fun provideMediaSendRepository(): MediaSendRepository
     fun providePreUploadRepository(): PreUploadRepository
@@ -63,5 +68,6 @@ object MediaSendDependencies {
     fun provideBlobs(): BlobProvider
     fun provideMediaInputFactory(): MediaInputFactory
     fun provideAttachmentFilesRepository(): AttachmentFilesRepository
+    fun provideAttachmentExtraPages(): AttachmentExtraPages
   }
 }

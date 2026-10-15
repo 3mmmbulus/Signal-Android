@@ -5,6 +5,7 @@
 
 package org.signal.mediasend
 
+import android.os.Bundle
 import android.os.Parcelable
 
 /**
@@ -59,6 +60,9 @@ sealed interface MediaSendFlowHudCommand {
 
   /** Tellomi（tellomi/tellomi#1121）：附件 Sheet「文件」页要发的文件，交给打开 Sheet 的会话页去发。 */
   data class SendAttachmentFiles(val result: MediaSendFlowActivityContract.AttachmentFilesResult) : MediaSendFlowHudCommand
+
+  /** Tellomi（2026-10-16）：附件 Sheet 里 app 画的页（投票……）做完了，交给打开 Sheet 的会话页。 */
+  data class AttachmentPageResult(val page: MediaSendFlowActivityContract.AttachmentPage, val result: Bundle) : MediaSendFlowHudCommand
 
   /** The send was blocked by safety number changes for [untrustedRecipientIds]. */
   data class ResolveUntrustedIdentities(val untrustedRecipientIds: List<Long>) : MediaSendFlowHudCommand

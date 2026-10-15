@@ -5,6 +5,7 @@
 
 package org.signal.mediasend
 
+import android.os.Bundle
 import org.signal.core.models.media.Media
 import org.signal.core.models.media.MediaFolder
 import org.signal.mediasend.screens.edit.ScheduleSendOption
@@ -120,6 +121,9 @@ internal sealed interface MediaSendFlowEvent {
 
   /** tellomi/tellomi#1121：「文件」页选好了要发的文件：离开流程，交给会话页去发。 */
   data class SendAttachmentFiles(val result: MediaSendFlowActivityContract.AttachmentFilesResult) : MediaSendFlowEvent
+
+  /** Tellomi（2026-10-16）：app 画的页（投票……）做完了，[result] 交给会话页（内容由那一页定）。 */
+  data class AttachmentPageResult(val page: MediaSendFlowActivityContract.AttachmentPage, val result: Bundle) : MediaSendFlowEvent
 
   /**
    * tellomi/tellomi#1263 F-3：「文件」页「从相册中选择」：关掉附件 Sheet，整屏推出相册网格（文件模式）——照 Telegram 两端

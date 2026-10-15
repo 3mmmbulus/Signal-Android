@@ -49,6 +49,8 @@ import org.signal.mediasend.screens.edit.MediaAlbumScreen
 import org.signal.mediasend.screens.edit.MediaEditScreen
 import org.signal.mediasend.screens.edit.MediaEditScreenDialogs
 import org.signal.mediasend.screens.edit.MediaEditViewModel
+import org.signal.mediasend.screens.extra.AttachmentExtraPageHost
+import org.signal.mediasend.screens.extra.dockEventFor
 import org.signal.mediasend.screens.files.AttachmentFilesGalleryScreen
 import org.signal.mediasend.screens.files.AttachmentFilesGalleryViewModel
 import org.signal.mediasend.screens.files.AttachmentFilesScreen
@@ -180,6 +182,15 @@ internal fun MediaSendNavigation(
                     val filesState by filesViewModel.state.collectAsStateWithLifecycle()
                     AttachmentFilesScreen(state = filesState, onEvent = filesViewModel::onEvent)
                   }
+
+                  // Tellomi（2026-10-16）：投票也在 Sheet 里换页（照 Telegram 两端），页面由 app 画。
+                  MediaSendFlowActivityContract.AttachmentPage.POLL -> AttachmentExtraPageHost(
+                    page = current,
+                    dock = viewModel.state.value.attachmentSheet?.dock.orEmpty(),
+                    onDockClick = { entry -> viewModel.onEvent(dockEventFor(entry)) },
+                    onClose = viewModel::onCloseRequested,
+                    onResult = { result -> viewModel.onEvent(MediaSendFlowEvent.AttachmentPageResult(current, result)) }
+                  )
                 }
               }
             }
