@@ -54,4 +54,12 @@ object TellomiDragDismiss {
   fun scale(progress: Float): Float {
     return 1f - (1f - MIN_SCALE) * progress.coerceIn(0f, 1f)
   }
+
+  /** 返回手势（A-20 第二刀）滑到底时媒体往下挪的距离。 */
+  const val BACK_TRAVEL_DP = 64f
+
+  /** 返回手势进度 [progress]（0…1）对应的竖向位移。 */
+  fun backOffset(progress: Float, density: Float): Float {
+    return BACK_TRAVEL_DP * density * progress.coerceIn(0f, 1f)
+  }
 }

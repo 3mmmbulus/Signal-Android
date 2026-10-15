@@ -58,4 +58,11 @@ class TellomiDragDismissTest {
     assertEquals(1f, TellomiDragDismiss.scale(0f), 0f)
     assertEquals(TellomiDragDismiss.MIN_SCALE, TellomiDragDismiss.scale(1f), 0f)
   }
+
+  @Test
+  fun `the back gesture moves the media down a little as it progresses`() {
+    assertEquals(0f, TellomiDragDismiss.backOffset(0f, density), 0f)
+    assertEquals(dp(32f), TellomiDragDismiss.backOffset(0.5f, density), 0.0001f)
+    assertEquals(dp(TellomiDragDismiss.BACK_TRAVEL_DP), TellomiDragDismiss.backOffset(1.5f, density), 0f)
+  }
 }

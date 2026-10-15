@@ -12,6 +12,8 @@ import android.view.View
 import android.view.ViewGroup.LayoutParams
 import android.view.animation.DecelerateInterpolator
 import android.widget.ImageView
+import androidx.activity.BackEventCompat
+import androidx.activity.OnBackPressedCallback
 import androidx.activity.viewModels
 import androidx.annotation.RequiresApi
 import androidx.appcompat.app.AppCompatDelegate
@@ -129,6 +131,7 @@ class MediaPreviewActivity : PassphraseRequiredActivity(), VoiceNoteMediaControl
     window.setBackgroundDrawable(ColorDrawable(Color.TRANSPARENT))
     dragDismissLayout = findViewById(R.id.media_preview_drag_dismiss_layout)
     dragDismissLayout.callback = DragDismissCallback()
+    onBackPressedDispatcher.addCallback(this, PredictiveBackCallback())
     val cacheDrawable = MediaPreviewCache.drawable?.let { RecycledBitmapGuardDrawable(it) }
     if (cacheDrawable != null && !args.skipSharedElementTransition) {
       val bounds = cacheDrawable.bounds
@@ -229,8 +232,11 @@ class MediaPreviewActivity : PassphraseRequiredActivity(), VoiceNoteMediaControl
   /** Tellomi（A-20）：把拖拽位移画出来——媒体跟手、缩小，按钮和背景变淡；转场用的那张图跟着走，关的时候从这里缩回缩略图。 */
   private fun applyDragOffset(offset: Float) {
     dragOffset = offset
-    val density = resources.displayMetrics.density
-    val progress = TellomiDragDismiss.progress(offset, density)
+    applyDragVisual(offset, TellomiDragDismiss.progress(offset, resources.displayMetrics.density))
+  }
+
+  /** [offset] 竖向位移，[progress] 0…1 决定缩放和变淡（拖拽时由位移算出来，返回手势时就是手势进度）。 */
+  private fun applyDragVisual(offset: Float, progress: Float) {
     val scale = TellomiDragDismiss.scale(progress)
     previewFragment()?.applyDragDismiss(offset, scale, progress)
     findViewById<View>(R.id.fragment_container_view).background?.alpha = ((1f - progress) * 255).toInt()
@@ -285,6 +291,89 @@ class MediaPreviewActivity : PassphraseRequiredActivity(), VoiceNoteMediaControl
         overridePendingTransition(0, 0)
       }
       start()
+    }
+  }
+
+  /**
+   * Tellomi（A-20 第二刀，审计「查看器 Activity opt-in 预测性返回，返回手势 = 缩小预览」）：Android 14 起返回手势一边滑一边把媒体
+   * 缩小、略往下移、背景变淡；松手关（还在点开的那一张就缩回缩略图，否则往下飞出），滑回去取消就弹回。更早的系统没有进度，
+   * 只有松手那一下，行为和原来的返回一样。
+   */
+  private inner class PredictiveBackCallback : OnBackPressedCallback(true) {
+    private var backProgress = 0f
+    private var settle: ValueAnimator? = null
+
+    override fun handleOnBackStarted(backEvent: BackEventCompat) {
+      if (isDismissingByDrag) {
+        return
+      }
+      settle?.cancel()
+      dragSpring?.cancel()
+      backProgress = 0f
+      previewFragment()?.onDragDismissStarted()
+      findViewById<View>(R.id.fragment_container_view).background?.mutate()
+    }
+
+    override fun handleOnBackProgressed(backEvent: BackEventCompat) {
+      if (isDismissingByDrag) {
+        return
+      }
+      backProgress = backEvent.progress
+      applyDragVisual(TellomiDragDismiss.backOffset(backProgress, resources.displayMetrics.density), backProgress)
+    }
+
+    override fun handleOnBackCancelled() {
+      if (isDismissingByDrag) {
+        return
+      }
+      val from = backProgress
+      backProgress = 0f
+      settle = ValueAnimator.ofFloat(from, 0f).apply {
+        duration = if (TellomiMotion.tier(this@MediaPreviewActivity) == TellomiMotion.Tier.MINIMAL) 0L else BACK_SETTLE_DURATION_MS
+        interpolator = DecelerateInterpolator()
+        addUpdateListener {
+          val progress = it.animatedValue as Float
+          applyDragVisual(TellomiDragDismiss.backOffset(progress, resources.displayMetrics.density), progress)
+        }
+        doOnEnd { previewFragment()?.onDragDismissEnded() }
+        start()
+      }
+    }
+
+    override fun handleOnBackPressed() {
+      if (isDismissingByDrag) {
+        return
+      }
+      val progress = backProgress
+      backProgress = 0f
+      if (progress <= 0f) {
+        // 没有滑动进度（返回键、顶栏的返回、Android 14 以前）：照原来的返回
+        finishAfterTransition()
+        return
+      }
+      isDismissingByDrag = true
+      val tier = TellomiMotion.tier(this@MediaPreviewActivity)
+      if (hasSharedElementTransition && tier == TellomiMotion.Tier.FULL && viewModel.shouldFinishAfterTransition(args.initialMediaUri)) {
+        finishAfterTransition()
+        return
+      }
+      val density = resources.displayMetrics.density
+      val fromOffset = TellomiDragDismiss.backOffset(progress, density)
+      val toOffset = dragDismissLayout.height.toFloat()
+      ValueAnimator.ofFloat(0f, 1f).apply {
+        duration = if (tier == TellomiMotion.Tier.MINIMAL) 0L else FLY_OUT_DURATION_MS
+        interpolator = DecelerateInterpolator()
+        addUpdateListener {
+          val fraction = it.animatedValue as Float
+          applyDragVisual(fromOffset + (toOffset - fromOffset) * fraction, progress + (1f - progress) * fraction)
+        }
+        doOnEnd {
+          finish()
+          @Suppress("DEPRECATION")
+          overridePendingTransition(0, 0)
+        }
+        start()
+      }
     }
   }
 
@@ -372,5 +461,8 @@ class MediaPreviewActivity : PassphraseRequiredActivity(), VoiceNoteMediaControl
 
     /** Tellomi (A-20): flying the dragged media off screen when there is no thumbnail to return to. */
     private const val FLY_OUT_DURATION_MS = 200L
+
+    /** Tellomi (A-20): settling back after a cancelled back gesture. */
+    private const val BACK_SETTLE_DURATION_MS = 200L
   }
 }
