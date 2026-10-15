@@ -406,13 +406,17 @@ public final class AudioView extends FrameLayout {
       callbacks.onProgressUpdated(durationMillis, millis);
     }
 
-    if (duration != null && durationMillis > 0) {
-      long remainingSecs = Math.max(0, TimeUnit.MILLISECONDS.toSeconds(durationMillis - millis));
-      duration.setText(getResources().getString(R.string.AudioView_duration, remainingSecs / 60, remainingSecs % 60));
-    }
+    showRemaining(millis);
 
     if (smallView && circleProgress != null) {
       circleProgress.setInstantProgress(seekBar.getProgress() == 0 ? 1 : progress);
+    }
+  }
+
+  private void showRemaining(long playheadMillis) {
+    if (duration != null && durationMillis > 0) {
+      long remainingSecs = Math.max(0, TimeUnit.MILLISECONDS.toSeconds(durationMillis - playheadMillis));
+      duration.setText(getResources().getString(R.string.AudioView_duration, remainingSecs / 60, remainingSecs % 60));
     }
   }
 
@@ -535,6 +539,15 @@ public final class AudioView extends FrameLayout {
 
     @Override
     public void onProgressChanged(SeekBar seekBar, int progress, boolean fromUser) {
+      // Tellomi（交互审计 A-18「拖动时时间不跟着变」）：拖动中剩余时间跟着拇指走（自己的时长和气泡底栏的时长都改，
+      // 底栏那个走 onProgressUpdated，只换文字）；松手后照旧交给播放器。
+      if (fromUser && durationMillis > 0) {
+        long playheadMillis = Math.round(durationMillis * getProgress());
+        showRemaining(playheadMillis);
+        if (callbacks != null) {
+          callbacks.onProgressUpdated(durationMillis, playheadMillis);
+        }
+      }
     }
 
     @Override

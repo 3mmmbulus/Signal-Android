@@ -128,14 +128,39 @@ public final class WaveFormSeekBarView extends AppCompatSeekBar {
       canvas.scale(-1, 1, usableWidth / 2f, usableHeight / 2f);
     }
 
+    // Tellomi（交互审计 A-18「已播进度按整根柱子跳」）：先整条画成未播的颜色，再裁到播放位置（按像素）用已播的颜色画一遍，
+    // 正好在播放位置上的那根柱子一半一半，进度连续地走、拖动时跟着拇指。机制同 Telegram 安卓 SeekBarWaveform.drawFill。
+    // 裁切在 RTL 镜像之后，所以 RTL 时已播的那段在右边。
+    float playedX = getMax() > 0 ? usableWidth * Math.max(0f, Math.min(1f, getProgress() / (float) getMax())) : 0f;
+
+    paint.setColor(unplayedBarColor);
+    hasMoreFrames |= drawBars(canvas, midpoint, maxHeight, barGap);
+
+    if (playedX > 0f) {
+      canvas.save();
+      canvas.clipRect(0f, 0f, playedX, usableHeight);
+      paint.setColor(playedBarColor);
+      drawBars(canvas, midpoint, maxHeight, barGap);
+      canvas.restore();
+    }
+
+    canvas.restore();
+
+    if (hasMoreFrames) {
+      invalidate();
+    }
+  }
+
+  /** 画所有柱子（含刚设数据时的逐根长出动画）；还有柱子没长完时返回 true。 */
+  private boolean drawBars(Canvas canvas, float midpoint, float maxHeight, float barGap) {
+    boolean hasMoreFrames = false;
+    long    now           = System.currentTimeMillis();
+
     for (int bar = 0; bar < data.length; bar++) {
-      float x        = bar * (barWidth + barGap) + barWidth / 2f;
-      float y        = data[bar] * maxHeight;
-      float progress = x / usableWidth;
+      float x = bar * (barWidth + barGap) + barWidth / 2f;
+      float y = data[bar] * maxHeight;
 
-      paint.setColor(progress * getMax() < getProgress() ? playedBarColor : unplayedBarColor);
-
-      long  time             = System.currentTimeMillis() - bar * ANIM_BAR_OFF_SET_DURATION - dataSetTime;
+      long  time             = now - bar * ANIM_BAR_OFF_SET_DURATION - dataSetTime;
       float timeX            = Math.max(0, Math.min(1, time / (float) ANIM_DURATION));
       float interpolatedTime = overshoot.getInterpolation(timeX);
       float interpolatedY    = y * interpolatedTime;
@@ -147,11 +172,7 @@ public final class WaveFormSeekBarView extends AppCompatSeekBar {
       }
     }
 
-    canvas.restore();
-
-    if (hasMoreFrames) {
-      invalidate();
-    }
+    return hasMoreFrames;
   }
 
   private static float[] sinusoidalExampleData() {
