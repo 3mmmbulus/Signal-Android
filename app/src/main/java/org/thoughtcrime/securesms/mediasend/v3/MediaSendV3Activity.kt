@@ -18,6 +18,7 @@ import androidx.activity.viewModels
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
@@ -42,6 +43,7 @@ import org.signal.mediasend.MediaSendRoute
 import org.signal.mediasend.MediaSendScreen
 import org.signal.mediasend.screens.edit.LocalAddAMessageRowTextField
 import org.signal.mediasend.screens.edit.LocalScheduledSendTimeFormatter
+import org.signal.mediasend.screens.edit.LocalTellomiInlineCaption
 import org.signal.mediasend.screens.edit.LocalTellomiScheduleIsReminder
 import org.thoughtcrime.securesms.PassphraseRequiredActivity
 import org.thoughtcrime.securesms.R
@@ -90,6 +92,12 @@ open class MediaSendV3Activity :
 
   /** Tellomi（tellomi/tellomi#1115）：附件 Sheet（[MediaSendAttachmentSheetActivity]）换成窗口透明的主题。 */
   protected open fun createDynamicTheme(): DynamicTheme = DynamicNoActionBarTheme()
+
+  /**
+   * Tellomi（两端对齐清单 P-4 第一期）：相册页底栏的说明框就地输入（[TellomiInlineCaptionInput]）。只有附件 Sheet 打开（第一期只改 Sheet）；
+   * 别的入口还是点了弹上游的对话框。
+   */
+  protected open val tellomiUsesInlineCaption: Boolean = false
 
   private val contractArgs: MediaSendFlowActivityContract.Args by lazy { MediaSendFlowActivityContract.Args.fromIntent(intent) }
 
@@ -144,7 +152,12 @@ open class MediaSendV3Activity :
         onCaptureScreenChanged(isOnCaptureScreen)
       }
 
+      val tellomiInlineCaption = remember {
+        if (tellomiUsesInlineCaption) TellomiInlineCaptionInput(this, contractArgs.recipientId?.let { RecipientId.from(it.id) }) else null
+      }
+
       CompositionLocalProvider(
+        LocalTellomiInlineCaption provides tellomiInlineCaption,
         LocalAddAMessageRowTextField provides { message, modifier ->
           AndroidView(
             factory = {

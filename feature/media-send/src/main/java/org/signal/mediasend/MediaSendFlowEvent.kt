@@ -52,6 +52,9 @@ internal sealed interface MediaSendFlowEvent {
   data object ToggleViewOnce : MediaSendFlowEvent
   data object ToggleVideoMuted : MediaSendFlowEvent
 
+  /** Tellomi（两端对齐清单 P-4）：附件 Sheet 相册页就地输入的说明（不经 [AddMessageRequested] 的对话框）。 */
+  data class SetMessage(val message: CharSequence?) : MediaSendFlowEvent
+
   //endregion
 
   //region Requests the flow can only answer by leaving it, through a [MediaSendFlowHudCommand]

@@ -401,4 +401,6 @@
   <string name="ImageEditor_tellomi_adjust_tint_shadows">Shadows tint</string>
   <string name="ImageEditor_tellomi_adjust_tint_highlights">Highlights tint</string>
   <string name="ImageEditor_tellomi_adjust_tint_none">None</string>
+  <!-- Tellomi (two-platform parity P-4): the emoji key of the inline caption field in the attachment sheet while the emoji panel is open; switches back to the keyboard. -->
+  <string name="AddAMessageRow__tellomi_show_keyboard">Show keyboard</string>
 </resources>

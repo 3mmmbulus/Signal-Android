@@ -380,4 +380,5 @@
   <string name="ImageEditor_tellomi_adjust_tint_shadows">暗部色调</string>
   <string name="ImageEditor_tellomi_adjust_tint_highlights">亮部色调</string>
   <string name="ImageEditor_tellomi_adjust_tint_none">不加</string>
+  <string name="AddAMessageRow__tellomi_show_keyboard">显示键盘</string>
 </resources>

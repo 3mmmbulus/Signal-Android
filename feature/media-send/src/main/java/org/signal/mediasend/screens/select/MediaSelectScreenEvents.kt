@@ -62,6 +62,9 @@ sealed interface MediaSelectScreenEvents {
   /** P-9：底栏「添加说明…」与表情键。 */
   data class AddMessage(val startWithEmojiKeyboard: Boolean) : MediaSelectScreenEvents
 
+  /** 两端对齐清单 P-4：附件 Sheet 里底栏的说明框就地输入，字改了。 */
+  data class MessageChanged(val message: CharSequence?) : MediaSelectScreenEvents
+
   data object ToggleViewOnce : MediaSelectScreenEvents
 
   /** P-9 / P-10：底栏的发送键——在网格里直接发，不经预览页。 */

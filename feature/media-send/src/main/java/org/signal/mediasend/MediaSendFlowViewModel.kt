@@ -279,6 +279,7 @@ class MediaSendFlowViewModel(
       )
       MediaSendFlowEvent.ToggleViewOnce -> toggleViewOnce()
       MediaSendFlowEvent.ToggleVideoMuted -> toggleVideoMuted()
+      is MediaSendFlowEvent.SetMessage -> setMessage(event.message)
 
       is MediaSendFlowEvent.AddMessageRequested -> onAddMessageRequested(event.startWithEmojiKeyboard)
       is MediaSendFlowEvent.ScheduleSendRequested -> onScheduleSendClick(event.option)

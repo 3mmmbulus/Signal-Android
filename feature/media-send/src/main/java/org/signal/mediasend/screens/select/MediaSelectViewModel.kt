@@ -110,6 +110,7 @@ internal class MediaSelectViewModel(
       is MediaSelectScreenEvents.OpenSelectedMedia -> parentEventEmitter(MediaSendFlowEvent.OpenInEditor(event.media))
       is MediaSelectScreenEvents.SwitchFolder -> parentEventEmitter(MediaSendFlowEvent.SwitchFolder(event.mediaFolder))
       is MediaSelectScreenEvents.AddMessage -> parentEventEmitter(MediaSendFlowEvent.AddMessageRequested(event.startWithEmojiKeyboard))
+      is MediaSelectScreenEvents.MessageChanged -> parentEventEmitter(MediaSendFlowEvent.SetMessage(event.message))
       MediaSelectScreenEvents.ToggleViewOnce -> parentEventEmitter(MediaSendFlowEvent.ToggleViewOnce)
       MediaSelectScreenEvents.Send -> parentEventEmitter(MediaSendFlowEvent.NextRequested)
       is MediaSelectScreenEvents.ScheduleSend -> parentEventEmitter(MediaSendFlowEvent.ScheduleSendRequested(event.option))

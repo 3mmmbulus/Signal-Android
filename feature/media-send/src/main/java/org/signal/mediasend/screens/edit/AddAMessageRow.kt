@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Icon
@@ -81,6 +82,8 @@ val LocalAddAMessageRowTextField = compositionLocalOf<@Composable (CharSequence,
  *   `ChatSendMessageContextScreen` 的 captionPosition、安卓 `ChatAttachAlert` 的 CaptionAbove / CaptionBelow 开关），点了菜单不收。
  * @param sendPreviewMedia Tellomi（tellomi/tellomi#1519 M-5，照 Telegram）：要发的媒体；给了，长按发送就是整屏的
  *   「发出去是什么样」预览加菜单（[SendPreviewOverlay]），不给还是原来贴着发送键的小菜单。
+ * @param inlineCaption Tellomi（两端对齐清单 P-4）：给了（连同 [onMessageChange]），说明框就地输入（[TellomiInlineCaption]），
+ *   表情键在键盘和表情面板之间切换；不给还是点了弹对话框（[MediaEditScreenEvents.AddMessageClick]）。
  */
 @Composable
 fun AddAMessageRow(
@@ -96,25 +99,30 @@ fun AddAMessageRow(
   isReply: Boolean = false,
   recipientChatColor: Color? = null,
   captionAboveMedia: Boolean? = null,
-  sendPreviewMedia: List<Media>? = null
+  sendPreviewMedia: List<Media>? = null,
+  inlineCaption: TellomiInlineCaption? = null,
+  onMessageChange: ((CharSequence?) -> Unit)? = null
 ) {
   var previewShown by remember { mutableStateOf(false) }
   var sendButtonBounds by remember { mutableStateOf(Rect.Zero) }
+  // Tellomi（P-4）：就地输入时说明框会长高（最多几行），表情键、发送键贴着底边（同 Telegram 的输入框）
+  val inline = inlineCaption != null && onMessageChange != null && !viewOnce
 
   Row(
     horizontalArrangement = Arrangement.Center,
-    verticalAlignment = Alignment.CenterVertically,
+    verticalAlignment = if (inline) Alignment.Bottom else Alignment.CenterVertically,
     modifier = modifier
   ) {
     Row(
-      verticalAlignment = Alignment.CenterVertically,
+      verticalAlignment = if (inline) Alignment.Bottom else Alignment.CenterVertically,
       modifier = Modifier
         .background(color = MaterialTheme.colorScheme.surfaceVariant, shape = RoundedCornerShape(24.dp))
         .weight(1f)
-        .height(InputBarHeight)
+        .then(if (inline) Modifier.heightIn(min = InputBarHeight) else Modifier.height(InputBarHeight))
         .then(
-          if (viewOnce) {
+          if (viewOnce || inline) {
             // A view-once send cannot carry a body, so the row becomes a static label rather than an entry point.
+            // Tellomi（P-4）：就地输入时点的是说明框本身，不用整行当按钮。
             Modifier
           } else {
             Modifier.clickable(enabled = enabled, onClickLabel = stringResource(if (isReply) R.string.AddAMessageRow__add_a_reply else R.string.AddAMessageRow__add_a_message), onClick = { onEvent(MediaEditScreenEvents.AddMessageClick()) }, role = Role.Button)
@@ -130,6 +138,29 @@ fun AddAMessageRow(
           modifier = Modifier
             .weight(1f)
             .padding(horizontal = 16.dp)
+        )
+      } else if (inline) {
+        val showKeyboardIcon = inlineCaption!!.isEmojiPanelVisible
+        IconButtons.IconButton(
+          enabled = enabled,
+          onClick = { inlineCaption.onEmojiToggleClick() },
+          modifier = Modifier.height(InputBarHeight)
+        ) {
+          Icon(
+            painter = if (showKeyboardIcon) SignalIcons.Keyboard.painter else SignalIcons.Emoji.painter,
+            contentDescription = stringResource(if (showKeyboardIcon) R.string.AddAMessageRow__tellomi_show_keyboard else R.string.AddAMessageRow__open_emoji_keyboard)
+          )
+        }
+
+        inlineCaption.Field(
+          message = message,
+          hint = stringResource(if (isReply) R.string.AddAMessageRow__add_a_reply else R.string.AddAMessageRow__message),
+          enabled = enabled,
+          onMessageChange = onMessageChange!!,
+          modifier = Modifier
+            .weight(1f)
+            .heightIn(min = InputBarHeight)
+            .padding(end = if (viewOnceAvailable) 0.dp else 16.dp)
         )
       } else {
         IconButtons.IconButton(
@@ -154,7 +185,8 @@ fun AddAMessageRow(
       if (viewOnceAvailable) {
         IconButtons.IconButton(
           enabled = enabled,
-          onClick = { onEvent(MediaEditScreenEvents.ToggleViewOnce) }
+          onClick = { onEvent(MediaEditScreenEvents.ToggleViewOnce) },
+          modifier = if (inline) Modifier.height(InputBarHeight) else Modifier
         ) {
           Icon(
             painter = if (viewOnce) SignalIcons.ViewOnce.painter else SignalIcons.ViewOnceInfinite.painter,

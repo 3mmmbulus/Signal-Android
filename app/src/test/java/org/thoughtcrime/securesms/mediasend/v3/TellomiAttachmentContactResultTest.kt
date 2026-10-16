@@ -12,6 +12,7 @@ import assertk.assertThat
 import assertk.assertions.containsExactly
 import assertk.assertions.isNull
 import assertk.assertions.isTrue
+import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
@@ -19,6 +20,7 @@ import org.robolectric.annotation.Config
 import org.signal.mediasend.MediaSendFlowActivityContract
 import org.thoughtcrime.securesms.contactshare.Contact
 import org.thoughtcrime.securesms.mediasend.MediaSendLauncher
+import org.thoughtcrime.securesms.testutil.SignalStoreRule
 import org.thoughtcrime.securesms.util.RemoteConfig
 
 /**
@@ -28,6 +30,10 @@ import org.thoughtcrime.securesms.util.RemoteConfig
 @RunWith(RobolectricTestRunner::class)
 @Config(manifest = Config.NONE, application = Application::class)
 class TellomiAttachmentContactResultTest {
+
+  // RemoteConfig 读 SignalStore：单跑这个类时没有别的测试先装好它，要自己装一个（内存里的，没有服务端下发的值 = 默认值）
+  @get:Rule
+  val signalStore = SignalStoreRule()
 
   private val contact = Contact(
     Contact.Name("小林", null, null, null, null, null),

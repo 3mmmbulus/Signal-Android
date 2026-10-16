@@ -29,6 +29,9 @@ class MediaSendAttachmentSheetActivity : MediaSendV3Activity() {
 
   override fun createDynamicTheme(): DynamicTheme = AttachmentSheetTheme()
 
+  // 两端对齐清单 P-4：相册页底栏的说明框就地输入，同 Telegram 两端、iOS
+  override val tellomiUsesInlineCaption: Boolean = true
+
   override fun onResume() {
     super.onResume()
     // 新功能提示卡（docs/product/specs/whats-new-cards.md）：第一次打开面板（默认是相册页）时弹「选图」。

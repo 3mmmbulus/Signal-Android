@@ -25,16 +25,19 @@ import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.ime
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.layout.windowInsetsBottomHeight
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.GridItemSpan
@@ -101,7 +104,9 @@ import org.signal.mediasend.R
 import org.signal.mediasend.SentMediaQuality
 import org.signal.mediasend.TellomiHeic
 import org.signal.mediasend.screens.edit.AddAMessageRow
+import org.signal.mediasend.screens.edit.LocalTellomiInlineCaption
 import org.signal.mediasend.screens.edit.MediaEditScreenEvents
+import org.signal.mediasend.screens.edit.TellomiInlineCaption
 import org.signal.mediasend.test.TestTags
 import org.signal.mediasend.util.formatAsClock
 import kotlin.time.Duration.Companion.milliseconds
@@ -176,6 +181,20 @@ internal fun MediaPickerFilesScreen(
   val attachmentSheet = LocalAttachmentSheetState.current
   val showDock = state.attachmentDock.isNotEmpty() && state.selectedMedia.isEmpty() && !showSelectedOnly
   val scope = rememberCoroutineScope()
+
+  // Tellomi（两端对齐清单 P-4）：附件 Sheet 里底栏的说明框就地输入（app 注入；别的入口还是弹对话框）。
+  // 输入时 Sheet 展开到全屏（网格让出键盘的位置）；表情面板开着时返回键先收起面板；全部取消（底栏收起）就停止输入。
+  val inlineCaption = if (attachmentSheet != null) LocalTellomiInlineCaption.current else null
+  LaunchedEffect(inlineCaption?.isEditing) {
+    if (inlineCaption?.isEditing == true) {
+      attachmentSheet?.expand()
+    }
+  }
+  LaunchedEffect(state.selectedMedia.isEmpty()) {
+    if (state.selectedMedia.isEmpty()) {
+      inlineCaption?.stopEditing()
+    }
+  }
 
   Scaffold(
     topBar = {
@@ -286,6 +305,10 @@ internal fun MediaPickerFilesScreen(
           }
         }
 
+        if (inlineCaption != null && inlineCaption.isMentionQueryActive && state.selectedMedia.isNotEmpty()) {
+          inlineCaption.MentionsOverlay(Modifier.matchParentSize())
+        }
+
         if (deselections.isNotEmpty()) {
           DeselectionUndoBar(
             count = deselections.size,
@@ -317,7 +340,8 @@ internal fun MediaPickerFilesScreen(
         state = state,
         onEvent = onEvent,
         recipientChatColor = recipientChatColor,
-        bottomPadding = if (showSelectedOnly) SelectedOnlySendBarBottomPadding else SendBarBottomPadding
+        bottomPadding = if (showSelectedOnly) SelectedOnlySendBarBottomPadding else SendBarBottomPadding,
+        inlineCaption = inlineCaption
       )
     }
   }
@@ -894,15 +918,24 @@ private val SendBarBottomPadding = 12.dp
 // 与相册查看页底栏对齐：行内 16dp + 外层 10dp。
 private val SelectedOnlySendBarBottomPadding = 26.dp
 
-/** P-9：一有选中就出现「添加说明…」+ 表情 + 发送；聊天输入框里已打的字随流程带过来（上游的 initialMessage）。 */
+/**
+ * P-9：一有选中就出现「添加说明…」+ 表情 + 发送；聊天输入框里已打的字随流程带过来（上游的 initialMessage）。
+ *
+ * @param inlineCaption 两端对齐清单 P-4：附件 Sheet 里说明框就地输入，表情面板垫在底栏下面；null = 点了弹对话框。
+ */
 @Composable
 private fun PickerSendBar(
   state: MediaSelectState.Files,
   onEvent: (MediaSelectScreenEvents) -> Unit,
   recipientChatColor: Color?,
-  bottomPadding: Dp
+  bottomPadding: Dp,
+  inlineCaption: TellomiInlineCaption? = null
 ) {
   val options = state.sendOptions
+
+  BackHandler(enabled = inlineCaption?.isEmojiPanelVisible == true) {
+    inlineCaption?.stopEditing()
+  }
 
   AnimatedVisibility(
     visible = state.selectedMedia.isNotEmpty(),
@@ -910,32 +943,43 @@ private fun PickerSendBar(
     exit = shrinkVertically(shrinkTowards = Alignment.Top) + fadeOut(),
     modifier = Modifier.fillMaxWidth()
   ) {
-    AddAMessageRow(
-      message = options.message,
-      onEvent = { event ->
-        when (event) {
-          is MediaEditScreenEvents.AddMessageClick -> onEvent(MediaSelectScreenEvents.AddMessage(event.startWithEmojiKeyboard))
-          MediaEditScreenEvents.ToggleViewOnce -> onEvent(MediaSelectScreenEvents.ToggleViewOnce)
-          // owner 2026-09-28（D4）：网格的发送键长按也能定时发送（照 Telegram 长按发送的 schedule 项）。
-          is MediaEditScreenEvents.ScheduleSendClick -> onEvent(MediaSelectScreenEvents.ScheduleSend(event.option))
-          // #1263（ADR-0068 §4.7 P3）：长按发送里的「说明文字上移 / 下移」，和「···」里那项同一个开关。
-          MediaEditScreenEvents.ToggleCaptionAboveMedia -> onEvent(MediaSelectScreenEvents.ToggleCaptionAboveMedia)
-          else -> Unit
-        }
-      },
-      onNextClick = { onEvent(MediaSelectScreenEvents.Send) },
-      enabled = !options.isSending,
-      canScheduleSend = options.canScheduleSend,
-      captionAboveMedia = if (options.canMoveCaption && !options.message.isNullOrBlank() && !options.isViewOnceEnabled) options.isCaptionAboveMedia else null,
-      sendPreviewMedia = state.selectedMedia,
-      viewOnceAvailable = options.isViewOnceAvailable,
-      viewOnce = options.isViewOnceEnabled,
-      isReply = options.isReply,
-      recipientChatColor = recipientChatColor,
-      modifier = Modifier
-        .background(MaterialTheme.colorScheme.surface)
-        .padding(start = 16.dp, top = 12.dp, end = 16.dp, bottom = bottomPadding)
-        .testTag(TestTags.MEDIA_PICKER_SEND_BAR)
-    )
+    Column(modifier = Modifier.fillMaxWidth()) {
+      AddAMessageRow(
+        message = options.message,
+        onEvent = { event ->
+          when (event) {
+            is MediaEditScreenEvents.AddMessageClick -> onEvent(MediaSelectScreenEvents.AddMessage(event.startWithEmojiKeyboard))
+            MediaEditScreenEvents.ToggleViewOnce -> onEvent(MediaSelectScreenEvents.ToggleViewOnce)
+            // owner 2026-09-28（D4）：网格的发送键长按也能定时发送（照 Telegram 长按发送的 schedule 项）。
+            is MediaEditScreenEvents.ScheduleSendClick -> onEvent(MediaSelectScreenEvents.ScheduleSend(event.option))
+            // #1263（ADR-0068 §4.7 P3）：长按发送里的「说明文字上移 / 下移」，和「···」里那项同一个开关。
+            MediaEditScreenEvents.ToggleCaptionAboveMedia -> onEvent(MediaSelectScreenEvents.ToggleCaptionAboveMedia)
+            else -> Unit
+          }
+        },
+        onNextClick = { onEvent(MediaSelectScreenEvents.Send) },
+        enabled = !options.isSending,
+        canScheduleSend = options.canScheduleSend,
+        captionAboveMedia = if (options.canMoveCaption && !options.message.isNullOrBlank() && !options.isViewOnceEnabled) options.isCaptionAboveMedia else null,
+        sendPreviewMedia = state.selectedMedia,
+        viewOnceAvailable = options.isViewOnceAvailable,
+        viewOnce = options.isViewOnceEnabled,
+        isReply = options.isReply,
+        recipientChatColor = recipientChatColor,
+        inlineCaption = inlineCaption,
+        onMessageChange = { onEvent(MediaSelectScreenEvents.MessageChanged(it)) },
+        modifier = Modifier
+          .background(MaterialTheme.colorScheme.surface)
+          .padding(start = 16.dp, top = 12.dp, end = 16.dp, bottom = bottomPadding)
+          .testTag(TestTags.MEDIA_PICKER_SEND_BAR)
+      )
+
+      if (inlineCaption != null) {
+        inlineCaption.EmojiPanel(Modifier.fillMaxWidth())
+        // 就地输入时底栏贴着键盘上沿（这个窗口是边到边的，键盘不会把它顶上去）。用垫高而不是 imePadding：imePadding 会把键盘的
+        // insets 吃掉，表情面板里搜索那一页（KeyboardAwareLinearLayout）就看不到键盘、一打开就自己关了
+        Spacer(Modifier.windowInsetsBottomHeight(WindowInsets.ime))
+      }
+    }
   }
 }

@@ -6,6 +6,8 @@
 package org.thoughtcrime.securesms.backup.v2.ui.warning
 
 import androidx.fragment.app.Fragment
+import androidx.fragment.app.FragmentManager
+import androidx.lifecycle.LifecycleOwner
 import org.thoughtcrime.securesms.components.ComposeText
 import org.thoughtcrime.securesms.keyvalue.SignalStore
 
@@ -43,6 +45,36 @@ fun ComposeText.guardAgainstRecoveryKeyPaste(
       pendingPaste = pasteText
       onWarningShown()
       RecoveryKeyPasteWarningFragment().show(host.childFragmentManager, null)
+      true
+    } else {
+      false
+    }
+  }
+}
+
+/**
+ * Tellomi（两端对齐清单 P-4）：同上面那个，宿主不是 Fragment——附件 Sheet 相册页就地输入的说明框直接在 Activity 的 Compose 里。
+ * 提醒弹在 [fragmentManager] 上，结果按 [lifecycleOwner]（说明框自己的生命周期）收。
+ */
+fun ComposeText.tellomiGuardAgainstRecoveryKeyPaste(
+  fragmentManager: FragmentManager,
+  lifecycleOwner: LifecycleOwner,
+  onWarningDismissed: () -> Unit = {}
+) {
+  var pendingPaste: CharSequence? = null
+
+  fragmentManager.setFragmentResultListener(RecoveryKeyPasteWarningFragment.REQUEST_KEY, lifecycleOwner) { _, bundle ->
+    if (bundle.getBoolean(RecoveryKeyPasteWarningFragment.REQUEST_KEY)) {
+      pendingPaste?.let { insertText(it) }
+    }
+    pendingPaste = null
+    onWarningDismissed()
+  }
+
+  setOnPasteListener { pasteText ->
+    if (RecoveryKeyDetector.containsRecoveryKey(pasteText?.toString(), SignalStore.account.accountEntropyPoolOrNull)) {
+      pendingPaste = pasteText
+      RecoveryKeyPasteWarningFragment().show(fragmentManager, null)
       true
     } else {
       false
