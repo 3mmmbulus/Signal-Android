@@ -288,4 +288,106 @@ class FeedImageUploaderTest {
     assertThat(requests[3].getHeader("Upload-Offset")).isEqualTo("0")
     assertThat(requests[3].bodySize).isEqualTo(3L)
   }
+
+  /** A HEAD answer has no body. */
+  private fun headFailure(status: Int) = MockResponse().setResponseCode(status)
+
+  private fun head(offset: Int) = MockResponse().setResponseCode(200).setHeader("Upload-Offset", offset.toString())
+
+  @Test
+  fun `a 503 on the offset request is asked again and the upload goes on`() = runBlocking {
+    server.enqueue(created())
+    server.enqueue(failure(500))
+    server.enqueue(headFailure(503))
+    server.enqueue(head(0))
+    server.enqueue(accepted(3))
+
+    val key = FeedImageUploader(api, chunkSize = 4).upload(ByteArray(3))
+
+    assertThat(key).isEqualTo("m/k1")
+    val requests = List(5) { server.takeRequest() }
+    assertThat(requests.map { it.method }).containsExactly("POST", "PATCH", "HEAD", "HEAD", "PATCH")
+  }
+
+  @Test
+  fun `500 502 503 and 504 on the offset request are all asked again`() {
+    for (status in listOf(500, 502, 503, 504)) {
+      val local = MockWebServer().also { it.start() }
+      try {
+        val localApi = FeedApi(baseUrl = local.url("/"), client = OkHttpClient(), tokens = object : FeedTokenSource { override suspend fun token(forceRefresh: Boolean) = "t" })
+        local.enqueue(created())
+        local.enqueue(failure(500))
+        local.enqueue(headFailure(status))
+        local.enqueue(head(0))
+        local.enqueue(accepted(3))
+
+        val key = runBlocking { FeedImageUploader(localApi, chunkSize = 4).upload(ByteArray(3)) }
+
+        assertThat(key, name = "status $status").isEqualTo("m/k1")
+        assertThat(local.requestCount, name = "status $status").isEqualTo(5)
+      } finally {
+        local.shutdown()
+      }
+    }
+  }
+
+  @Test
+  fun `a persistent 5xx on the offset request is thrown after maxOffsetRetries more asks`() {
+    server.enqueue(created())
+    server.enqueue(failure(500))
+    repeat(3) { server.enqueue(headFailure(503)) }
+
+    assertFailure { runBlocking { FeedImageUploader(api, chunkSize = 4, maxOffsetRetries = 2).upload(ByteArray(3)) } }
+      .isInstanceOf(FeedApiException::class)
+      .prop(FeedApiException::status).isEqualTo(503)
+    // POST + PATCH + HEAD and 2 more HEADs
+    assertThat(server.requestCount).isEqualTo(5)
+  }
+
+  @Test
+  fun `asking again for the offset does not use up the chunk resumes`() = runBlocking {
+    server.enqueue(created())
+    server.enqueue(failure(500))
+    server.enqueue(headFailure(503))
+    server.enqueue(headFailure(503))
+    server.enqueue(head(0))
+    server.enqueue(accepted(3))
+
+    val key = FeedImageUploader(api, chunkSize = 4, maxResumes = 1, maxOffsetRetries = 2).upload(ByteArray(3))
+
+    assertThat(key).isEqualTo("m/k1")
+    assertThat(server.requestCount).isEqualTo(6)
+  }
+
+  @Test
+  fun `other errors on the offset request are thrown at once`() {
+    for (status in listOf(400, 404, 429, 501)) {
+      val local = MockWebServer().also { it.start() }
+      try {
+        val localApi = FeedApi(baseUrl = local.url("/"), client = OkHttpClient(), tokens = object : FeedTokenSource { override suspend fun token(forceRefresh: Boolean) = "t" })
+        local.enqueue(created())
+        local.enqueue(failure(500))
+        local.enqueue(headFailure(status))
+
+        assertFailure { runBlocking { FeedImageUploader(localApi, chunkSize = 4).upload(ByteArray(3)) } }
+          .isInstanceOf(FeedApiException::class)
+          .prop(FeedApiException::status).isEqualTo(status)
+        assertThat(local.requestCount, name = "status $status").isEqualTo(3)
+      } finally {
+        local.shutdown()
+      }
+    }
+  }
+
+  @Test
+  fun `the whole upload is bounded when every PATCH answers 500 and every HEAD answers 503`() {
+    server.enqueue(created())
+    // maxResumes = 1, maxOffsetRetries = 1: PATCH, HEAD (503), HEAD (503) -> thrown
+    server.enqueue(failure(500))
+    repeat(2) { server.enqueue(headFailure(503)) }
+
+    assertFailure { runBlocking { FeedImageUploader(api, chunkSize = 4, maxResumes = 1, maxOffsetRetries = 1).upload(ByteArray(3)) } }
+      .isInstanceOf(FeedApiException::class)
+    assertThat(server.requestCount).isEqualTo(4)
+  }
 }

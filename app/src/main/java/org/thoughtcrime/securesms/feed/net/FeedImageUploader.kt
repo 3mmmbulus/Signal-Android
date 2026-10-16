@@ -24,7 +24,8 @@ import java.io.IOException
 class FeedImageUploader(
   private val api: FeedApi,
   private val chunkSize: Int = CHUNK_SIZE,
-  private val maxResumes: Int = MAX_RESUMES
+  private val maxResumes: Int = MAX_RESUMES,
+  private val maxOffsetRetries: Int = MAX_OFFSET_RETRIES
 ) {
 
   companion object {
@@ -32,6 +33,14 @@ class FeedImageUploader(
 
     const val CHUNK_SIZE = 512 * 1024
     const val MAX_RESUMES = 3
+
+    /**
+     * 问偏移的 HEAD 自己得到 500 / 502 / 503 / 504 时，每次问偏移最多再问几次。单独的上限，不占 [MAX_RESUMES]：
+     * 一次 HEAD 抖动不该吃掉传块的续传次数。最坏情况的请求数有上限：
+     * 1 次 POST + (maxResumes + 1) 次 PATCH + maxResumes × (1 + maxOffsetRetries) 次 HEAD。
+     * HEAD 的其他错误（4xx、断线）直接抛，和 iOS 一样。
+     */
+    const val MAX_OFFSET_RETRIES = 2
 
     /**
      * HEAD 回的偏移超过文件长度，就当作已传完（和 iOS `min(offset, bytes.count)` 一样，不报错）；
@@ -68,6 +77,18 @@ class FeedImageUploader(
   /** 一块发出去了，服务端回的偏移却没有超过发送前的偏移。和 iOS `FeedImageUploader` 的 `StuckUpload` 一样，算一次可续传的中断。 */
   private class StuckUpload(offset: Long) : IOException("upload offset did not advance past $offset")
 
+  private suspend fun askOffset(id: String, size: Int): Long {
+    var retries = 0
+    while (true) {
+      try {
+        return clampOffset(api.uploadOffset(id), size)
+      } catch (e: FeedApiException) {
+        if (e.status !in RESUMABLE_SERVER_ERRORS || ++retries > maxOffsetRetries) throw e
+        Log.w(TAG, "asking for the upload offset failed (${e.status}), asking again", e)
+      }
+    }
+  }
+
   suspend fun upload(bytes: ByteArray): String {
     val start = api.startUpload(bytes.size.toLong())
     var offset = 0L
@@ -82,7 +103,7 @@ class FeedImageUploader(
       } catch (e: IOException) {
         if (!isResumable(e) || ++resumes > maxResumes) throw e
         Log.w(TAG, "upload interrupted at $offset, asking the server where to resume", e)
-        clampOffset(api.uploadOffset(start.id), bytes.size)
+        askOffset(start.id, bytes.size)
       }
     }
     return start.key
