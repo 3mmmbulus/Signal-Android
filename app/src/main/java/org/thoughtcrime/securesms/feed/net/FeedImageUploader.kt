@@ -33,6 +33,12 @@ class FeedImageUploader(
     const val CHUNK_SIZE = 512 * 1024
     const val MAX_RESUMES = 3
 
+    /**
+     * HEAD 回的偏移超过文件长度，就当作已传完（和 iOS `min(offset, bytes.count)` 一样，不报错）；
+     * 负数（坏头）当作 0，从头再传，不让 `copyOfRange` 抛 IllegalArgumentException。
+     */
+    internal fun clampOffset(serverOffset: Long, size: Int): Long = serverOffset.coerceIn(0L, size.toLong())
+
     /** 这一块得到这些状态码时，偏移没动，问一下偏移再重发是安全的。 */
     private val RESUMABLE_SERVER_ERRORS = setOf(500, 502, 503, 504)
 
@@ -76,7 +82,7 @@ class FeedImageUploader(
       } catch (e: IOException) {
         if (!isResumable(e) || ++resumes > maxResumes) throw e
         Log.w(TAG, "upload interrupted at $offset, asking the server where to resume", e)
-        api.uploadOffset(start.id)
+        clampOffset(api.uploadOffset(start.id), bytes.size)
       }
     }
     return start.key

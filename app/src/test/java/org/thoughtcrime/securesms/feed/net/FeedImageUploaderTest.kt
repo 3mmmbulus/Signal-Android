@@ -251,4 +251,41 @@ class FeedImageUploaderTest {
     assertThat(requests[4].getHeader("Upload-Offset")).isEqualTo("6")
     assertThat(requests[4].bodySize).isEqualTo(2L)
   }
+
+  @Test
+  fun `clampOffset keeps the server offset inside the file`() {
+    assertThat(FeedImageUploader.clampOffset(3L, 10)).isEqualTo(3L)
+    assertThat(FeedImageUploader.clampOffset(10L, 10)).isEqualTo(10L)
+    assertThat(FeedImageUploader.clampOffset(11L, 10)).isEqualTo(10L)
+    assertThat(FeedImageUploader.clampOffset(Long.MAX_VALUE, 10)).isEqualTo(10L)
+    assertThat(FeedImageUploader.clampOffset(-5L, 10)).isEqualTo(0L)
+    assertThat(FeedImageUploader.clampOffset(0L, 0)).isEqualTo(0L)
+  }
+
+  @Test
+  fun `a HEAD offset past the end of the file counts as finished and sends nothing more`() = runBlocking {
+    server.enqueue(created())
+    server.enqueue(failure(500))
+    server.enqueue(MockResponse().setResponseCode(200).setHeader("Upload-Offset", "999"))
+
+    val key = FeedImageUploader(api, chunkSize = 4).upload(ByteArray(6))
+
+    assertThat(key).isEqualTo("m/k1")
+    assertThat(server.requestCount).isEqualTo(3)
+  }
+
+  @Test
+  fun `a negative HEAD offset restarts from zero instead of crashing`() = runBlocking {
+    server.enqueue(created())
+    server.enqueue(failure(500))
+    server.enqueue(MockResponse().setResponseCode(200).setHeader("Upload-Offset", "-5"))
+    server.enqueue(accepted(3))
+
+    val key = FeedImageUploader(api, chunkSize = 4).upload(ByteArray(3))
+
+    assertThat(key).isEqualTo("m/k1")
+    val requests = List(4) { server.takeRequest() }
+    assertThat(requests[3].getHeader("Upload-Offset")).isEqualTo("0")
+    assertThat(requests[3].bodySize).isEqualTo(3L)
+  }
 }
