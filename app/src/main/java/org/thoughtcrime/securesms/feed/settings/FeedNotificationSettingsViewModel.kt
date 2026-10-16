@@ -14,6 +14,8 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import org.signal.core.util.logging.Log
 import org.thoughtcrime.securesms.feed.FeedSource
@@ -39,6 +41,15 @@ class FeedNotificationSettingsViewModel(
   private val internalState = MutableStateFlow(FeedNotificationSettingsState())
   val state: StateFlow<FeedNotificationSettingsState> = internalState.asStateFlow()
 
+  /**
+   * 每次保存 PUT 的是整份设置，所以两次保存不能同时在路上：后发的先到、先发的后到，旧值就盖掉新值。
+   * 保存排队，轮到时发**这一刻界面上最新的**那份（连续点几下合成一次，和引擎已经知道的一样就不发）。
+   */
+  private val saveLock = Mutex()
+
+  /** 引擎已知的那份：读到的，或最近一次存成功的。存不上时界面改回这一份。 */
+  private var confirmed: FeedNotificationSettings? = null
+
   /** 回到页面时调；读到了就不再读。 */
   fun load() {
     if (internalState.value.settings != null || internalState.value.loading) return
@@ -46,6 +57,7 @@ class FeedNotificationSettingsViewModel(
     viewModelScope.launch {
       try {
         val settings = withContext(ioDispatcher) { source.notificationSettings() }
+        confirmed = settings
         internalState.update { it.copy(loading = false, settings = settings) }
       } catch (e: Exception) {
         Log.w(TAG, "notification settings failed", e)
@@ -74,17 +86,23 @@ class FeedNotificationSettingsViewModel(
     if (after == before) return
     internalState.update { it.copy(settings = after) }
     viewModelScope.launch {
-      try {
-        withContext(ioDispatcher) { source.saveNotificationSettings(after) }
-      } catch (e: Exception) {
-        Log.w(TAG, "save notification settings failed", e)
-        val notice = if (e is FeedApiException && e.status == 409 && e.code == "profile_required") {
-          FeedNotificationSettingsState.Notice.PROFILE_REQUIRED
-        } else {
-          FeedNotificationSettingsState.Notice.SAVE_FAILED
+      saveLock.withLock {
+        val latest = internalState.value.settings ?: return@withLock
+        val known = confirmed
+        if (latest == known) return@withLock
+        try {
+          withContext(ioDispatcher) { source.saveNotificationSettings(latest) }
+          confirmed = latest
+        } catch (e: Exception) {
+          Log.w(TAG, "save notification settings failed", e)
+          val notice = if (e is FeedApiException && e.status == 409 && e.code == "profile_required") {
+            FeedNotificationSettingsState.Notice.PROFILE_REQUIRED
+          } else {
+            FeedNotificationSettingsState.Notice.SAVE_FAILED
+          }
+          // 只在界面上还是这一份时改回去，别盖掉后面的改动（后面排着的保存会把最新的一份再发一次）
+          internalState.update { if (it.settings == latest) it.copy(settings = known ?: before, notice = notice) else it.copy(notice = notice) }
         }
-        // 只在还是这一次改的值时改回去，别盖掉后面的改动
-        internalState.update { if (it.settings == after) it.copy(settings = before, notice = notice) else it.copy(notice = notice) }
       }
     }
   }

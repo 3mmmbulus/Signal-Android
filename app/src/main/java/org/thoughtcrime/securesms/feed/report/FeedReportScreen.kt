@@ -238,7 +238,7 @@ private fun Details(
       label = { Text(stringResource(R.string.TellomiFeedReport__detail)) },
       minLines = 3,
       maxLines = 6,
-      supportingText = { Text("${state.detail.length}/${FeedReportReason.MAX_DETAIL_CHARS}") },
+      supportingText = { Text("${state.detail.codePointCount(0, state.detail.length)}/${FeedReportReason.MAX_DETAIL_CHARS}") },
       modifier = Modifier.fillMaxWidth()
     )
 

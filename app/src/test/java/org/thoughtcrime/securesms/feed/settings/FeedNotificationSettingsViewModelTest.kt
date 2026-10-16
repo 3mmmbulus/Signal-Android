@@ -13,8 +13,11 @@ import assertk.assertions.isNull
 import assertk.assertions.isTrue
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
+import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.resetMain
+import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.setMain
 import org.junit.After
 import org.junit.Before
@@ -34,6 +37,9 @@ class FeedNotificationSettingsViewModelTest {
     var stored = FeedNotificationSettings()
     var loadError: Exception? = null
     var saveError: Exception? = null
+
+    /** 每次保存先等这么久（虚拟时间）；用完了就不等。用来让先发的请求比后发的慢。 */
+    val saveDelays = ArrayDeque<Long>()
     val saved = mutableListOf<FeedNotificationSettings>()
     var loads = 0
 
@@ -44,6 +50,8 @@ class FeedNotificationSettingsViewModelTest {
     }
 
     override suspend fun saveNotificationSettings(settings: FeedNotificationSettings): FeedNotificationSettings {
+      val wait = saveDelays.removeFirstOrNull()
+      if (wait != null) delay(wait)
       saveError?.let { throw it }
       saved += settings
       stored = settings
@@ -123,6 +131,71 @@ class FeedNotificationSettingsViewModelTest {
     val viewModel = viewModel()
     viewModel.load()
     viewModel.setFromWhom("strangers")
+    assertThat(source.saved.size).isEqualTo(0)
+  }
+
+  @Test
+  fun `quick toggles reach the engine in order and the newest value wins`() = runTest {
+    val viewModel = viewModel()
+    viewModel.load()
+    // the first request is slow, the second fast: unserialised, the older value arrives last and wins
+    source.saveDelays += listOf(100L, 10L)
+
+    viewModel.setLikes(false)
+    viewModel.setComments(false)
+    advanceUntilIdle()
+
+    val expected = FeedNotificationSettings(likes = false, comments = false)
+    assertThat(source.stored).isEqualTo(expected)
+    assertThat(source.saved.last()).isEqualTo(expected)
+    assertThat(viewModel.state.value.settings).isEqualTo(expected)
+  }
+
+  @Test
+  fun `toggles made while a save is in flight are coalesced into one request with the latest values`() = runTest {
+    val viewModel = viewModel()
+    viewModel.load()
+    source.saveDelays += 100L
+
+    viewModel.setLikes(false)
+    viewModel.setComments(false)
+    viewModel.setFollows(false)
+    advanceUntilIdle()
+
+    assertThat(source.saved).containsExactly(
+      FeedNotificationSettings(likes = false),
+      FeedNotificationSettings(likes = false, comments = false, follows = false)
+    )
+  }
+
+  @Test
+  fun `a toggle back to the value the engine already has sends nothing more`() = runTest {
+    val viewModel = viewModel()
+    viewModel.load()
+    source.saveDelays += 100L
+
+    viewModel.setLikes(false)
+    viewModel.setLikes(true)
+    advanceUntilIdle()
+
+    assertThat(source.stored).isEqualTo(FeedNotificationSettings())
+    assertThat(viewModel.state.value.settings).isEqualTo(FeedNotificationSettings())
+  }
+
+  @Test
+  fun `a failed save does not undo a later toggle, and the last failing save puts back what the engine has`() = runTest {
+    val viewModel = viewModel()
+    viewModel.load()
+    source.saveDelays += 100L
+    source.saveError = FeedApiException(500, code = null)
+
+    viewModel.setLikes(false)
+    viewModel.setComments(false)
+    advanceUntilIdle()
+
+    // both requests failed: the screen is back at what the engine has
+    assertThat(viewModel.state.value.settings).isEqualTo(FeedNotificationSettings())
+    assertThat(viewModel.state.value.notice).isEqualTo(FeedNotificationSettingsState.Notice.SAVE_FAILED)
     assertThat(source.saved.size).isEqualTo(0)
   }
 }

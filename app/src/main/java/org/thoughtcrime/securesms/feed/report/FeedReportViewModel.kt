@@ -21,6 +21,7 @@ import org.thoughtcrime.securesms.feed.FeedSource
 import org.thoughtcrime.securesms.feed.FeedSources
 import org.thoughtcrime.securesms.feed.net.FeedApiException
 import org.thoughtcrime.securesms.feed.net.FeedReportRequest
+import org.thoughtcrime.securesms.feed.takeCodePoints
 
 /**
  * 举报（第三节第 32 条）：先选原因（最上面先分流「只是不想看到」），再补充说明 / 截图 / 关系，最后提交。
@@ -60,11 +61,11 @@ class FeedReportViewModel(
   }
 
   fun onDetailChanged(text: String) {
-    internalState.update { it.copy(detail = text.take(FeedReportReason.MAX_DETAIL_CHARS)) }
+    internalState.update { it.copy(detail = text.takeCodePoints(FeedReportReason.MAX_DETAIL_CHARS)) }
   }
 
   fun onRelationshipChanged(text: String) {
-    internalState.update { it.copy(relationship = text.take(FeedReportReason.MAX_RELATIONSHIP_CHARS)) }
+    internalState.update { it.copy(relationship = text.takeCodePoints(FeedReportReason.MAX_RELATIONSHIP_CHARS)) }
   }
 
   fun addEvidence(uris: List<Uri>) {

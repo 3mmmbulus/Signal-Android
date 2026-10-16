@@ -110,7 +110,7 @@ fun FeedProfileScreen(
           onValueChange = onNameChanged,
           label = { Text(stringResource(R.string.TellomiFeedProfile__name)) },
           singleLine = true,
-          supportingText = { Text("${state.name.length}/${FeedMyProfile.MAX_NAME_CHARS}") },
+          supportingText = { Text("${state.name.codePointCount(0, state.name.length)}/${FeedMyProfile.MAX_NAME_CHARS}") },
           modifier = Modifier.fillMaxWidth().testTag(FeedProfileTestTags.NAME)
         )
 
@@ -120,7 +120,7 @@ fun FeedProfileScreen(
           label = { Text(stringResource(R.string.TellomiFeedProfile__bio)) },
           minLines = 3,
           maxLines = 6,
-          supportingText = { Text("${state.bio.length}/${FeedMyProfile.MAX_BIO_CHARS}") },
+          supportingText = { Text("${state.bio.codePointCount(0, state.bio.length)}/${FeedMyProfile.MAX_BIO_CHARS}") },
           modifier = Modifier.fillMaxWidth().testTag(FeedProfileTestTags.BIO)
         )
 

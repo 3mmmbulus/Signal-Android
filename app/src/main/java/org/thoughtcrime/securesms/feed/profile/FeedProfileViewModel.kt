@@ -21,6 +21,7 @@ import org.thoughtcrime.securesms.feed.FeedSources
 import org.thoughtcrime.securesms.feed.net.FeedApiException
 import org.thoughtcrime.securesms.feed.net.FeedMyProfile
 import org.thoughtcrime.securesms.feed.net.FeedProfileUpdate
+import org.thoughtcrime.securesms.feed.takeCodePoints
 
 /**
  * 建 / 改动态的公开主页（契约第八节；`dynamic-feed.md` 第三节第 8、9 条）。
@@ -54,7 +55,7 @@ class FeedProfileViewModel(
           it.copy(
             loading = false,
             profile = profile,
-            name = profile?.displayName ?: suggestedName.trim().take(FeedMyProfile.MAX_NAME_CHARS),
+            name = profile?.displayName ?: suggestedName.trim().takeCodePoints(FeedMyProfile.MAX_NAME_CHARS),
             bio = profile?.bio.orEmpty()
           )
         }
@@ -66,11 +67,11 @@ class FeedProfileViewModel(
   }
 
   fun onNameChanged(name: String) {
-    internalState.update { it.copy(name = name.take(FeedMyProfile.MAX_NAME_CHARS)) }
+    internalState.update { it.copy(name = name.takeCodePoints(FeedMyProfile.MAX_NAME_CHARS)) }
   }
 
   fun onBioChanged(bio: String) {
-    internalState.update { it.copy(bio = bio.take(FeedMyProfile.MAX_BIO_CHARS)) }
+    internalState.update { it.copy(bio = bio.takeCodePoints(FeedMyProfile.MAX_BIO_CHARS)) }
   }
 
   fun save() {

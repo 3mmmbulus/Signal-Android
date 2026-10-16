@@ -27,6 +27,7 @@ import org.thoughtcrime.securesms.feed.net.FeedCard
 import org.thoughtcrime.securesms.feed.net.FeedPersonSummary
 import org.thoughtcrime.securesms.feed.net.FeedSearchUser
 import org.thoughtcrime.securesms.feed.setSaved
+import org.thoughtcrime.securesms.feed.takeCodePoints
 import org.thoughtcrime.securesms.feed.withLiked
 import org.thoughtcrime.securesms.feed.withReposted
 import org.thoughtcrime.securesms.feed.withSaved
@@ -68,7 +69,7 @@ class FeedSearchViewModel(
   }
 
   fun onQueryChange(query: String) {
-    val clipped = query.take(FeedApi.SEARCH_MAX_QUERY)
+    val clipped = query.takeCodePoints(FeedApi.SEARCH_MAX_QUERY)
     internalState.update { it.copy(query = clipped) }
     if (clipped.isBlank()) {
       searchJob?.cancel()
