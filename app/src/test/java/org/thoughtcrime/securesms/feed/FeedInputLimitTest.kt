@@ -35,8 +35,7 @@ class FeedInputLimitTest {
     return false
   }
 
-  private fun append(current: String, replacement: String, limit: Int, composing: Boolean = false) =
-    FeedInputLimit.edit(current, current.length, current.length, replacement, limit, composing)
+  private fun append(current: String, replacement: String, limit: Int, composing: Boolean = false) = FeedInputLimit.edit(current, current.length, current.length, replacement, limit, composing)
 
   @Test
   fun `named limits match the engine and the limits already used elsewhere`() {
