@@ -104,7 +104,7 @@ class CachingFeedTokenSource(
         withContext(Dispatchers.IO) {
           when (val result = api.getAuth()) {
             is NetworkResult.Success -> result.result
-            is NetworkResult.StatusCodeError -> throw FeedApiException(result.code, code = "auth_unavailable")
+            is NetworkResult.StatusCodeError -> throw FeedServerErrors.auth(result.code, result.header("retry-after"))
             is NetworkResult.NetworkError -> throw result.exception
             is NetworkResult.ApplicationError -> throw IOException("feed auth failed", result.throwable)
           }
