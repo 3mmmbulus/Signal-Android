@@ -15,7 +15,10 @@ import java.io.IOException
 /**
  * 把一张图传到内容引擎（tus 1.0，引擎 `docs/api.md`「图片上传」），返回发帖用的 media key。
  *
- * 一块 [chunkSize] 字节；断线或偏移对不上时用 HEAD 问服务端收到了多少，从那里接着传，最多接 [maxResumes] 次。
+ * 一块 [chunkSize] 字节；断线、偏移对不上（409 `offset_mismatch`）或这一块得到 500 / 502 / 503 / 504 时，
+ * 用 HEAD 问服务端收到了多少，从那里接着传，最多接 [maxResumes] 次。
+ * 引擎存储（本机盘 / R2）出错时 `PATCH` 回 500 `internal`，偏移不动，同一块可以重发；反代的 502 / 503 / 504 同理
+ * （引擎对账记录 D-1，和 iOS `FeedImageUploader` 一致）。其余引擎答复（400、404、413、415、429……）直接抛。
  */
 class FeedImageUploader(
   private val api: FeedApi,
@@ -28,6 +31,15 @@ class FeedImageUploader(
 
     const val CHUNK_SIZE = 512 * 1024
     const val MAX_RESUMES = 3
+
+    /** 这一块得到这些状态码时，偏移没动，问一下偏移再重发是安全的。 */
+    private val RESUMABLE_SERVER_ERRORS = setOf(500, 502, 503, 504)
+
+    /** 能不能用「问偏移再接着传」处理：没拿到引擎答复的（断线、超时）、409 `offset_mismatch`、500 / 502 / 503 / 504。 */
+    internal fun isResumable(e: IOException): Boolean {
+      if (e !is FeedApiException) return true
+      return (e.status == 409 && e.code == "offset_mismatch") || e.status in RESUMABLE_SERVER_ERRORS
+    }
 
     /** 长边上限和质量：够在手机上看清，远低于引擎的 20 MB / 12000 像素。 */
     const val MAX_DIMENSION = 2560
@@ -55,8 +67,7 @@ class FeedImageUploader(
       offset = try {
         api.uploadChunk(start.id, offset, bytes.copyOfRange(offset.toInt(), end))
       } catch (e: IOException) {
-        val resumable = e !is FeedApiException || (e.status == 409 && e.code == "offset_mismatch")
-        if (!resumable || ++resumes > maxResumes) throw e
+        if (!isResumable(e) || ++resumes > maxResumes) throw e
         Log.w(TAG, "upload interrupted at $offset, asking the server where to resume", e)
         api.uploadOffset(start.id)
       }
