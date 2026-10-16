@@ -27,10 +27,7 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.first
-import kotlinx.coroutines.withTimeoutOrNull
 import org.signal.core.ui.navigation.TransitionSpecs
-import kotlin.time.Duration.Companion.seconds
 
 /**
  * Wraps [content] with an animation that crossfades a snapshotted chat list bitmap over the conversation fragment while it loads its first frame.
@@ -70,9 +67,8 @@ fun ConversationLoadingMask(
 
   LaunchedEffect(contentReady) {
     if (!shouldDisplayFragment) {
-      withTimeoutOrNull(5.seconds) {
-        contentReady.first { it }
-      }
+      // Tellomi（交互审计 A-26）：首帧最多等 200 ms 就开始转场（原来 5 s，慢机上列表冻住、点了没反应），同 Telegram 安卓
+      TellomiFirstFrameWait.await(contentReady)
       shouldDisplayFragment = true
     }
   }
