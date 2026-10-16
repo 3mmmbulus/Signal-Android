@@ -1336,6 +1336,7 @@ public class ConversationListFragment extends MainFragment implements Conversati
     SignalContextMenu.Builder menu = new SignalContextMenu.Builder(view, list)
         .offsetX(ViewUtil.dpToPx(12))
         .offsetY(ViewUtil.dpToPx(12))
+        .dimBackground() // Tellomi（交互审计 A-25）：长按菜单后面压一层轻遮罩
         .onDismiss(() -> {
           activeContextMenu = null;
           view.setSelected(false);
@@ -1514,6 +1515,7 @@ public class ConversationListFragment extends MainFragment implements Conversati
     activeContextMenu = new SignalContextMenu.Builder(view, list)
         .offsetX(ViewUtil.dpToPx(12))
         .offsetY(ViewUtil.dpToPx(12))
+        .dimBackground() // Tellomi（交互审计 A-25）：长按菜单后面压一层轻遮罩
         .onDismiss(() -> {
           activeContextMenu = null;
           view.setSelected(false);

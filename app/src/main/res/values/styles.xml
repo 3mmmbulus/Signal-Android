@@ -426,4 +426,27 @@
         <item name="android:layout_width">@dimen/exo_media_preview_button_width</item>
         <item name="android:layout_height">@dimen/exo_media_preview_button_width</item>
     </style>
+
+    <!-- Tellomi（交互审计 A-25）：SignalContextMenu 从锚点那一角缩放出现、淡出收起。 -->
+    <style name="TellomiContextMenuAnimation" />
+    <style name="TellomiContextMenuAnimation.TopStart">
+        <item name="android:windowEnterAnimation">@anim/tellomi_context_menu_enter_top_start</item>
+        <item name="android:windowExitAnimation">@anim/tellomi_context_menu_exit</item>
+    </style>
+    <style name="TellomiContextMenuAnimation.TopEnd">
+        <item name="android:windowEnterAnimation">@anim/tellomi_context_menu_enter_top_end</item>
+        <item name="android:windowExitAnimation">@anim/tellomi_context_menu_exit</item>
+    </style>
+    <style name="TellomiContextMenuAnimation.BottomStart">
+        <item name="android:windowEnterAnimation">@anim/tellomi_context_menu_enter_bottom_start</item>
+        <item name="android:windowExitAnimation">@anim/tellomi_context_menu_exit</item>
+    </style>
+    <style name="TellomiContextMenuAnimation.BottomEnd">
+        <item name="android:windowEnterAnimation">@anim/tellomi_context_menu_enter_bottom_end</item>
+        <item name="android:windowExitAnimation">@anim/tellomi_context_menu_exit</item>
+    </style>
+    <style name="TellomiContextMenuAnimation.Center">
+        <item name="android:windowEnterAnimation">@anim/tellomi_context_menu_enter_center</item>
+        <item name="android:windowExitAnimation">@anim/tellomi_context_menu_exit</item>
+    </style>
 </resources>

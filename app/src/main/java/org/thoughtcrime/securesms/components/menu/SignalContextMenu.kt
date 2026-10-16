@@ -5,6 +5,7 @@ import android.graphics.Rect
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.view.WindowManager
 import android.widget.PopupWindow
 import androidx.core.content.ContextCompat
 import org.thoughtcrime.securesms.R
@@ -25,7 +26,8 @@ class SignalContextMenu private constructor(
   val baseOffsetY: Int = 0,
   val horizontalPosition: HorizontalPosition = HorizontalPosition.START,
   val verticalPosition: VerticalPosition = VerticalPosition.BELOW,
-  val onDismiss: Runnable? = null
+  val onDismiss: Runnable? = null,
+  val dimBackground: Boolean = false
 ) : PopupWindow(
   LayoutInflater.from(anchor.context).inflate(R.layout.signal_context_menu, null),
   ViewGroup.LayoutParams.WRAP_CONTENT,
@@ -78,17 +80,22 @@ class SignalContextMenu private constructor(
     val screenTopBound = container.y
 
     val offsetY: Int
+    val placement: TellomiPlacement
 
     if (verticalPosition == VerticalPosition.ABOVE && menuTopBound > screenTopBound) {
       offsetY = -(anchorRect.height() + contentView.measuredHeight + baseOffsetY)
       contextMenuList.setItems(items.reversed())
+      placement = TellomiPlacement.ABOVE
     } else if (menuBottomBound < screenBottomBound) {
       offsetY = baseOffsetY
+      placement = TellomiPlacement.BELOW
     } else if (menuTopBound > screenTopBound) {
       offsetY = -(anchorRect.height() + contentView.measuredHeight + baseOffsetY)
       contextMenuList.setItems(items.reversed())
+      placement = TellomiPlacement.ABOVE
     } else {
       offsetY = -((anchorRect.height() / 2) + (contentView.measuredHeight / 2) + baseOffsetY)
+      placement = TellomiPlacement.CENTERED
     }
 
     val offsetX: Int = when (horizontalPosition) {
@@ -108,9 +115,48 @@ class SignalContextMenu private constructor(
       }
     }
 
+    // Tellomi（交互审计 A-25）：从挨着锚点的那一角缩放出现（菜单在锚点下面就从上沿长出来，在上面就从下沿），淡出收起
+    val alignedToLeft = (horizontalPosition == HorizontalPosition.START) == ViewUtil.isLtr(context)
+    animationStyle = tellomiAnimationStyle(placement, alignedToLeft)
+
     showAsDropDown(anchor, offsetX, offsetY)
 
+    if (dimBackground) {
+      tellomiDimBehind()
+    }
+
     return this
+  }
+
+  /** Tellomi（交互审计 A-25）：菜单后面压一层轻遮罩（窗口的 dim，跟着菜单的窗口动画进出）。 */
+  private fun tellomiDimBehind() {
+    val root = contentView.rootView
+    val params = root.layoutParams as? WindowManager.LayoutParams ?: return
+    params.flags = params.flags or WindowManager.LayoutParams.FLAG_DIM_BEHIND
+    params.dimAmount = TELLOMI_DIM_AMOUNT
+    context.getSystemService(WindowManager::class.java)?.updateViewLayout(root, params)
+  }
+
+  /** 菜单摆在锚点的哪一边。 */
+  enum class TellomiPlacement {
+    BELOW,
+    ABOVE,
+    CENTERED
+  }
+
+  companion object {
+    /** 会话列表长按菜单后面的遮罩深浅（轻：只是把注意力收到菜单上）。 */
+    const val TELLOMI_DIM_AMOUNT = 0.2f
+
+    /** 菜单从哪一角长出来：摆在锚点下面从上沿，上面从下沿；和锚点左边对齐从左角，右边对齐从右角；放不下居中时从中间。 */
+    @JvmStatic
+    fun tellomiAnimationStyle(placement: TellomiPlacement, alignedToLeft: Boolean): Int {
+      return when (placement) {
+        TellomiPlacement.BELOW -> if (alignedToLeft) R.style.TellomiContextMenuAnimation_TopStart else R.style.TellomiContextMenuAnimation_TopEnd
+        TellomiPlacement.ABOVE -> if (alignedToLeft) R.style.TellomiContextMenuAnimation_BottomStart else R.style.TellomiContextMenuAnimation_BottomEnd
+        TellomiPlacement.CENTERED -> R.style.TellomiContextMenuAnimation_Center
+      }
+    }
   }
 
   enum class HorizontalPosition {
@@ -137,6 +183,7 @@ class SignalContextMenu private constructor(
     private var offsetY = 0
     private var horizontalPosition = HorizontalPosition.START
     private var verticalPosition = VerticalPosition.BELOW
+    private var dimBackground = false
 
     fun onDismiss(onDismiss: Runnable): Builder {
       this.onDismiss = onDismiss
@@ -163,6 +210,12 @@ class SignalContextMenu private constructor(
       return this
     }
 
+    /** Tellomi（交互审计 A-25）：菜单后面压一层轻遮罩（会话列表长按用）。 */
+    fun dimBackground(): Builder {
+      this.dimBackground = true
+      return this
+    }
+
     fun show(items: List<ActionItem>): SignalContextMenu {
       return SignalContextMenu(
         anchor = anchor,
@@ -172,7 +225,8 @@ class SignalContextMenu private constructor(
         baseOffsetY = offsetY,
         horizontalPosition = horizontalPosition,
         verticalPosition = verticalPosition,
-        onDismiss = onDismiss
+        onDismiss = onDismiss,
+        dimBackground = dimBackground
       ).show()
     }
   }

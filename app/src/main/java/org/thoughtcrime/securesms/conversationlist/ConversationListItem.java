@@ -116,6 +116,10 @@ public final class ConversationListItem extends ConstraintLayout implements Bind
   private Set<Long>           typingThreads;
   private LiveRecipient       recipient;
   private long                threadId;
+  /** Tellomi（交互审计 A-25）：上一次设选中状态时这一行是哪个会话（-1 = 还没设过），用来分「同一行变了」和「复用到别的行」。 */
+  private long                tellomiSelectionThreadId = -1;
+  /** Tellomi（交互审计 A-25）：勾选圈上一次显示的是不是「选上」（不看 isSelected()：长按菜单弹着时它也是 true）。 */
+  private boolean             tellomiShownSelected;
   private RequestManager      requestManager;
   private EmojiTextView       subjectView;
   private TypingIndicatorView typingView;
@@ -413,6 +417,7 @@ public final class ConversationListItem extends ConstraintLayout implements Bind
 
   @Override
   public void setSelectedConversations(@NonNull ConversationSet conversations) {
+    boolean wasBatchMode = this.batchMode;
     this.batchMode = !conversations.isEmpty();
 
     boolean selected = batchMode && conversations.containsThreadId(thread.getThreadId());
@@ -422,6 +427,24 @@ public final class ConversationListItem extends ConstraintLayout implements Bind
       contactPhotoImage.setAvatar(requestManager, recipient.get(), !batchMode);
     }
 
+    // Tellomi（交互审计 A-25「多选勾选圈直接切 visibility」）：同一行进出多选、选上取消时，勾选圈淡入放大 / 淡出缩小，
+    // 头像和文字跟着让位滑过去（原来一帧跳 24dp）。换成别的会话（复用）照旧直接设。
+    boolean sameThread = thread.getThreadId() == tellomiSelectionThreadId;
+    boolean changed    = wasBatchMode != batchMode || tellomiShownSelected != selected;
+    tellomiSelectionThreadId = thread.getThreadId();
+    tellomiShownSelected     = selected;
+
+    if (sameThread && changed) {
+      TellomiListSelectionTransition.run(this, checkContainer, () -> showCheck(selected));
+    } else {
+      if (!sameThread) {
+        TellomiListSelectionTransition.cancel(this);
+      }
+      showCheck(selected);
+    }
+  }
+
+  private void showCheck(boolean selected) {
     if (batchMode && selected) {
       checkContainer.setVisibility(VISIBLE);
       uncheckedView.setVisibility(GONE);
