@@ -17,6 +17,7 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import org.signal.core.util.logging.Log
+import org.thoughtcrime.securesms.feed.FeedInputLimit
 import org.thoughtcrime.securesms.feed.FeedInsightsState
 import org.thoughtcrime.securesms.feed.FeedOwnPostAction
 import org.thoughtcrime.securesms.feed.FeedSavedMessages
@@ -201,8 +202,13 @@ class FeedPostDetailViewModel(
     }
   }
 
-  fun onDraftChanged(text: String) {
-    internalState.update { it.copy(draft = text) }
+  /**
+   * 评论输入（上限 [FeedInputLimit.COMMENT_TEXT] 个码点，和引擎一致）：到上限就不让再输入（文本不变，[FeedPostDetailState.draftLimitHit] 亮一下），
+   * 粘贴超长时按码点截到上限，不切开 emoji；[composing]（输入法组字中）一律放行，这时可以暂时超限，发送不可用，组字结束后再调一次就截一次。
+   */
+  fun onDraftChanged(text: String, composing: Boolean = false) {
+    val edit = FeedInputLimit.change(internalState.value.draft, text, FeedInputLimit.COMMENT_TEXT, composing)
+    internalState.update { it.copy(draft = edit.text, draftLimitHit = edit.limitHit) }
   }
 
   fun replyTo(comment: FeedCard?) {
@@ -212,7 +218,7 @@ class FeedPostDetailViewModel(
   fun send() {
     val state = internalState.value
     val text = state.draft.trim()
-    if (text.isEmpty() || state.sending || !state.canComment) return
+    if (text.isEmpty() || state.sending || !state.canComment || state.draftRemaining < 0) return
 
     internalState.update { it.copy(sending = true) }
     viewModelScope.launch {
@@ -421,6 +427,8 @@ data class FeedPostDetailState(
   val failed: Boolean = false,
   val canComment: Boolean = true,
   val draft: String = "",
+  /** 评论框刚才碰到了上限（拦下或截了），计数可以抖一下；下一次正常输入清掉。 */
+  val draftLimitHit: Boolean = false,
   /** 作者关了这条的语音评论时收起话筒（发的时候才知道：403 `voice_comments_off`）。 */
   val voiceAllowed: Boolean = true,
   /** 正在回复的评论；null = 直接评论帖子。 */
@@ -441,8 +449,12 @@ data class FeedPostDetailState(
 ) {
   val threads: List<FeedCommentThread> by lazy { FeedCommentThreads.build(comments) }
 
+  /** 评论还能再输入几个码点（计数显示用）；超了（组字中）是负数。 */
+  val draftRemaining: Int
+    get() = FeedInputLimit.remaining(draft, FeedInputLimit.COMMENT_TEXT)
+
   val canSend: Boolean
-    get() = canComment && !sending && draft.isNotBlank()
+    get() = canComment && !sending && draft.isNotBlank() && draftRemaining >= 0
 
   enum class Notice {
     /** 语音评论发出去了，人工复核通过后别人才看得到。 */

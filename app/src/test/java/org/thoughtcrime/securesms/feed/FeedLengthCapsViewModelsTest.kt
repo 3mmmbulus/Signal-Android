@@ -64,7 +64,12 @@ class FeedLengthCapsViewModelsTest {
     // one more is dropped whole, never cut into half an emoji
     viewModel.onNameChanged(grin.repeat(33))
     assertThat(viewModel.state.value.name).isEqualTo(grin.repeat(32))
+    // typing one more character in front of a full name is blocked now (input limit: block at the limit, no after-the-fact cut of the tail)
     viewModel.onNameChanged("x" + grin.repeat(32))
+    assertThat(viewModel.state.value.name).isEqualTo(grin.repeat(32))
+    // a long paste after a short name: clipped by code point to the room that was left, an emoji is never cut in half
+    viewModel.onNameChanged("x")
+    viewModel.onNameChanged("x" + grin.repeat(40))
     assertThat(viewModel.state.value.name).isEqualTo("x" + grin.repeat(31))
 
     viewModel.onBioChanged(grin.repeat(201))

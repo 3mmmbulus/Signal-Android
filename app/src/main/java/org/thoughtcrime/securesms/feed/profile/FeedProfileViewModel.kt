@@ -16,6 +16,7 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import org.signal.core.util.logging.Log
+import org.thoughtcrime.securesms.feed.FeedInputLimit
 import org.thoughtcrime.securesms.feed.FeedSource
 import org.thoughtcrime.securesms.feed.FeedSources
 import org.thoughtcrime.securesms.feed.net.FeedApiException
@@ -66,12 +67,19 @@ class FeedProfileViewModel(
     }
   }
 
-  fun onNameChanged(name: String) {
-    internalState.update { it.copy(name = name.takeCodePoints(FeedMyProfile.MAX_NAME_CHARS)) }
+  /**
+   * 昵称（[FeedInputLimit.PROFILE_NAME] 个码点）：到上限就不让再输入（文本不变，[FeedProfileState.nameLimitHit] 亮一下），粘贴超长按码点截；
+   * [composing]（输入法组字中）一律放行，可以暂时超限，保存不可用，组字结束后再调一次就截一次。
+   */
+  fun onNameChanged(name: String, composing: Boolean = false) {
+    val edit = FeedInputLimit.change(internalState.value.name, name, FeedInputLimit.PROFILE_NAME, composing)
+    internalState.update { it.copy(name = edit.text, nameLimitHit = edit.limitHit) }
   }
 
-  fun onBioChanged(bio: String) {
-    internalState.update { it.copy(bio = bio.takeCodePoints(FeedMyProfile.MAX_BIO_CHARS)) }
+  /** 简介（[FeedInputLimit.PROFILE_BIO] 个码点），规则同 [onNameChanged]。 */
+  fun onBioChanged(bio: String, composing: Boolean = false) {
+    val edit = FeedInputLimit.change(internalState.value.bio, bio, FeedInputLimit.PROFILE_BIO, composing)
+    internalState.update { it.copy(bio = edit.text, bioLimitHit = edit.limitHit) }
   }
 
   fun save() {
@@ -109,8 +117,18 @@ data class FeedProfileState(
   val saving: Boolean = false,
   /** 保存成功，可以关页面了。 */
   val saved: Boolean = false,
-  val error: Error? = null
+  val error: Error? = null,
+  /** 昵称 / 简介刚才碰到了上限（拦下或截了），计数可以抖一下；下一次正常输入清掉。 */
+  val nameLimitHit: Boolean = false,
+  val bioLimitHit: Boolean = false
 ) {
+  /** 还能再输入几个码点（计数显示用）；超了（组字中）是负数。 */
+  val nameRemaining: Int
+    get() = FeedInputLimit.remaining(name, FeedInputLimit.PROFILE_NAME)
+
+  val bioRemaining: Int
+    get() = FeedInputLimit.remaining(bio, FeedInputLimit.PROFILE_BIO)
+
   val isNew: Boolean
     get() = profile == null
 
@@ -118,7 +136,7 @@ data class FeedProfileState(
     get() = profile == null || name.trim() != profile.displayName || bio.trim() != profile.bio.orEmpty()
 
   val canSave: Boolean
-    get() = !loading && !loadFailed && !saving && name.isNotBlank() && isChanged
+    get() = !loading && !loadFailed && !saving && name.isNotBlank() && nameRemaining >= 0 && bioRemaining >= 0 && isChanged
 
   enum class Error {
     /** 引擎说名字或简介不合规（空名字、超长）。 */
