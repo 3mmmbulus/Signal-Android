@@ -40,7 +40,7 @@ CP=$CP:$HOME/.m2/repository/org/jetbrains/kotlinx/kotlinx-serialization-json-jvm
 CP=$CP:$H/kotlinc/lib/kotlinx-coroutines-core-jvm.jar:$H/kotlinc/lib/kotlin-stdlib.jar
 
 # main + test files of the feed layer; only the ones that exist in this commit are used
-MAIN=(FeedEvents.kt FeedDetailEvents.kt net/FeedCapabilities.kt net/FeedAuthBackoff.kt)
+MAIN=(FeedEvents.kt FeedDetailEvents.kt net/FeedCapabilities.kt net/FeedAuthBackoff.kt net/FeedRetryAfter.kt net/FeedCooldown.kt)
 TESTS=(FeedEventsTest:feed FeedDetailEventsTest:feed net/FeedCapabilitiesTest:feed net/FeedAuthBackoffTest:feed)
 CLASSES=()
 for f in "${MAIN[@]}"; do [ -f "$M/$f" ] && cp "$M/$f" "$W/src/"; done
