@@ -13,7 +13,6 @@ import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
-import kotlinx.serialization.json.intOrNull
 
 /**
  * 入口能力检查：`GET /v1/capabilities` → `{"version":1,"features":["friend_assertions", …]}`。
@@ -80,7 +79,8 @@ data class FeedCapabilities(val features: Set<String>) {
       if (root !is JsonObject) return null
 
       val version = root["version"] as? JsonPrimitive ?: return null
-      if (version.isString || version.intOrNull != SUPPORTED_VERSION) return null
+      // 严格等于整数 1：按原文比（1.0、1e0、01 数值上等于 1 也不算），和 iOS 一致
+      if (version.isString || version.content != SUPPORTED_VERSION.toString()) return null
 
       val list = root["features"] as? JsonArray ?: return null
       val features = list.mapNotNull { element ->

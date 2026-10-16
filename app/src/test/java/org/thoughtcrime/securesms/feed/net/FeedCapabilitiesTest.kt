@@ -75,6 +75,19 @@ class FeedCapabilitiesTest {
     }
   }
 
+  /** `version` 必须严格等于整数 1：任何别的写法（哪怕数值上等于 1）都不算，和 iOS 对齐（2026-10-16 决定）。 */
+  @Test
+  fun `version must be exactly the integer 1, no other spelling of one counts`() {
+    val notOne = listOf("1.0", "1.00", "1e0", "1E0", "01", "001", "+1", "-1", "0x1", "true", "\"1\"", "\" 1\"", "1.0000000001", "2", "0", "10", "null", "[1]", "{\"v\":1}", "9223372036854775808")
+    for (version in notOne) {
+      val body = """{"version":$version,"features":["friend_assertions"]}"""
+      assertThat(FeedCapabilities.parseOrNull(200, body), "version=$version").isNull()
+    }
+    // 1 的唯一写法
+    assertThat(FeedCapabilities.parseOrNull(200, """{"version":1,"features":["friend_assertions"]}""")!!.friendAssertions).isTrue()
+    assertThat(FeedCapabilities.parseOrNull(200, """{ "features":["friend_assertions"], "version" : 1 }""")!!.friendAssertions).isTrue()
+  }
+
   @Test
   fun `non string elements are ignored, names are case sensitive, unknown names and fields are fine`() {
     val caps = FeedCapabilities.parse(

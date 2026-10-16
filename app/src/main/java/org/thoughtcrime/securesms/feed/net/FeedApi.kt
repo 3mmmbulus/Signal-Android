@@ -17,6 +17,7 @@ import okhttp3.RequestBody
 import okhttp3.RequestBody.Companion.toRequestBody
 import okhttp3.Response
 import java.io.IOException
+import java.time.Instant
 
 /** 解析时忽略不认识的字段，缺的字段用默认值，服务端加字段不会让旧客户端解析失败。 */
 val FeedJson: Json = Json {
@@ -46,18 +47,37 @@ class FeedApiException(
    */
   val isFeedDisabled: Boolean
     get() = status == 404 && code == "feed_hidden"
+
+  /**
+   * 被限流：429，或者带了 `Retry-After` 的 503（服务端「现在不行，过一会儿再来」）。不带 `Retry-After` 的 503 是普通的服务端故障，不在这里。
+   * 同时是 [FeedCooldown] 的触发条件；`429 too_many_uploads`（同时没传完的超过 20 个）是并发上限不是频率限制，不算。
+   */
+  val isThrottled: Boolean
+    get() = (status == 429 && code != CODE_TOO_MANY_UPLOADS) || (status == 503 && retryAfterSeconds != null)
+
+  companion object {
+    const val CODE_TOO_MANY_UPLOADS = "too_many_uploads"
+
+    /** 冷却中本地直接失败（没有发请求）用的代码。 */
+    const val CODE_THROTTLED_LOCALLY = "throttled_locally"
+  }
 }
 
 /**
  * 内容引擎的 HTTP 客户端，只做动态列表页和发帖要用的那几个接口。
  *
  * - 401（`credential_expired` 等）时换一次 token 再试，**只重试一次**；
+ * - 429（和带 `Retry-After` 的 503）：按 `Retry-After`（整数秒或 HTTP 日期，夹在 1…3600 秒）等，没有就指数退避加抖动（[FeedCooldown]）；
+ *   冷却中所有调用本地直接失败（429 `throttled_locally`，`retryAfterSeconds` = 还要等几秒），不打网络；
  * - 不在这里重试别的错误，也不缓存：缓存是调用方的事。
  */
 class FeedApi(
   private val baseUrl: HttpUrl,
   private val client: OkHttpClient,
-  private val tokens: FeedTokenSource
+  private val tokens: FeedTokenSource,
+  private val clock: () -> Long = System::currentTimeMillis,
+  /** 被限流之后的冷却：冷却中不发请求（本地 429），见 [FeedCooldown]。一个引擎一份。 */
+  private val cooldown: FeedCooldown = FeedCooldown(clock)
 ) {
 
   /**
@@ -486,6 +506,9 @@ class FeedApi(
   }
 
   private suspend fun <T> execute(builder: Request.Builder, read: (Response) -> T): T = withContext(Dispatchers.IO) {
+    if (cooldown.isCoolingDown()) {
+      throw FeedApiException(status = 429, code = FeedApiException.CODE_THROTTLED_LOCALLY, retryAfterSeconds = cooldown.remainingSeconds())
+    }
     var response = call(builder, tokens.token(forceRefresh = false))
     if (response.code == 401) {
       response.close()
@@ -494,8 +517,11 @@ class FeedApi(
 
     response.use {
       if (!it.isSuccessful) {
-        throw errorOf(it)
+        val error = errorOf(it)
+        if (error.isThrottled) cooldown.onThrottled(error.retryAfterSeconds)
+        throw error
       }
+      cooldown.onSuccess()
       read(it)
     }
   }
@@ -514,7 +540,7 @@ class FeedApi(
     } catch (e: Exception) {
       null
     }
-    val retryAfter = response.header("Retry-After")?.toLongOrNull()
+    val retryAfter = FeedRetryAfter.parse(response.header("Retry-After"), Instant.ofEpochMilli(clock()))
     return FeedApiException(status = response.code, code = body?.error, retryAfterSeconds = retryAfter)
   }
 
