@@ -120,6 +120,48 @@ object TellomiPressFeedback {
     }
   }
 
+  /** 会话顶栏的标题（头像 + 名字 + 副标题）按下缩到这么大（照 Telegram 安卓 `ChatAvatarContainer`：`ButtonBounce.getScale(.02f)`）。 */
+  const val TITLE_SCALE = 0.98f
+
+  /**
+   * Tellomi（交互审计 A-09「顶栏标题没有按下态」）：整块按下就缩一点、支点在中间，松开 / 取消 / 滑出触摸阈值弹回；动效最少档压暗。
+   * 只观察触摸（返回 false），原来的点击照常。
+   */
+  @JvmStatic
+  fun wholeViewTouchListener(scale: Float = TITLE_SCALE): View.OnTouchListener {
+    return object : View.OnTouchListener {
+      private var pressed = false
+      private var dimmed = false
+      private var downX = 0f
+      private var downY = 0f
+
+      override fun onTouch(view: View, event: MotionEvent): Boolean {
+        when (event.actionMasked) {
+          MotionEvent.ACTION_DOWN -> {
+            downX = event.rawX
+            downY = event.rawY
+            dimmed = press(view, scale, view.width / 2f, view.height / 2f)
+            pressed = true
+          }
+          MotionEvent.ACTION_MOVE -> {
+            val touchSlop = ViewConfiguration.get(view.context).scaledTouchSlop
+            if (pressed && (abs(event.rawX - downX) > touchSlop || abs(event.rawY - downY) > touchSlop)) {
+              pressed = false
+              release(view, dimmed)
+            }
+          }
+          MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
+            if (pressed) {
+              pressed = false
+              release(view, dimmed)
+            }
+          }
+        }
+        return false
+      }
+    }
+  }
+
   /** 屏幕坐标 ([rawX], [rawY]) 是否落在 [view] 上（[view] 要正显示着）。 */
   @JvmStatic
   fun hits(view: View?, rawX: Float, rawY: Float): Boolean {

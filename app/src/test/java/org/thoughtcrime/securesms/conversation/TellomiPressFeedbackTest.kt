@@ -119,4 +119,35 @@ class TellomiPressFeedbackTest {
 
     assertThat(TellomiPressFeedback.hits(block, 50f, 50f)).isFalse()
   }
+
+  @Test
+  fun `the conversation title shrinks around its centre on touch down and still gets the click`() {
+    layout()
+    var clicked = false
+    block.setOnClickListener { clicked = true }
+    block.setOnTouchListener(TellomiPressFeedback.wholeViewTouchListener())
+
+    block.dispatchTouchEvent(event(MotionEvent.ACTION_DOWN, 20f, 20f))
+    settle()
+    assertThat(block.scaleX).isCloseTo(TellomiPressFeedback.TITLE_SCALE, 0.005f)
+    assertThat(block.pivotX).isCloseTo(100f, 0.5f)
+    assertThat(block.pivotY).isCloseTo(50f, 0.5f)
+
+    block.dispatchTouchEvent(event(MotionEvent.ACTION_UP, 20f, 20f))
+    settle()
+    assertThat(block.scaleX).isCloseTo(1f, 0.005f)
+    assertThat(clicked).isTrue()
+  }
+
+  @Test
+  fun `dragging off the title lets go of it`() {
+    layout()
+    block.setOnTouchListener(TellomiPressFeedback.wholeViewTouchListener())
+
+    block.dispatchTouchEvent(event(MotionEvent.ACTION_DOWN, 20f, 20f))
+    settle()
+    block.dispatchTouchEvent(event(MotionEvent.ACTION_MOVE, 120f, 20f))
+    settle()
+    assertThat(block.scaleX).isCloseTo(1f, 0.005f)
+  }
 }

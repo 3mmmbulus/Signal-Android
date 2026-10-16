@@ -243,6 +243,7 @@ import org.thoughtcrime.securesms.conversation.ScheduleMessageTimePickerBottomSh
 import org.thoughtcrime.securesms.conversation.ScheduledMessagesBottomSheet
 import org.thoughtcrime.securesms.conversation.ScheduledMessagesRepository
 import org.thoughtcrime.securesms.conversation.ShowAdminsBottomSheetDialog
+import org.thoughtcrime.securesms.conversation.TellomiPressFeedback
 import org.thoughtcrime.securesms.conversation.clicklisteners.PollVotesFragment
 import org.thoughtcrime.securesms.conversation.colors.ChatColors
 import org.thoughtcrime.securesms.conversation.colors.ColorizerV2
@@ -2198,6 +2199,8 @@ class ConversationFragment :
       titleView.setOnClickListener {
         optionsMenuCallback.handleConversationSettings()
       }
+      // Tellomi（交互审计 A-09）：按下就缩一点，不等抬手
+      titleView.setOnTouchListener(TellomiPressFeedback.wholeViewTouchListener())
     }
 
     if (recipient.isSystemContact) {
