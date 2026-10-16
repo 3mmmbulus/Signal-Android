@@ -17,6 +17,7 @@ import java.io.IOException
  *
  * 一块 [chunkSize] 字节；断线、偏移对不上（409 `offset_mismatch`）或这一块得到 500 / 502 / 503 / 504 时，
  * 用 HEAD 问服务端收到了多少，从那里接着传，最多接 [maxResumes] 次。
+ * 服务端回的偏移没有往前走（卡住）也算一次中断，同样占 [maxResumes]，所以不会无限循环。
  * 引擎存储（本机盘 / R2）出错时 `PATCH` 回 500 `internal`，偏移不动，同一块可以重发；反代的 502 / 503 / 504 同理
  * （引擎对账记录 D-1，和 iOS `FeedImageUploader` 一致）。其余引擎答复（400、404、413、415、429……）直接抛。
  */
@@ -58,6 +59,9 @@ class FeedImageUploader(
     }
   }
 
+  /** 一块发出去了，服务端回的偏移却没有超过发送前的偏移。和 iOS `FeedImageUploader` 的 `StuckUpload` 一样，算一次可续传的中断。 */
+  private class StuckUpload(offset: Long) : IOException("upload offset did not advance past $offset")
+
   suspend fun upload(bytes: ByteArray): String {
     val start = api.startUpload(bytes.size.toLong())
     var offset = 0L
@@ -65,7 +69,10 @@ class FeedImageUploader(
     while (offset < bytes.size) {
       val end = minOf(offset + chunkSize, bytes.size.toLong()).toInt()
       offset = try {
-        api.uploadChunk(start.id, offset, bytes.copyOfRange(offset.toInt(), end))
+        val next = api.uploadChunk(start.id, offset, bytes.copyOfRange(offset.toInt(), end))
+        // 服务端说收到了，偏移却没往前走：当作一次中断（算进 maxResumes），问一下它现在在哪，不会无限循环
+        if (next <= offset) throw StuckUpload(offset)
+        next
       } catch (e: IOException) {
         if (!isResumable(e) || ++resumes > maxResumes) throw e
         Log.w(TAG, "upload interrupted at $offset, asking the server where to resume", e)
