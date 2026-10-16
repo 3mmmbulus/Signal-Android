@@ -28,13 +28,12 @@ class ScheduledMessagesViewModel @JvmOverloads constructor(
   }
 
   /**
-   * Tellomi（tellomi/tellomi#1611）：定时消息页输入框交回来的一条。新写的先放在这里等选时间（选时间页一弹键盘就收起、输入框对话框跟着关）；
-   * 改的直接存。
+   * Tellomi（tellomi/tellomi#1611）：定时消息页输入框里写好的一条。新写的先放在这里等选时间（选好了才排）；改的直接存。
    *
    * @param linkPreviews 改的时候 null = 预览不动。
    */
   data class TellomiDraft(
-    /** 输入框里的原样（带 @、样式的 span）：选时间取消了，下次打开输入框放回去。 */
+    /** 输入框里的原样（带 @、样式的 span）。 */
     val displayText: CharSequence,
     val body: String,
     val mentions: List<Mention>,
@@ -43,14 +42,14 @@ class ScheduledMessagesViewModel @JvmOverloads constructor(
     val editMessageId: Long?
   )
 
-  /** 新写的、正在选时间的那条（选时间取消了也留着，下次打开输入框放回去）。 */
+  /** 新写的、正在选时间的那条（选时间取消了字还在输入框里，下次点发送重新取）。 */
   var tellomiPendingDraft: TellomiDraft? = null
 
-  /** 改好、等存的那条（和新写的分开放：改一条不丢写了一半的新消息）。 */
-  var tellomiPendingEdit: TellomiDraft? = null
-
-  /** 正在改的那条（输入框对话框读它的原文）。 */
+  /** 正在改的那条（两端对齐清单 P-5：输入框就在整页底下，转屏后接着改）。 */
   var tellomiEditingMessage: ConversationMessage? = null
+
+  /** 开始改一条之前输入框里写了一半的新消息，改完 / 不改了放回去（同会话输入框改消息）。 */
+  var tellomiStashedText: CharSequence? = null
 
   /** 存一条改好的；已经发出去了（到点被认领）返回 false。 */
   fun tellomiSaveEdit(draft: TellomiDraft): Single<Boolean> {

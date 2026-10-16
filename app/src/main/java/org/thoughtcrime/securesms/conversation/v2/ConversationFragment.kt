@@ -2501,7 +2501,23 @@ class ConversationFragment :
     }
   }
 
+  /** Tellomi（两端对齐清单 P-5）：上一次收到的定时消息条数；-1 = 还没收到第一次。 */
+  private var tellomiLastScheduledCount = -1
+
   private fun handleScheduledMessagesCountChange(count: Int) {
+    // Tellomi（两端对齐清单 P-5）：会话里刚排了一条（条数变多），打开这个会话的定时消息页——同 Telegram 两端（安卓 `ChatActivity`
+    // `didReceiveNewMessages` 收到刚发出的定时消息就 `openScheduledMessages`；iOS 同），同 Tellomi iOS 排好就打开。
+    // 第一次收到的是原有的条数，不算；定时消息页已经开着（在页里写的）就不再开；会话页不在前台（比如还在媒体页）不开。
+    val previousCount = tellomiLastScheduledCount
+    tellomiLastScheduledCount = count
+    if (previousCount >= 0 && count > previousCount && isResumed && childFragmentManager.fragments.none { it is ScheduledMessagesBottomSheet }) {
+      viewModel.recipientSnapshot?.let { recipient ->
+        container.runAfterAllHidden(composeText) {
+          ScheduledMessagesBottomSheet.show(childFragmentManager, args.threadId, recipient.id)
+        }
+      }
+    }
+
     if (count <= 0) {
       scheduledMessagesStub.visibility = View.GONE
       reShowScheduleMessagesBar = false

@@ -10182,6 +10182,8 @@
     <string name="TellomiAttachmentFiles__some_not_on_device">有的文件已不在本机，没有发送。</string>
 
     <string name="TellomiScheduleTimePicker__set_reminder">设置提醒</string>
+    <string name="TellomiScheduledMessages__title">定时消息</string>
+    <string name="TellomiScheduledMessages__reminders_title">提醒</string>
     <string name="TellomiScheduledMessages__empty">这里还没有定时消息。</string>
     <string name="TellomiScheduledMessages__reminders_empty">这里还没有提醒。</string>
     <string name="TellomiScheduledMessages__edit_already_sent">这条消息已经发出去了，改动没有保存。</string>

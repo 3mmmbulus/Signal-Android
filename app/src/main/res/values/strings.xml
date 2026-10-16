@@ -10460,6 +10460,9 @@
     <!-- Tellomi (tellomi/tellomi#1601, M-4): long-press send menu item and time sheet title in Saved Messages (note to self) — schedule the note to yourself as a reminder -->
     <string name="TellomiScheduleTimePicker__set_reminder">Set a reminder</string>
     <!-- Tellomi (tellomi/tellomi#1611): scheduled messages sheet stays open when empty; shown in it -->
+    <!-- Tellomi（两端对齐清单 P-5）：定时消息整页的标题；收藏（给自己）里是「提醒」（同 TG 两端 ScheduledMessages / Reminders，同 iOS） -->
+    <string name="TellomiScheduledMessages__title">Scheduled messages</string>
+    <string name="TellomiScheduledMessages__reminders_title">Reminders</string>
     <string name="TellomiScheduledMessages__empty">No scheduled messages here yet.</string>
     <string name="TellomiScheduledMessages__reminders_empty">No reminders here yet.</string>
     <!-- Tellomi (tellomi/tellomi#1611): toast when a scheduled message was sent before the edits to it were saved -->
