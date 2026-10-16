@@ -5,9 +5,12 @@
 
 package org.signal.mediasend
 
+import android.content.Context
 import android.graphics.Bitmap
+import android.graphics.Typeface
 import android.net.Uri
 import androidx.annotation.VisibleForTesting
+import androidx.compose.runtime.snapshotFlow
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
@@ -24,6 +27,7 @@ import com.bumptech.glide.load.engine.GlideException
 import com.bumptech.glide.request.RequestListener
 import com.bumptech.glide.request.target.Target
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.channels.BufferOverflow
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.delay
@@ -32,6 +36,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.update
@@ -39,6 +44,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
+import kotlinx.coroutines.withContext
 import org.signal.core.models.media.Media
 import org.signal.core.ui.compose.DialogController
 import org.signal.core.ui.compose.DialogResult
@@ -47,8 +53,10 @@ import org.signal.core.util.ContentTypeUtil
 import org.signal.core.util.StringUtil
 import org.signal.core.util.logging.Log
 import org.signal.imageeditor.core.Renderer
+import org.signal.imageeditor.core.RendererContext
 import org.signal.imageeditor.core.model.EditorElement
 import org.signal.imageeditor.core.model.EditorModel
+import org.signal.imageeditor.core.renderers.MultiLineTextRenderer
 import org.signal.imageeditor.core.renderers.UriGlideRenderer
 import org.signal.mediasend.preupload.PreUploadController
 import org.signal.mediasend.preupload.PreUploadResult
@@ -487,8 +495,17 @@ class MediaSendFlowViewModel(
 
   /** Tellomi（tellomi/tellomi#1261 V-1）：网格里点一张进相册查看器；选中只在查看器右上角的勾里改。 */
   private fun openAlbumViewer(media: Media, album: List<Media>) {
-    updateState { copy(album = album, albumFocusedMedia = media, isBrowsingAlbum = true) }
+    albumToolJob?.cancel()
+    updateState { copy(album = album, albumFocusedMedia = media, isBrowsingAlbum = true, albumEditPreviews = emptyMap()) }
     backStack.goToEdit()
+    // 两端对齐清单 P-6b：在编辑页里改过的那几张，查看器里也照改过的样子显示
+    val albumUris = album.map { it.uri }.toSet()
+    val edited = state.value.editorStateMap.filter { (uri, editorState) -> uri in albumUris && (editorState as? EditorState.Image)?.model?.isChanged == true }.keys
+    if (edited.isNotEmpty()) {
+      viewModelScope.launch {
+        edited.forEach { renderAlbumEditPreview(it) }
+      }
+    }
   }
 
   /** Tellomi（tellomi/tellomi#1261 V-1）：查看器右上角的勾：没选就加进选择（焦点不动），选了就取消。 */
@@ -531,7 +548,65 @@ class MediaSendFlowViewModel(
         AlbumEditTool.DRAW -> controller.beginDrawEdit()
         AlbumEditTool.ADJUST -> controller.beginAdjustEdit()
       }
+      returnToAlbumWhenToolEnds(media, controller)
     }
+  }
+
+  /** Tellomi（两端对齐清单 P-6b）：等着从查看器打开的那个工具用完。 */
+  private var albumToolJob: Job? = null
+
+  /**
+   * Tellomi（两端对齐清单 P-6b）：从查看器底部打开的工具用完（完成或取消）就回查看器，停在这一张，显示改过的样子——
+   * 同 Telegram 两端（安卓 `PhotoViewer` 的 `applyCurrentEditMode` 之后 `switchToEditMode(EDIT_MODE_NONE)` 回到看图，iOS
+   * `TGMediaPickerGalleryModel` 打开的 `TGPhotoEditorController` 关掉后回到画廊）、Tellomi iOS（#234）。
+   * 「用完」是编辑器回到 [ImageController.Mode.NONE]；中途离开了编辑页（返回、发送）就不回。
+   */
+  private fun returnToAlbumWhenToolEnds(media: Media, controller: ImageController) {
+    albumToolJob?.cancel()
+    albumToolJob = viewModelScope.launch {
+      snapshotFlow { controller.mode }.first { it == ImageController.Mode.NONE }
+      val snapshot = state.value
+      if (backStack.lastOrNull() != MediaSendRoute.Edit || snapshot.isBrowsingAlbum || snapshot.album.none { it.uri == media.uri }) {
+        return@launch
+      }
+      // 先画好再切回去，免得查看器先闪一下原图
+      renderAlbumEditPreview(media.uri)
+      if (backStack.lastOrNull() == MediaSendRoute.Edit && !state.value.isBrowsingAlbum) {
+        updateState { copy(isBrowsingAlbum = true, albumFocusedMedia = media) }
+      }
+    }
+  }
+
+  /**
+   * Tellomi（两端对齐清单 P-6b）：查看器按 URI 显示原图；改过的照发出去的样子另画一张给它（同发送时
+   * `ImageEditorModelRenderMediaTransform` 用的 `EditorModel.render`，只是小一点）。没改过（或改回去了）就不画、显示原图。
+   */
+  private suspend fun renderAlbumEditPreview(uri: Uri) {
+    val model = (state.value.editorStateMap[uri] as? EditorState.Image)?.model
+    val preview: Bitmap? = if (model == null || !model.isChanged) {
+      null
+    } else {
+      withContext(Dispatchers.Default) {
+        try {
+          albumEditPreviewRenderer(model)
+        } catch (e: Exception) {
+          Log.w(TAG, "Couldn't render the album viewer's preview of an edited image", e)
+          null
+        }
+      }
+    }
+    updateState { copy(albumEditPreviews = if (preview != null) albumEditPreviews + (uri to preview) else albumEditPreviews - uri) }
+  }
+
+  /** 同编辑器画布（`ImageEditorState.typefaceProvider`）：文字自己选了字体就用它。 */
+  private val albumPreviewTypefaceProvider = RendererContext.TypefaceProvider { _: Context, renderer: Renderer, _: RendererContext.Invalidate ->
+    MultiLineTextRenderer.typefaceFor(renderer, Typeface.DEFAULT)
+  }
+
+  /** 画查看器里那张（后台线程上跑）。单测里换掉：画的时候要用 Glide 把原图读进来，单测环境没有。 */
+  @VisibleForTesting
+  internal var albumEditPreviewRenderer: (EditorModel) -> Bitmap = { model ->
+    model.render(MediaSendDependencies.application, model.getOutputSizeMaxWidth(ALBUM_EDIT_PREVIEW_MAX_SIZE), albumPreviewTypefaceProvider)
   }
 
   /**
@@ -794,6 +869,7 @@ class MediaSendFlowViewModel(
         selectedMedia = newSelection,
         focusedMedia = newFocus,
         editorStateMap = editorStateMap - removedUris,
+        albumEditPreviews = albumEditPreviews - removedUris,
         cameraFirstCapture = newCameraFirstCapture,
         // A removed capture's file goes with it, so it leaves the camera's filmstrip for good.
         cameraCaptureUris = cameraCaptureUris - removedUris
@@ -1440,6 +1516,9 @@ class MediaSendFlowViewModel(
 
   companion object {
     private val TAG = Log.tag(MediaSendFlowViewModel::class)
+
+    /** 查看器里改过的那张画多大（长边），够全屏看，又不至于每张都占很多内存。 */
+    private const val ALBUM_EDIT_PREVIEW_MAX_SIZE = 1440
 
     @VisibleForTesting
     internal const val KEY_ARGS = "media_send_vm_args"

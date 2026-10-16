@@ -5,6 +5,7 @@
 
 package org.signal.mediasend
 
+import android.graphics.Bitmap
 import android.net.Uri
 import android.os.Parcel
 import android.os.Parcelable
@@ -164,7 +165,13 @@ data class MediaSendFlowState(
   @IgnoredOnParcel val albumFocusedMedia: Media? = null,
 
   /** Tellomi（tellomi/tellomi#1261 V-1）：编辑页位置上显示的是相册查看器（true）还是已选胶片（false）。 */
-  @IgnoredOnParcel val isBrowsingAlbum: Boolean = false
+  @IgnoredOnParcel val isBrowsingAlbum: Boolean = false,
+
+  /**
+   * Tellomi（两端对齐清单 P-6b）：查看器里改过的那几张，照发出去的样子画的图（查看器原本按 URI 显示原图）。
+   * 没改过的不在这里；不随进程回收保存（回来以后查看器重新打开时再画）。
+   */
+  @IgnoredOnParcel val albumEditPreviews: Map<Uri, Bitmap> = emptyMap()
 ) : Parcelable {
 
   /** Tellomi（tellomi/tellomi#1520 C-7）：拍下且还选着的，按选择的顺序；相机里的胶片条显示的就是这些。 */

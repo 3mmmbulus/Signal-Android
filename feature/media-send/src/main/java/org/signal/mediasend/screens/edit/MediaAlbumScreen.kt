@@ -5,7 +5,9 @@
 
 package org.signal.mediasend.screens.edit
 
+import android.graphics.Bitmap
 import androidx.compose.animation.core.animate
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.Orientation
 import androidx.compose.foundation.gestures.awaitEachGesture
@@ -49,6 +51,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.lerp
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.input.pointer.positionChanged
@@ -136,6 +139,7 @@ internal fun MediaAlbumScreen(
       val media = album[page]
       AlbumPage(
         media = media,
+        preview = state.albumEditPreviews[media.uri],
         onSingleTap = { onEvent(MediaEditScreenEvents.ToggleAlbumSelected(media)) },
         onZoomedChange = { zoomed -> zoomedPages[page] = zoomed }
       )
@@ -269,7 +273,9 @@ internal fun AlbumEditShortcuts(
 internal fun AlbumPage(
   media: Media,
   onSingleTap: () -> Unit,
-  onZoomedChange: (Boolean) -> Unit
+  onZoomedChange: (Boolean) -> Unit,
+  // Tellomi（两端对齐清单 P-6b）：这张改过（裁剪、涂鸦、调色……），照发出去的样子画的图；null = 显示原图
+  preview: Bitmap? = null
 ) {
   val scope = rememberCoroutineScope()
   var size by remember { mutableStateOf(IntSize.Zero) }
@@ -321,18 +327,28 @@ internal fun AlbumPage(
         }
       }
   ) {
-    GlideImage(
-      model = media.uri,
-      scaleType = GlideImageScaleType.FIT_CENTER,
-      contentScale = ContentScale.Fit,
-      modifier = Modifier
-        .fillMaxSize()
-        .graphicsLayer {
-          scaleX = scale
-          scaleY = scale
-          translationX = offset.x
-          translationY = offset.y
-        }
-    )
+    val imageModifier = Modifier
+      .fillMaxSize()
+      .graphicsLayer {
+        scaleX = scale
+        scaleY = scale
+        translationX = offset.x
+        translationY = offset.y
+      }
+    if (preview != null) {
+      Image(
+        bitmap = remember(preview) { preview.asImageBitmap() },
+        contentDescription = null,
+        contentScale = ContentScale.Fit,
+        modifier = imageModifier
+      )
+    } else {
+      GlideImage(
+        model = media.uri,
+        scaleType = GlideImageScaleType.FIT_CENTER,
+        contentScale = ContentScale.Fit,
+        modifier = imageModifier
+      )
+    }
   }
 }

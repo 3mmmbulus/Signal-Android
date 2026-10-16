@@ -5,6 +5,7 @@
 
 package org.signal.mediasend.screens.edit
 
+import android.graphics.Bitmap
 import android.net.Uri
 import org.signal.core.models.media.Media
 import org.signal.mediasend.EditorState
@@ -46,6 +47,8 @@ internal data class MediaEditState(
   val albumFocusedMedia: Media? = null,
   /** Whether this screen is the album viewer rather than the editor over the selected media. */
   val isBrowsingAlbum: Boolean = false,
+  /** Tellomi（两端对齐清单 P-6b）：查看器里改过的几张，照发出去的样子画的图；查看器优先显示它。 */
+  val albumEditPreviews: Map<Uri, Bitmap> = emptyMap(),
   /**
    * Tellomi（tellomi/tellomi#1520 C-7）：编辑页是不是直接盖在相机上面（导航的事，由放这一页的地方按返回栈填，不从流程状态来）。
    * 是的话添加键换成「再拍」。
@@ -115,6 +118,7 @@ internal data class MediaEditState(
     album = parentState.album,
     albumFocusedMedia = parentState.albumFocusedMedia,
     isBrowsingAlbum = parentState.isBrowsingAlbum,
+    albumEditPreviews = parentState.albumEditPreviews,
     canMoveCaption = parentState.canMoveCaption,
     isCaptionAboveMedia = parentState.isCaptionAboveMedia
   )
