@@ -79,7 +79,13 @@ object FeedInputLimit {
     val limit = limit.coerceAtLeast(0)
     if (!validRange(current, start, end)) {
       return FeedInputEdit(
-        current = current, text = current, inserted = "", remaining = remaining(current, limit), accepted = false, blocked = true, clipped = false,
+        current = current,
+        text = current,
+        inserted = "",
+        remaining = remaining(current, limit),
+        accepted = false,
+        blocked = true,
+        clipped = false,
         caret = start.coerceIn(0, current.length)
       )
     }
@@ -90,7 +96,13 @@ object FeedInputLimit {
     fun built(inserted: String, accepted: Boolean, clipped: Boolean): FeedInputEdit {
       val text = prefix + inserted + suffix
       return FeedInputEdit(
-        current = current, text = text, inserted = inserted, remaining = remaining(text, limit), accepted = accepted, blocked = false, clipped = clipped,
+        current = current,
+        text = text,
+        inserted = inserted,
+        remaining = remaining(text, limit),
+        accepted = accepted,
+        blocked = false,
+        clipped = clipped,
         caret = prefix.length + inserted.length
       )
     }
@@ -102,7 +114,13 @@ object FeedInputLimit {
     val inserted = if (room > 0) cap(replacement, room) else ""
     if (inserted.isEmpty()) {
       return FeedInputEdit(
-        current = current, text = current, inserted = "", remaining = remaining(current, limit), accepted = false, blocked = true, clipped = false,
+        current = current,
+        text = current,
+        inserted = "",
+        remaining = remaining(current, limit),
+        accepted = false,
+        blocked = true,
+        clipped = false,
         caret = end
       )
     }
@@ -136,7 +154,13 @@ object FeedInputLimit {
     val limit = limit.coerceAtLeast(0)
     if (composing || fits(proposed, limit)) {
       return FeedInputEdit(
-        current = previous, text = proposed, inserted = proposed, remaining = remaining(proposed, limit), accepted = true, blocked = false, clipped = false,
+        current = previous,
+        text = proposed,
+        inserted = proposed,
+        remaining = remaining(proposed, limit),
+        accepted = true,
+        blocked = false,
+        clipped = false,
         caret = proposed.length
       )
     }
@@ -154,7 +178,13 @@ object FeedInputLimit {
     val replacement = proposed.substring(p, proposed.length - s)
     if (replacement.isEmpty()) {
       return FeedInputEdit(
-        current = previous, text = proposed, inserted = "", remaining = remaining(proposed, limit), accepted = true, blocked = false, clipped = false,
+        current = previous,
+        text = proposed,
+        inserted = "",
+        remaining = remaining(proposed, limit),
+        accepted = true,
+        blocked = false,
+        clipped = false,
         caret = start
       )
     }
