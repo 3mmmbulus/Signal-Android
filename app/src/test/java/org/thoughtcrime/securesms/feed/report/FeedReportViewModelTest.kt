@@ -122,4 +122,16 @@ class FeedReportViewModelTest {
     assertThat(viewModel.state.value.reason).isNull()
     assertThat(viewModel.state.value.detail).isEqualTo("x")
   }
+
+  @Test
+  fun `detail and relationship are capped in code points and an emoji is never cut in half`() {
+    val grin = "\uD83D\uDE00"
+    val viewModel = FeedReportViewModel(FeedReportTarget.content("c1"), FakeSource(), dispatcher)
+
+    viewModel.onDetailChanged(grin.repeat(501))
+    viewModel.onRelationshipChanged(grin.repeat(41))
+
+    assertThat(viewModel.state.value.detail).isEqualTo(grin.repeat(500))
+    assertThat(viewModel.state.value.relationship).isEqualTo(grin.repeat(40))
+  }
 }

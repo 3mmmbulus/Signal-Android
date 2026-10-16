@@ -34,7 +34,7 @@ interface FeedSavedMessages {
 /** 「我的收藏」里那条消息的正文：作者和开头一段给电脑端和没装渲染器的版本看，最后一行是 `tell.cc/m#<id>`。 */
 internal fun FeedCard.savedMessageBody(link: String): String {
   val name = author?.displayName?.trim().orEmpty()
-  val snippet = (title?.takeIf { it.isNotBlank() } ?: text.orEmpty()).trim().replace('\n', ' ').let { if (it.length > SNIPPET_CHARS) it.take(SNIPPET_CHARS) + "…" else it }
+  val snippet = (title?.takeIf { it.isNotBlank() } ?: text.orEmpty()).trim().replace('\n', ' ').takeCodePointsWithEllipsis(SNIPPET_CHARS)
   val head = listOf(name, snippet).filter { it.isNotEmpty() }.joinToString("：")
   return if (head.isEmpty()) link else "$head\n$link"
 }

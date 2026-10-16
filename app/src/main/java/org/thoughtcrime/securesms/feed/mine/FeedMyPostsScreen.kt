@@ -65,6 +65,7 @@ import org.thoughtcrime.securesms.feed.compose.FeedEditTarget
 import org.thoughtcrime.securesms.feed.net.FeedCard
 import org.thoughtcrime.securesms.feed.net.FeedMyPost
 import org.thoughtcrime.securesms.feed.parseInstantMillis
+import org.thoughtcrime.securesms.feed.takeCodePoints
 import org.thoughtcrime.securesms.util.DateUtils
 import java.util.Locale
 import org.signal.core.ui.R as CoreUiR
@@ -209,7 +210,7 @@ private fun AppealDialog(onSend: (String) -> Unit, onDismiss: () -> Unit) {
         )
         OutlinedTextField(
           value = text,
-          onValueChange = { text = it.take(FeedMyPost.MAX_APPEAL_CHARS) },
+          onValueChange = { text = it.takeCodePoints(FeedMyPost.MAX_APPEAL_CHARS) },
           placeholder = { Text(stringResource(R.string.TellomiFeedMine__appeal_hint)) },
           minLines = 3,
           maxLines = 6,

@@ -21,6 +21,7 @@ import org.thoughtcrime.securesms.feed.FeedSource
 import org.thoughtcrime.securesms.feed.FeedSources
 import org.thoughtcrime.securesms.feed.net.FeedApiException
 import org.thoughtcrime.securesms.feed.net.FeedMyPost
+import org.thoughtcrime.securesms.feed.takeCodePoints
 
 /**
  * 「我的动态」：自己发过的帖子和审核状态（`dynamic-feed.md` 第三节第 24 条、R-2.2；契约 7.3）。
@@ -118,7 +119,7 @@ class FeedMyPostsViewModel(
     internalState.update { it.copy(appealing = true) }
     viewModelScope.launch {
       val result = try {
-        withContext(ioDispatcher) { source.appeal(post.id, text.trim().take(FeedMyPost.MAX_APPEAL_CHARS)) }
+        withContext(ioDispatcher) { source.appeal(post.id, text.trim().takeCodePoints(FeedMyPost.MAX_APPEAL_CHARS)) }
         AppealResult.SENT
       } catch (e: FeedApiException) {
         Log.w(TAG, "appeal rejected: ${e.status} ${e.code}")

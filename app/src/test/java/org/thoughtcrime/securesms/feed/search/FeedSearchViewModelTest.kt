@@ -138,4 +138,13 @@ class FeedSearchViewModelTest {
 
     assertThat(vm.state.value.failed).isTrue()
   }
+
+  @Test
+  fun `the query is capped at 50 code points and an emoji is never cut in half`() {
+    val grin = "\uD83D\uDE00"
+    val viewModel = viewModel(FakeSource())
+    viewModel.onQueryChange(grin.repeat(51))
+
+    assertThat(viewModel.state.value.query).isEqualTo(grin.repeat(50))
+  }
 }
