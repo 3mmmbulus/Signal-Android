@@ -71,7 +71,7 @@ class FeedEventBuffer(private val batchSize: Int = BATCH_SIZE) {
     return pending.size >= batchSize
   }
 
-  /** 取走全部待发的，按每批最多 100 条切好。 */
+  /** 取走全部待发的，按每批最多 50 条切好。 */
   @Synchronized
   fun drain(): List<List<FeedEventPayload>> {
     if (pending.isEmpty()) return emptyList()
