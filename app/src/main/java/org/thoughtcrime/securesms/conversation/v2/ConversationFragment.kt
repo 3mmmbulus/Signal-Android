@@ -6,6 +6,7 @@
 package org.thoughtcrime.securesms.conversation.v2
 
 import android.Manifest
+import android.animation.ValueAnimator
 import android.annotation.SuppressLint
 import android.app.ActivityOptions
 import android.app.PendingIntent
@@ -67,6 +68,7 @@ import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.platform.ComposeView
 import androidx.compose.ui.platform.ViewCompositionStrategy
 import androidx.constraintlayout.widget.ConstraintSet
+import androidx.core.animation.doOnEnd
 import androidx.core.app.ActivityOptionsCompat
 import androidx.core.content.ContextCompat
 import androidx.core.content.pm.ShortcutManagerCompat
@@ -74,7 +76,7 @@ import androidx.core.net.toUri
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.children
-import androidx.core.view.doOnPreDraw
+import androidx.core.view.doOnNextLayout
 import androidx.core.view.isInvisible
 import androidx.core.view.isVisible
 import androidx.core.view.updatePadding
@@ -140,7 +142,6 @@ import org.signal.core.util.Result
 import org.signal.core.util.ThreadUtil
 import org.signal.core.util.bytes
 import org.signal.core.util.concurrent.LifecycleDisposable
-import org.signal.core.util.concurrent.ListenableFuture
 import org.signal.core.util.concurrent.SignalDispatchers
 import org.signal.core.util.concurrent.addTo
 import org.signal.core.util.dp
@@ -430,7 +431,6 @@ import java.time.ZoneId
 import java.time.ZoneOffset
 import java.util.Locale
 import java.util.Optional
-import java.util.concurrent.ExecutionException
 import kotlin.time.Duration.Companion.days
 import kotlin.time.Duration.Companion.milliseconds
 import org.signal.core.ui.R as CoreUiR
@@ -696,6 +696,11 @@ class ConversationFragment :
 
   /** Tellomi（交互审计 A-11）：输入区高度变化（多一行、链接预览）时输入区和列表一起滑过去。 */
   private var composerHeightAnimator: TellomiComposerHeightAnimator? = null
+
+  /** Tellomi（交互审计 A-15）：多选操作栏该不该显示、正在走的那一次过渡、第几次（过时的回调认出来就不做）。 */
+  private var selectionBarsShown = false
+  private var selectionBarsAnimator: ValueAnimator? = null
+  private var selectionBarsGeneration = 0
 
   private val composeText: ComposeText
     get() = binding.conversationInputPanel.embeddedTextEditor
@@ -1078,6 +1083,13 @@ class ConversationFragment :
   }
 
   override fun onDestroyView() {
+    selectionBarsGeneration++
+    selectionBarsShown = false
+    selectionBarsAnimator?.let {
+      selectionBarsAnimator = null
+      it.removeAllListeners()
+      it.cancel()
+    }
     composerHeightAnimator?.detach()
     composerHeightAnimator = null
     viewModel.collapseAllEvents()
@@ -3151,15 +3163,21 @@ class ConversationFragment :
       return
     }
 
-    val isCurrentlyVisible = bottomActionBar.isVisible
-    if (isVisible == isCurrentlyVisible) {
+    // Tellomi（交互审计 A-15）：看的是「该不该显示」，不是操作栏现在可不可见——退出的过渡里它还可见。
+    if (isVisible == selectionBarsShown) {
       return
     }
+    selectionBarsShown = isVisible
+    val generation = ++selectionBarsGeneration
 
-    val additionalScrollOffset = 54.dp
+    // 上一次还没换完又切了：先落到它的终点，再从那里开始这一次。
+    selectionBarsAnimator?.end()
+
     if (isVisible) {
-      ViewUtil.animateIn(bottomActionBar, bottomActionBar.enterAnimation)
       animationsAllowed = false
+      bottomActionBar.alpha = 0f
+      bottomActionBar.isVisible = true
+      container.hideInput()
 
       bottomActionBar.viewTreeObserver.addOnGlobalLayoutListener(object : ViewTreeObserver.OnGlobalLayoutListener {
         override fun onGlobalLayout() {
@@ -3168,31 +3186,152 @@ class ConversationFragment :
           }
 
           bottomActionBar.viewTreeObserver.removeOnGlobalLayoutListener(this)
+          if (generation != selectionBarsGeneration || view == null) {
+            return
+          }
 
-          container.hideInput()
-          inputPanel.setHideForSelection(true)
-
-          val bottomPadding = bottomActionBar.measuredHeight + ((bottomActionBar.layoutParams as? ViewGroup.MarginLayoutParams)?.bottomMargin ?: 18.dp)
-          ViewUtil.setPaddingBottom(binding.conversationItemRecycler, bottomPadding)
-          binding.conversationItemRecycler.scrollBy(0, -(bottomPadding - additionalScrollOffset))
-          animationsAllowed = true
+          // 列表底边让到操作栏上沿：最下面那条停在操作栏上面，和平时停在输入栏上面一样。输入栏先不收（要淡出），收起放到最后。
+          val frame = binding.conversationItemRecyclerFrame
+          val extra = (frame.bottom - bottomActionBar.top).coerceAtLeast(0)
+          tellomiRunSelectionBars(
+            entering = true,
+            generation = generation,
+            changeLayout = {
+              ViewUtil.setPaddingBottom(binding.conversationItemRecycler, resources.getDimensionPixelSize(R.dimen.conversation_bottom_padding) + extra)
+            },
+            onEnd = {
+              // 换完：输入栏真的收起，列表多出来的那截用底边距补上——底边距的位置不变，列表不动。
+              val inputHeight = inputPanel.height
+              tellomiKeepListInPlace {
+                inputPanel.setHideForSelection(true)
+                ViewUtil.setPaddingBottom(binding.conversationItemRecycler, binding.conversationItemRecycler.paddingBottom + inputHeight)
+              }
+              animationsAllowed = true
+            }
+          )
         }
       })
     } else {
-      ViewUtil.animateOut(bottomActionBar, bottomActionBar.exitAnimation)
-        .addListener(object : ListenableFuture.Listener<Boolean> {
-          override fun onSuccess(result: Boolean?) {
-            val scrollOffset = binding.conversationItemRecycler.paddingBottom - additionalScrollOffset
-            inputPanel.setHideForSelection(false)
-            val bottomPadding = resources.getDimensionPixelSize(R.dimen.conversation_bottom_padding)
-            ViewUtil.setPaddingBottom(binding.conversationItemRecycler, bottomPadding)
-            binding.conversationItemRecycler.doOnPreDraw {
-              it.scrollBy(0, scrollOffset)
-            }
-          }
+      // 列表整体跟着进度滑；这一步不让条目自己的位移动画再滑一遍（实测两份位移叠在一起，先往反方向跳 73 px）。
+      animationsAllowed = false
+      tellomiRunSelectionBars(
+        entering = false,
+        generation = generation,
+        changeLayout = {
+          inputPanel.setHideForSelection(false)
+          ViewUtil.setPaddingBottom(binding.conversationItemRecycler, resources.getDimensionPixelSize(R.dimen.conversation_bottom_padding))
+        },
+        onEnd = {
+          bottomActionBar.isVisible = false
+          animationsAllowed = true
+        }
+      )
+    }
+  }
 
-          override fun onFailure(e: ExecutionException?) = Unit
-        })
+  /**
+   * Tellomi（交互审计 A-15）：先把列表排到新位置（[changeLayout]），列表这一次排完（还没画）就量出最下面那条挪了多少，用列表外层的位移把它放回原处；
+   * 然后一个进度（[TellomiContextualBars.DURATION_MS]）同时驱动输入栏、操作栏和列表（[TellomiContextualBars.bottomFrame]），
+   * 和顶栏的淡入同一时长、同一条曲线。「移除动画」档直接到终点。
+   */
+  private fun tellomiRunSelectionBars(entering: Boolean, generation: Int, changeLayout: () -> Unit, onEnd: () -> Unit) {
+    val recycler = binding.conversationItemRecycler
+    val anchor = tellomiListAnchor()
+    if (!entering) {
+      // 输入栏一出现就是透明、在下面的，不会先闪一帧
+      inputPanel.alpha = 0f
+      inputPanel.translationY = TellomiContextualBars.INPUT_SLIDE_DP.dp.toFloat()
+    }
+    changeLayout()
+
+    // 量要等列表按新布局排完：这里常在别的 View 的排版回调里，同一轮的画之前列表还没重排（实测量到 0、下一帧列表跳一下）。
+    recycler.requestLayout()
+    recycler.doOnNextLayout {
+      if (generation != selectionBarsGeneration || view == null) {
+        return@doOnNextLayout
+      }
+
+      val shift = tellomiListAnchorShift(anchor)
+      val inputSlide = TellomiContextualBars.INPUT_SLIDE_DP.dp.toFloat()
+      val barSlide = bottomActionBar.height * TellomiContextualBars.BAR_SLIDE_FRACTION
+      val applyProgress = { progress: Float ->
+        val frame = TellomiContextualBars.bottomFrame(progress, entering, inputSlide, barSlide, listShiftPx = -shift)
+        inputPanel.alpha = frame.inputAlpha
+        inputPanel.translationY = frame.inputTranslationY
+        bottomActionBar.alpha = frame.barAlpha
+        bottomActionBar.translationY = frame.barTranslationY
+        tellomiSetListOffset(frame.listTranslationY)
+      }
+      val finish = {
+        inputPanel.alpha = 1f
+        inputPanel.translationY = 0f
+        bottomActionBar.alpha = 1f
+        bottomActionBar.translationY = 0f
+        tellomiSetListOffset(0f)
+        onEnd()
+      }
+
+      if (TellomiMotion.tier(requireContext()) == TellomiMotion.Tier.MINIMAL) {
+        finish()
+        return@doOnNextLayout
+      }
+
+      applyProgress(0f)
+      selectionBarsAnimator = ValueAnimator.ofFloat(0f, 1f).apply {
+        duration = TellomiContextualBars.DURATION_MS
+        interpolator = TellomiContextualBars.interpolator()
+        addUpdateListener { applyProgress(it.animatedValue as Float) }
+        doOnEnd { animator ->
+          if (selectionBarsAnimator === animator) {
+            selectionBarsAnimator = null
+          }
+          finish()
+        }
+        start()
+      }
+    }
+  }
+
+  /** Tellomi（交互审计 A-15）：最下面看得见的那条（倒排列表里第一个可见的）和它现在的位置。 */
+  private fun tellomiListAnchor(): Pair<Int, Int>? {
+    val layoutManager = binding.conversationItemRecycler.layoutManager as? LinearLayoutManager ?: return null
+    val position = layoutManager.findFirstVisibleItemPosition()
+    if (position == RecyclerView.NO_POSITION) {
+      return null
+    }
+    val anchorView = layoutManager.findViewByPosition(position) ?: return null
+    return position to anchorView.top
+  }
+
+  /** 排版之后，那条往下挪了多少（往上是负的）。 */
+  private fun tellomiListAnchorShift(anchor: Pair<Int, Int>?): Float {
+    val (position, top) = anchor ?: return 0f
+    val layoutManager = binding.conversationItemRecycler.layoutManager as? LinearLayoutManager ?: return 0f
+    val anchorView = layoutManager.findViewByPosition(position) ?: return 0f
+    return (anchorView.top - top).toFloat()
+  }
+
+  /** 改了布局以后把列表放回原来看到的位置（列表这一次排完、还没画就滚回去）。 */
+  private fun tellomiKeepListInPlace(changeLayout: () -> Unit) {
+    val recycler = binding.conversationItemRecycler
+    val anchor = tellomiListAnchor()
+    changeLayout()
+    recycler.requestLayout()
+    recycler.doOnNextLayout {
+      val shift = tellomiListAnchorShift(anchor).toInt()
+      if (shift != 0) {
+        recycler.scrollBy(0, shift)
+      }
+    }
+  }
+
+  /** 列表外层的位移：和输入区增高的动画（A-11）共用一层，加在一起。 */
+  private fun tellomiSetListOffset(offset: Float) {
+    val composerAnimator = composerHeightAnimator
+    if (composerAnimator != null) {
+      composerAnimator.externalListOffset = offset
+    } else {
+      binding.conversationItemRecyclerFrame.translationY = offset
     }
   }
 

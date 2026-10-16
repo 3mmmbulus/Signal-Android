@@ -47,6 +47,15 @@ class TellomiComposerHeightAnimator(
   )
 
   private var last: Snapshot? = null
+
+  /**
+   * 别处（进出多选时的底栏过渡，[TellomiContextualBars]）给列表外层加的位移：和这里自己的位移相加，谁更新都不会把对方的冲掉。
+   */
+  var externalListOffset = 0f
+    set(value) {
+      field = value
+      listFrame.translationY = listStart * progress + value
+    }
   private val attachedAt = SystemClock.uptimeMillis()
 
   // 动画开始时各自的位移；当前位移 = 起始位移 × progress（1 → 0）。
@@ -165,7 +174,7 @@ class TellomiComposerHeightAnimator(
 
     // 移的是列表外面那层：列表自己的 translationY 归 ConversationHeaderPositionDecoration（短会话把头部钉在顶栏下），它每次画都会重设。
     // 外层移下去时底边伸进输入区让出来的那条；根布局不裁子 View，输入区后画、盖在上面。
-    listFrame.translationY = listStart * p
+    listFrame.translationY = listStart * p + externalListOffset
     composeText.translationY = textStart * p
     // 输入区的 clipChildren 是 false，输入框外面那层自己不裁；动画期间裁到气泡里的那一段，字在里面滑：
     // 变高时字往下让（裁掉下面新的一行），变矮时字往上挪（往上多留出位移那么高，上面那行不能先被裁掉）。

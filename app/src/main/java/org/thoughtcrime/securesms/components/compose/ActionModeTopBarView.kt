@@ -41,7 +41,8 @@ class ActionModeTopBarView @JvmOverloads constructor(
           title = title,
           toolbarColor = Color.Transparent,
           onCloseClick = onCloseClick,
-          windowInsets = WindowInsets()
+          windowInsets = WindowInsets(),
+          announceTitleChanges = true
         )
       }
     }
