@@ -8,6 +8,7 @@ package org.thoughtcrime.securesms.feed.compose
 import android.net.Uri
 import androidx.annotation.StringRes
 import org.thoughtcrime.securesms.R
+import org.thoughtcrime.securesms.feed.FeedInputLimit
 import org.thoughtcrime.securesms.feed.net.FeedLimits
 import org.thoughtcrime.securesms.feed.net.FeedPoll
 import java.time.Instant
@@ -90,10 +91,14 @@ data class FeedDraft(
   /** 按 Unicode 码点数（一个汉字算 1）。契约没写服务端怎么数，已请内容引擎按同样口径校验。 */
   fun textLength(): Int = text.codePointCount(0, text.length)
 
+  /** 长文标题的码点数，上限 [FeedInputLimit.ARTICLE_TITLE]（100）；输入时就不让超，超了（组字中）发布不可用。 */
+  fun titleLength(): Int = title.codePointCount(0, title.length)
+
   /** 发不出去的原因；能发返回 null。 */
   fun problem(limits: FeedLimits, minorMode: Boolean): Problem? {
     return when {
       kind == FeedDraftKind.ARTICLE && title.isBlank() -> Problem.MISSING_TITLE
+      kind == FeedDraftKind.ARTICLE && titleLength() > FeedInputLimit.ARTICLE_TITLE -> Problem.TOO_LONG
       text.isBlank() && attachedImages.isEmpty() && attachedPoll == null -> Problem.EMPTY
       textLength() > textLimit(limits) -> Problem.TOO_LONG
       attachedImages.size > limits.postImages -> Problem.TOO_MANY_IMAGES
