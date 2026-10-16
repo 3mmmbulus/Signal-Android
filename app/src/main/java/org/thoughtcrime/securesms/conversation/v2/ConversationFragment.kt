@@ -5027,6 +5027,8 @@ class ConversationFragment :
       viewModel.recipientSnapshot?.let { recipient ->
         if (!viewModel.hasMessageRequestState || recipient.isBlocked) {
           container.hideKeyboard(composeText)
+          // Tellomi（交互审计 A-19）：顶栏的小头像飞到设置页的大头像那里
+          binding.conversationTitleView.root.findViewById<View>(R.id.contact_photo_image)?.let { TellomiAvatarHero.lift(it) }
           mainNavigationEventSink.onEvent(MainNavigationEvents.GoToDetail(MainDetailRoute.Chats.ConversationSettings(recipient.id)))
         }
       }

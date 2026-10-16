@@ -50,6 +50,7 @@ import org.thoughtcrime.securesms.components.settings.conversation.individual.In
 import org.thoughtcrime.securesms.components.settings.conversation.individual.NoteToSelfSettingsScreen
 import org.thoughtcrime.securesms.components.settings.conversation.individual.ReleaseNotesSettingsScreen
 import org.thoughtcrime.securesms.conversation.ConversationIntents
+import org.thoughtcrime.securesms.conversation.v2.TellomiAvatarHero
 import org.thoughtcrime.securesms.groups.GroupId
 import org.thoughtcrime.securesms.groups.memberlabel.MemberLabelEducationSheet
 import org.thoughtcrime.securesms.groups.ui.EndGroupDialog
@@ -167,6 +168,12 @@ class ConversationSettingsFragment : ComposeFragment() {
     avatarView = null
   }
 
+  private fun onAvatarViewCreated(view: View) {
+    avatarView = view
+    // Tellomi（交互审计 A-19）：从会话顶栏飞过来的头像还在路上：先藏起大头像，落地再显出来
+    TellomiAvatarHero.prepareTarget(view)
+  }
+
   /**
    * Runs whichever of these applies to the conversation we're showing. Used to forward the things that happen to the
    * fragment -- activity results, dialog confirmations -- into the live view model's own events.
@@ -203,7 +210,7 @@ class ConversationSettingsFragment : ComposeFragment() {
       state = state,
       onEvent = individualViewModel::onEvent,
       onNavigationClick = { requireActivity().onBackPressedDispatcher.onBackPressed() },
-      onAvatarViewCreated = { avatarView = it }
+      onAvatarViewCreated = ::onAvatarViewCreated
     )
   }
 
@@ -218,7 +225,7 @@ class ConversationSettingsFragment : ComposeFragment() {
       state = state,
       onEvent = individualViewModel::onEvent,
       onNavigationClick = { requireActivity().onBackPressedDispatcher.onBackPressed() },
-      onAvatarViewCreated = { avatarView = it }
+      onAvatarViewCreated = ::onAvatarViewCreated
     )
   }
 
@@ -233,7 +240,7 @@ class ConversationSettingsFragment : ComposeFragment() {
       state = state,
       onEvent = individualViewModel::onEvent,
       onNavigationClick = { requireActivity().onBackPressedDispatcher.onBackPressed() },
-      onAvatarViewCreated = { avatarView = it }
+      onAvatarViewCreated = ::onAvatarViewCreated
     )
   }
 
@@ -248,7 +255,7 @@ class ConversationSettingsFragment : ComposeFragment() {
       state = state,
       onEvent = groupViewModel::onEvent,
       onNavigationClick = { requireActivity().onBackPressedDispatcher.onBackPressed() },
-      onAvatarViewCreated = { avatarView = it }
+      onAvatarViewCreated = ::onAvatarViewCreated
     )
   }
 
@@ -273,6 +280,8 @@ class ConversationSettingsFragment : ComposeFragment() {
       if (isLoaded) {
         (view?.parent as? ViewGroup)?.doOnPreDraw {
           transitionCallback?.onReadyForEnterTransition()
+          // Tellomi（交互审计 A-19）：从会话顶栏点进来的，小头像飞到这里的大头像
+          avatarView?.let { TellomiAvatarHero.land(it) }
         }
       }
     }
