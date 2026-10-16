@@ -39,7 +39,7 @@ class FeedTextTest {
     assertThat("abc".takeCodePoints(3)).isEqualTo("abc")
     assertThat("abc".takeCodePoints(10)).isEqualTo("abc")
     assertThat("".takeCodePoints(5)).isEqualTo("")
-    assertThat("${grin}${grin}".takeCodePoints(2)).isEqualTo("${grin}${grin}")
+    assertThat("${grin}$grin".takeCodePoints(2)).isEqualTo("${grin}$grin")
   }
 
   @Test
@@ -53,10 +53,10 @@ class FeedTextTest {
   fun `a surrogate pair is never split and the limit counts code points`() {
     // take(2) ends in the middle of the first emoji
     assertThat("a${grin}${grin}b".take(2).isWellFormed()).isFalse()
-    assertThat("a${grin}${grin}b".takeCodePoints(3)).isEqualTo("a${grin}${grin}")
-    assertThat("${grin}${grin}${grin}".takeCodePoints(2)).isEqualTo("${grin}${grin}")
+    assertThat("a${grin}${grin}b".takeCodePoints(3)).isEqualTo("a${grin}$grin")
+    assertThat("${grin}${grin}$grin".takeCodePoints(2)).isEqualTo("${grin}$grin")
     for (n in 0..8) {
-      assertThat("${grin}x${grin}y${grin}z${grin}".takeCodePoints(n).isWellFormed()).isTrue()
+      assertThat("${grin}x${grin}y${grin}z$grin".takeCodePoints(n).isWellFormed()).isTrue()
     }
   }
 
@@ -64,23 +64,23 @@ class FeedTextTest {
   fun `a joined emoji is not cut into pieces`() {
     // 5 code points; 3 would leave man + joiner + woman (a broken family)
     assertThat("ab${family}cd".takeCodePoints(4)).isEqualTo("ab")
-    assertThat("ab${family}cd".takeCodePoints(7)).isEqualTo("ab${family}")
+    assertThat("ab${family}cd".takeCodePoints(7)).isEqualTo("ab$family")
     assertThat("ab${family}cd".takeCodePoints(8)).isEqualTo("ab${family}c")
   }
 
   @Test
   fun `skin tone modifiers and flags stay with their base`() {
     assertThat("a${thumbsUpDark}b".takeCodePoints(2)).isEqualTo("a")
-    assertThat("a${thumbsUpDark}b".takeCodePoints(3)).isEqualTo("a${thumbsUpDark}")
+    assertThat("a${thumbsUpDark}b".takeCodePoints(3)).isEqualTo("a$thumbsUpDark")
     assertThat("a${flag}b".takeCodePoints(2)).isEqualTo("a")
-    assertThat("a${flag}b".takeCodePoints(3)).isEqualTo("a${flag}")
+    assertThat("a${flag}b".takeCodePoints(3)).isEqualTo("a$flag")
   }
 
   @Test
   fun `combining marks stay with their letter`() {
     val eAcute = "e\u0301" // é as two code points
     assertThat("a${eAcute}b".takeCodePoints(2)).isEqualTo("a")
-    assertThat("a${eAcute}b".takeCodePoints(3)).isEqualTo("a${eAcute}")
+    assertThat("a${eAcute}b".takeCodePoints(3)).isEqualTo("a$eAcute")
   }
 
   @Test
@@ -104,8 +104,8 @@ class FeedTextTest {
   fun `ellipsis only when something was cut`() {
     assertThat("abc".takeCodePointsWithEllipsis(3)).isEqualTo("abc")
     assertThat("abcd".takeCodePointsWithEllipsis(3)).isEqualTo("abc…")
-    assertThat("${grin}${grin}${grin}".takeCodePointsWithEllipsis(3)).isEqualTo("${grin}${grin}${grin}")
-    assertThat("${grin}${grin}${grin}${grin}".takeCodePointsWithEllipsis(3)).isEqualTo("${grin}${grin}${grin}…")
+    assertThat("${grin}${grin}$grin".takeCodePointsWithEllipsis(3)).isEqualTo("${grin}${grin}$grin")
+    assertThat("${grin}${grin}${grin}$grin".takeCodePointsWithEllipsis(3)).isEqualTo("${grin}${grin}$grin…")
     // 60 emoji is 120 UTF-16 units: the old `length > 60` check would have cut it
     assertThat(grin.repeat(60).takeCodePointsWithEllipsis(60)).isEqualTo(grin.repeat(60))
   }

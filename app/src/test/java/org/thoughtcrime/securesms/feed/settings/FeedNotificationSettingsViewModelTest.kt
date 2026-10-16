@@ -178,7 +178,6 @@ class FeedNotificationSettingsViewModelTest {
     viewModel.setLikes(true)
     advanceUntilIdle()
 
-    
     assertThat(source.stored).isEqualTo(FeedNotificationSettings())
     assertThat(viewModel.state.value.settings).isEqualTo(FeedNotificationSettings())
   }
