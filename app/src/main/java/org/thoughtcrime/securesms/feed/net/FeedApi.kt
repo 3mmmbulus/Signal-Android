@@ -125,7 +125,7 @@ class FeedApi(
     sendNoContent(Request.Builder().url(url).delete())
   }
 
-  /** 日志类事件，一批最多 100 条；失败由调用方丢弃，不重试。 */
+  /** 日志类事件，一批最多 50 条（引擎超过 50 条整批拒收）；失败由调用方丢弃，不重试。 */
   suspend fun events(events: List<FeedEventPayload>) {
     require(events.size <= MAX_EVENTS) { "at most $MAX_EVENTS events per call" }
     val body = FeedJson.encodeToString(FeedEventsRequest.serializer(), FeedEventsRequest(events)).toRequestBody(JSON)
@@ -545,7 +545,7 @@ class FeedApi(
     const val TARGET_SOURCE = "source"
     const val TARGET_TOPIC = "topic"
     const val NOT_FOUND = "not_found"
-    const val MAX_EVENTS = 100
+    const val MAX_EVENTS = 50
 
     const val REACTION_LIKE = "like"
     const val REACTION_SAVE = "save"

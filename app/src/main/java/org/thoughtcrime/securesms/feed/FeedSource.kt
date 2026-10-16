@@ -86,7 +86,7 @@ interface FeedSource {
   /** 发一条。[clientNonce] 每条草稿一个，重试时不变（引擎补上去重后会带上）。 */
   suspend fun publish(draft: FeedDraft, clientNonce: String): FeedCreatePostResponse
 
-  /** 日志类事件（曝光等），一批最多 100 条。 */
+  /** 日志类事件（曝光等），一批最多 50 条。 */
   suspend fun reportEvents(events: List<FeedEventPayload>)
 
   /** 自己的帖子和审核状态（「我的动态」）。 */

@@ -50,7 +50,7 @@ class FeedEventsTest {
   }
 
   @Test
-  fun `buffer says when a batch is full and drains in chunks of 100`() {
+  fun `buffer says when a batch is full and drains in chunks of 50`() {
     val buffer = FeedEventBuffer(batchSize = 3)
     val event = impressionEvent("a", FeedTab.RECOMMEND, Instant.EPOCH)
 
@@ -62,7 +62,7 @@ class FeedEventsTest {
 
     val big = FeedEventBuffer(batchSize = 1000)
     repeat(250) { big.add(event) }
-    assertThat(big.drain().map { it.size }).containsExactly(100, 100, 50)
+    assertThat(big.drain().map { it.size }).containsExactly(50, 50, 50, 50, 50)
   }
 
   @Test
