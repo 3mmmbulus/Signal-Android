@@ -18,6 +18,7 @@ import okhttp3.mockwebserver.MockWebServer
 import org.junit.After
 import org.junit.Before
 import org.junit.Test
+import java.io.IOException
 
 /** tus 上传：分块、断点续传、不能续的错误直接抛。 */
 class FeedImageUploaderTest {
@@ -204,5 +205,50 @@ class FeedImageUploaderTest {
         local.shutdown()
       }
     }
+  }
+
+  @Test
+  fun `a chunk answer that does not advance the offset counts as an interruption and asks the server`() = runBlocking {
+    server.enqueue(created())
+    server.enqueue(accepted(0))
+    server.enqueue(MockResponse().setResponseCode(200).setHeader("Upload-Offset", "0"))
+    server.enqueue(accepted(3))
+
+    val key = FeedImageUploader(api, chunkSize = 4).upload(ByteArray(3))
+
+    assertThat(key).isEqualTo("m/k1")
+    val requests = List(4) { server.takeRequest() }
+    assertThat(requests.map { it.method }).containsExactly("POST", "PATCH", "HEAD", "PATCH")
+  }
+
+  @Test
+  fun `a server that never advances the offset ends after maxResumes instead of looping`() {
+    server.enqueue(created())
+    repeat(3) {
+      server.enqueue(accepted(0))
+      server.enqueue(MockResponse().setResponseCode(200).setHeader("Upload-Offset", "0"))
+    }
+    server.enqueue(accepted(0))
+
+    assertFailure { runBlocking { FeedImageUploader(api, chunkSize = 4, maxResumes = 2).upload(ByteArray(3)) } }
+      .isInstanceOf(IOException::class)
+    // POST + 3 PATCH + 2 HEAD
+    assertThat(server.requestCount).isEqualTo(6)
+  }
+
+  @Test
+  fun `a stuck offset in the middle of an upload resumes from what the server reports`() = runBlocking {
+    server.enqueue(created())
+    server.enqueue(accepted(4))
+    server.enqueue(accepted(4))
+    server.enqueue(MockResponse().setResponseCode(200).setHeader("Upload-Offset", "6"))
+    server.enqueue(accepted(8))
+
+    FeedImageUploader(api, chunkSize = 4).upload(ByteArray(8))
+
+    val requests = List(5) { server.takeRequest() }
+    assertThat(requests.map { it.method }).containsExactly("POST", "PATCH", "PATCH", "HEAD", "PATCH")
+    assertThat(requests[4].getHeader("Upload-Offset")).isEqualTo("6")
+    assertThat(requests[4].bodySize).isEqualTo(2L)
   }
 }
