@@ -133,7 +133,8 @@ public class ConversationListArchiveFragment extends ConversationListFragment
                   ),
                   Snackbars.Duration.LONG,
                   MainSnackbarHostKey.MainChrome.INSTANCE,
-                  null
+                  null,
+                  true // Tellomi（交互审计 A-30）：可撤销的左边倒计时
               ));
             })
     );

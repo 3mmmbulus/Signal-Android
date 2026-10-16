@@ -72,7 +72,13 @@ object Snackbars {
   @Composable
   fun Host(snackbarHostState: SnackbarHostState, modifier: Modifier = Modifier) {
     SnackbarHost(hostState = snackbarHostState, modifier = modifier) {
-      Default(snackbarData = it)
+      // Tellomi（交互审计 A-30）：可撤销的倒计时提示条左边多一个环
+      val countdown = it.visuals as? TellomiCountdownSnackbar.Visuals
+      if (countdown != null) {
+        TellomiCountdownSnackbar.Default(snackbarData = it, visuals = countdown)
+      } else {
+        Default(snackbarData = it)
+      }
     }
   }
 

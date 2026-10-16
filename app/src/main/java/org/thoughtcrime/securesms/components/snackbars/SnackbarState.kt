@@ -18,12 +18,17 @@ import org.thoughtcrime.securesms.R
  * @property hostKey The target host where this snackbar should be displayed. Defaults to [SnackbarHostKey.Global]
  * @property fallbackKey Optional host to fallback upon if the host key is not registered. Defaults to the Global key.
  */
-data class SnackbarState(
+data class SnackbarState @JvmOverloads constructor(
   val message: String,
   val actionState: ActionState? = null,
   val duration: Snackbars.Duration = Snackbars.Duration.SHORT,
   val hostKey: SnackbarHostKey = SnackbarHostKey.Global,
-  val fallbackKey: SnackbarHostKey? = SnackbarHostKey.Global
+  val fallbackKey: SnackbarHostKey? = SnackbarHostKey.Global,
+  /**
+   * Tellomi（交互审计 A-30）：可撤销的：左边倒计时环，停 [org.signal.core.ui.compose.TellomiCountdownSnackbar.UNDO_MILLIS]
+   * （按系统无障碍建议延长），[duration] 不看。
+   */
+  val tellomiUndoCountdown: Boolean = false
 ) {
   /**
    * Configuration for a snackbar action button.

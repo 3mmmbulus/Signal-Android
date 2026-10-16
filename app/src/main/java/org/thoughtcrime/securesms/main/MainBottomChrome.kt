@@ -20,6 +20,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalAccessibilityManager
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.unit.dp
@@ -27,7 +28,9 @@ import org.signal.core.ui.NavigationType
 import org.signal.core.ui.compose.BreakpointPreviews
 import org.signal.core.ui.compose.Previews
 import org.signal.core.ui.compose.Snackbars
+import org.signal.core.ui.compose.TellomiCountdownSnackbar
 import org.signal.core.ui.compose.navigationBarsCompat
+import org.signal.core.ui.compose.showCountdownSnackbar
 import org.signal.core.ui.compose.showSnackbar
 import org.signal.core.ui.rememberIsSplitPane
 import org.thoughtcrime.securesms.components.snackbars.SnackbarHostKey
@@ -141,13 +144,29 @@ fun MainSnackbar(
     modifier = modifier
   )
 
+  // Tellomi（交互审计 A-30）：可撤销的倒计时按系统无障碍建议延长（读屏时多给点时间点「撤销」），环跟着一样长。
+  val accessibilityManager = LocalAccessibilityManager.current
+
   LaunchedEffect(snackbarState) {
     if (snackbarState != null) {
-      val result = hostState.showSnackbar(
-        message = snackbarState.message,
-        actionLabel = snackbarState.actionState?.action,
-        duration = snackbarState.duration
-      )
+      val result = if (snackbarState.tellomiUndoCountdown) {
+        hostState.showCountdownSnackbar(
+          message = snackbarState.message,
+          actionLabel = snackbarState.actionState?.action,
+          countdownMillis = accessibilityManager?.calculateRecommendedTimeoutMillis(
+            originalTimeoutMillis = TellomiCountdownSnackbar.UNDO_MILLIS,
+            containsIcons = true,
+            containsText = true,
+            containsControls = snackbarState.actionState != null
+          ) ?: TellomiCountdownSnackbar.UNDO_MILLIS
+        )
+      } else {
+        hostState.showSnackbar(
+          message = snackbarState.message,
+          actionLabel = snackbarState.actionState?.action,
+          duration = snackbarState.duration
+        )
+      }
 
       when (result) {
         SnackbarResult.Dismissed -> Unit

@@ -1167,7 +1167,8 @@ public class ConversationListFragment extends MainFragment implements Conversati
               ),
               Snackbars.Duration.LONG,
               MainSnackbarHostKey.MainChrome.INSTANCE,
-              null
+              null,
+              true // Tellomi（交互审计 A-30）：可撤销的左边倒计时
           ));
         }));
   }
@@ -1202,7 +1203,8 @@ public class ConversationListFragment extends MainFragment implements Conversati
               ),
               Snackbars.Duration.LONG,
               MainSnackbarHostKey.MainChrome.INSTANCE,
-              null
+              null,
+              true // Tellomi（交互审计 A-30）：可撤销的左边倒计时
           ));
         }));
   }
@@ -1684,7 +1686,8 @@ public class ConversationListFragment extends MainFragment implements Conversati
                   ),
                   Snackbars.Duration.LONG,
                   MainSnackbarHostKey.MainChrome.INSTANCE,
-                  null
+                  null,
+                  true // Tellomi（交互审计 A-30）：可撤销的左边倒计时
               ));
             })
     );
