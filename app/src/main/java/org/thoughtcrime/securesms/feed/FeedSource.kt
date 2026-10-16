@@ -526,7 +526,7 @@ object EmptyFeedSource : FeedSource {
 
 object FeedSources {
 
-  private var remote: Pair<String, RemoteFeedSource>? = null
+  private val remote = FeedSourceSlot<RemoteFeedSource>()
 
   /**
    * 内部用户强制打开动态标签时用本机样例（[SampleFeedSource]），看得到卡片、能点赞，不发任何网络请求；
@@ -549,16 +549,23 @@ object FeedSources {
   @Synchronized
   private fun remoteFor(region: TellomiRegionProfile): FeedSource {
     val baseUrl = region.feed.toHttpUrlOrNull() ?: return EmptyFeedSource
-    val key = "${region.id.id} ${region.feed}"
-    remote?.takeIf { it.first == key }?.let { return it.second }
+    return remote.getOrCreate("${region.id.id} ${region.feed}") {
+      val tokens = CachingFeedTokenSource.fromSignalServer(FeedAuthApi(AppDependencies.authWebSocket))
+      val source = RemoteFeedSource(
+        api = FeedApi(baseUrl, AppDependencies.okHttpClient, tokens),
+        signAudience = { kind, acis -> signAudienceList(kind, acis) }
+      )
+      val clearTokens: suspend () -> Unit = { tokens.clear() }
+      source to clearTokens
+    }
+  }
 
-    val tokens = CachingFeedTokenSource.fromSignalServer(FeedAuthApi(AppDependencies.authWebSocket))
-    val source = RemoteFeedSource(
-      api = FeedApi(baseUrl, AppDependencies.okHttpClient, tokens),
-      signAudience = { kind, acis -> signAudienceList(kind, acis) }
-    )
-    remote = key to source
-    return source
+  /**
+   * 退出登录时调：丢掉当前区的远程来源和它的 token 缓存，下次用的时候重新建、重新向 Signal-Server 要 token。
+   * 上一个账号的 token 不该留到下一次登录（它最长还能用一小时）。
+   */
+  suspend fun reset() {
+    remote.reset()
   }
 
   private suspend fun signAudienceList(kind: String, peerAcis: List<String>): String {
