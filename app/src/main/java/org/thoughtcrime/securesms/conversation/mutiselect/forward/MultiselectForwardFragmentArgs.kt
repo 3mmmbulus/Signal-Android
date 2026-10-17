@@ -23,6 +23,7 @@ import org.thoughtcrime.securesms.database.model.MmsMessageRecord
 import org.thoughtcrime.securesms.mms.PartAuthority
 import org.thoughtcrime.securesms.sharing.MultiShareArgs
 import org.thoughtcrime.securesms.stories.Stories
+import org.thoughtcrime.securesms.util.TellomiLivePhoto
 import org.thoughtcrime.securesms.util.hasSharedContact
 import java.util.function.Consumer
 
@@ -204,8 +205,13 @@ data class MultiselectForwardFragmentArgs @JvmOverloads constructor(
         bucketId = null,
         caption = caption,
         // Tellomi (spec R-1, ADR-0050 semantics): a forward never carries the cover -- it was the original sender's choice.
-        // Live photos (spec R-2): this version can't send the moving half yet, so the forward is the still.
-        transformProperties = transformProperties?.copy(tellomiSpoiler = false, tellomiSpoilerRevealed = false, tellomiLivePhotoVideo = null),
+        // Live photos (spec R-2, ADR-0068 §4.4): a forward keeps the moving half while its upload can still be reused;
+        // older than that, the forward is the still (this device has no copy of the video to upload again).
+        transformProperties = transformProperties?.copy(
+          tellomiSpoiler = false,
+          tellomiSpoilerRevealed = false,
+          tellomiLivePhotoVideo = TellomiLivePhoto.forwardablePointer(this)
+        ),
         fileName = fileName
       )
     }

@@ -302,7 +302,10 @@ class MediaSendFlowViewModel(
       MediaSendFlowEvent.NavigateToFolders -> backStack.goToRecents()
       is MediaSendFlowEvent.OpenInEditor -> openInEditor(event.media)
       is MediaSendFlowEvent.OpenAlbumViewer -> openAlbumViewer(event.media, event.album)
-      is MediaSendFlowEvent.SetAlbumFocusedMedia -> updateState { copy(albumFocusedMedia = event.media) }
+      is MediaSendFlowEvent.SetAlbumFocusedMedia -> {
+        updateState { copy(albumFocusedMedia = event.media) }
+        detectLivePhotos(listOf(event.media))
+      }
       is MediaSendFlowEvent.ToggleAlbumSelected -> toggleAlbumSelected(event.media)
       MediaSendFlowEvent.ShowSelectedFilmstrip -> showSelectedFilmstrip()
       is MediaSendFlowEvent.EditFromAlbum -> editFromAlbum(event.media, event.tool)
@@ -314,6 +317,8 @@ class MediaSendFlowViewModel(
         val selected = selectedMedia.mapTo(mutableSetOf()) { it.uri }
         copy(tellomiSpoileredUris = if (selected.all(tellomiSpoileredUris::contains)) tellomiSpoileredUris - selected else tellomiSpoileredUris + selected)
       }
+      MediaSendFlowEvent.ToggleLive -> toggleLive()
+      is MediaSendFlowEvent.SetLive -> setLive(event.media, event.isOn)
       is MediaSendFlowEvent.AttachmentDockEntrySelected -> sendHudCommand(MediaSendFlowHudCommand.AttachmentDockEntrySelected(event.id))
       is MediaSendFlowEvent.ShowToast -> internalToastEvents.trySend(event.toast)
       is MediaSendFlowEvent.OpenAttachmentPage -> internalState.update { it.copy(attachmentPage = event.page) }
@@ -502,6 +507,7 @@ class MediaSendFlowViewModel(
     albumToolJob?.cancel()
     updateState { copy(album = album, albumFocusedMedia = media, isBrowsingAlbum = true, albumEditPreviews = emptyMap()) }
     backStack.goToEdit()
+    detectLivePhotos(listOf(media))
     // 两端对齐清单 P-6b：在编辑页里改过的那几张，查看器里也照改过的样子显示
     val albumUris = album.map { it.uri }.toSet()
     val edited = state.value.editorStateMap.filter { (uri, editorState) -> uri in albumUris && (editorState as? EditorState.Image)?.model?.isChanged == true }.keys
@@ -519,6 +525,63 @@ class MediaSendFlowViewModel(
         removeMediaHoldingSelection(setOf(media))
       } else {
         addMediaHoldingSelection(setOf(media), focusNewlyAdded = false)
+      }
+    }
+  }
+
+  /**
+   * Tellomi（tellomi/tellomi#1263 spec P-4）：读这几张是不是动态照片（XMP，后台线程），是的话记下视频那一段。
+   * 只有已知会话里才有实况（同「以文件发送」：作为附件的子字段由会话页带进消息）。
+   */
+  private fun detectLivePhotos(media: Collection<Media>) {
+    if (!state.value.isSentByConversation) {
+      return
+    }
+    // 哪些格式可能是动态照片由仓库判断（TellomiMotionPhoto.detect）。
+    val unknown = media.filter { it.uri !in state.value.tellomiLiveRanges }
+    if (unknown.isEmpty()) {
+      return
+    }
+    viewModelScope.launch {
+      for (item in unknown) {
+        val range = repository.tellomiLivePhotoVideo(item) ?: continue
+        updateState { copy(tellomiLiveRanges = tellomiLiveRanges + (item.uri to range)) }
+      }
+    }
+  }
+
+  /** Tellomi（#1263 P-4）：选图格子画实况角标时问的（会话里才读，同 [detectLivePhotos]）。 */
+  internal suspend fun detectLivePhoto(media: Media): TellomiMotionPhoto.VideoRange? {
+    if (!state.value.isSentByConversation) {
+      return null
+    }
+    return state.value.tellomiLiveRanges[media.uri] ?: repository.tellomiLivePhotoVideo(media)
+  }
+
+  /** Tellomi（#1263 P-4）：顶栏实况开关：已选的动态照片全部开 / 全部关（Telegram 两端都是整组一起），没选的格子的图标跟着变。 */
+  private fun toggleLive() {
+    updateState {
+      val live = selectedLiveUris
+      if (live.isEmpty()) {
+        this
+      } else {
+        val turnOn = !isTellomiLiveToggleOn
+        copy(tellomiLiveDefault = turnOn, tellomiLiveOverrides = tellomiLiveOverrides + live.associateWith { turnOn })
+      }
+    }
+  }
+
+  /** Tellomi（#1263 P-4）：查看器里单改一张（Telegram 两端单张查看器里都有这一张的开 / 关）；改了就选上（同 Tellomi iOS #285）。 */
+  private fun setLive(media: Media, isOn: Boolean) {
+    if (media.uri !in state.value.tellomiLiveRanges) {
+      return
+    }
+    mutateSelection {
+      if (state.value.selectedMedia.none { it.uri == media.uri }) {
+        addMediaHoldingSelection(setOf(media), focusNewlyAdded = false)
+      }
+      if (state.value.selectedMedia.any { it.uri == media.uri }) {
+        updateState { copy(tellomiLiveOverrides = tellomiLiveOverrides + (media.uri to isOn)) }
       }
     }
   }
@@ -712,6 +775,7 @@ class MediaSendFlowViewModel(
         }
 
         updatedMedia.lastOrNull { item -> media.any { it.uri == item.uri } }?.let { internalSelectionAdditions.trySend(it) }
+        detectLivePhotos(updatedMedia.filter { item -> item.uri !in selectedUris })
 
         if (initializedEditorStates.values.any { it is EditorState.VideoTrim && it.videoTrimData.isDurationEdited }) {
           internalSnackbarEvents.trySend(SnackbarEvent(message = R.string.MediaSendViewModel__video_trimmed_to_fit))
@@ -875,6 +939,7 @@ class MediaSendFlowViewModel(
         editorStateMap = editorStateMap - removedUris,
         albumEditPreviews = albumEditPreviews - removedUris,
         tellomiSpoileredUris = tellomiSpoileredUris - removedUris,
+        tellomiLiveOverrides = tellomiLiveOverrides - removedUris,
         cameraFirstCapture = newCameraFirstCapture,
         // A removed capture's file goes with it, so it leaves the camera's filmstrip for good.
         cameraCaptureUris = cameraCaptureUris - removedUris
@@ -1462,7 +1527,9 @@ class MediaSendFlowViewModel(
       convertHeicToJpeg = asFile?.convertHeicToJpeg == true,
       captionAboveMedia = snapshot.isCaptionAboveMedia && asFile == null,
       // ADR-0068 §4.4：按文件发、一次性查看的不罩。
-      spoileredUris = if (asFile != null || isViewOnceEnabled()) emptySet() else snapshot.selectedSpoileredUris
+      spoileredUris = if (asFile != null || isViewOnceEnabled()) emptySet() else snapshot.selectedSpoileredUris,
+      // ADR-0068 §4.4：按文件发、一次性查看的不带实况（定时发送的由会话页按静态图发，见 app 的 MediaSelectionRepository）。
+      liveVideos = if (asFile != null || isViewOnceEnabled() || !snapshot.isSentByConversation) emptyMap() else snapshot.selectedLiveVideos
     )
     clearSendNowOptions()
 

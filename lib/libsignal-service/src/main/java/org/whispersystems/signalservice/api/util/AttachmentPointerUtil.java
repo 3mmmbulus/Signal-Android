@@ -177,13 +177,47 @@ public final class AttachmentPointerUtil {
     }
 
     // Tellomi (ADR-0068): only set when true, so ordinary attachments stay byte-identical to upstream. Sent as a file wins
-    // (the receiver ignores a spoiler on it anyway, §4.1 rule 1).
+    // (the receiver ignores a spoiler or a live photo on it anyway, §4.1 rule 1). A live photo's moving half (§4.4) rides on
+    // a still image only, as the nested pointer.
     if (attachment.getTellomiAsFile()) {
       builder.tellomi(new TellomiAttachment.Builder().asFile(true).build());
-    } else if (attachment.getTellomiSpoiler()) {
-      builder.tellomi(new TellomiAttachment.Builder().spoiler(true).build());
+    } else {
+      AttachmentPointer livePhotoVideo = tellomiOutgoingLivePhotoVideo(attachment);
+      if (attachment.getTellomiSpoiler() || livePhotoVideo != null) {
+        TellomiAttachment.Builder tellomi = new TellomiAttachment.Builder();
+        if (attachment.getTellomiSpoiler()) {
+          tellomi.spoiler(true);
+        }
+        if (livePhotoVideo != null) {
+          tellomi.livePhotoVideo(livePhotoVideo);
+        }
+        builder.tellomi(tellomi.build());
+      }
     }
 
     return builder.build();
+  }
+
+  /**
+   * Tellomi (ADR-0068 §4.4, spec P-4): the moving half to send with this still, or null. Only on an image, and the nested
+   * pointer has to pass the same checks the receiver makes ({@link #tellomiLivePhotoVideo(AttachmentPointer)}).
+   */
+  private static AttachmentPointer tellomiOutgoingLivePhotoVideo(SignalServiceAttachmentPointer attachment) {
+    byte[] bytes = attachment.getTellomiLivePhotoVideo();
+    if (bytes == null || !lowerCase(attachment.getContentType()).startsWith("image/")) {
+      return null;
+    }
+    try {
+      AttachmentPointer video = AttachmentPointer.ADAPTER.decode(bytes);
+      if (!lowerCase(video.contentType).startsWith("video/") || video.cdnNumber == null || video.key == null || (video.cdnKey == null && video.cdnId == null)) {
+        return null;
+      }
+      if (video.tellomi != null && video.tellomi.livePhotoVideo != null) {
+        return null;
+      }
+      return video;
+    } catch (java.io.IOException e) {
+      return null;
+    }
   }
 }

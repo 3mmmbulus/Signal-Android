@@ -16,6 +16,7 @@ import org.signal.imageeditor.core.model.EditorModel
 import org.signal.mediasend.MediaConstraints
 import org.signal.mediasend.MediaValidator
 import org.signal.mediasend.SentMediaQuality
+import org.signal.mediasend.TellomiMotionPhoto
 import org.signal.mediasend.screens.edit.video.VideoTrimData
 import org.thoughtcrime.securesms.contacts.paged.ContactSearchKey
 import org.thoughtcrime.securesms.conversation.MessageSendType
@@ -93,7 +94,8 @@ class MediaSelectionRepository(context: Context) {
     scheduledTime: Long = -1,
     sendAsFile: Boolean = false,
     convertHeicToJpeg: Boolean = false,
-    spoileredUris: Set<Uri> = emptySet()
+    spoileredUris: Set<Uri> = emptySet(),
+    liveVideos: Map<Uri, TellomiMotionPhoto.VideoRange> = emptyMap()
   ): Maybe<MediaSendActivityResult> {
     if (selectedMedia.isEmpty()) {
       throw IllegalStateException("No selected media!")
@@ -110,6 +112,8 @@ class MediaSelectionRepository(context: Context) {
       // Tellomi（tellomi/tellomi#1263 P-5，ADR-0068 §4.4）：罩住的那几张（编辑过的换成了新的 URI）。按文件发、一次性查看的不罩。
       val spoileredNewUris: Set<Uri> = if (sendAsFile || isViewOnce) emptySet() else TellomiMediaSpoilers.renderedUris(selectedMedia, oldToNewMediaMap, spoileredUris)
       val updatedMedia = oldToNewMediaMap.values.map { TellomiMediaSpoilers.mark(it, spoileredNewUris) }
+      // Tellomi（#1263 P-4，ADR-0068 §4.4）：开着实况的动态照片（按发出去的 URI）。按文件发、一次性查看、发到故事的不带。
+      val liveSources: Map<Uri, TellomiLivePhotos.Source> = if (sendAsFile || isViewOnce || isSendingToStories) emptyMap() else TellomiLivePhotos.renderedSources(selectedMedia, oldToNewMediaMap, liveVideos)
 
       for (media in updatedMedia) {
         val uri: Uri = media.uri
@@ -211,9 +215,11 @@ class MediaSelectionRepository(context: Context) {
         uploadRepository.applyMediaUpdates(oldToNewMediaMap, singleRecipient)
         uploadRepository.updateCaptions(updatedMedia)
         uploadRepository.updateDisplayOrder(updatedMedia)
-        uploadRepository.getPreUploadResults { uploadResults ->
+        uploadRepository.getPreUploadResults { preUploadResults ->
           // Tellomi（#1263）：预上传的附件在选的时候就落库了（那时还没罩），这里补上遮罩标记，发送时读它。
-          TellomiMediaSpoilers.markPreUploaded(uploadResults, spoileredNewUris)
+          TellomiMediaSpoilers.markPreUploaded(preUploadResults, spoileredNewUris)
+          // Tellomi（#1263 P-4）：实况照片的视频部分另外上传，发送任务等它。
+          val uploadResults = TellomiLivePhotos.withUploadJobs(preUploadResults, liveSources)
           if (contacts.isNotEmpty()) {
             sendMessages(contacts, splitBody, uploadResults, trimmedMentions, trimmedBodyRanges, isViewOnce, clippedVideosForStories)
             uploadRepository.deleteAbandonedAttachments()

@@ -56,7 +56,12 @@ internal data class MediaEditState(
   val isOverCamera: Boolean = false,
   /** Tellomi（#1263，ADR-0068 §4.7）：长按发送里给不给「说明文字上移 / 下移」（[MediaSendFlowState.canMoveCaption]）。 */
   val canMoveCaption: Boolean = false,
-  val isCaptionAboveMedia: Boolean = false
+  val isCaptionAboveMedia: Boolean = false,
+  /**
+   * Tellomi（tellomi/tellomi#1263 spec P-4）：查看器里看过的动态照片各自按实况发不发（不是动态照片的不在里面），左下角的实况键读它。
+   * 只在会话里有。
+   */
+  val albumLiveStates: Map<Uri, Boolean> = emptyMap()
 ) {
 
   /** 长按发送菜单里说明那一项：null = 不给；true = 现在在上方（显示「下移」）。 */
@@ -120,6 +125,7 @@ internal data class MediaEditState(
     isBrowsingAlbum = parentState.isBrowsingAlbum,
     albumEditPreviews = parentState.albumEditPreviews,
     canMoveCaption = parentState.canMoveCaption,
-    isCaptionAboveMedia = parentState.isCaptionAboveMedia
+    isCaptionAboveMedia = parentState.isCaptionAboveMedia,
+    albumLiveStates = if (parentState.isSentByConversation) parentState.tellomiLiveRanges.keys.associateWith(parentState::isTellomiLiveOn) else emptyMap()
   )
 }

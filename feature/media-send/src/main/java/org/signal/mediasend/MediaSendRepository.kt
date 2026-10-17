@@ -85,6 +85,11 @@ interface MediaSendRepository {
   suspend fun send(request: SendRequest): SendResult
 
   /**
+   * Tellomi（tellomi/tellomi#1263 spec P-4）：这一张是不是动态照片（实况）、视频在文件里的哪一段；普通照片是 null。
+   */
+  suspend fun tellomiLivePhotoVideo(media: Media): TellomiMotionPhoto.VideoRange? = null
+
+  /**
    * Gets the maximum video duration in microseconds based on quality.
    *
    * @param quality The sent media quality.
@@ -244,7 +249,12 @@ data class SendRequest(
    * Tellomi（#1263 P-5，ADR-0068 §4.4）：罩住的（按 [selectedMedia] 里的 URI）。只有图片 / 视频罩，发出去带
    * `AttachmentPointer.tellomi.spoiler`、要求协议版本 9；按文件发、一次性查看的不罩。
    */
-  val spoileredUris: Set<Uri> = emptySet()
+  val spoileredUris: Set<Uri> = emptySet(),
+  /**
+   * Tellomi（#1263 P-4，ADR-0068 §4.4）：开着实况的动态照片（按 [selectedMedia] 里的 URI → 视频在原文件里的哪一段）。
+   * 视频另外转码、上传，作为 `AttachmentPointer.tellomi.livePhotoVideo` 跟着静态图发；按文件发、一次性查看的不带。
+   */
+  val liveVideos: Map<Uri, TellomiMotionPhoto.VideoRange> = emptyMap()
 )
 
 /**

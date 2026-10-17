@@ -311,6 +311,7 @@ public final class JobManagerFactories {
       put(SubmitRateLimitPushChallengeJob.KEY,         new SubmitRateLimitPushChallengeJob.Factory());
       put(Svr2MirrorJob.KEY,                           new Svr2MirrorJob.Factory());
       put(Svr3MirrorJob.KEY,                           new Svr3MirrorJob.Factory());
+      put(TellomiLivePhotoUploadJob.KEY,               new TellomiLivePhotoUploadJob.Factory());
       put(ThreadUpdateJob.KEY,                         new ThreadUpdateJob.Factory());
       put(TrimThreadJob.KEY,                           new TrimThreadJob.Factory());
       put(TypingSendJob.KEY,                           new TypingSendJob.Factory());

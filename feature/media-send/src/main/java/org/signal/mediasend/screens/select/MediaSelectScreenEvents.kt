@@ -90,6 +90,9 @@ sealed interface MediaSelectScreenEvents {
   /** Tellomi（#1263 P-5）：「···」→ 罩住图片 ⇄ 取消遮罩。 */
   data object ToggleSpoiler : MediaSelectScreenEvents
 
+  /** Tellomi（#1263 P-4）：顶栏实况开关。 */
+  data object ToggleLive : MediaSelectScreenEvents
+
   /** P-1：左上角 ✕。 */
   data object Close : MediaSelectScreenEvents
 

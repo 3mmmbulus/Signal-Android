@@ -111,7 +111,16 @@ sealed interface MediaSelectState {
     val isCaptionAboveMedia: Boolean = false,
     /** Tellomi（#1263 P-5 / P-6）：「罩住图片」：会话里才有（同「以文件发送」）；罩住的已选。 */
     val canSpoiler: Boolean = false,
-    val spoileredUris: Set<android.net.Uri> = emptySet()
+    val spoileredUris: Set<android.net.Uri> = emptySet(),
+    /**
+     * Tellomi（#1263 P-4）：实况：会话里才有（同「以文件发送」）。[hasSelectedLive] = 已选里有动态照片（顶栏开关才出现）；
+     * [isLiveToggleOn] = 已选的全开着；[liveOnUris] = 开着的已选；[liveDefault] = 没选的动态照片格子的图标跟着它。
+     */
+    val canLive: Boolean = false,
+    val hasSelectedLive: Boolean = false,
+    val isLiveToggleOn: Boolean = false,
+    val liveOnUris: Set<android.net.Uri> = emptySet(),
+    val liveDefault: Boolean = false
   ) {
     companion object {
       fun from(parent: MediaSendFlowState): SendOptions {
@@ -130,7 +139,12 @@ sealed interface MediaSelectState {
           canMoveCaption = sentByConversation,
           isCaptionAboveMedia = parent.isCaptionAboveMedia,
           canSpoiler = sentByConversation,
-          spoileredUris = parent.selectedSpoileredUris
+          spoileredUris = parent.selectedSpoileredUris,
+          canLive = sentByConversation,
+          hasSelectedLive = sentByConversation && parent.selectedLiveUris.isNotEmpty(),
+          isLiveToggleOn = parent.isTellomiLiveToggleOn,
+          liveOnUris = parent.selectedLiveVideos.keys,
+          liveDefault = parent.tellomiLiveDefault
         )
       }
     }

@@ -2345,6 +2345,37 @@ class AttachmentTable(
   }
 
   /**
+   * Tellomi (tellomi/tellomi#1263 P-4, ADR-0068 §4.4): the moving half of a live photo this device is sending, uploaded by
+   * `TellomiLivePhotoUploadJob`. Kept like a received one (the nested pointer's bytes, base64), so the send writes
+   * `tellomi.livePhotoVideo` and this device's bubble shows a live photo. Only on a still image, never on one sent as a
+   * file. Returns whether it was stored.
+   */
+  fun setTellomiLivePhotoVideo(attachmentId: AttachmentId, pointer: String): Boolean {
+    val messageId: Long? = writableDatabase.withinTransaction {
+      val attachment = getAttachment(attachmentId) ?: return@withinTransaction null
+      val current = attachment.transformProperties ?: TransformProperties.empty()
+      if (!MediaUtil.isImageType(attachment.contentType) || current.tellomiAsFile) {
+        return@withinTransaction null
+      }
+      writableDatabase
+        .update(TABLE_NAME)
+        .values(TRANSFORM_PROPERTIES to current.copy(tellomiLivePhotoVideo = pointer).serialize())
+        .where("$ID = ?", attachmentId.id)
+        .run()
+      attachment.mmsId
+    }
+
+    if (messageId == null) {
+      return false
+    }
+    if (messageId != PREUPLOAD_MESSAGE_ID) {
+      notifyConversationListeners(messages.getThreadIdForMessage(messageId))
+      AppDependencies.databaseObserver.notifyAttachmentUpdatedObservers()
+    }
+    return true
+  }
+
+  /**
    * Tellomi (spec R-1, D10): this device has uncovered a covered image / video. Stays uncovered from now on, on this device
    * only; the conversation redraws through the attachment observers.
    */

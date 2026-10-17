@@ -18,6 +18,8 @@ import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.awaitEachGesture
+import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.layout.Arrangement.spacedBy
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxScope
@@ -69,6 +71,8 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.input.pointer.PointerEventPass
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.layout
 import androidx.compose.ui.platform.LocalInspectionMode
 import androidx.compose.ui.platform.testTag
@@ -196,6 +200,16 @@ internal fun MediaPickerFilesScreen(
     }
   }
 
+  // Tellomi（#1263 P-4）：点了实况开关后的提示（null = 不显示）：2.5 秒消失，碰一下屏幕也消失（碰的那一下照常生效）。
+  var liveHint by remember { mutableStateOf<Boolean?>(null) }
+  var liveHintGeneration by remember { mutableIntStateOf(0) }
+  LaunchedEffect(liveHintGeneration) {
+    if (liveHint != null) {
+      delay(PickerLive.HINT_MILLIS)
+      liveHint = null
+    }
+  }
+
   Scaffold(
     topBar = {
       PickerTopBar(
@@ -208,10 +222,22 @@ internal fun MediaPickerFilesScreen(
           scope.launch { attachmentSheet?.expand() }
         },
         onBack = { showSelectedOnly = false },
-        withStatusBarInset = attachmentSheet == null
+        withStatusBarInset = attachmentSheet == null,
+        onLiveToggled = { isOn ->
+          liveHint = isOn
+          liveHintGeneration++
+        }
       )
     },
-    containerColor = MaterialTheme.colorScheme.surface
+    containerColor = MaterialTheme.colorScheme.surface,
+    modifier = Modifier.pointerInput(liveHint != null) {
+      if (liveHint != null) {
+        awaitEachGesture {
+          awaitFirstDown(requireUnconsumed = false, pass = PointerEventPass.Initial)
+          liveHint = null
+        }
+      }
+    }
   ) { paddingValues ->
     Column(
       modifier = Modifier
@@ -272,11 +298,19 @@ internal fun MediaPickerFilesScreen(
               }
             } else {
               val tile: @Composable (Media) -> Unit = { media ->
+                val selectionIndex = state.selectedMedia.indexOfFirst { it.uri == media.uri }
+                // #1263 P-4：动态照片左上角的实况图标；选了的按它自己的开关，没选的跟顶栏开关。
+                val isLive = state.sendOptions.canLive && rememberIsLivePhoto(media)
                 PickerTile(
                   media = media,
-                  selectionIndex = state.selectedMedia.indexOfFirst { it.uri == media.uri },
+                  selectionIndex = selectionIndex,
                   recipientChatColor = recipientChatColor,
                   isSpoilered = media.uri in state.sendOptions.spoileredUris,
+                  liveBadge = when {
+                    !isLive -> null
+                    selectionIndex >= 0 -> media.uri in state.sendOptions.liveOnUris
+                    else -> state.sendOptions.liveDefault
+                  },
                   onEvent = onEvent
                 )
               }
@@ -310,6 +344,14 @@ internal fun MediaPickerFilesScreen(
         if (inlineCaption != null && inlineCaption.isMentionQueryActive && state.selectedMedia.isNotEmpty()) {
           inlineCaption.MentionsOverlay(Modifier.matchParentSize())
         }
+
+        // 提示挂在顶栏实况键下面（照 Telegram 安卓 `showMotionHint`）
+        PickerLiveHint(
+          isOn = liveHint,
+          modifier = Modifier
+            .align(Alignment.TopEnd)
+            .padding(top = 4.dp, end = 8.dp)
+        )
 
         if (deselections.isNotEmpty()) {
           DeselectionUndoBar(
@@ -462,10 +504,12 @@ private fun PickerTopBar(
   showSelectedOnly: Boolean,
   onShowSelectedOnly: () -> Unit,
   onBack: () -> Unit,
-  withStatusBarInset: Boolean = true
+  withStatusBarInset: Boolean = true,
+  onLiveToggled: (Boolean) -> Unit = {}
 ) {
   val count = state.selectedMedia.size
   val menuItems = rememberMoreMenuItems(state)
+  val options = state.sendOptions
 
   Box(
     modifier = Modifier
@@ -505,13 +549,29 @@ private fun PickerTopBar(
       )
     }
 
-    AnimatedVisibility(
-      visible = count > 0 && menuItems.isNotEmpty(),
-      enter = fadeIn(),
-      exit = fadeOut(),
+    Row(
+      verticalAlignment = Alignment.CenterVertically,
+      horizontalArrangement = spacedBy(8.dp),
       modifier = Modifier.align(Alignment.CenterEnd)
     ) {
-      MoreMenuButton(items = menuItems, selectedMedia = state.selectedMedia, onEvent = onEvent)
+      // #1263 P-4：实况开关在「⋮」左边，已选里有动态照片才出现（Telegram 两端同）。
+      AnimatedVisibility(visible = count > 0 && options.hasSelectedLive, enter = scaleIn() + fadeIn(), exit = scaleOut() + fadeOut()) {
+        PickerLiveToggle(
+          isOn = options.isLiveToggleOn,
+          onClick = {
+            onEvent(MediaSelectScreenEvents.ToggleLive)
+            onLiveToggled(!options.isLiveToggleOn)
+          }
+        )
+      }
+
+      AnimatedVisibility(
+        visible = count > 0 && menuItems.isNotEmpty(),
+        enter = fadeIn(),
+        exit = fadeOut()
+      ) {
+        MoreMenuButton(items = menuItems, selectedMedia = state.selectedMedia, onEvent = onEvent)
+      }
     }
   }
 }
@@ -658,26 +718,26 @@ internal fun moreMenuItems(state: MediaSelectState.Files, hasPhoto: Boolean, has
   val options = state.sendOptions
   val anySpoilered = state.selectedMedia.any { it.uri in options.spoileredUris }
   return buildList {
-      // 一次性查看的只能是照片 / 视频本身，文件没有一次性查看；罩了的不能按文件发（同 Telegram 两端；按文件发不带遮罩，ADR-0068 §4.1）。
-      if (state.selectedMedia.isNotEmpty() && options.canSendAsFile && !options.isViewOnceEnabled && !anySpoilered) {
-        add(MoreMenuItem.SEND_AS_FILE)
-      }
-      if (hasPhoto && !options.isViewOnceEnabled) {
-        // D9：默认已经是「高」时这一项换成「以标准质量发送」。
-        add(if (options.sentMediaQuality == SentMediaQuality.HIGH) MoreMenuItem.SEND_STANDARD_QUALITY else MoreMenuItem.SEND_HIGH_QUALITY)
-      }
-      if (state.selectedMedia.size >= 2 && options.canSendSeparately) {
-        add(MoreMenuItem.SEND_SEPARATELY)
-      }
-      // M-2（ADR-0068 §4.7）：写了说明才有；网格里选的都是图片 / 视频（按媒体发）。一次性查看不带说明，也就没有。
-      if (hasCaption && state.selectedMedia.isNotEmpty() && options.canMoveCaption && !options.isViewOnceEnabled) {
-        add(if (options.isCaptionAboveMedia) MoreMenuItem.MOVE_CAPTION_DOWN else MoreMenuItem.MOVE_CAPTION_UP)
-      }
-      // #1263 P-5：会话里、有选中就有（一次性查看的不罩，ADR-0068 §4.4）。有一张没罩是「罩住图片」，全罩了是「取消遮罩」
-      // （照 Telegram iOS `hasGeneric`；安卓 TG 是「有一张罩了就是取消」，两端不同取 iOS，同 spec P-5）。
-      if (state.selectedMedia.isNotEmpty() && options.canSpoiler && !options.isViewOnceEnabled) {
-        add(if (state.selectedMedia.all { it.uri in options.spoileredUris }) MoreMenuItem.REMOVE_SPOILER else MoreMenuItem.HIDE_WITH_SPOILER)
-      }
+    // 一次性查看的只能是照片 / 视频本身，文件没有一次性查看；罩了的不能按文件发（同 Telegram 两端；按文件发不带遮罩，ADR-0068 §4.1）。
+    if (state.selectedMedia.isNotEmpty() && options.canSendAsFile && !options.isViewOnceEnabled && !anySpoilered) {
+      add(MoreMenuItem.SEND_AS_FILE)
+    }
+    if (hasPhoto && !options.isViewOnceEnabled) {
+      // D9：默认已经是「高」时这一项换成「以标准质量发送」。
+      add(if (options.sentMediaQuality == SentMediaQuality.HIGH) MoreMenuItem.SEND_STANDARD_QUALITY else MoreMenuItem.SEND_HIGH_QUALITY)
+    }
+    if (state.selectedMedia.size >= 2 && options.canSendSeparately) {
+      add(MoreMenuItem.SEND_SEPARATELY)
+    }
+    // M-2（ADR-0068 §4.7）：写了说明才有；网格里选的都是图片 / 视频（按媒体发）。一次性查看不带说明，也就没有。
+    if (hasCaption && state.selectedMedia.isNotEmpty() && options.canMoveCaption && !options.isViewOnceEnabled) {
+      add(if (options.isCaptionAboveMedia) MoreMenuItem.MOVE_CAPTION_DOWN else MoreMenuItem.MOVE_CAPTION_UP)
+    }
+    // #1263 P-5：会话里、有选中就有（一次性查看的不罩，ADR-0068 §4.4）。有一张没罩是「罩住图片」，全罩了是「取消遮罩」
+    // （照 Telegram iOS `hasGeneric`；安卓 TG 是「有一张罩了就是取消」，两端不同取 iOS，同 spec P-5）。
+    if (state.selectedMedia.isNotEmpty() && options.canSpoiler && !options.isViewOnceEnabled) {
+      add(if (state.selectedMedia.all { it.uri in options.spoileredUris }) MoreMenuItem.REMOVE_SPOILER else MoreMenuItem.HIDE_WITH_SPOILER)
+    }
   }
 }
 
@@ -769,6 +829,7 @@ private fun PickerTile(
   selectionIndex: Int,
   recipientChatColor: Color?,
   isSpoilered: Boolean = false,
+  liveBadge: Boolean? = null,
   onEvent: (MediaSelectScreenEvents) -> Unit
 ) {
   val openLabel = stringResource(R.string.MediaSelectScreen__open_media)
@@ -800,6 +861,16 @@ private fun PickerTile(
 
     // #1263 P-6：罩住的格子：模糊 + 粒子，0.2 秒淡入淡出；角标和勾画在上面，点照片照旧打开查看器（选图里不能揭示）。
     PickerSpoilerOverlay(visible = isSpoilered, modifier = Modifier.fillMaxSize())
+
+    if (liveBadge != null) {
+      PickerLiveBadge(
+        isOn = liveBadge,
+        testTag = PickerLive.badgeTestTag(media.uri.toString()),
+        modifier = Modifier
+          .align(Alignment.TopStart)
+          .padding(start = 6.dp, top = 6.dp)
+      )
+    }
 
     if (ContentTypeUtil.isVideo(media.contentType) && !media.isVideoGif) {
       PickerVideoBadge(

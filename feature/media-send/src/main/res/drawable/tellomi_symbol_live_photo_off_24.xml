@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  ~ Copyright 2026 重庆半格智能科技有限公司
+  ~ SPDX-License-Identifier: AGPL-3.0-only
+  -->
+<!-- Tellomi (tellomi/tellomi#1263, spec P-4): live photo, off: the same shape with a slash through it. A centre dot, a ring and an outer ring of dots. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="24"
+    android:viewportHeight="24">
+    <group>
+        <!-- A gap either side of the slash. -->
+        <clip-path android:pathData="M0,0H24V24H0ZM2.13,-0.13L-0.13,2.13L21.87,24.13L24.13,21.87Z" />
+        <path
+            android:fillColor="#FFFFFFFF"
+            android:pathData="M9.400,12.000a2.600,2.600 0 1,0 5.200,0a2.600,2.600 0 1,0 -5.200,0z" />
+        <path
+            android:fillColor="#FFFFFFFF"
+            android:fillType="evenOdd"
+            android:pathData="M5.600,12.000a6.400,6.400 0 1,0 12.800,0a6.400,6.400 0 1,0 -12.800,0zM7.100,12.000a4.900,4.900 0 1,0 9.800,0a4.900,4.900 0 1,0 -9.800,0z" />
+        <path
+            android:fillColor="#FFFFFFFF"
+            android:pathData="M20.800,12.000a0.800,0.800 0 1,0 1.600,0a0.800,0.800 0 1,0 -1.600,0zM20.221,15.283a0.800,0.800 0 1,0 1.600,0a0.800,0.800 0 1,0 -1.600,0zM18.554,18.171a0.800,0.800 0 1,0 1.600,0a0.800,0.800 0 1,0 -1.600,0zM16.000,20.314a0.800,0.800 0 1,0 1.600,0a0.800,0.800 0 1,0 -1.600,0zM12.867,21.454a0.800,0.800 0 1,0 1.600,0a0.800,0.800 0 1,0 -1.600,0zM9.533,21.454a0.800,0.800 0 1,0 1.600,0a0.800,0.800 0 1,0 -1.600,0zM6.400,20.314a0.800,0.800 0 1,0 1.600,0a0.800,0.800 0 1,0 -1.600,0zM3.846,18.171a0.800,0.800 0 1,0 1.600,0a0.800,0.800 0 1,0 -1.600,0zM2.179,15.283a0.800,0.800 0 1,0 1.600,0a0.800,0.800 0 1,0 -1.600,0zM1.600,12.000a0.800,0.800 0 1,0 1.600,0a0.800,0.800 0 1,0 -1.600,0zM2.179,8.717a0.800,0.800 0 1,0 1.600,0a0.800,0.800 0 1,0 -1.600,0zM3.846,5.829a0.800,0.800 0 1,0 1.600,0a0.800,0.800 0 1,0 -1.600,0zM6.400,3.686a0.800,0.800 0 1,0 1.600,0a0.800,0.800 0 1,0 -1.600,0zM9.533,2.546a0.800,0.800 0 1,0 1.600,0a0.800,0.800 0 1,0 -1.600,0zM12.867,2.546a0.800,0.800 0 1,0 1.600,0a0.800,0.800 0 1,0 -1.600,0zM16.000,3.686a0.800,0.800 0 1,0 1.600,0a0.800,0.800 0 1,0 -1.600,0zM18.554,5.829a0.800,0.800 0 1,0 1.600,0a0.800,0.800 0 1,0 -1.600,0zM20.221,8.717a0.800,0.800 0 1,0 1.600,0a0.800,0.800 0 1,0 -1.600,0z" />
+    </group>
+    <path
+        android:fillColor="#00000000"
+        android:strokeColor="#FFFFFFFF"
+        android:strokeWidth="1.5"
+        android:strokeLineCap="round"
+        android:pathData="M3.2,3.2L20.8,20.8" />
+</vector>

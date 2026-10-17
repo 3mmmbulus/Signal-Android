@@ -102,6 +102,12 @@ internal sealed interface MediaSendFlowEvent {
   /** Tellomi（#1263 P-5，ADR-0068 §4.4）：「···」→ 罩住图片（有一张没罩就罩上全部已选）⇄ 取消遮罩（全罩了就全部拿掉）。 */
   data object ToggleSpoiler : MediaSendFlowEvent
 
+  /** Tellomi（#1263 P-4）：顶栏实况开关：已选的动态照片全部开 / 全部关，没逐张改过的跟着变。 */
+  data object ToggleLive : MediaSendFlowEvent
+
+  /** Tellomi（#1263 P-4）：查看器里单改一张的实况；没选的先选上（同 Tellomi iOS #285）。 */
+  data class SetLive(val media: Media, val isOn: Boolean) : MediaSendFlowEvent
+
   /**
    * P-5：「···」里的立即发送。[quality] 非空时这一次用它发（D9：不写设置）；[separately] 时一张一条、说明挂最后一条。
    * [asFile]（tellomi/tellomi#1263，ADR-0068）时按文件发原图，也是一个一条；[convertHeicToJpeg] 时其中的 HEIC 先转成 JPEG。

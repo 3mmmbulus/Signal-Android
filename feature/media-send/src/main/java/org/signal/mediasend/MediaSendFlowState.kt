@@ -65,6 +65,18 @@ data class MediaSendFlowState(
    */
   val tellomiSpoileredUris: Set<Uri> = emptySet(),
   /**
+   * Tellomi（tellomi/tellomi#1263 spec P-4，ADR-0068 §4.4）：看过的照片里哪些是动态照片（实况），视频在文件里的哪一段。
+   * 勾选的、在查看器里看到的才去读（读文件开头的 XMP）。
+   */
+  val tellomiLiveRanges: Map<Uri, TellomiMotionPhoto.VideoRange> = emptyMap(),
+  /**
+   * Tellomi（#1263 P-4）：实况开关。默认关（关 = 按静态图发），只管这一次打开的面板、不记住（Telegram iOS 每次新建；
+   * 安卓记进设置，只有一端有，不做）。顶栏开关改它；没逐张改过的实况照片跟着它。
+   */
+  val tellomiLiveDefault: Boolean = false,
+  /** Tellomi（#1263 P-4）：逐张的实况开关：顶栏开关一按，已选的全改成同一个值；查看器里可以单改一张。取消勾选就拿掉。 */
+  val tellomiLiveOverrides: Map<Uri, Boolean> = emptyMap(),
+  /**
    * Optional message/caption text to accompany the media. Retains mention and styling spans.
    */
   val message: @WriteWith<NullableCharSequenceParceler> CharSequence? = null,
@@ -209,6 +221,21 @@ data class MediaSendFlowState(
    */
   val canMoveCaption: Boolean
     get() = isSentByConversation && !message.isNullOrBlank() && !isViewOnceEnabled
+
+  /** Tellomi（#1263 P-4）：这一张按实况发不发（不是动态照片就是 false）：逐张改过的按它，没改过的跟顶栏开关。 */
+  fun isTellomiLiveOn(uri: Uri): Boolean = uri in tellomiLiveRanges && (tellomiLiveOverrides[uri] ?: tellomiLiveDefault)
+
+  /** Tellomi（#1263 P-4）：已选里的动态照片。 */
+  val selectedLiveUris: List<Uri>
+    get() = selectedMedia.mapNotNull { it.uri.takeIf(tellomiLiveRanges::containsKey) }
+
+  /** Tellomi（#1263 P-4）：顶栏实况开关亮不亮：已选的动态照片全部开着（有一张关着就是关，同 Telegram 安卓 `areLivePhotosEnabled`）。 */
+  val isTellomiLiveToggleOn: Boolean
+    get() = selectedLiveUris.let { live -> live.isNotEmpty() && live.all(::isTellomiLiveOn) }
+
+  /** Tellomi（#1263 P-4）：要连视频一起发的已选（原 URI → 视频那一段）。 */
+  val selectedLiveVideos: Map<Uri, TellomiMotionPhoto.VideoRange>
+    get() = selectedMedia.mapNotNull { media -> tellomiLiveRanges[media.uri]?.takeIf { isTellomiLiveOn(media.uri) }?.let { media.uri to it } }.toMap()
 
   /** Tellomi（#1263 P-5）：罩住的已选（取消勾选的不算）。 */
   val selectedSpoileredUris: Set<Uri>

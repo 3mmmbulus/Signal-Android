@@ -50,6 +50,7 @@ import org.thoughtcrime.securesms.transport.RetryLaterException
 import org.thoughtcrime.securesms.transport.UndeliverableMessageException
 import org.thoughtcrime.securesms.util.MediaUtil
 import org.thoughtcrime.securesms.util.TellomiCaptionAbove
+import org.thoughtcrime.securesms.util.TellomiLivePhoto
 import org.whispersystems.signalservice.api.InvalidPreKeyException
 import org.whispersystems.signalservice.api.crypto.AttachmentCipherStreamUtil.getCiphertextLength
 import org.whispersystems.signalservice.api.messages.AttachmentTransferProgress
@@ -267,10 +268,11 @@ abstract class PushSendJob protected constructor(parameters: Parameters) : BaseJ
   }
 
   protected fun getAttachmentPointersFor(attachments: List<Attachment>): List<SignalServiceAttachment> {
-    return attachments.mapNotNull { getAttachmentPointerFor(it) }
+    // Tellomi（#1263 P-4）：只有正文附件带实况的视频部分（引用缩略图、贴纸、链接预览不带）。
+    return attachments.mapNotNull { getAttachmentPointerFor(it, includeTellomiLivePhoto = true) }
   }
 
-  protected fun getAttachmentPointerFor(attachment: Attachment): SignalServiceAttachment? {
+  protected fun getAttachmentPointerFor(attachment: Attachment, includeTellomiLivePhoto: Boolean = false): SignalServiceAttachment? {
     if (TextUtils.isEmpty(attachment.remoteLocation)) {
       Log.w(TAG, "empty content id")
       return null
@@ -320,7 +322,9 @@ abstract class PushSendJob protected constructor(parameters: Parameters) : BaseJ
         tellomiAsFile = attachment.transformProperties?.tellomiAsFile == true,
         // Tellomi（#1263 P-5，ADR-0068 §4.4）：选图时罩住的（引用缩略图照原图带着）；按文件的不罩。
         tellomiSpoiler = attachment.transformProperties?.let { it.tellomiSpoiler && !it.tellomiAsFile } == true &&
-          MediaUtil.isImageOrVideoType(attachment.contentType)
+          MediaUtil.isImageOrVideoType(attachment.contentType),
+        // Tellomi（#1263 P-4，ADR-0068 §4.4）：实况照片的视频部分（TellomiLivePhotoUploadJob 传好、记在静态图上的指针）。
+        tellomiLivePhotoVideo = if (includeTellomiLivePhoto && MediaUtil.isImageType(attachment.contentType)) TellomiLivePhoto.videoPointerBytes(attachment) else null
       )
     } catch (e: IOException) {
       Log.w(TAG, e)

@@ -20,7 +20,10 @@ import org.whispersystems.signalservice.api.crypto.AttachmentCipherStreamUtil
 import org.whispersystems.signalservice.api.messages.SignalServiceAttachmentPointer
 import org.whispersystems.signalservice.api.util.AttachmentPointerUtil
 import org.whispersystems.signalservice.internal.crypto.PaddingInputStream
+import java.io.File
+import java.io.FileInputStream
 import java.util.concurrent.ConcurrentHashMap
+import java.util.concurrent.TimeUnit
 
 /**
  * Tellomi（tellomi/tellomi#1263，ADR-0068 §4.1，spec R-2）：收到的实况照片的动态部分。
@@ -57,6 +60,55 @@ object TellomiLivePhoto {
     } catch (e: Exception) {
       Log.w(TAG, "Couldn't read the live photo video pointer", e)
       null
+    }
+  }
+
+  /** 动态部分的指针原样的字节（发送时写进 `AttachmentPointer.tellomi.livePhotoVideo`）；没有、解不开就是 null。按文件发的没有。 */
+  @JvmStatic
+  fun videoPointerBytes(attachment: Attachment?): ByteArray? {
+    val properties = attachment?.transformProperties ?: return null
+    if (properties.tellomiAsFile) {
+      return null
+    }
+    val encoded = properties.tellomiLivePhotoVideo ?: return null
+    return try {
+      Base64.decode(encoded)
+    } catch (e: Exception) {
+      Log.w(TAG, "Couldn't read the live photo video pointer", e)
+      null
+    }
+  }
+
+  /** 转发时上传还能复用多久（同附件自己的 `AttachmentUploadJob.UPLOAD_REUSE_THRESHOLD`，3 天）。 */
+  val FORWARD_REUSE_MILLIS: Long = TimeUnit.DAYS.toMillis(3)
+
+  /**
+   * Tellomi（#1263 P-4，ADR-0068 §4.4）：转发时带不带动态部分：上传还在 [FORWARD_REUSE_MILLIS] 之内就原样带上（同一个 CDN 对象），
+   * 更早的、读不出上传时间的只转静态图（本机没有视频可以重传）。
+   */
+  @JvmStatic
+  fun forwardablePointer(attachment: Attachment?, now: Long = System.currentTimeMillis()): String? {
+    val encoded = attachment?.transformProperties?.tellomiLivePhotoVideo ?: return null
+    val uploaded = videoPointer(attachment)?.uploadTimestamp ?: return null
+    return encoded.takeIf { uploaded > 0 && now - uploaded in 0 until FORWARD_REUSE_MILLIS }
+  }
+
+  /**
+   * Tellomi（#1263 P-4）：自己刚发出去的实况照片：这次运行里播本机转好的那份（拷进加密的临时存储），不用再从 CDN 下回来。
+   */
+  @JvmStatic
+  @WorkerThread
+  fun rememberLocal(context: Context, attachmentId: AttachmentId, video: File) {
+    try {
+      val uri = FileInputStream(video).use { input ->
+        AppDependencies.blobs
+          .forData(input, video.length())
+          .withMimeType(MediaUtil.VIDEO_MP4)
+          .createForSingleSessionOnDisk(context)
+      }
+      downloaded[attachmentId] = uri
+    } catch (e: Exception) {
+      Log.w(TAG, "[$attachmentId] Couldn't keep the sent live photo video for playback", e)
     }
   }
 

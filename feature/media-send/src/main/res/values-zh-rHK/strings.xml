@@ -106,6 +106,11 @@
   <string name="MediaSelectScreen__move_caption_down">說明文字下移</string>
   <string name="MediaSelectScreen__hide_with_spoiler">罩住圖片</string>
   <string name="MediaSelectScreen__remove_spoiler">取消遮罩</string>
+  <string name="MediaSelectScreen__live_photo">實況照片</string>
+  <string name="MediaSelectScreen__live_photo_on">實況照片已啟用</string>
+  <string name="MediaSelectScreen__live_photo_off">實況照片已關閉</string>
+  <string name="MediaSelectScreen__live">實況</string>
+  <string name="MediaSelectScreen__live_off">實況關閉</string>
   <string name="MediaSelectScreen__open_media">打開</string>
   <string name="MediaSelectScreen__select">選取</string>
   <string name="MediaSelectScreen__you_have_limited_access">你已限制 Tellomi 存取相片。</string>

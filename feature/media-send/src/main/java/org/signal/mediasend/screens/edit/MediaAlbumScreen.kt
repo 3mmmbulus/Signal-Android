@@ -19,9 +19,11 @@ import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.gestures.draggable
 import androidx.compose.foundation.gestures.rememberDraggableState
 import androidx.compose.foundation.gestures.snapping.SnapPosition
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.systemBarsPadding
@@ -37,6 +39,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -63,6 +66,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.drop
 import kotlinx.coroutines.launch
 import org.signal.core.models.media.Media
@@ -76,6 +80,9 @@ import org.signal.mediasend.AlbumEditTool
 import org.signal.mediasend.R
 import org.signal.mediasend.screens.MediaSendMetrics
 import org.signal.mediasend.screens.edit.image.TellomiAdjustToolbarButton
+import org.signal.mediasend.screens.select.AlbumLiveButton
+import org.signal.mediasend.screens.select.PickerLive
+import org.signal.mediasend.screens.select.PickerLiveHint
 import org.signal.mediasend.screens.select.SelectionCheck
 
 @Composable
@@ -111,6 +118,16 @@ internal fun MediaAlbumScreen(
   val shownMedia = album.getOrNull(pagerState.currentPage)
   val isSmallWindowBreakpoint = rememberWindowBreakpoint() is WindowBreakpoint.Small
   val showEditShortcuts = shownMedia != null && AlbumViewerGestures.isEditableImage(shownMedia.contentType)
+  // Tellomi（tellomi/tellomi#1263 P-4）：这一张是动态照片时左下角的实况键（null = 不是 / 不在会话里）；点了提示 2.5 秒。
+  val shownLive: Boolean? = shownMedia?.let { state.albumLiveStates[it.uri] }
+  var liveHint by remember { mutableStateOf<Boolean?>(null) }
+  var liveHintGeneration by remember { mutableIntStateOf(0) }
+  LaunchedEffect(liveHintGeneration) {
+    if (liveHint != null) {
+      delay(PickerLive.HINT_MILLIS)
+      liveHint = null
+    }
+  }
 
   Box(
     modifier = Modifier
@@ -213,6 +230,27 @@ internal fun MediaAlbumScreen(
         .alpha(chromeAlpha),
       horizontalAlignment = Alignment.CenterHorizontally
     ) {
+      // 实况键在说明框上面、靠左（照 Telegram 安卓 `PhotoViewer.livePhotoButton`），提示在它上面。
+      if (shownLive != null && shownMedia != null) {
+        Column(
+          verticalArrangement = Arrangement.spacedBy(6.dp),
+          modifier = Modifier
+            .widthIn(max = MediaSendMetrics.BottomBarMaxWidth)
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp)
+        ) {
+          PickerLiveHint(isOn = if (shownLive == liveHint) liveHint else null)
+          AlbumLiveButton(
+            isOn = shownLive,
+            onClick = {
+              onEvent(MediaEditScreenEvents.SetAlbumLive(shownMedia, !shownLive))
+              liveHint = !shownLive
+              liveHintGeneration++
+            }
+          )
+        }
+      }
+
       if (isSmallWindowBreakpoint && showEditShortcuts && shownMedia != null) {
         AlbumEditShortcuts(media = shownMedia, onEvent = onEvent)
       }

@@ -39,6 +39,7 @@ import org.signal.mediasend.SendRequest
 import org.signal.mediasend.SendResult
 import org.signal.mediasend.SentMediaQuality
 import org.signal.mediasend.StorySendRequirements
+import org.signal.mediasend.TellomiMotionPhoto
 import org.signal.mediasend.preupload.PreUploadResult
 import org.signal.mediasend.screens.edit.image.BrushWidths
 import org.thoughtcrime.securesms.components.mention.MentionAnnotation
@@ -235,7 +236,8 @@ object MediaSendV3Repository : MediaSendRepository {
         scheduledTime = request.scheduledTime,
         sendAsFile = request.sendAsFile,
         convertHeicToJpeg = request.convertHeicToJpeg,
-        spoileredUris = request.spoileredUris
+        spoileredUris = request.spoileredUris,
+        liveVideos = request.liveVideos
       ).blockingGet()
 
       // Tellomi（tellomi/tellomi#1261 P-5）：「单独发送」由会话页一张一条地发（只有已知的单个会话才有这一项）；
@@ -252,6 +254,11 @@ object MediaSendV3Repository : MediaSendRepository {
     } catch (exception: Exception) {
       SendResult.Error(exception.message ?: "Failed to send media.")
     }
+  }
+
+  /** Tellomi（tellomi/tellomi#1263 P-4）：动态照片（读 XMP）。 */
+  override suspend fun tellomiLivePhotoVideo(media: Media): TellomiMotionPhoto.VideoRange? = withContext(Dispatchers.IO) {
+    TellomiMotionPhoto.detect(appContext, media)
   }
 
   override fun getMaxVideoDurationUs(quality: SentMediaQuality, duration: Duration): Long {

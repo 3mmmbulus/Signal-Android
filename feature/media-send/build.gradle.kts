@@ -37,6 +37,9 @@ dependencies {
   implementation(project(":lib:video"))
   implementation(project(":feature:camera"))
 
+  // Tellomi (tellomi/tellomi#1263 P-4): reads the XMP that says a photo is a Motion Photo.
+  implementation(libs.androidx.exifinterface)
+
   // Compose BOM
   platform(libs.androidx.compose.bom).let { composeBom ->
     implementation(composeBom)
