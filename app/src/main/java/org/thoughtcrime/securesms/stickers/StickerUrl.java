@@ -23,8 +23,8 @@ public class StickerUrl {
   // Tellomi：新旧两种形状都认（见 docs/signal/LINKS_AND_SCHEMES.md）
   //   旧：https://signal.art/addstickers/#pack_id=…&pack_key=…
   //   新：https://tell.cc/s#pack_id=…&pack_key=…
-  // 「发出」这一侧（createShareLink / createActionUri）暂时仍是旧形状：
-  // 按两阶段策略，等三端都能接受新形状之后再统一翻。
+  // 「发出」这一侧：分享链接 2026-10-17 翻到新形状（tellomi/tellomi#1687；三端都已接受 tell.cc/s，Desktop 早已发新形状）。
+  // createActionUri 的 sgnl:// 是 App 内部跳转用的，不对外，不动。
   private static final Pattern STICKER_URL_PATTERN = Pattern.compile("^https://signal\\.art/addstickers/#pack_id=(.*)&pack_key=(.*)$");
   private static final Pattern STICKER_URL_PATTERN_TELLOMI = Pattern.compile("^https://tell\\.cc/s/?#pack_id=(.*)&pack_key=(.*)$");
 
@@ -77,7 +77,7 @@ public class StickerUrl {
   }
 
   public static String createShareLink(@NonNull String packId, @NonNull String packKey) {
-    return "https://signal.art/addstickers/#pack_id=" + packId + "&pack_key=" + packKey;
+    return "https://tell.cc/s#pack_id=" + packId + "&pack_key=" + packKey;
   }
 
   private static boolean isValidHex(String value) {

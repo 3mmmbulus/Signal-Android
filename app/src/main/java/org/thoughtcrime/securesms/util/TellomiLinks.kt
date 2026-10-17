@@ -19,7 +19,7 @@ import org.signal.core.util.TellomiUsernames
  * 1. **接受**：三端各自独立上线「新旧都认」，顺序无所谓 —— 就是这个文件。
  * 2. **发出**：等三端都到 1 之后，再把「生成链接」翻到新形状。tellomi/tellomi#1113 翻了三种：
  *    用户名链接（`UsernameRepository.BASE_URL`）、群邀请（`GroupInviteLinkUrl`）、通话链接（`CallLinks.url()`）；
- *    贴纸（`StickerUrl`）仍发 `signal.art`，与 iOS 一起另做。本文件只管判定与解析。
+ *    贴纸（`StickerUrl.createShareLink`）2026-10-17 也翻了（tellomi/tellomi#1687）。本文件只管判定与解析。
  *
  * 为什么集中在一处：这些字面量原本散在十几个文件里（SignalMeUtil / GroupInviteLinkUrl /
  * StickerUrl / CallLinks / LinkDeviceRepository / CommunicationActions / …），
