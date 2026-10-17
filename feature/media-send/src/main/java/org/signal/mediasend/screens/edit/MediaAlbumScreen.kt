@@ -28,6 +28,7 @@ import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.systemBarsPadding
 import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.layout.wrapContentWidth
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.shape.CircleShape
@@ -56,6 +57,7 @@ import androidx.compose.ui.geometry.lerp
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.input.pointer.positionChanged
 import androidx.compose.ui.layout.ContentScale
@@ -63,6 +65,7 @@ import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.res.vectorResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
@@ -81,6 +84,7 @@ import org.signal.mediasend.R
 import org.signal.mediasend.screens.MediaSendMetrics
 import org.signal.mediasend.screens.edit.image.TellomiAdjustToolbarButton
 import org.signal.mediasend.screens.select.AlbumLiveButton
+import org.signal.mediasend.screens.select.PickerHint
 import org.signal.mediasend.screens.select.PickerLive
 import org.signal.mediasend.screens.select.PickerLiveHint
 import org.signal.mediasend.screens.select.SelectionCheck
@@ -126,6 +130,17 @@ internal fun MediaAlbumScreen(
     if (liveHint != null) {
       delay(PickerLive.HINT_MILLIS)
       liveHint = null
+    }
+  }
+  // Tellomi（tellomi/tellomi#1714，ADR-0079 §4.4）：说明框右侧的计时键（一对一会话里、照片 / 视频才有）；值变了才提示。
+  val shownTimerAvailable = state.canSetViewOnceTimer && shownMedia != null && AlbumViewerGestures.isPhotoOrVideo(shownMedia.contentType)
+  val shownChoice: Int? = shownMedia?.let { state.viewOnceChoices[it.uri] }
+  var timerHint by remember { mutableStateOf<Pair<Int?, Boolean>?>(null) }
+  var timerHintGeneration by remember { mutableIntStateOf(0) }
+  LaunchedEffect(timerHintGeneration) {
+    if (timerHint != null) {
+      delay(PickerLive.HINT_MILLIS)
+      timerHint = null
     }
   }
 
@@ -230,6 +245,19 @@ internal fun MediaAlbumScreen(
         .alpha(chromeAlpha),
       horizontalAlignment = Alignment.CenterHorizontally
     ) {
+      // 计时的提示在说明框上面、靠右（计时键在说明框右侧）。
+      PickerHint(
+        text = timerHint?.let { (choice, isVideo) -> viewOnceChoiceHint(choice, isVideo) },
+        icon = ImageVector.vectorResource(R.drawable.tellomi_symbol_timer_24),
+        testTag = AlbumViewOnceTimer.HINT_TEST_TAG,
+        modifier = Modifier
+          .widthIn(max = MediaSendMetrics.BottomBarMaxWidth)
+          .fillMaxWidth()
+          .padding(horizontal = 16.dp)
+          .padding(bottom = 6.dp)
+          .wrapContentWidth(Alignment.End)
+      )
+
       // 实况键在说明框上面、靠左（照 Telegram 安卓 `PhotoViewer.livePhotoButton`），提示在它上面。
       if (shownLive != null && shownMedia != null) {
         Column(
@@ -259,16 +287,34 @@ internal fun MediaAlbumScreen(
         AddAMessageRow(
           enabled = !state.isSending,
           sendEnabled = !state.isSending && state.selectedMedia.isNotEmpty(),
-          canScheduleSend = !state.isStory,
+          canScheduleSend = !state.isStory && !state.hasTimedSelection,
           captionAboveMedia = state.captionAboveMediaOption,
           sendPreviewMedia = state.selectedMedia,
-          viewOnceAvailable = state.isViewOnceAvailable,
+          // #1714：一对一会话里计时键代替上游的一次性查看开关（「一次性查看」是计时菜单的第一项）。
+          viewOnceAvailable = state.isViewOnceAvailable && !shownTimerAvailable,
           viewOnce = state.isViewOnceEnabled,
           isReply = state.isReply,
           message = state.message,
           recipientChatColor = recipientChatColor,
           onEvent = onEvent,
           onNextClick = { onEvent(MediaEditScreenEvents.NextClick) },
+          trailingAction = if (shownTimerAvailable && shownMedia != null) {
+            {
+              AlbumViewOnceTimerButton(
+                choice = shownChoice,
+                accentColor = recipientChatColor ?: MaterialTheme.colorScheme.primary,
+                onSelect = { choice ->
+                  onEvent(MediaEditScreenEvents.SetAlbumViewOnceChoice(shownMedia, choice))
+                  if (choice != shownChoice) {
+                    timerHint = choice to AlbumViewerGestures.isVideo(shownMedia.contentType)
+                    timerHintGeneration++
+                  }
+                }
+              )
+            }
+          } else {
+            null
+          },
           modifier = Modifier
             .widthIn(max = MediaSendMetrics.BottomBarMaxWidth)
             .padding(horizontal = 16.dp)

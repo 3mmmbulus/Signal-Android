@@ -30,6 +30,7 @@ import org.thoughtcrime.securesms.transport.RetryLaterException
 import org.thoughtcrime.securesms.transport.UndeliverableMessageException
 import org.thoughtcrime.securesms.util.RemoteConfig
 import org.thoughtcrime.securesms.util.SignalLocalMetrics
+import org.thoughtcrime.securesms.util.TellomiViewOnceTimer
 import org.whispersystems.signalservice.api.SignalServiceMessageSender.IndividualSendEvents
 import org.whispersystems.signalservice.api.crypto.ContentHint
 import org.whispersystems.signalservice.api.crypto.UntrustedIdentityException
@@ -310,6 +311,8 @@ class IndividualSendJob private constructor(parameters: Parameters, private val 
         .withPollTerminate(pollTerminate)
         .withPinnedMessage(pinnedMessage)
         .withTellomiCaptionAboveMedia(isTellomiCaptionAboveMedia(message))
+        // Tellomi（ADR-0079）：计时的一次性查看带秒数（只在一对一会话里能设）。
+        .withTellomiViewOnceSeconds(if (message.isViewOnce) TellomiViewOnceTimer.seconds(message.messageExtras) else null)
 
       if (message.parentStoryId != null) {
         try {

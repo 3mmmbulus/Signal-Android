@@ -56,7 +56,9 @@ class SignalServiceDataMessage private constructor(
   val unpinnedMessage: Optional<UnpinnedMessage>,
   val adminDelete: Optional<AdminDelete>,
   /** Tellomi（ADR-0068 §4.7）：`DataMessage.tellomi.captionAboveMedia`，说明文字画在媒体上方。只在为真时写。 */
-  val tellomiCaptionAboveMedia: Boolean = false
+  val tellomiCaptionAboveMedia: Boolean = false,
+  /** Tellomi（ADR-0079）：`DataMessage.tellomi.viewOnceSeconds`，计时的一次性查看打开后看几秒（3 / 10 / 30）。只和一次性查看一起写。 */
+  val tellomiViewOnceSeconds: Int? = null
 ) {
   val isActivatePaymentsRequest: Boolean = payment.map { it.isActivationRequest }.orElse(false)
   val isPaymentsActivated: Boolean = payment.map { it.isActivation }.orElse(false)
@@ -86,6 +88,7 @@ class SignalServiceDataMessage private constructor(
 
   class Builder {
     private var tellomiCaptionAboveMedia: Boolean = false
+    private var tellomiViewOnceSeconds: Int? = null
     private var timestamp: Long = 0
     private var groupV2: SignalServiceGroupV2? = null
     private val attachments: MutableList<SignalServiceAttachment> = LinkedList<SignalServiceAttachment>()
@@ -257,6 +260,12 @@ class SignalServiceDataMessage private constructor(
       return this
     }
 
+    /** Tellomi（ADR-0079）：计时的一次性查看打开后看几秒；null = 普通一次性查看（或不是一次性查看）。 */
+    fun withTellomiViewOnceSeconds(seconds: Int?): Builder {
+      this.tellomiViewOnceSeconds = seconds
+      return this
+    }
+
     fun withUnpinnedMessage(unpinnedMessage: UnpinnedMessage?): Builder {
       this.unpinnedMessage = unpinnedMessage
       return this
@@ -301,7 +310,8 @@ class SignalServiceDataMessage private constructor(
         pinnedMessage = pinnedMessage.asOptional(),
         unpinnedMessage = unpinnedMessage.asOptional(),
         adminDelete = adminDelete.asOptional(),
-        tellomiCaptionAboveMedia = tellomiCaptionAboveMedia
+        tellomiCaptionAboveMedia = tellomiCaptionAboveMedia,
+        tellomiViewOnceSeconds = tellomiViewOnceSeconds
       )
     }
   }

@@ -38,6 +38,16 @@
 
     </FrameLayout>
 
+    <!-- Tellomi (tellomi/tellomi#1714, ADR-0079 §4.3): countdown ring for a timed view-once photo / video. -->
+    <org.thoughtcrime.securesms.revealable.TellomiViewOnceCountdownView
+        android:id="@+id/view_once_countdown"
+        android:layout_width="24dp"
+        android:layout_height="24dp"
+        android:layout_gravity="top|end"
+        android:layout_marginTop="17dp"
+        android:layout_marginEnd="16dp"
+        android:visibility="gone" />
+
     <TextView
         android:id="@+id/view_once_duration"
         android:layout_width="wrap_content"

@@ -111,6 +111,23 @@
   <string name="MediaSelectScreen__live_photo_off">原況照片已關閉</string>
   <string name="MediaSelectScreen__live">原況</string>
   <string name="MediaSelectScreen__live_off">原況關閉</string>
+  <string name="MediaSelectScreen__timer">自毀計時器</string>
+  <string name="MediaSelectScreen__timer_menu_title">選擇開啟後媒體保留多久。</string>
+  <string name="MediaSelectScreen__timer_view_once">閱後即焚</string>
+  <plurals name="MediaSelectScreen__timer_n_seconds">
+    <item quantity="other">%d 秒</item>
+  </plurals>
+  <string name="MediaSelectScreen__timer_do_not_delete">不刪除</string>
+  <string name="MediaSelectScreen__timer_hint_photo_view_once">照片已設為閱後即焚。</string>
+  <string name="MediaSelectScreen__timer_hint_video_view_once">影片已設為閱後即焚。</string>
+  <plurals name="MediaSelectScreen__timer_hint_photo_n_seconds">
+    <item quantity="other">照片將在開啟 %d 秒後刪除。</item>
+  </plurals>
+  <plurals name="MediaSelectScreen__timer_hint_video_n_seconds">
+    <item quantity="other">影片將在開啟 %d 秒後刪除。</item>
+  </plurals>
+  <string name="MediaSelectScreen__timer_hint_photo_keep">照片會保留在聊天中。</string>
+  <string name="MediaSelectScreen__timer_hint_video_keep">影片會保留在聊天中。</string>
   <string name="MediaSelectScreen__open_media">打開</string>
   <string name="MediaSelectScreen__select">選取</string>
   <string name="MediaSelectScreen__you_have_limited_access">你已限制 Tellomi 存取相片。</string>

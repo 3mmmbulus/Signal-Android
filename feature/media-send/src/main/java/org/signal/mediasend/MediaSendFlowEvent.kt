@@ -108,6 +108,9 @@ internal sealed interface MediaSendFlowEvent {
   /** Tellomi（#1263 P-4）：查看器里单改一张的实况；没选的先选上（同 Tellomi iOS #285）。 */
   data class SetLive(val media: Media, val isOn: Boolean) : MediaSendFlowEvent
 
+  /** Tellomi（#1714，ADR-0079 §4.4）：查看器里给这一张设计时（null = 不删除）；设了就勾上（Telegram 两端）。 */
+  data class SetViewOnceChoice(val media: Media, val choice: Int?) : MediaSendFlowEvent
+
   /**
    * P-5：「···」里的立即发送。[quality] 非空时这一次用它发（D9：不写设置）；[separately] 时一张一条、说明挂最后一条。
    * [asFile]（tellomi/tellomi#1263，ADR-0068）时按文件发原图，也是一个一条；[convertHeicToJpeg] 时其中的 HEIC 先转成 JPEG。

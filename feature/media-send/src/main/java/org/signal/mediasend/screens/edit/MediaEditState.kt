@@ -61,7 +61,12 @@ internal data class MediaEditState(
    * Tellomi（tellomi/tellomi#1263 spec P-4）：查看器里看过的动态照片各自按实况发不发（不是动态照片的不在里面），左下角的实况键读它。
    * 只在会话里有。
    */
-  val albumLiveStates: Map<Uri, Boolean> = emptyMap()
+  val albumLiveStates: Map<Uri, Boolean> = emptyMap(),
+  /** Tellomi（tellomi/tellomi#1714，ADR-0079 §4.4）：查看器说明框右侧的计时键（一对一会话里才有）；各张设了的计时。 */
+  val canSetViewOnceTimer: Boolean = false,
+  val viewOnceChoices: Map<Uri, Int> = emptyMap(),
+  /** Tellomi（#1714）：已选里有计时的：长按发送里没有「定时发送」。 */
+  val hasTimedSelection: Boolean = false
 ) {
 
   /** 长按发送菜单里说明那一项：null = 不给；true = 现在在上方（显示「下移」）。 */
@@ -126,6 +131,9 @@ internal data class MediaEditState(
     albumEditPreviews = parentState.albumEditPreviews,
     canMoveCaption = parentState.canMoveCaption,
     isCaptionAboveMedia = parentState.isCaptionAboveMedia,
-    albumLiveStates = if (parentState.isSentByConversation) parentState.tellomiLiveRanges.keys.associateWith(parentState::isTellomiLiveOn) else emptyMap()
+    albumLiveStates = if (parentState.isSentByConversation) parentState.tellomiLiveRanges.keys.associateWith(parentState::isTellomiLiveOn) else emptyMap(),
+    canSetViewOnceTimer = parentState.tellomiCanSetViewOnceTimer,
+    viewOnceChoices = parentState.tellomiViewOnceChoices,
+    hasTimedSelection = parentState.hasTimedSelection
   )
 }

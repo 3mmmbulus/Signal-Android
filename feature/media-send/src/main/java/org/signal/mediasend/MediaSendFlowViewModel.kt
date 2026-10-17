@@ -179,6 +179,14 @@ class MediaSendFlowViewModel(
     .distinctUntilChanged()
 
   init {
+    // Tellomi（#1714，ADR-0079 §4.4 第 3 条）：计时只在一对一会话里有。
+    state.value.recipientId?.takeIf { state.value.isSentByConversation }?.let { recipientId ->
+      viewModelScope.launch {
+        val canSet = repository.tellomiCanSetViewOnceTimer(recipientId)
+        updateState { copy(tellomiCanSetViewOnceTimer = canSet) }
+      }
+    }
+
     viewModelScope.launch {
       isMeteredFlow.collect { metered ->
         updateState { copy(isMeteredConnection = metered, isPreUploadEnabled = shouldPreUpload(metered)) }
@@ -319,6 +327,7 @@ class MediaSendFlowViewModel(
       }
       MediaSendFlowEvent.ToggleLive -> toggleLive()
       is MediaSendFlowEvent.SetLive -> setLive(event.media, event.isOn)
+      is MediaSendFlowEvent.SetViewOnceChoice -> setViewOnceChoice(event.media, event.choice)
       is MediaSendFlowEvent.AttachmentDockEntrySelected -> sendHudCommand(MediaSendFlowHudCommand.AttachmentDockEntrySelected(event.id))
       is MediaSendFlowEvent.ShowToast -> internalToastEvents.trySend(event.toast)
       is MediaSendFlowEvent.OpenAttachmentPage -> internalState.update { it.copy(attachmentPage = event.page) }
@@ -582,6 +591,23 @@ class MediaSendFlowViewModel(
       }
       if (state.value.selectedMedia.any { it.uri == media.uri }) {
         updateState { copy(tellomiLiveOverrides = tellomiLiveOverrides + (media.uri to isOn)) }
+      }
+    }
+  }
+
+  /** Tellomi（#1714，ADR-0079 §4.4）：查看器里给这一张设计时（null = 不删除）；设了就选上（照 Telegram 两端）。 */
+  private fun setViewOnceChoice(media: Media, choice: Int?) {
+    if (!state.value.tellomiCanSetViewOnceTimer || (choice != null && !TellomiViewOnceChoice.isValid(choice))) {
+      return
+    }
+    mutateSelection {
+      if (choice != null && state.value.selectedMedia.none { it.uri == media.uri }) {
+        addMediaHoldingSelection(setOf(media), focusNewlyAdded = false)
+      }
+      if (choice == null) {
+        updateState { copy(tellomiViewOnceChoices = tellomiViewOnceChoices - media.uri) }
+      } else if (state.value.selectedMedia.any { it.uri == media.uri }) {
+        updateState { copy(tellomiViewOnceChoices = tellomiViewOnceChoices + (media.uri to choice)) }
       }
     }
   }
@@ -940,6 +966,7 @@ class MediaSendFlowViewModel(
         albumEditPreviews = albumEditPreviews - removedUris,
         tellomiSpoileredUris = tellomiSpoileredUris - removedUris,
         tellomiLiveOverrides = tellomiLiveOverrides - removedUris,
+        tellomiViewOnceChoices = tellomiViewOnceChoices - removedUris,
         cameraFirstCapture = newCameraFirstCapture,
         // A removed capture's file goes with it, so it leaves the camera's filmstrip for good.
         cameraCaptureUris = cameraCaptureUris - removedUris
@@ -1510,12 +1537,14 @@ class MediaSendFlowViewModel(
       preUploadController.deleteAbandonedAttachments()
     }
 
+    // Tellomi（#1714，ADR-0079 §4.4）：有计时的一张一条地发；计时的不带遮罩、不带实况（第 7 条）。按文件发的没有计时。
+    val viewOnceChoices = if (asFile != null) emptyMap() else snapshot.selectedViewOnceChoices
     val request = SendRequest(
       selectedMedia = snapshot.selectedMedia,
       editorStateMap = snapshot.editorStateMap,
       quality = snapshot.sentMediaQuality,
       message = snapshot.message,
-      isViewOnce = isViewOnceEnabled(),
+      isViewOnce = isViewOnceEnabled() && viewOnceChoices.isEmpty(),
       singleRecipientId = snapshot.recipientId,
       recipients = snapshot.additionalRecipients,
       scheduledTime = snapshot.scheduledTime,
@@ -1527,9 +1556,10 @@ class MediaSendFlowViewModel(
       convertHeicToJpeg = asFile?.convertHeicToJpeg == true,
       captionAboveMedia = snapshot.isCaptionAboveMedia && asFile == null,
       // ADR-0068 §4.4：按文件发、一次性查看的不罩。
-      spoileredUris = if (asFile != null || isViewOnceEnabled()) emptySet() else snapshot.selectedSpoileredUris,
+      spoileredUris = if (asFile != null || isViewOnceEnabled()) emptySet() else snapshot.selectedSpoileredUris - viewOnceChoices.keys,
       // ADR-0068 §4.4：按文件发、一次性查看的不带实况（定时发送的由会话页按静态图发，见 app 的 MediaSelectionRepository）。
-      liveVideos = if (asFile != null || isViewOnceEnabled() || !snapshot.isSentByConversation) emptyMap() else snapshot.selectedLiveVideos
+      liveVideos = if (asFile != null || isViewOnceEnabled() || !snapshot.isSentByConversation) emptyMap() else snapshot.selectedLiveVideos - viewOnceChoices.keys,
+      viewOnceChoices = viewOnceChoices
     )
     clearSendNowOptions()
 

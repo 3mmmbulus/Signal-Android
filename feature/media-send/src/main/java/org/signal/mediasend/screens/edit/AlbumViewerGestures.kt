@@ -67,6 +67,11 @@ internal object AlbumViewerGestures {
    * - APNG：类型明说是 APNG（`image/apng`、`image/vnd.mozilla.apng`）的当动图；相册里的 APNG 多半报成 `image/png`，
    *   和普通 PNG（截图等）分不开，这种照普通图片显示工具键。
    */
+  /** Tellomi（#1714）：能设计时的：照片、视频（一次性查看只给可视媒体）。 */
+  fun isPhotoOrVideo(contentType: String?): Boolean = ContentTypeUtil.isImageType(contentType) || ContentTypeUtil.isVideo(contentType)
+
+  fun isVideo(contentType: String?): Boolean = ContentTypeUtil.isVideo(contentType)
+
   fun isEditableImage(contentType: String?): Boolean {
     return ContentTypeUtil.isImageType(contentType) && !isPossiblyAnimatedImage(contentType)
   }

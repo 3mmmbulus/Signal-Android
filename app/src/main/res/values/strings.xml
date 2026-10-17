@@ -10483,6 +10483,12 @@
 
     <!-- Tellomi (tellomi/tellomi#1121): a file picked on the attachment sheet's Files page is over the server's size limit. %1$s = file name, %2$s = the limit -->
     <string name="TellomiAttachmentFiles__too_large">“%1$s” is too large. Each file can be up to %2$s.</string>
+    <!-- Tellomi (tellomi/tellomi#1714, ADR-0079): next to "Photo" / "Video" on a timed view-once bubble, e.g. "3 s"; and the countdown ring in its viewer. -->
+    <string name="TellomiViewOnce__seconds_short">%1$d s</string>
+    <plurals name="TellomiViewOnce__closes_after_seconds">
+        <item quantity="one">Closes after %d second</item>
+        <item quantity="other">Closes after %d seconds</item>
+    </plurals>
     <!-- Tellomi (tellomi/tellomi#1121): some recently sent files picked on the Files page were cleaned up from this device before sending -->
     <string name="TellomiAttachmentFiles__some_not_on_device">Some files are no longer on this device and weren\'t sent.</string>
 

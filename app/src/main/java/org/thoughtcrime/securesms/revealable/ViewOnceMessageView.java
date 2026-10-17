@@ -29,6 +29,7 @@ import org.thoughtcrime.securesms.mms.Slide;
 import org.signal.core.util.DrawableUtil;
 import org.thoughtcrime.securesms.util.MediaUtil;
 import org.thoughtcrime.securesms.util.MessageRecordUtil;
+import org.thoughtcrime.securesms.util.TellomiViewOnceTimer;
 
 public class ViewOnceMessageView extends LinearLayout {
 
@@ -112,7 +113,7 @@ public class ViewOnceMessageView extends LinearLayout {
 
     if (messageRecord.isOutgoing() && networkInProgress(messageRecord) && !MessageRecordUtil.isScheduled(messageRecord)) {
       iconColor = openedIconColor;
-      text.setText(R.string.RevealableMessageView_media);
+      text.setText(tellomiWithSeconds(getContext().getString(R.string.RevealableMessageView_media), messageRecord));
       icon.setImageResource(0);
       showProgress = true;
     } else if (messageRecord.isOutgoing()) {
@@ -122,12 +123,12 @@ public class ViewOnceMessageView extends LinearLayout {
         icon.setImageResource(R.drawable.symbol_view_once_dash_24);
       } else {
         iconColor = unopenedIconColor;
-        text.setText(R.string.RevealableMessageView_media);
+        text.setText(tellomiWithSeconds(getContext().getString(R.string.RevealableMessageView_media), messageRecord));
         icon.setImageResource(org.signal.core.ui.R.drawable.symbol_view_once_24);
       }
     } else if (ViewOnceUtil.isViewable(messageRecord)) {
       iconColor = unopenedIconColor;
-      text.setText(getDescriptionId(messageRecord));
+      text.setText(tellomiWithSeconds(getContext().getString(getDescriptionId(messageRecord)), messageRecord));
       icon.setImageResource(org.signal.core.ui.R.drawable.symbol_view_once_24);
     } else if (networkInProgress(messageRecord)) {
       iconColor = unopenedIconColor;
@@ -191,5 +192,14 @@ public class ViewOnceMessageView extends LinearLayout {
     if (event.attachment.equals(attachment)) {
       progress.setInstantProgress((float) event.progress / (float) event.total);
     }
+  }
+
+  /**
+   * Tellomi（tellomi/tellomi#1714，ADR-0079 §4.3 第 4 条）：计时的一次性查看在「照片 / 视频 / 媒体」旁边写秒数（「照片 · 3 秒」），收发两边都写；
+   * 看过的照旧「已查看」。
+   */
+  private @NonNull String tellomiWithSeconds(@NonNull String label, @NonNull MmsMessageRecord messageRecord) {
+    Integer seconds = TellomiViewOnceTimer.seconds(messageRecord);
+    return seconds == null ? label : label + " · " + getContext().getString(R.string.TellomiViewOnce__seconds_short, seconds);
   }
 }

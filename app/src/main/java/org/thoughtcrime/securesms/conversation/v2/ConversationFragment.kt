@@ -337,6 +337,7 @@ import org.thoughtcrime.securesms.mediapreview.MediaPreviewCache
 import org.thoughtcrime.securesms.mediapreview.TellomiMediaReturnTarget
 import org.thoughtcrime.securesms.mediasend.MediaSendActivityResult
 import org.thoughtcrime.securesms.mediasend.TellomiMutedVideos
+import org.thoughtcrime.securesms.mediasend.TellomiTimedSends
 import org.thoughtcrime.securesms.megaphone.ClientDeprecatedActivity
 import org.thoughtcrime.securesms.messagerequests.MessageRequestRepository
 import org.thoughtcrime.securesms.mms.AttachmentManager
@@ -5287,6 +5288,12 @@ class ConversationFragment :
         return
       }
 
+      // Tellomi（tellomi/tellomi#1714，ADR-0079）：有计时的（含一次性查看）整批一张一条（照 Telegram 两端）。
+      if (result.hasTellomiTimers && result.isPushPreUpload) {
+        sendMediaTimed(result)
+        return
+      }
+
       // Tellomi（tellomi/tellomi#1261 P-5「单独发送」）：一张一条，说明挂最后一条。「以文件发送」（#1263）也是一个一条。
       if (result.sendSeparately || result.sendAsFile) {
         sendMediaSeparately(result)
@@ -5435,6 +5442,64 @@ class ConversationFragment :
       scrollToPositionDelegate.markListCommittedVersion()
 
       TellomiSendInOrder.inOrder(parts).subscribeBy(
+        onError = {
+          Log.w(TAG, "Error received during send!", it)
+          toast(R.string.ConversationActivity_error_sending_media)
+        }
+      )
+    }
+
+    /**
+     * Tellomi（tellomi/tellomi#1714，ADR-0079 §4.4）：有计时的一张一条地发（[TellomiTimedSends.parts]）：计时的是一次性查看、带秒数、
+     * 不带说明；没计时的照常，说明挂在没计时的最后一张；全都计时时说明是最前面单独一条文字。引用挂在第一条不是一次性查看的上
+     * （一次性查看不能带引用）。不能定时发送（选图里有计时就不给）。发送顺序、清输入框同 [sendMediaSeparately]。
+     */
+    @SuppressLint("CheckResult")
+    private fun sendMediaTimed(result: MediaSendActivityResult) {
+      val threadRecipient = viewModel.recipientSnapshot
+      if (threadRecipient == null) {
+        Log.w(TAG, "Unable to send due to invalid thread recipient")
+        toast(R.string.ConversationActivity_recipient_is_not_a_valid_sms_or_email_address_exclamation, Toast.LENGTH_LONG)
+        return
+      }
+
+      val quote = inputPanel.quote.orNull()
+      val parts = TellomiTimedSends.parts(result.tellomiViewOnceChoices, hasBody = result.body.isNotBlank())
+      val quotedPart = parts.indexOfFirst { !it.isViewOnce }
+
+      val sends: List<Completable> = parts.mapIndexed { position, part ->
+        viewModel.sendMessage(
+          metricId = null,
+          threadRecipient = threadRecipient,
+          body = if (part.hasBody) result.body else "",
+          slideDeck = null,
+          scheduledDate = -1,
+          messageToEdit = null,
+          quote = if (position == quotedPart) quote else null,
+          mentions = if (part.hasBody) result.mentions else emptyList(),
+          bodyRanges = if (part.hasBody) result.bodyRanges else null,
+          contacts = emptyList(),
+          linkPreviews = emptyList(),
+          preUploadResults = part.index?.let { listOf(result.preUploadResults[it]) } ?: emptyList(),
+          isViewOnce = part.isViewOnce,
+          captionAboveMedia = part.hasBody && part.index != null && result.captionAboveMedia,
+          tellomiViewOnceSeconds = part.seconds
+        ).doOnComplete {
+          if (position == 0 && isAdded && view != null) {
+            onSendComplete()
+          }
+        }
+      }
+
+      AppDependencies.typingStatusSender.onTypingStopped(args.threadId)
+      composeTextEventsListener?.typingStatusEnabled = false
+      composeText.setText("")
+      composeTextEventsListener?.typingStatusEnabled = true
+      attachmentManager.clear(Glide.with(this@ConversationFragment), false)
+      inputPanel.clearQuote()
+      scrollToPositionDelegate.markListCommittedVersion()
+
+      TellomiSendInOrder.inOrder(sends).subscribeBy(
         onError = {
           Log.w(TAG, "Error received during send!", it)
           toast(R.string.ConversationActivity_error_sending_media)

@@ -79,6 +79,7 @@ internal class MediaEditViewModel(
       MediaEditScreenEvents.ToggleVideoMuted -> parentEventEmitter(MediaSendFlowEvent.ToggleVideoMuted)
       is MediaEditScreenEvents.ToggleAlbumSelected -> parentEventEmitter(MediaSendFlowEvent.ToggleAlbumSelected(event.media))
       is MediaEditScreenEvents.SetAlbumLive -> parentEventEmitter(MediaSendFlowEvent.SetLive(event.media, event.isOn))
+      is MediaEditScreenEvents.SetAlbumViewOnceChoice -> parentEventEmitter(MediaSendFlowEvent.SetViewOnceChoice(event.media, event.choice))
       is MediaEditScreenEvents.AlbumFocusedMediaChanged -> parentEventEmitter(MediaSendFlowEvent.SetAlbumFocusedMedia(event.media))
       MediaEditScreenEvents.ShowSelectedFilmstrip -> parentEventEmitter(MediaSendFlowEvent.ShowSelectedFilmstrip)
       is MediaEditScreenEvents.EditFromAlbum -> parentEventEmitter(MediaSendFlowEvent.EditFromAlbum(event.media, event.tool))

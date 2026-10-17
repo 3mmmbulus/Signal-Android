@@ -154,6 +154,34 @@ internal fun PickerLiveHint(isOn: Boolean?, modifier: Modifier = Modifier) {
   }
 }
 
+/** 通用的提示胶囊（计时用；同 [PickerLiveHint] 的样子）。[text] 是 null 时不显示。 */
+@Composable
+internal fun PickerHint(text: String?, icon: ImageVector, modifier: Modifier = Modifier, testTag: String = PickerLive.HINT_TEST_TAG) {
+  var last by remember { mutableStateOf("") }
+  if (text != null) {
+    last = text
+  }
+  AnimatedVisibility(
+    visible = text != null,
+    enter = fadeIn(tween(150)),
+    exit = fadeOut(tween(200)),
+    modifier = modifier
+  ) {
+    Row(
+      verticalAlignment = Alignment.CenterVertically,
+      horizontalArrangement = spacedBy(8.dp),
+      modifier = Modifier
+        .clip(RoundedCornerShape(10.dp))
+        .background(Color(0xF21F1F1F))
+        .padding(horizontal = 12.dp, vertical = 10.dp)
+        .testTag(testTag)
+    ) {
+      Icon(imageVector = icon, contentDescription = null, tint = Color.White, modifier = Modifier.size(20.dp))
+      Text(text = last, color = Color.White, style = MaterialTheme.typography.bodyMedium)
+    }
+  }
+}
+
 /** 单张查看器左下角这一张的开关：半透明黑底胶囊，图标 +「实况 / 实况关闭」。 */
 @Composable
 internal fun AlbumLiveButton(isOn: Boolean, onClick: () -> Unit, modifier: Modifier = Modifier) {

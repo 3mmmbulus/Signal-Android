@@ -20,21 +20,23 @@ import org.whispersystems.signalservice.internal.push.DataMessage
  */
 object TellomiCaptionAbove {
 
-  /** 收到 / 同步来的消息要记的扩展；没有这个标记就是 null（和上游一样不写这一列）。 */
+  /** 收到 / 同步来的消息要记的扩展（ADR-0079：计时的一次性查看的秒数也在这里）；什么都没有就是 null（和上游一样不写这一列）。 */
   @JvmStatic
   fun extrasFrom(message: DataMessage): MessageExtras? {
     return extras(
       captionAboveMedia = message.tellomi?.captionAboveMedia == true,
-      messageCaption = message.tellomi?.messageCaption
+      messageCaption = message.tellomi?.messageCaption,
+      viewOnceSeconds = TellomiViewOnceTimer.seconds(message)
     )
   }
 
   @JvmStatic
   @JvmOverloads
-  fun extras(captionAboveMedia: Boolean, messageCaption: String? = null): MessageExtras? {
+  fun extras(captionAboveMedia: Boolean, messageCaption: String? = null, viewOnceSeconds: Int? = null): MessageExtras? {
     val caption = messageCaption?.takeIf { it.isNotEmpty() }
-    return if (captionAboveMedia || caption != null) {
-      MessageExtras(tellomi = TellomiMessageExtras(captionAboveMedia = captionAboveMedia, messageCaption = caption ?: ""))
+    val seconds = viewOnceSeconds?.takeIf { TellomiViewOnceTimer.isAllowed(it) }
+    return if (captionAboveMedia || caption != null || seconds != null) {
+      MessageExtras(tellomi = TellomiMessageExtras(captionAboveMedia = captionAboveMedia, messageCaption = caption ?: "", viewOnceSeconds = seconds ?: 0))
     } else {
       null
     }

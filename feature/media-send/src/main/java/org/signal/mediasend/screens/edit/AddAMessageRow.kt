@@ -101,7 +101,9 @@ fun AddAMessageRow(
   captionAboveMedia: Boolean? = null,
   sendPreviewMedia: List<Media>? = null,
   inlineCaption: TellomiInlineCaption? = null,
-  onMessageChange: ((CharSequence?) -> Unit)? = null
+  onMessageChange: ((CharSequence?) -> Unit)? = null,
+  /** Tellomi（tellomi/tellomi#1714）：说明框右侧再放的键（查看器里的计时键）。 */
+  trailingAction: (@Composable () -> Unit)? = null
 ) {
   var previewShown by remember { mutableStateOf(false) }
   var sendButtonBounds by remember { mutableStateOf(Rect.Zero) }
@@ -160,7 +162,7 @@ fun AddAMessageRow(
           modifier = Modifier
             .weight(1f)
             .heightIn(min = InputBarHeight)
-            .padding(end = if (viewOnceAvailable) 0.dp else 16.dp)
+            .padding(end = if (viewOnceAvailable || trailingAction != null) 0.dp else 16.dp)
         )
       } else {
         IconButtons.IconButton(
@@ -178,9 +180,11 @@ fun AddAMessageRow(
           Modifier
             .weight(1f)
             .height(InputBarHeight)
-            .padding(end = if (viewOnceAvailable) 0.dp else 16.dp, top = 10.dp, bottom = 10.dp)
+            .padding(end = if (viewOnceAvailable || trailingAction != null) 0.dp else 16.dp, top = 10.dp, bottom = 10.dp)
         )
       }
+
+      trailingAction?.invoke()
 
       if (viewOnceAvailable) {
         IconButtons.IconButton(

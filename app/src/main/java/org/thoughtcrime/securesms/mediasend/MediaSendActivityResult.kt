@@ -41,7 +41,12 @@ class MediaSendActivityResult(
    */
   val sendAsFile: Boolean = false,
   /** Tellomi（ADR-0068 §4.7）：说明文字画在媒体上方（「···」→「说明文字上移」）。 */
-  val captionAboveMedia: Boolean = false
+  val captionAboveMedia: Boolean = false,
+  /**
+   * Tellomi（tellomi/tellomi#1714，ADR-0079）：[preUploadResults] 每一张的计时（同顺序）：[TellomiTimedSends.NONE] 没有，
+   * [TellomiTimedSends.VIEW_ONCE] 一次性查看，3 / 10 / 30 是打开后看几秒。有计时的时候会话页一张一条地发（[TellomiTimedSends.parts]）。
+   */
+  val tellomiViewOnceChoices: List<Int> = emptyList()
 ) : Parcelable {
 
   val isPushPreUpload: Boolean
@@ -65,8 +70,13 @@ class MediaSendActivityResult(
     scheduledTime = scheduledTime,
     sendSeparately = sendSeparately,
     sendAsFile = sendAsFile,
-    captionAboveMedia = captionAboveMedia
+    captionAboveMedia = captionAboveMedia,
+    tellomiViewOnceChoices = tellomiViewOnceChoices
   )
+
+  /** Tellomi（#1714）：有没有计时的（含一次性查看）。 */
+  val hasTellomiTimers: Boolean
+    get() = tellomiViewOnceChoices.any { it != TellomiTimedSends.NONE }
 
   companion object {
     const val EXTRA_RESULT = "result"

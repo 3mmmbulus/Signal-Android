@@ -51,6 +51,9 @@ sealed interface MediaEditScreenEvents {
   /** V-1：相册查看器右上角的勾：选上或取消这一张。 */
   data class ToggleAlbumSelected(val media: Media) : MediaEditScreenEvents
 
+  /** Tellomi（#1714，ADR-0079）：查看器说明框右侧的计时：给这一张设（null = 不删除；设了就选上）。 */
+  data class SetAlbumViewOnceChoice(val media: Media, val choice: Int?) : MediaEditScreenEvents
+
   /** Tellomi（#1263 P-4）：查看器左下角的实况键：单改这一张（没选的先选上）。 */
   data class SetAlbumLive(val media: Media, val isOn: Boolean) : MediaEditScreenEvents
 

@@ -89,6 +89,9 @@ interface MediaSendRepository {
    */
   suspend fun tellomiLivePhotoVideo(media: Media): TellomiMotionPhoto.VideoRange? = null
 
+  /** Tellomi（tellomi/tellomi#1714，ADR-0079 §4.4 第 3 条）：这个会话能不能给照片设计时（只在一对一会话里，不在群里、不在收藏里）。 */
+  suspend fun tellomiCanSetViewOnceTimer(recipientId: MediaRecipientId): Boolean = false
+
   /**
    * Gets the maximum video duration in microseconds based on quality.
    *
@@ -254,7 +257,12 @@ data class SendRequest(
    * Tellomi（#1263 P-4，ADR-0068 §4.4）：开着实况的动态照片（按 [selectedMedia] 里的 URI → 视频在原文件里的哪一段）。
    * 视频另外转码、上传，作为 `AttachmentPointer.tellomi.livePhotoVideo` 跟着静态图发；按文件发、一次性查看的不带。
    */
-  val liveVideos: Map<Uri, TellomiMotionPhoto.VideoRange> = emptyMap()
+  val liveVideos: Map<Uri, TellomiMotionPhoto.VideoRange> = emptyMap(),
+  /**
+   * Tellomi（#1714，ADR-0079 §4.4）：设了计时的（按 [selectedMedia] 里的 URI）：[TellomiViewOnceChoice.VIEW_ONCE] 一次性查看，
+   * 3 / 10 / 30 是打开后看几秒。有的时候会话页一张一条地发。
+   */
+  val viewOnceChoices: Map<Uri, Int> = emptyMap()
 )
 
 /**

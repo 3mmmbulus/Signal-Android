@@ -549,6 +549,8 @@ message TellomiMessageExtras {
     bool captionAboveMedia = 1;
     // ADR-0075：输入框里写的那一条说明（整条消息的）。逐张说明记在各附件的 caption 上；body 是兼容文本。
     string messageCaption = 2;
+    // ADR-0079：计时的一次性查看打开后看几秒（3 / 10 / 30）；0 = 没有（普通一次性查看或不是一次性查看）。不进备份。
+    uint32 viewOnceSeconds = 3;
 }
 
 message GV2UpdateDescription {

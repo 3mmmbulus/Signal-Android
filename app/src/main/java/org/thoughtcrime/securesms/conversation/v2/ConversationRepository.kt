@@ -476,11 +476,14 @@ class ConversationRepository(
     linkPreviews: List<LinkPreview>,
     preUploadResults: List<PreUploadResult>,
     isViewOnce: Boolean,
-    captionAboveMedia: Boolean = false
+    captionAboveMedia: Boolean = false,
+    tellomiViewOnceSeconds: Int? = null
   ): Completable {
     val sendCompletable = Completable.create { emitter ->
       // Tellomi（ADR-0068 §4.7）：说明文字在媒体上方。改说明（编辑）时沿用原来那条的位置。
+      // ADR-0079：计时的一次性查看记下秒数（发送任务读它写 `tellomi.viewOnceSeconds`）。
       val tellomiExtras = when {
+        isViewOnce && tellomiViewOnceSeconds != null -> TellomiCaptionAbove.extras(captionAboveMedia = false, viewOnceSeconds = tellomiViewOnceSeconds)
         captionAboveMedia -> TellomiCaptionAbove.extras(true)
         messageToEdit != null -> TellomiCaptionAbove.onlyTellomi(SignalDatabase.messages.getMessageRecordOrNull(messageToEdit.id)?.messageExtras)
         else -> null

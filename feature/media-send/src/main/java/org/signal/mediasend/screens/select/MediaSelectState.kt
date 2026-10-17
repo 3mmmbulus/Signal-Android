@@ -133,9 +133,10 @@ sealed interface MediaSelectState {
           isViewOnceEnabled = parent.isViewOnceEnabled,
           isSending = parent.isSending,
           isReply = parent.isReply,
-          canScheduleSend = !parent.isStory,
+          // Tellomi（#1714，ADR-0079 §4.4 第 6、7 条）：有计时的不能定时发送、不能按文件发。
+          canScheduleSend = !parent.isStory && !parent.hasTimedSelection,
           canSendSeparately = sentByConversation,
-          canSendAsFile = sentByConversation,
+          canSendAsFile = sentByConversation && !parent.hasTimedSelection,
           canMoveCaption = sentByConversation,
           isCaptionAboveMedia = parent.isCaptionAboveMedia,
           canSpoiler = sentByConversation,

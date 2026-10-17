@@ -624,7 +624,8 @@ class ConversationViewModel(
     linkPreviews: List<LinkPreview>,
     preUploadResults: List<MessageSender.PreUploadResult>,
     isViewOnce: Boolean,
-    captionAboveMedia: Boolean = false
+    captionAboveMedia: Boolean = false,
+    tellomiViewOnceSeconds: Int? = null
   ): Completable {
     return repository.sendMessage(
       threadId = threadId,
@@ -641,7 +642,8 @@ class ConversationViewModel(
       linkPreviews = linkPreviews,
       preUploadResults = preUploadResults,
       isViewOnce = isViewOnce,
-      captionAboveMedia = captionAboveMedia
+      captionAboveMedia = captionAboveMedia,
+      tellomiViewOnceSeconds = tellomiViewOnceSeconds
     ).observeOn(AndroidSchedulers.mainThread())
   }
 

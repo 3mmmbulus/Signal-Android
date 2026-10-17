@@ -36,6 +36,7 @@ import org.thoughtcrime.securesms.mediasend.MediaUploadRepository
 import org.thoughtcrime.securesms.mediasend.SentMediaQualityTransform
 import org.thoughtcrime.securesms.mediasend.TellomiMediaAsFiles
 import org.thoughtcrime.securesms.mediasend.TellomiMutedVideos
+import org.thoughtcrime.securesms.mediasend.TellomiTimedSends
 import org.thoughtcrime.securesms.mediasend.VideoTrimTransform
 import org.thoughtcrime.securesms.mms.GifSlide
 import org.thoughtcrime.securesms.mms.ImageSlide
@@ -95,7 +96,8 @@ class MediaSelectionRepository(context: Context) {
     sendAsFile: Boolean = false,
     convertHeicToJpeg: Boolean = false,
     spoileredUris: Set<Uri> = emptySet(),
-    liveVideos: Map<Uri, TellomiMotionPhoto.VideoRange> = emptyMap()
+    liveVideos: Map<Uri, TellomiMotionPhoto.VideoRange> = emptyMap(),
+    viewOnceChoices: Map<Uri, Int> = emptyMap()
   ): Maybe<MediaSendActivityResult> {
     if (selectedMedia.isEmpty()) {
       throw IllegalStateException("No selected media!")
@@ -114,6 +116,8 @@ class MediaSelectionRepository(context: Context) {
       val updatedMedia = oldToNewMediaMap.values.map { TellomiMediaSpoilers.mark(it, spoileredNewUris) }
       // Tellomi（#1263 P-4，ADR-0068 §4.4）：开着实况的动态照片（按发出去的 URI）。按文件发、一次性查看、发到故事的不带。
       val liveSources: Map<Uri, TellomiLivePhotos.Source> = if (sendAsFile || isViewOnce || isSendingToStories) emptyMap() else TellomiLivePhotos.renderedSources(selectedMedia, oldToNewMediaMap, liveVideos)
+      // Tellomi（#1714，ADR-0079）：计时（按发出去的 URI）；会话页按它一张一条地发。按文件发、发到故事的没有。
+      val renderedChoices: Map<Uri, Int> = if (sendAsFile || isSendingToStories) emptyMap() else TellomiTimedSends.renderedChoices(selectedMedia, oldToNewMediaMap, viewOnceChoices)
 
       for (media in updatedMedia) {
         val uri: Uri = media.uri
@@ -234,7 +238,8 @@ class MediaSelectionRepository(context: Context) {
                 isViewOnce = isViewOnce,
                 mentions = trimmedMentions,
                 bodyRanges = trimmedBodyRanges,
-                storyType = storyType
+                storyType = storyType,
+                tellomiViewOnceChoices = if (renderedChoices.isEmpty()) emptyList() else uploadResults.map { renderedChoices[it.media.uri] ?: TellomiTimedSends.NONE }
               )
             )
           } else {

@@ -114,6 +114,27 @@
   <string name="MediaSelectScreen__live_photo_off">Live Photo turned off</string>
   <string name="MediaSelectScreen__live">Live</string>
   <string name="MediaSelectScreen__live_off">Live Off</string>
+  <!-- Tellomi (tellomi/tellomi#1714, ADR-0079): the self-destruct timer button next to the caption in the photo viewer, its menu, and the hint after choosing. -->
+  <string name="MediaSelectScreen__timer">Self-Destruct Timer</string>
+  <string name="MediaSelectScreen__timer_menu_title">Choose how long the media will be kept after opening.</string>
+  <string name="MediaSelectScreen__timer_view_once">View Once</string>
+  <plurals name="MediaSelectScreen__timer_n_seconds">
+    <item quantity="one">%d Second</item>
+    <item quantity="other">%d Seconds</item>
+  </plurals>
+  <string name="MediaSelectScreen__timer_do_not_delete">Do Not Delete</string>
+  <string name="MediaSelectScreen__timer_hint_photo_view_once">Photo set to view once.</string>
+  <string name="MediaSelectScreen__timer_hint_video_view_once">Video set to view once.</string>
+  <plurals name="MediaSelectScreen__timer_hint_photo_n_seconds">
+    <item quantity="one">Photo will be deleted %d second after opening.</item>
+    <item quantity="other">Photo will be deleted %d seconds after opening.</item>
+  </plurals>
+  <plurals name="MediaSelectScreen__timer_hint_video_n_seconds">
+    <item quantity="one">Video will be deleted %d second after opening.</item>
+    <item quantity="other">Video will be deleted %d seconds after opening.</item>
+  </plurals>
+  <string name="MediaSelectScreen__timer_hint_photo_keep">Photo will be kept in the chat.</string>
+  <string name="MediaSelectScreen__timer_hint_video_keep">Video will be kept in the chat.</string>
   <string name="MediaSelectScreen__open_media">Open</string>
   <string name="MediaSelectScreen__select">Select</string>
   <string name="MediaSelectScreen__you_have_limited_access">You\'ve limited Tellomi\'s access to your photos.</string>

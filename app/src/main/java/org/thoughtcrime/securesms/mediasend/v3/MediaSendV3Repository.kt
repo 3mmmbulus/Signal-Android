@@ -237,7 +237,8 @@ object MediaSendV3Repository : MediaSendRepository {
         sendAsFile = request.sendAsFile,
         convertHeicToJpeg = request.convertHeicToJpeg,
         spoileredUris = request.spoileredUris,
-        liveVideos = request.liveVideos
+        liveVideos = request.liveVideos,
+        viewOnceChoices = request.viewOnceChoices
       ).blockingGet()
 
       // Tellomi（tellomi/tellomi#1261 P-5）：「单独发送」由会话页一张一条地发（只有已知的单个会话才有这一项）；
@@ -254,6 +255,12 @@ object MediaSendV3Repository : MediaSendRepository {
     } catch (exception: Exception) {
       SendResult.Error(exception.message ?: "Failed to send media.")
     }
+  }
+
+  /** Tellomi（tellomi/tellomi#1714，ADR-0079 §4.4 第 3 条）：计时只在一对一会话里有（不在群里、不在收藏里）。 */
+  override suspend fun tellomiCanSetViewOnceTimer(recipientId: MediaRecipientId): Boolean = withContext(Dispatchers.IO) {
+    val recipient = Recipient.resolved(RecipientId.from(recipientId.id))
+    recipient.isIndividual && !recipient.isSelf && !recipient.isReleaseNotes
   }
 
   /** Tellomi（tellomi/tellomi#1263 P-4）：动态照片（读 XMP）。 */

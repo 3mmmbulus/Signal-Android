@@ -76,6 +76,13 @@ data class MediaSendFlowState(
   val tellomiLiveDefault: Boolean = false,
   /** Tellomi（#1263 P-4）：逐张的实况开关：顶栏开关一按，已选的全改成同一个值；查看器里可以单改一张。取消勾选就拿掉。 */
   val tellomiLiveOverrides: Map<Uri, Boolean> = emptyMap(),
+  /** Tellomi（tellomi/tellomi#1714，ADR-0079 §4.4 第 3 条）：查看器里能不能设计时（一对一会话）。 */
+  val tellomiCanSetViewOnceTimer: Boolean = false,
+  /**
+   * Tellomi（#1714）：逐张的计时（没有 = 不删除）：[TellomiViewOnceChoice.VIEW_ONCE] 一次性查看，3 / 10 / 30 秒。设了就勾上，
+   * 取消勾选就拿掉。只管这一次打开的面板。
+   */
+  val tellomiViewOnceChoices: Map<Uri, Int> = emptyMap(),
   /**
    * Optional message/caption text to accompany the media. Retains mention and styling spans.
    */
@@ -236,6 +243,14 @@ data class MediaSendFlowState(
   /** Tellomi（#1263 P-4）：要连视频一起发的已选（原 URI → 视频那一段）。 */
   val selectedLiveVideos: Map<Uri, TellomiMotionPhoto.VideoRange>
     get() = selectedMedia.mapNotNull { media -> tellomiLiveRanges[media.uri]?.takeIf { isTellomiLiveOn(media.uri) }?.let { media.uri to it } }.toMap()
+
+  /** Tellomi（#1714）：已选里设了计时的。 */
+  val selectedViewOnceChoices: Map<Uri, Int>
+    get() = selectedMedia.mapNotNull { media -> tellomiViewOnceChoices[media.uri]?.let { media.uri to it } }.toMap()
+
+  /** Tellomi（#1714）：已选里有计时的（含一次性查看）：不能按文件发、不能定时发送（ADR-0079 §4.4 第 6、7 条）。 */
+  val hasTimedSelection: Boolean
+    get() = selectedMedia.any { it.uri in tellomiViewOnceChoices }
 
   /** Tellomi（#1263 P-5）：罩住的已选（取消勾选的不算）。 */
   val selectedSpoileredUris: Set<Uri>

@@ -469,6 +469,9 @@ message TellomiDataMessage {
   // ADR-0075: the caption written in the input box, for the whole message (per-media captions are in
   // TellomiAttachment.caption). body still carries all captions for clients that don't know these.
   optional string messageCaption = 2;
+  // ADR-0079: how many seconds a view-once photo / video stays open once opened (3 / 10 / 30). Only
+  // meaningful with DataMessage.isViewOnce = true; anything else is ignored (plain view once).
+  optional uint32 viewOnceSeconds = 3;
 }
 
 message NullMessage {

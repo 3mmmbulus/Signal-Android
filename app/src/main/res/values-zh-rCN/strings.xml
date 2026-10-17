@@ -10195,6 +10195,10 @@
 
     <!-- Tellomi (tellomi/tellomi#1121): a file picked on the attachment sheet's Files page is over the server's size limit. %1$s = file name, %2$s = the limit -->
     <string name="TellomiAttachmentFiles__too_large">“%1$s”太大了，每个文件最大 %2$s。</string>
+    <string name="TellomiViewOnce__seconds_short">%1$d 秒</string>
+    <plurals name="TellomiViewOnce__closes_after_seconds">
+        <item quantity="other">%d 秒后关闭</item>
+    </plurals>
     <!-- Tellomi (tellomi/tellomi#1121): some recently sent files picked on the Files page were cleaned up from this device before sending -->
     <string name="TellomiAttachmentFiles__some_not_on_device">有的文件已不在本机，没有发送。</string>
 
