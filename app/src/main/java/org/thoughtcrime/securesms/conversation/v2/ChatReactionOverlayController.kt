@@ -9,7 +9,6 @@ import android.content.Context
 import android.graphics.PointF
 import android.graphics.RectF
 import android.graphics.drawable.Drawable
-import android.view.HapticFeedbackConstants
 import android.view.MotionEvent
 import android.view.View
 import androidx.compose.runtime.getValue
@@ -22,6 +21,7 @@ import org.signal.core.ui.motion.TellomiHaptics
 import org.signal.emoji.EmojiProvider
 import org.signal.emoji.EmojiUtil
 import org.thoughtcrime.securesms.R
+import org.thoughtcrime.securesms.components.emoji.RecentEmojiPageModel
 import org.thoughtcrime.securesms.conversation.ConversationContextMenu
 import org.thoughtcrime.securesms.conversation.ConversationMessage
 import org.thoughtcrime.securesms.conversation.ReactionAction
@@ -29,7 +29,9 @@ import org.thoughtcrime.securesms.conversation.ReactionMenu
 import org.thoughtcrime.securesms.conversation.ReactionOverlayPlacement
 import org.thoughtcrime.securesms.conversation.ReactionScrubber
 import org.thoughtcrime.securesms.database.model.MessageRecord
+import org.thoughtcrime.securesms.keyvalue.EmojiValues
 import org.thoughtcrime.securesms.keyvalue.SignalStore
+import org.thoughtcrime.securesms.reactions.any.ReactWithAnyEmojiBottomSheetDialogFragment
 import org.thoughtcrime.securesms.recipients.Recipient
 import kotlin.math.abs
 import kotlin.math.roundToInt
@@ -261,7 +263,9 @@ class ChatReactionOverlayController(
           selectedIndex = outcome.index
 
           if (outcome.index != ReactionScrubber.NO_SELECTION) {
-            hapticView().performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP)
+            // Tellomi (interaction audit A-06): sliding from one slot to the next is a selection tick (SEGMENT_TICK on
+            // API 34+), as the motion spec's haptics table says, not a keyboard tap.
+            TellomiHaptics.perform(hapticView(), TellomiHaptics.Event.SELECTION_TICK)
           }
         }
       }
@@ -313,48 +317,41 @@ class ChatReactionOverlayController(
     hide()
   }
 
-  /** A reaction not in the strip takes over the last slot in place of the picker. */
+  /**
+   * Tellomi (interaction audit A-06, owner 2026-10-17): seven reactions and an expand slot, as Telegram has. The six the user
+   * picked (synced) come first unchanged; the seventh is filled in for display only ([TellomiReactionStrip.reactions]), which
+   * is also where a reaction outside the six that is already on the message shows up, so tapping it takes it back.
+   */
   private fun buildStrip(record: MessageRecord): Strip {
-    val emojiStrings = SignalStore.emoji.reactions
     val applied = ReactionMenu.appliedEmoji(record)
-    val customIndex = REACTION_EMOJI_COUNT - 1
+    val recents = RecentEmojiPageModel(context, ReactWithAnyEmojiBottomSheetDialogFragment.REACTION_STORAGE_KEY).emoji
+    val emojiStrings = TellomiReactionStrip.reactions(
+      saved = SignalStore.emoji.reactions,
+      applied = applied,
+      signalDefaults = EmojiValues.DEFAULT_REACTIONS_LIST,
+      recents = recents,
+      isSame = EmojiUtil::isCanonicallyEqual
+    )
 
     var appliedIndex = ReactionScrubber.NO_SELECTION
-    var customSlotHasEmoji = false
     val drawables = mutableListOf<Drawable?>()
 
-    for (index in 0 until REACTION_EMOJI_COUNT) {
-      val isCustomSlot = index == customIndex
-      val stripEmoji = emojiStrings.getOrNull(index)
-
-      val matchesApplied = !isCustomSlot &&
-        applied != null &&
-        stripEmoji != null &&
-        EmojiUtil.isCanonicallyEqual(stripEmoji, applied)
-
-      val isUnlistedApplied = isCustomSlot && applied != null
-
-      if (appliedIndex == ReactionScrubber.NO_SELECTION && (matchesApplied || isUnlistedApplied)) {
+    emojiStrings.forEachIndexed { index, emoji ->
+      val isApplied = applied != null && EmojiUtil.isCanonicallyEqual(emoji, applied)
+      if (isApplied && appliedIndex == ReactionScrubber.NO_SELECTION) {
         appliedIndex = index
-
-        if (isCustomSlot) {
-          customSlotHasEmoji = true
-          drawables += EmojiProvider.getEmojiDrawable(context, applied, true)
-        } else {
-          drawables += EmojiProvider.getEmojiDrawable(context, SignalStore.emoji.getPreferredVariation(stripEmoji!!), true)
-        }
-      } else if (isCustomSlot) {
-        drawables += ContextCompat.getDrawable(context, R.drawable.ic_any_emoji_32)
+        drawables += EmojiProvider.getEmojiDrawable(context, applied, true)
       } else {
-        drawables += stripEmoji?.let { EmojiProvider.getEmojiDrawable(context, SignalStore.emoji.getPreferredVariation(it), true) }
+        drawables += EmojiProvider.getEmojiDrawable(context, SignalStore.emoji.getPreferredVariation(emoji), true)
       }
     }
+    drawables += ContextCompat.getDrawable(context, R.drawable.ic_chevron_down_24)
 
     return Strip(
       emojiStrings = emojiStrings,
       drawables = drawables,
       appliedIndex = appliedIndex,
-      customSlotHasEmoji = customSlotHasEmoji
+      customSlotHasEmoji = false
     )
   }
 }

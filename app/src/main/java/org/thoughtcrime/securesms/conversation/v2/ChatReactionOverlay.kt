@@ -6,6 +6,7 @@
 package org.thoughtcrime.securesms.conversation.v2
 
 import android.graphics.RectF
+import android.os.Build
 import android.graphics.drawable.Drawable
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.Easing
@@ -22,11 +23,11 @@ import androidx.compose.foundation.layout.absoluteOffset
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.ime
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.requiredSize
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -38,8 +39,15 @@ import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.AbsoluteAlignment
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.ImageBitmap
+import androidx.compose.ui.graphics.drawscope.DrawScope
+import androidx.compose.ui.graphics.drawscope.withTransform
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.positionInWindow
@@ -56,6 +64,7 @@ import com.google.accompanist.drawablepainter.rememberDrawablePainter
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.launch
 import org.signal.core.ui.compose.navigationBarsCompat
+import org.signal.core.ui.motion.TellomiMotion
 import org.thoughtcrime.securesms.R
 import org.thoughtcrime.securesms.conversation.ConversationItem
 import org.thoughtcrime.securesms.conversation.ReactionOverlayPlacement
@@ -66,16 +75,29 @@ import kotlin.math.max
 import kotlin.math.roundToInt
 import org.signal.core.ui.R as CoreUiR
 
-const val REACTION_EMOJI_COUNT = 7
+/** Tellomi (interaction audit A-06): seven reactions and the expand slot, as Telegram has ([TellomiReactionStrip]). */
+const val REACTION_EMOJI_COUNT = TellomiReactionStrip.SLOT_COUNT
 
 private const val GROW_DURATION_MS = 200
 
 /** Tellomi (A-07 fly-in): also used by [ChatReactionOverlayController] to know how big the emoji under the thumb is drawn. */
 internal const val GROW_SCALE = 1.5f
-internal val EMOJI_WIDTH = 32.dp
+/** Tellomi (A-06): 28 dp in a 36 dp slot leaves a little air between neighbours, as Telegram's strip has (iOS draws 28 pt too). */
+internal val EMOJI_WIDTH = 28.dp
 private val EMOJI_HEIGHT = 48.dp
-private val SELECTION_INDICATOR_SIZE = 52.dp
-private val STRIP_CORNER_RADIUS = 30.dp
+private val SLOT_WIDTH = TellomiReactionStrip.ITEM_SIZE_DP.dp
+private val STRIP_WIDTH = TellomiReactionStrip.WIDTH_DP.dp
+private val STRIP_HEIGHT = TellomiReactionStrip.HEIGHT_DP.dp
+
+/** Tellomi (A-06): the reaction already on the message sits in a slot-sized circle and shrinks to 0.8 (Telegram). */
+private val SELECTION_INDICATOR_SIZE = TellomiReactionStrip.ITEM_SIZE_DP.dp
+private const val APPLIED_EMOJI_SCALE = 0.8f
+
+/** android.view.animation.OvershootInterpolator, which Telegram's strip and its items enter with. */
+private fun overshoot(tension: Float) = Easing { fraction ->
+  val t = fraction - 1f
+  t * t * ((tension + 1f) * t + tension) + 1f
+}
 
 /** DecelerateInterpolator, which an interpolator on an AnimatorSet applied to the whole reveal and hide. */
 private val Decelerate = Easing { fraction -> 1f - (1f - fraction) * (1f - fraction) }
@@ -134,21 +156,18 @@ fun ChatReactionOverlay(
   val revealDuration = integerResource(R.integer.reaction_scrubber_reveal_duration)
   val revealOffset = integerResource(R.integer.reaction_scrubber_reveal_offset)
   val hideDuration = integerResource(R.integer.reaction_scrubber_hide_duration)
-  val emojiStagger = integerResource(R.integer.reaction_scrubber_emoji_reveal_duration_start_delay_factor)
   val indicatorDuration = integerResource(android.R.integer.config_mediumAnimTime)
 
-  val scrubberWidth = dimensionResource(R.dimen.reaction_scrubber_width)
   val scrubberHeight = dimensionResource(R.dimen.conversation_reaction_scrubber_height)
   val horizontalMargin = dimensionResource(R.dimen.conversation_reaction_scrub_horizontal_margin)
   val scrubDistanceBelowTouch = dimensionResource(R.dimen.conversation_reaction_scrub_deadzone_distance_from_touch_bottom)
 
-  val barHeightPx = remember(context) {
-    val attributes = context.theme.obtainStyledAttributes(intArrayOf(androidx.appcompat.R.attr.actionBarSize))
-    val height = attributes.getDimensionPixelSize(0, 0)
-    attributes.recycle()
-
-    height
-  }
+  // Tellomi (interaction audit A-06): Telegram's 44 dp capsule rather than an action bar's height.
+  val barHeightPx = with(density) { STRIP_HEIGHT.roundToPx() }
+  val tier = remember(context) { TellomiMotion.tier(context) }
+  // Tellomi (A-06): where the conversation behind is blurred (full tier, API 31+, #289), the strip lets a little of it through,
+  // as Telegram's blurred strip does; elsewhere it stays an opaque surface (the motion spec: Android does not imitate glass).
+  val stripAlpha = if (tier == TellomiMotion.Tier.FULL && Build.VERSION.SDK_INT >= 31) 0.92f else 1f
 
   val overlayTop = remember { mutableFloatStateOf(0f) }
 
@@ -199,7 +218,7 @@ fun ChatReactionOverlay(
           snapshotHeight = selection.snapshot.height,
           reactionBarHeight = barHeightPx,
           scrubberForegroundHeight = with(density) { scrubberHeight.roundToPx() },
-          scrubberWidth = with(density) { scrubberWidth.roundToPx() },
+          scrubberWidth = with(density) { STRIP_WIDTH.roundToPx() },
           scrubberHorizontalMargin = with(density) { horizontalMargin.roundToPx() },
           menuMaxWidth = menuWidth,
           menuMaxHeight = menuHeight,
@@ -229,6 +248,9 @@ fun ChatReactionOverlay(
     val emojiReveal = remember(selection) { List(REACTION_EMOJI_COUNT) { Animatable(0f) } }
     val indicatorReveal = remember(selection) { Animatable(0f) }
     val stripReveal = remember(selection) { Animatable(0f) }
+    // Tellomi (A-06): the strip unrolls from the message's end and scales up with an overshoot (Telegram's transitionProgress).
+    val stripEnter = remember(selection) { Animatable(0f) }
+    val anchorOnLeft = selection.isMessageOnLeft
     val snapshotX = remember(selection) { Animatable(selection.bubbleX) }
     val snapshotY = remember(selection) { Animatable(selection.bubbleY) }
     val snapshotScale = remember(selection) { Animatable(ConversationItem.LONG_PRESS_SCALE_FACTOR) }
@@ -253,18 +275,37 @@ fun ChatReactionOverlay(
           launch { snapshotY.animateTo(placement.snapshotY, tween(revealDuration, easing = AccelerateDecelerate)) }
           launch { snapshotScale.animateTo(placement.snapshotScale, tween(revealDuration, easing = AccelerateDecelerate)) }
           launch { indicatorReveal.animateTo(1f, tween(indicatorDuration, easing = Decelerate)) }
-          launch { stripReveal.animateTo(1f, tween(revealDuration, delayMillis = revealOffset, easing = Decelerate)) }
 
-          emojiReveal.forEachIndexed { index, animatable ->
+          if (tier == TellomiMotion.Tier.MINIMAL) {
+            // Animations off: no scaling or stagger, the strip just fades in.
+            stripEnter.snapTo(1f)
+            emojiReveal.forEach { it.snapTo(1f) }
+            launch { stripReveal.animateTo(1f, tween(revealDuration, delayMillis = revealOffset, easing = Decelerate)) }
+          } else {
+            stripReveal.snapTo(1f)
             launch {
-              animatable.animateTo(
+              stripEnter.animateTo(
                 targetValue = 1f,
                 animationSpec = tween(
-                  durationMillis = revealDuration,
-                  delayMillis = revealOffset + index * emojiStagger,
-                  easing = Decelerate
+                  durationMillis = TellomiReactionStrip.ENTER_DURATION_MS,
+                  delayMillis = revealOffset,
+                  easing = overshoot(TellomiReactionStrip.ENTER_OVERSHOOT_TENSION)
                 )
               )
+            }
+
+            emojiReveal.forEachIndexed { index, animatable ->
+              val screenIndex = if (isLtr) index else REACTION_EMOJI_COUNT - 1 - index
+              launch {
+                animatable.animateTo(
+                  targetValue = 1f,
+                  animationSpec = tween(
+                    durationMillis = TellomiReactionStrip.ITEM_ENTER_DURATION_MS,
+                    delayMillis = revealOffset + TellomiReactionStrip.itemEnterDelayMs(screenIndex, anchorOnLeft).toInt(),
+                    easing = overshoot(TellomiReactionStrip.ITEM_ENTER_OVERSHOOT_TENSION)
+                  )
+                )
+              }
             }
           }
         }
@@ -277,11 +318,8 @@ fun ChatReactionOverlay(
           launch { snapshotY.animateTo(returned?.y ?: selection.bubbleY, tween(hideDuration, easing = Decelerate)) }
           launch { snapshotScale.animateTo(1f, tween(hideDuration, easing = Decelerate)) }
           launch { indicatorReveal.animateTo(0f, tween(hideDuration, easing = Decelerate)) }
+          // Tellomi (A-06): the strip, its tail and the emoji fade out together, as Telegram's strip does.
           launch { stripReveal.animateTo(0f, tween(hideDuration, easing = Decelerate)) }
-
-          emojiReveal.forEach { animatable ->
-            launch { animatable.animateTo(0f, tween(hideDuration, easing = Decelerate)) }
-          }
         }
 
         controller.onHideFinished()
@@ -316,16 +354,14 @@ fun ChatReactionOverlay(
       return@BoxWithConstraints
     }
 
+    val stripColor = colorResource(CoreUiR.color.signal_colorSurface2).copy(alpha = stripAlpha)
     Box(
       modifier = Modifier
         .absoluteOffset { IntOffset(placement.scrubberX.roundToInt(), placement.reactionBarY.roundToInt()) }
-        .width(scrubberWidth)
-        .height(with(density) { barHeightPx.toDp() })
+        .width(STRIP_WIDTH)
+        .height(STRIP_HEIGHT)
         .graphicsLayer { alpha = stripReveal.value }
-        .background(
-          color = colorResource(CoreUiR.color.signal_colorSurface2),
-          shape = RoundedCornerShape(STRIP_CORNER_RADIUS)
-        )
+        .drawBehind { drawStripBackground(stripEnter.value, anchorOnLeft, stripColor) }
         .onGloballyPositioned { coordinates ->
           bounds.barTop = coordinates.positionInWindow().y
           bounds.barBottom = bounds.barTop + coordinates.size.height
@@ -336,9 +372,11 @@ fun ChatReactionOverlay(
     Row(
       modifier = Modifier
         .absoluteOffset { IntOffset(placement.scrubberX.roundToInt(), placement.scrubberForegroundY.roundToInt()) }
-        .width(scrubberWidth)
-        .height(scrubberHeight),
-      horizontalArrangement = Arrangement.SpaceEvenly,
+        .width(STRIP_WIDTH)
+        .height(scrubberHeight)
+        .graphicsLayer { alpha = stripReveal.value }
+        .padding(horizontal = TellomiReactionStrip.SIDE_PADDING_DP.dp),
+      horizontalArrangement = Arrangement.Start,
       verticalAlignment = Alignment.CenterVertically
     ) {
       for (index in 0 until REACTION_EMOJI_COUNT) {
@@ -346,6 +384,7 @@ fun ChatReactionOverlay(
           index = index,
           emoji = selection.emoji.getOrNull(index),
           isApplied = index == selection.appliedEmojiIndex,
+          isExpandSlot = index == REACTION_EMOJI_COUNT - 1,
           reveal = emojiReveal[index].value,
           indicatorAlpha = indicatorReveal.value,
           selectedIndex = { controller.selectedIndex },
@@ -382,6 +421,7 @@ private fun ReactionEmoji(
   index: Int,
   emoji: Drawable?,
   isApplied: Boolean,
+  isExpandSlot: Boolean,
   reveal: Float,
   indicatorAlpha: Float,
   selectedIndex: () -> Int,
@@ -389,11 +429,9 @@ private fun ReactionEmoji(
   onEdgeMeasured: (Float, Float) -> Unit
 ) {
   val density = LocalDensity.current
-  val startTranslation = dimensionResource(R.dimen.reaction_scrubber_anim_start_translation_y)
   val growTranslation = dimensionResource(R.dimen.conversation_reaction_scrub_vertical_translation)
 
-  val isUnderThumb = selectedIndex() == index
-  val revealLift = (1f - reveal) * with(density) { startTranslation.toPx() }
+  val isUnderThumb = selectedIndex() == index && !isExpandSlot
 
   val grow by animateFloatAsState(
     targetValue = if (isUnderThumb) GROW_SCALE else 1f,
@@ -405,10 +443,11 @@ private fun ReactionEmoji(
     animationSpec = tween(GROW_DURATION_MS, easing = Decelerate),
     label = "emojiGrowLift$index"
   )
+  val restingScale = if (isApplied && !isUnderThumb) APPLIED_EMOJI_SCALE else 1f
 
   Box(
     modifier = Modifier
-      .size(width = EMOJI_WIDTH, height = EMOJI_HEIGHT)
+      .size(width = SLOT_WIDTH, height = EMOJI_HEIGHT)
       // Measured here rather than on the emoji, whose graphicsLayer scale would otherwise move the
       // reported edges as it grows and shift the segment boundaries under a stationary thumb.
       .onGloballyPositioned { coordinates ->
@@ -423,14 +462,39 @@ private fun ReactionEmoji(
     if (isApplied) {
       Box(
         modifier = Modifier
-          // Required so the indicator keeps its full circle rather than being squeezed into the slot.
           .requiredSize(SELECTION_INDICATOR_SIZE)
-          .graphicsLayer { alpha = indicatorAlpha }
+          .graphicsLayer {
+            alpha = indicatorAlpha
+            scaleX = reveal
+            scaleY = reveal
+          }
           .background(
             color = colorResource(CoreUiR.color.signal_colorSurfaceVariant_16_no_alpha),
             shape = CircleShape
           )
       )
+    }
+
+    if (isExpandSlot) {
+      // Tellomi (A-06): Telegram's expand slot, a small circle with a downward chevron.
+      Box(
+        modifier = Modifier
+          .requiredSize(TellomiReactionStrip.EXPAND_BUTTON_SIZE_DP.dp)
+          .graphicsLayer {
+            scaleX = reveal
+            scaleY = reveal
+          }
+          .background(color = colorResource(CoreUiR.color.signal_colorSurfaceVariant_16_no_alpha), shape = CircleShape),
+        contentAlignment = Alignment.Center
+      ) {
+        Image(
+          painter = rememberDrawablePainter(emoji),
+          contentDescription = null,
+          colorFilter = ColorFilter.tint(colorResource(CoreUiR.color.signal_colorOnSurfaceVariant)),
+          modifier = Modifier.size(20.dp)
+        )
+      }
+      return@Box
     }
 
     Image(
@@ -439,11 +503,47 @@ private fun ReactionEmoji(
       modifier = Modifier
         .size(width = EMOJI_WIDTH, height = EMOJI_HEIGHT)
         .graphicsLayer {
-          alpha = reveal
-          translationY = revealLift + growLift
-          scaleX = grow
-          scaleY = grow
+          translationY = growLift
+          scaleX = grow * restingScale * reveal
+          scaleY = grow * restingScale * reveal
         }
+    )
+  }
+}
+
+/**
+ * Tellomi (interaction audit A-06): the capsule and its "thought bubble" tail, as Telegram's `ReactionsContainerLayout` draws
+ * them. While [enter] runs the capsule is uncovered from the message's end and scaled about a point near it; the two tail
+ * circles grow once a quarter of the way in.
+ */
+private fun DrawScope.drawStripBackground(enter: Float, anchorOnLeft: Boolean, color: Color) {
+  val span = TellomiReactionStrip.revealedSpan(enter, anchorOnLeft)
+  val pivot = Offset(size.width * TellomiReactionStrip.pivotFraction(anchorOnLeft), size.height / 2f)
+  val scale = enter.coerceAtLeast(0f)
+
+  withTransform({ scale(scale, scale, pivot) }) {
+    val left = size.width * span.start
+    val right = size.width * span.endInclusive
+    drawRoundRect(
+      color = color,
+      topLeft = Offset(left, 0f),
+      size = Size(right - left, size.height),
+      cornerRadius = CornerRadius(size.height / 2f)
+    )
+  }
+
+  val tail = TellomiReactionStrip.tailProgress(enter)
+  if (tail > 0f) {
+    val dp = density
+    drawCircle(
+      color = color,
+      radius = TellomiReactionStrip.BIG_TAIL_RADIUS_DP * dp * tail,
+      center = Offset(TellomiReactionStrip.bigTailCenterXDp(anchorOnLeft) * dp, size.height)
+    )
+    drawCircle(
+      color = color,
+      radius = TellomiReactionStrip.SMALL_TAIL_RADIUS_DP * dp * tail,
+      center = Offset(TellomiReactionStrip.smallTailCenterXDp(anchorOnLeft) * dp, size.height + TellomiReactionStrip.SMALL_TAIL_DROP_DP * dp)
     )
   }
 }
