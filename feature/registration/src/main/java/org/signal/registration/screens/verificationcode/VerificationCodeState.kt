@@ -7,6 +7,7 @@ package org.signal.registration.screens.verificationcode
 
 import org.signal.network.api.RegistrationApiV2.SessionMetadata
 import org.signal.network.api.RegistrationApiV2.VerificationCodeTransport
+import org.signal.registration.TellomiRegistration
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.seconds
 
@@ -71,7 +72,9 @@ data class VerificationCodeState(
     /** Tellomi（tellomi/tellomi#1214）：会话过期（404）。上游不声不响地退回手机号页；先说清楚，关掉再退回。 */
     val sessionExpired: Boolean = false,
     /** Tellomi（tellomi/tellomi#1214）：这个会话里已经不能再提交验证码（没发过码，或者已经失效）。同上。 */
-    val codeNoLongerValid: Boolean = false
+    val codeNoLongerValid: Boolean = false,
+    /** Tellomi（ADR-0078 §3.4）：这个号码被暂停了，注册被拒（422）。说明到什么时候、去哪申诉。 */
+    val tellomiSuspended: TellomiRegistration.SuspensionNotice? = null
   )
 
   /**

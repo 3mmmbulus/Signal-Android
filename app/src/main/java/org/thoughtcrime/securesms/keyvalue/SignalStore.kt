@@ -42,6 +42,7 @@ class SignalStore(context: Application, private val store: KeyValueStore) {
   val tellomiRegionValues = TellomiRegionValues(store)
   val tellomiLinkValues = TellomiLinkValues(store)
   val tellomiFeedValues = TellomiFeedValues(store)
+  val tellomiRestrictionValues = TellomiRestrictionValues(store)
 
   companion object {
 
@@ -281,6 +282,12 @@ class SignalStore(context: Application, private val store: KeyValueStore) {
     @get:JvmName("tellomiRegion")
     val tellomiRegion: TellomiRegionValues
       get() = instance!!.tellomiRegionValues
+
+    /** Tellomi（ADR-0078 §3.4）：服务端最近一次说的人工处置。 */
+    @JvmStatic
+    @get:JvmName("tellomiRestriction")
+    val tellomiRestriction: TellomiRestrictionValues
+      get() = instance!!.tellomiRestrictionValues
 
     /** Tellomi（#1422）：链接卡片的本机设置（「展开短链接」）。 */
     @JvmStatic

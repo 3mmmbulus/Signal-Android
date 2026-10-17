@@ -326,6 +326,10 @@
     <string name="TellomiUpdateAvailable__sheet_body_with_size">大小 %1$s · 更新不会影响手机上的聊天记录。</string>
     <string name="TellomiUpdateAvailable__later">以后再说</string>
     <string name="TellomiUpdateAvailable__banner">新版本 %1$s 可用</string>
+    <string name="TellomiRestriction__stranger">你的账号因违反《Tellomi 社区规范与平台公约》，暂时不能给还不是你联系人的人发消息，%1$s 恢复。已经互相加过的联系人不受影响。</string>
+    <string name="TellomiRestriction__all">你的账号因违反《Tellomi 社区规范与平台公约》，暂时不能发送消息，%1$s 恢复。你仍然可以接收消息、查看聊天记录。</string>
+    <string name="TellomiRestriction__appeal_case">如有异议，请发邮件到 %1$s 申诉，并附上处置编号 %2$s。</string>
+    <string name="TellomiRestriction__appeal">如有异议，请发邮件到 %1$s 申诉。</string>
     <string name="TellomiUpdateAvailable__banner_downloaded">新版本 %1$s 已下载</string>
     <string name="TellomiUpdateAvailable__update">更新</string>
     <string name="TellomiUpdateAvailable__install">安装</string>

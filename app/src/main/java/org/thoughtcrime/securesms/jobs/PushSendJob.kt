@@ -16,6 +16,7 @@ import org.signal.core.util.Util
 import org.signal.core.util.logging.Log
 import org.signal.libsignal.zkgroup.InvalidInputException
 import org.signal.libsignal.zkgroup.receipts.ReceiptCredentialPresentation
+import org.signal.network.exceptions.NonSuccessfulResponseCodeException
 import org.signal.network.service.CdnService
 import org.thoughtcrime.securesms.BuildConfig
 import org.thoughtcrime.securesms.TextSecureExpiredException
@@ -46,6 +47,7 @@ import org.thoughtcrime.securesms.notifications.v2.ConversationId.Companion.forC
 import org.thoughtcrime.securesms.notifications.v2.ConversationId.Companion.fromThreadAndReply
 import org.thoughtcrime.securesms.recipients.Recipient
 import org.thoughtcrime.securesms.recipients.Recipient.Companion.self
+import org.thoughtcrime.securesms.restriction.TellomiRestrictions
 import org.thoughtcrime.securesms.transport.RetryLaterException
 import org.thoughtcrime.securesms.transport.UndeliverableMessageException
 import org.thoughtcrime.securesms.util.MediaUtil
@@ -208,6 +210,9 @@ abstract class PushSendJob protected constructor(parameters: Parameters) : BaseJ
       is InvalidPreKeyException -> false
       is ProofRequiredException -> true
       is RetryLaterException -> true
+      // Tellomi（ADR-0078 §3.4）：账号被人工处置时 403 不会自己好，直接失败（不然要转很久才显示「未发送」），
+      // 原因由 TellomiRestrictionBanner 显示
+      is NonSuccessfulResponseCodeException -> !(exception.code == 403 && TellomiRestrictions.onForbidden(exception.stringBody))
       is IOException -> true
       else -> false
     }

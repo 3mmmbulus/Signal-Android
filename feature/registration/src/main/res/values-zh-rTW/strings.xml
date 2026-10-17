@@ -874,6 +874,9 @@
     <string name="TellomiRegistration__help_contact_support">聯絡客服</string>
     <string name="TellomiRegistration__help_more">更多幫助</string>
     <string name="TellomiRegistration__session_expired">這次驗證已經過期，請確認號碼後重新取得驗證碼。</string>
+    <string name="TellomiRegistration__suspended">這個號碼的 Tellomi 帳戶因違反《Tellomi 社群規範與平台公約》已被暫停，%1$s 之前不能重新註冊。</string>
+    <string name="TellomiRegistration__suspended_appeal_case">如有異議，請寄電子郵件到 %1$s 申訴，並附上處置編號 %2$s。</string>
+    <string name="TellomiRegistration__suspended_appeal">如有異議，請寄電子郵件到 %1$s 申訴。</string>
     <string name="TellomiRegistration__code_no_longer_valid">這個驗證碼已經不能使用：可能已過期，或者輸錯太多次。請重新取得驗證碼。</string>
 
     <!-- Tellomi（tellomi/tellomi#1216） -->

@@ -113,6 +113,7 @@ import org.thoughtcrime.securesms.registration.util.RegistrationUtil;
 import org.thoughtcrime.securesms.registration.v2.AppContactSupportController;
 import org.thoughtcrime.securesms.registration.v2.AppRegistrationNetworkController;
 import org.thoughtcrime.securesms.registration.v2.AppRegistrationStorageController;
+import org.thoughtcrime.securesms.restriction.TellomiRestrictions;
 import org.thoughtcrime.securesms.ringrtc.RingRtcLogger;
 import org.thoughtcrime.securesms.service.AnalyzeDatabaseAlarmListener;
 import org.thoughtcrime.securesms.service.DirectoryRefreshListener;
@@ -296,6 +297,7 @@ public class ApplicationContext extends Application implements AppForegroundObse
       AppDependencies.getShakeToReport().enable();
       checkBuildExpiration();
       UpdateManifests.onForeground();
+      TellomiRestrictions.onForeground(); // Tellomi（ADR-0078 §3.4）：至多每 6 小时问一次有没有人工处置
       checkFreeDiskSpace();
       MemoryTracker.start();
       BackupSubscriptionCheckJob.enqueueIfAble();

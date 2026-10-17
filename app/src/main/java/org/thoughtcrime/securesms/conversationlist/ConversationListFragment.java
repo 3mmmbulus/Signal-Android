@@ -107,6 +107,7 @@ import org.thoughtcrime.securesms.banner.banners.DozeBanner;
 import org.thoughtcrime.securesms.banner.banners.NotificationsDisabledBanner;
 import org.thoughtcrime.securesms.banner.banners.OutdatedBuildBanner;
 import org.thoughtcrime.securesms.banner.banners.ServiceOutageBanner;
+import org.thoughtcrime.securesms.banner.banners.TellomiRestrictionBanner;
 import org.thoughtcrime.securesms.banner.banners.UnauthorizedBanner;
 import org.thoughtcrime.securesms.banner.banners.UpdateAvailableBanner;
 import org.thoughtcrime.securesms.banner.banners.UsernameOutOfSyncBanner;
@@ -856,6 +857,7 @@ public class ConversationListFragment extends MainFragment implements Conversati
         new DeprecatedSdkBanner(),
         new DeprecatedBuildBanner(),
         new UnauthorizedBanner(requireContext()),
+        new TellomiRestrictionBanner(), // Tellomi（ADR-0078 §3.4）：账号被人工处置时的说明
         new ServiceOutageBanner(requireContext()),
         new OutdatedBuildBanner(),
         new UpdateAvailableBanner(requireContext(), () -> { // Tellomi（#1491）：推荐更新

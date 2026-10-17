@@ -5,6 +5,7 @@
 
 package org.signal.registration.screens.verificationcode
 
+import android.text.format.DateUtils
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.layout.Arrangement
@@ -48,6 +49,7 @@ import androidx.compose.ui.input.key.Key
 import androidx.compose.ui.input.key.key
 import androidx.compose.ui.input.key.onKeyEvent
 import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.platform.testTag
@@ -188,6 +190,15 @@ fun VerificationCodeScreen(
  */
 @Composable
 private fun RequestCodeErrorDialogs(dialogs: VerificationCodeState.Dialogs, onEvent: (VerificationCodeScreenEvents) -> Unit) {
+  dialogs.tellomiSuspended?.let { notice ->
+    Dialogs.SimpleMessageDialog(
+      message = tellomiSuspensionText(notice),
+      dismiss = stringResource(android.R.string.ok),
+      onDismiss = { onEvent(VerificationCodeScreenEvents.TellomiSuspendedDialogDismissed) }
+    )
+    return
+  }
+
   if (dialogs.sessionExpired || dialogs.codeNoLongerValid) {
     Dialogs.SimpleMessageDialog(
       message = stringResource(if (dialogs.sessionExpired) R.string.TellomiRegistration__session_expired else R.string.TellomiRegistration__code_no_longer_valid),
@@ -235,6 +246,24 @@ private fun RequestCodeErrorDialogs(dialogs: VerificationCodeState.Dialogs, onEv
       onDismiss = { onEvent(dismissedEvent) }
     )
   }
+}
+
+/** Tellomi（ADR-0078 §3.4）：正文 + 申诉句；截止时间按本机语言显示到分钟。文案定稿见 ADR-0078 §3.4。 */
+@Composable
+private fun tellomiSuspensionText(notice: TellomiRegistration.SuspensionNotice): String {
+  val context = LocalContext.current
+  val until = DateUtils.formatDateTime(
+    context,
+    notice.untilMillis,
+    DateUtils.FORMAT_SHOW_DATE or DateUtils.FORMAT_SHOW_TIME or DateUtils.FORMAT_SHOW_YEAR or DateUtils.FORMAT_ABBREV_MONTH
+  )
+  val body = stringResource(R.string.TellomiRegistration__suspended, until)
+  val appeal = if (notice.caseId != null) {
+    stringResource(R.string.TellomiRegistration__suspended_appeal_case, notice.appeal, notice.caseId)
+  } else {
+    stringResource(R.string.TellomiRegistration__suspended_appeal, notice.appeal)
+  }
+  return "$body $appeal"
 }
 
 @Composable

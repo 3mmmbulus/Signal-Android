@@ -346,6 +346,11 @@
     <string name="TellomiUpdateAvailable__later">Later</string>
     <!-- Tellomi: dismissible banner above the chat list when a recommended update is available -->
     <string name="TellomiUpdateAvailable__banner">Tellomi %1$s is available.</string>
+    <!-- Tellomi（tellomi/tellomi ADR-0078 §3.4）：账号被人工处置时聊天列表顶上的说明；%1$s = 截止时间（本机语言、到分钟），申诉句的 %1$s = 申诉邮箱、%2$s = 处置编号 -->
+    <string name="TellomiRestriction__stranger">Your account can\'t message people who aren\'t your contacts until %1$s because it broke the Tellomi Community Guidelines. Contacts you\'ve already connected with aren\'t affected.</string>
+    <string name="TellomiRestriction__all">Your account can\'t send messages until %1$s because it broke the Tellomi Community Guidelines. You can still receive messages and read your chats.</string>
+    <string name="TellomiRestriction__appeal_case">If you think this is a mistake, email %1$s and include case number %2$s.</string>
+    <string name="TellomiRestriction__appeal">If you think this is a mistake, email %1$s.</string>
     <string name="TellomiUpdateAvailable__banner_downloaded">Tellomi %1$s is downloaded and ready to install.</string>
     <string name="TellomiUpdateAvailable__update">Update</string>
     <string name="TellomiUpdateAvailable__install">Install</string>

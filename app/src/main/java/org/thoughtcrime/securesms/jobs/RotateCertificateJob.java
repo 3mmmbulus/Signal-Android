@@ -11,6 +11,7 @@ import org.thoughtcrime.securesms.jobmanager.impl.SealedSenderConstraint;
 import org.thoughtcrime.securesms.keyvalue.CertificateType;
 import org.thoughtcrime.securesms.keyvalue.SignalStore;
 import org.thoughtcrime.securesms.net.SignalNetwork;
+import org.thoughtcrime.securesms.restriction.TellomiRestrictions;
 import org.thoughtcrime.securesms.util.ExceptionHelper;
 import org.thoughtcrime.securesms.util.TextSecurePreferences;
 import org.whispersystems.signalservice.api.NetworkResultUtil;
@@ -81,6 +82,13 @@ public final class RotateCertificateJob extends BaseJob {
             default          : throw new AssertionError();
           }
         } catch (NonSuccessfulResponseCodeException e) {
+          // Tellomi（ADR-0078 §3.4）：「限制全部发送」时服务端不签证书（403）。不放行的话发送任务会一直等着证书、
+          // 消息挂在「发送中」；放行后它们走非密封发送，被服务端拒掉，马上显示「未发送」，原因见聊天列表顶上的说明。
+          if (e.code == 403 && TellomiRestrictions.onForbidden(e.getStringBody())) {
+            Log.w(TAG, "Sender certificate refused because this account is restricted. Letting sends fail fast.");
+            SealedSenderConstraint.markValid();
+            return;
+          }
           if (requiredTypes.contains(certificateType)) {
             throw e;
           }

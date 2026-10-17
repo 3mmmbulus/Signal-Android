@@ -885,6 +885,10 @@
     <string name="TellomiRegistration__help_contact_support">Contact support</string>
     <string name="TellomiRegistration__help_more">More help</string>
     <string name="TellomiRegistration__session_expired">This verification has expired. Please check your number and get a new code.</string>
+    <!-- Tellomi（tellomi/tellomi ADR-0078 §3.4）：被暂停的号码重新注册时的说明；%1$s = 截止时间，申诉句的 %1$s = 申诉邮箱、%2$s = 处置编号 -->
+    <string name="TellomiRegistration__suspended">The Tellomi account for this number is suspended until %1$s for breaking the Tellomi Community Guidelines, so it can\'t be registered again before then.</string>
+    <string name="TellomiRegistration__suspended_appeal_case">If you think this is a mistake, email %1$s and include case number %2$s.</string>
+    <string name="TellomiRegistration__suspended_appeal">If you think this is a mistake, email %1$s.</string>
     <string name="TellomiRegistration__code_no_longer_valid">This code can no longer be used. It may have expired, or been entered wrong too many times. Please get a new code.</string>
 
     <!-- Tellomi（tellomi/tellomi#1216） -->

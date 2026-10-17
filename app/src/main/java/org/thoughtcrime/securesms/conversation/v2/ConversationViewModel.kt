@@ -56,6 +56,7 @@ import org.thoughtcrime.securesms.banner.banners.GroupsV1MigrationSuggestionsBan
 import org.thoughtcrime.securesms.banner.banners.OutdatedBuildBanner
 import org.thoughtcrime.securesms.banner.banners.PendingGroupJoinRequestsBanner
 import org.thoughtcrime.securesms.banner.banners.ServiceOutageBanner
+import org.thoughtcrime.securesms.banner.banners.TellomiRestrictionBanner
 import org.thoughtcrime.securesms.banner.banners.UnauthorizedBanner
 import org.thoughtcrime.securesms.contactshare.Contact
 import org.thoughtcrime.securesms.conversation.ConversationMessage
@@ -439,6 +440,7 @@ class ConversationViewModel(
       listOf(
         flowOf(OutdatedBuildBanner()),
         flowOf(UnauthorizedBanner(context)),
+        flowOf(TellomiRestrictionBanner()), // Tellomi（ADR-0078 §3.4）：在会话里发不出去时也看得到原因
         flowOf(ServiceOutageBanner(context)),
         pendingGroupJoinFlow,
         groupV1SuggestionsFlow,

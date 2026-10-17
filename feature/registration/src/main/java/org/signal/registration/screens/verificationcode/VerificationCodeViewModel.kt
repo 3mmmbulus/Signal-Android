@@ -148,6 +148,7 @@ class VerificationCodeViewModel(
           leavingForExpiredSession = state.leavingForExpiredSession || leavingForExpiredSession
         ).also { parentEventEmitter.navigateBack() }
       }
+      is VerificationCodeScreenEvents.TellomiSuspendedDialogDismissed -> state.copy(dialogs = state.dialogs.copy(tellomiSuspended = null))
       is VerificationCodeScreenEvents.ResendSms -> applyResendCode(state, VerificationCodeTransport.SMS)
       is VerificationCodeScreenEvents.CallMe -> applyResendCode(state, VerificationCodeTransport.VOICE)
       is VerificationCodeScreenEvents.HavingTrouble -> state.copy(showContactSupportSheet = true)
@@ -477,8 +478,15 @@ class VerificationCodeViewModel(
             state.copy(snackbars = state.snackbars.copy(rateLimitedRetryAfter = error.retryAfter))
           }
           is RegisterAccountError.InvalidRequest -> {
-            Log.w(TAG, "[Register] Invalid request when registering account: ${error.message}")
-            state.copy(snackbars = state.snackbars.copy(registrationError = true))
+            // Tellomi（ADR-0078 §3.4）：被暂停的号码回 422 + 说明，弹窗说清楚；别的 422 照旧
+            val suspension = TellomiRegistration.suspensionNotice(error.message)
+            if (suspension != null) {
+              Log.w(TAG, "[Register] This number is suspended.")
+              state.copy(dialogs = state.dialogs.copy(tellomiSuspended = suspension))
+            } else {
+              Log.w(TAG, "[Register] Invalid request when registering account: ${error.message}")
+              state.copy(snackbars = state.snackbars.copy(registrationError = true))
+            }
           }
           is RegisterAccountError.RegistrationRecoveryPasswordIncorrect -> {
             error("[Register] Got told the registration recovery password incorrect. We don't use the RRP in this flow, and should never get this error. Resetting. Message: ${error.message}")

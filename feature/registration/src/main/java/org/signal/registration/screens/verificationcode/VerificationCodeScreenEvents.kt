@@ -79,6 +79,9 @@ sealed class VerificationCodeScreenEvents {
   /** Tellomi（tellomi/tellomi#1214）：「验证已过期 / 验证码已失效」对话框关掉，退回手机号页。 */
   data object SessionExpiredDialogDismissed : VerificationCodeScreenEvents()
 
+  /** Tellomi（ADR-0078 §3.4）：「这个号码已被暂停」对话框关掉，留在本页。 */
+  data object TellomiSuspendedDialogDismissed : VerificationCodeScreenEvents()
+
   /** The incorrect verification code snackbar was shown and dismissed. */
   data object IncorrectVerificationCodeSnackbarDismissed : VerificationCodeScreenEvents()
 

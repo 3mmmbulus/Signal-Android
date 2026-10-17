@@ -11,13 +11,44 @@ import android.icu.util.MeasureUnit
 import android.icu.util.ULocale
 import android.os.Build
 import androidx.annotation.VisibleForTesting
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.jsonPrimitive
+import kotlinx.serialization.json.longOrNull
 import java.util.Locale
+import java.util.concurrent.TimeUnit
 import kotlin.time.Duration
 
 /**
  * Tellomi（tellomi/tellomi#1210）：注册流程里和香港服务端能力对齐的常量，以及给人看的限流时长。
  */
 object TellomiRegistration {
+
+  /**
+   * Tellomi（tellomi/tellomi ADR-0078 §3.4）：被人工暂停的号码重新注册时，服务端在号码验证过之后回 422 +
+   * `{"tellomiRestriction":{"level":"suspended","until":<秒>,"appeal":…,"case":…}}`（Signal-Server#29）。
+   * 解析不出来（别的 422、老服务端）就是 null，照旧显示通用错误。
+   */
+  data class SuspensionNotice(val untilMillis: Long, val appeal: String, val caseId: String?)
+
+  private val APPEAL = Regex("^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$")
+  private val CASE_ID = Regex("^[0-9A-Za-z._-]{1,64}$")
+
+  @JvmStatic
+  fun suspensionNotice(body: String?): SuspensionNotice? {
+    if (body.isNullOrBlank()) return null
+    return try {
+      val restriction = Json.parseToJsonElement(body) as? JsonObject ?: return null
+      val raw = restriction["tellomiRestriction"] as? JsonObject ?: return null
+      if (raw["level"]?.jsonPrimitive?.content != "suspended") return null
+      val until = raw["until"]?.jsonPrimitive?.longOrNull?.takeIf { it > 0 } ?: return null
+      val appeal = raw["appeal"]?.jsonPrimitive?.content?.takeIf { APPEAL.matches(it) } ?: return null
+      val caseId = raw["case"]?.jsonPrimitive?.content?.takeIf { CASE_ID.matches(it) }
+      SuspensionNotice(TimeUnit.SECONDS.toMillis(until), appeal, caseId)
+    } catch (e: Exception) {
+      null
+    }
+  }
 
   /**
    * 香港服务端没有语音验证码通道（`deploy/hk/enable-aliyun-sms.sh`：`voice: available-only-in-regions: [ZZ]`），
