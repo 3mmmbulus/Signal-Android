@@ -2,17 +2,27 @@ package org.thoughtcrime.securesms.reactions;
 
 import android.content.Context;
 import android.content.res.TypedArray;
+import android.graphics.Color;
+import android.graphics.drawable.Drawable;
+import android.graphics.drawable.GradientDrawable;
+import android.graphics.drawable.TransitionDrawable;
 import android.util.AttributeSet;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
-import android.widget.LinearLayout;
+import android.widget.RelativeLayout;
 import android.widget.TextView;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
+import androidx.annotation.VisibleForTesting;
 import androidx.core.content.ContextCompat;
 
+import com.google.android.flexbox.AlignItems;
+import com.google.android.flexbox.FlexDirection;
+import com.google.android.flexbox.FlexWrap;
+import com.google.android.flexbox.FlexboxLayout;
+import com.google.android.flexbox.JustifyContent;
 
 import org.thoughtcrime.securesms.R;
 import org.thoughtcrime.securesms.components.emoji.EmojiImageView;
@@ -29,10 +39,29 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
-public class ReactionsConversationView extends LinearLayout {
+/**
+ * The reaction pills under a message.
+ *
+ * Tellomi (interaction audit A-07, owner 2026-10-17): every reaction gets its own pill, wrapping onto more rows when they do
+ * not fit, as Telegram shows them on both platforms ({@code ReactionsLayoutInBubble}); the old rail stopped at two pills and
+ * folded the rest into "+N". Rows line up on the side the pills already sit on, towards the middle of the screen. The same
+ * change on iOS is Signal-iOS#284.
+ */
+public class ReactionsConversationView extends FlexboxLayout {
 
   // Normally 6dp, but we have 1dp left+right margin on the pills themselves
   private static final int OUTER_MARGIN = ViewUtil.dpToPx(5);
+
+  /** Tellomi (A-07): the gap between two rows of pills. */
+  @VisibleForTesting
+  static final int ROW_GAP = ViewUtil.dpToPx(2);
+
+  /** Tellomi (A-07): rows are at least this wide (about three pills) even under a short bubble. */
+  @VisibleForTesting
+  static final int MIN_RAIL_WIDTH = ViewUtil.dpToPx(136);
+
+  /** Tellomi (A-07): how long a pill takes to cross-fade between "mine" and not. */
+  private static final int FILL_CROSSFADE_MS = 200;
 
   private boolean              outgoing;
   private List<ReactionRecord> records;
@@ -65,6 +94,18 @@ public class ReactionsConversationView extends LinearLayout {
       TypedArray typedArray = getContext().getTheme().obtainStyledAttributes(attrs, R.styleable.ReactionsConversationView, 0, 0);
       outgoing = typedArray.getBoolean(R.styleable.ReactionsConversationView_rcv_outgoing, false);
     }
+
+    setFlexDirection(FlexDirection.ROW);
+    setFlexWrap(FlexWrap.WRAP);
+    setAlignItems(AlignItems.CENTER);
+    // Outgoing pills hang from the bubble's start, incoming ones from its end: rows line up on that side.
+    setJustifyContent(outgoing ? JustifyContent.FLEX_START : JustifyContent.FLEX_END);
+
+    GradientDrawable rowGap = new GradientDrawable();
+    rowGap.setColor(Color.TRANSPARENT);
+    rowGap.setSize(0, ROW_GAP);
+    setDividerDrawableHorizontal(rowGap);
+    setShowDividerHorizontal(SHOW_DIVIDER_MIDDLE);
   }
 
   public void clear() {
@@ -78,6 +119,8 @@ public class ReactionsConversationView extends LinearLayout {
     this.messageId   = messageId;
     this.pillStates  = new HashMap<>();
     this.pillEmojiViews = new HashMap<>();
+    this.maxRailWidth   = 0;
+    setTranslationX(0f);
     removeAllViews();
   }
 
@@ -111,9 +154,18 @@ public class ReactionsConversationView extends LinearLayout {
         pill.setVisibility(bubbleWidth == 0 ? INVISIBLE : VISIBLE);
       }
 
-      measure(MeasureSpec.makeMeasureSpec(0, MeasureSpec.UNSPECIFIED), MeasureSpec.makeMeasureSpec(0, MeasureSpec.UNSPECIFIED));
+      // Tellomi (A-07): the pills wrap at the bubble's width (but keep about three to a row), so a long row stays under the
+      // message instead of running off the screen.
+      maxRailWidth = maxRailWidth(bubbleWidth, availableRailWidth());
+      measure(MeasureSpec.makeMeasureSpec(maxRailWidth, MeasureSpec.AT_MOST), MeasureSpec.makeMeasureSpec(0, MeasureSpec.UNSPECIFIED));
 
       int railWidth = getMeasuredWidth();
+
+      if (!(getParent() instanceof RelativeLayout)) {
+        // The conversation's newer rows pin the rail to the bubble's edge towards the middle of the screen and the margins
+        // below do nothing there; a rail wider than the bubble is moved further towards the middle instead.
+        setTranslationX(overflowShift(railWidth, bubbleWidth, outgoing, ViewUtil.isLtr(this)));
+      }
 
       if (railWidth < (bubbleWidth - OUTER_MARGIN)) {
         int margin = (bubbleWidth - railWidth - OUTER_MARGIN);
@@ -141,6 +193,48 @@ public class ReactionsConversationView extends LinearLayout {
     }
   }
 
+  /** Tellomi (A-07): the widest the rail may grow; 0 until a bubble width is known. */
+  private int maxRailWidth;
+
+  @Override
+  protected void onMeasure(int widthMeasureSpec, int heightMeasureSpec) {
+    int mode = MeasureSpec.getMode(widthMeasureSpec);
+    if (maxRailWidth > 0 && (mode == MeasureSpec.UNSPECIFIED || MeasureSpec.getSize(widthMeasureSpec) > maxRailWidth)) {
+      widthMeasureSpec = MeasureSpec.makeMeasureSpec(maxRailWidth, MeasureSpec.AT_MOST);
+    }
+    super.onMeasure(widthMeasureSpec, heightMeasureSpec);
+  }
+
+  /** Tellomi (A-07): the bubble's width less the margins either side, at least [MIN_RAIL_WIDTH], at most what the row has. */
+  @VisibleForTesting
+  static int maxRailWidth(int bubbleWidth, int available) {
+    int width = Math.max(bubbleWidth - OUTER_MARGIN * 2, MIN_RAIL_WIDTH);
+    return available > 0 ? Math.min(width, available) : width;
+  }
+
+  /**
+   * Tellomi (A-07): how far to move a rail that is wider than its bubble, towards the middle of the screen. Outgoing pills
+   * start at the bubble's start edge and incoming ones end at its end edge, so the overflow goes the other way.
+   */
+  @VisibleForTesting
+  static float overflowShift(int railWidth, int bubbleWidth, boolean outgoing, boolean ltr) {
+    int overflow = railWidth - (bubbleWidth - OUTER_MARGIN * 2);
+    if (overflow <= 0 || bubbleWidth <= 0) {
+      return 0f;
+    }
+    boolean towardsLeft = outgoing == ltr;
+    return towardsLeft ? -overflow : overflow;
+  }
+
+  /** Tellomi (A-07): the width the row of pills may take at most: the message row's, less the margins either side. */
+  private int availableRailWidth() {
+    if (!(getParent() instanceof View)) {
+      return 0;
+    }
+    View parent = (View) getParent();
+    return Math.max(0, parent.getWidth() - parent.getPaddingLeft() - parent.getPaddingRight() - OUTER_MARGIN * 2);
+  }
+
   public boolean setReactions(@NonNull List<ReactionRecord> records) {
     return setReactions(NO_MESSAGE, records);
   }
@@ -162,7 +256,7 @@ public class ReactionsConversationView extends LinearLayout {
     this.records.clear();
     this.records.addAll(records);
 
-    List<Reaction> reactions = buildSortedReactionsList(records);
+    List<Reaction> reactions = buildSortedReactionsList(records, Recipient.self().getId());
 
     removeAllViews();
 
@@ -186,7 +280,12 @@ public class ReactionsConversationView extends LinearLayout {
       }
 
       if (sameMessage) {
-        TellomiReactionPillAnimator.animate(pill, pill.findViewById(R.id.reactions_pill_count), TellomiReactionPillAnimator.changeFor(before.get(key), state));
+        TellomiReactionPillAnimator.PillState previous = before.get(key);
+        TellomiReactionPillAnimator.animate(pill, pill.findViewById(R.id.reactions_pill_count), TellomiReactionPillAnimator.changeFor(previous, state));
+        // Tellomi (A-07): becoming or no longer being mine cross-fades the fill instead of swapping it in one frame.
+        if (previous != null && previous.getUserWasSender() != state.getUserWasSender()) {
+          crossFadeFill(pill, previous.getUserWasSender());
+        }
       }
     }
 
@@ -196,9 +295,22 @@ public class ReactionsConversationView extends LinearLayout {
     return true;
   }
 
-  private static @NonNull List<Reaction> buildSortedReactionsList(@NonNull List<ReactionRecord> records) {
+  private void crossFadeFill(@NonNull View pill, boolean wasSelected) {
+    Drawable from = ContextCompat.getDrawable(getContext(), wasSelected ? R.drawable.reaction_pill_background_selected : R.drawable.reaction_pill_background);
+    Drawable to   = pill.getBackground();
+    if (from == null || to == null) {
+      return;
+    }
+    TransitionDrawable transition = new TransitionDrawable(new Drawable[] { from, to });
+    transition.setCrossFadeEnabled(true);
+    pill.setBackground(transition);
+    transition.startTransition(FILL_CROSSFADE_MS);
+  }
+
+  /** Tellomi (A-07): one pill per reaction, most popular first; no longer folded into "+N" after two. */
+  @VisibleForTesting
+  static @NonNull List<Reaction> buildSortedReactionsList(@NonNull List<ReactionRecord> records, @NonNull RecipientId selfId) {
     Map<String, Reaction> counters = new LinkedHashMap<>();
-    RecipientId           selfId   = Recipient.self().getId();
 
     for (ReactionRecord record : records) {
       String   baseEmoji = EmojiUtil.getCanonicalRepresentation(record.getEmoji());
@@ -217,16 +329,7 @@ public class ReactionsConversationView extends LinearLayout {
 
     Collections.sort(reactions, Collections.reverseOrder());
 
-    if (reactions.size() > 3) {
-      List<Reaction> shortened = new ArrayList<>(3);
-      shortened.add(reactions.get(0));
-      shortened.add(reactions.get(1));
-      shortened.add(reactions.stream().skip(2).reduce(new Reaction(null, null, 0, 0, false), Reaction::merge));
-
-      return shortened;
-    } else {
-      return reactions;
-    }
+    return reactions;
   }
 
   private void setStartMargin(int margin) {
@@ -280,7 +383,8 @@ public class ReactionsConversationView extends LinearLayout {
     return root;
   }
 
-  private static class Reaction implements Comparable<Reaction> {
+  @VisibleForTesting
+  static class Reaction implements Comparable<Reaction> {
     private String  baseEmoji;
     private String  displayEmoji;
     private int     count;
@@ -295,6 +399,21 @@ public class ReactionsConversationView extends LinearLayout {
       this.userWasSender = userWasSender;
     }
 
+    @VisibleForTesting
+    @Nullable String getBaseEmoji() {
+      return baseEmoji;
+    }
+
+    @VisibleForTesting
+    int getCount() {
+      return count;
+    }
+
+    @VisibleForTesting
+    boolean isUserWasSender() {
+      return userWasSender;
+    }
+
     void update(@NonNull String displayEmoji, long lastSeen, boolean userWasSender) {
       if (!this.userWasSender) {
         if (userWasSender || lastSeen > this.lastSeen) {
@@ -305,13 +424,6 @@ public class ReactionsConversationView extends LinearLayout {
       this.count         = this.count + 1;
       this.lastSeen      = Math.max(this.lastSeen, lastSeen);
       this.userWasSender = this.userWasSender || userWasSender;
-    }
-
-    @NonNull Reaction merge(@NonNull Reaction other) {
-      this.count         = this.count + other.count;
-      this.lastSeen      = Math.max(this.lastSeen, other.lastSeen);
-      this.userWasSender = this.userWasSender || other.userWasSender;
-      return this;
     }
 
     @Override
