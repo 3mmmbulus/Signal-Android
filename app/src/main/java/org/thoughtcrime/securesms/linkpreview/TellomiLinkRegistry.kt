@@ -8,6 +8,10 @@ package org.thoughtcrime.securesms.linkpreview
 import android.util.LruCache
 import androidx.annotation.VisibleForTesting
 import androidx.annotation.WorkerThread
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.contentOrNull
+import kotlinx.serialization.json.jsonObject
+import kotlinx.serialization.json.jsonPrimitive
 import org.signal.core.util.logging.Log
 import org.signal.libsignal.links.LinkRegistry
 import org.thoughtcrime.securesms.dependencies.AppDependencies
@@ -24,6 +28,9 @@ object TellomiLinkRegistry {
   private val TAG = Log.tag(TellomiLinkRegistry::class.java)
 
   const val BUNDLED_ASSET = "links/links-2026092702.json"
+
+  /** rust/links' first-party provider (`limits.rs` `TELLOMI`). */
+  const val FIRST_PARTY_PROVIDER = "tellomi"
 
   @Volatile
   private var registry: LinkRegistry? = null
@@ -69,6 +76,7 @@ object TellomiLinkRegistry {
   @WorkerThread
   fun classify(linkPreview: LinkPreview, body: String, isStory: Boolean, attachmentContentTypes: List<String>): TellomiLinkCard? {
     val current = get() ?: return null
+    val body = TellomiLinkHttpsUpgrade.body(body, linkPreview.url, ::claimsHttpsUpgrade)
     val previewJson = TellomiLinkCard.previewInputJson(linkPreview)
     val messageJson = TellomiLinkCard.messageContextJson(isStory, attachmentContentTypes)
     val key = listOf(current.version.toString(), previewJson, body, messageJson).joinToString("\u0000")
@@ -96,6 +104,7 @@ object TellomiLinkRegistry {
   @WorkerThread
   fun receiveCheck(linkPreview: LinkPreview, body: String, isStory: Boolean, attachmentContentTypes: List<String>): TellomiReceiveCheck? {
     val current = get() ?: return null
+    val body = TellomiLinkHttpsUpgrade.body(body, linkPreview.url, ::claimsHttpsUpgrade)
     return try {
       TellomiReceiveCheck.parse(
         current.receiveCheck(
@@ -107,6 +116,26 @@ object TellomiLinkRegistry {
     } catch (e: Exception) {
       Log.w(TAG, "receiveCheck failed: ${e.javaClass.simpleName}")
       null
+    }
+  }
+
+  /**
+   * Whether an `http://` or scheme-less link may get a card over its https form [httpsUrl] ([TellomiLinkHttpsUpgrade]): some
+   * provider in the registry claims it, and it is not first-party. No registry, or a failure, claims nothing. Never logs the URL.
+   */
+  @JvmStatic
+  fun claimsHttpsUpgrade(httpsUrl: String): Boolean {
+    if (!httpsUrl.startsWith("https://", ignoreCase = true)) {
+      return false
+    }
+    val current = get() ?: return false
+    return try {
+      val identified = current.identify(httpsUrl) ?: return false
+      val provider = Json.parseToJsonElement(identified).jsonObject["provider"]?.jsonPrimitive?.contentOrNull
+      provider != null && provider != FIRST_PARTY_PROVIDER
+    } catch (e: Exception) {
+      Log.w(TAG, "identify failed: ${e.javaClass.simpleName}")
+      false
     }
   }
 }

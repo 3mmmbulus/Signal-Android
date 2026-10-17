@@ -18,6 +18,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.regex.Matcher;
@@ -56,10 +57,20 @@ public final class LinkPreviewUtil {
     }
 
     return new Links(detected.stream()
-                             // Tellomi: text glued after the link is not part of it (LinkUtil.trimTextGluedAfterUrl)
-                             .map(d -> new Link(LinkUtil.trimTextGluedAfterUrl(d.getUrl()), d.getStart()))
-                             .filter(link -> LinkUtil.isValidPreviewUrl(link.url))
+                             .map(LinkPreviewUtil::previewLink)
+                             .filter(Objects::nonNull)
                              .collect(Collectors.toList()));
+  }
+
+  private static @Nullable Link previewLink(@NonNull Linkifier.DetectedLink detected) {
+    // Tellomi: text glued after the link is not part of it (LinkUtil.trimTextGluedAfterUrl)
+    String url = LinkUtil.trimTextGluedAfterUrl(detected.getUrl());
+    if (LinkUtil.isValidPreviewUrl(url)) {
+      return new Link(url, detected.getStart());
+    }
+    // Tellomi (owner 2026-10-17): http:// or no scheme, previewed over https when the registry claims it
+    String upgraded = TellomiLinkHttpsUpgrade.httpsUpgrade(detected.getUrl());
+    return upgraded != null ? new Link(upgraded, detected.getStart()) : null;
   }
 
   public static @NonNull OpenGraph parseOpenGraphFields(@Nullable String html) {

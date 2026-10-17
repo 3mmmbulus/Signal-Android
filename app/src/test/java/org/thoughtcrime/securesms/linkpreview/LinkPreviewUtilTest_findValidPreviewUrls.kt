@@ -1,11 +1,13 @@
 package org.thoughtcrime.securesms.linkpreview
 
 import android.app.Application
+import org.junit.After
 import org.junit.Assert
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
+import org.signal.libsignal.links.LinkRegistry
 
 @Suppress("ClassName")
 @RunWith(RobolectricTestRunner::class)
@@ -100,5 +102,48 @@ class LinkPreviewUtilTest_findValidPreviewUrls {
 
     Assert.assertEquals(1, links.size().toLong())
     Assert.assertTrue(links.containsUrl("https://zh.wikipedia.org/wiki/中国"))
+  }
+
+  @After
+  fun tearDown() {
+    TellomiLinkRegistry.setForTesting(null)
+  }
+
+  private fun withBundledRegistry() {
+    val bytes = requireNotNull(javaClass.classLoader?.getResourceAsStream("links/links-2026092702.json")).use { it.readBytes() }
+    TellomiLinkRegistry.setForTesting(LinkRegistry.load(bytes))
+  }
+
+  /** Tellomi (owner 2026-10-17): http:// or no scheme is previewed over https when the bundled registry claims it. */
+  @Test
+  fun tellomi_http_and_schemeless_links_the_registry_claims_are_previewed_over_https() {
+    withBundledRegistry()
+    for ((text, url) in listOf(
+      "看 b23.tv/abc" to "https://b23.tv/abc",
+      "看 http://b23.tv/abc" to "https://b23.tv/abc",
+      "看 www.bilibili.com/video/BV1GJ411x7h7 吧" to "https://www.bilibili.com/video/BV1GJ411x7h7",
+      "http://xhslink.com/a/b很好" to "https://xhslink.com/a/b"
+    )) {
+      val links = LinkPreviewUtil.findValidPreviewUrls(text)
+      Assert.assertEquals(text, url, links.findFirst().map { it.url }.orElse(null))
+    }
+  }
+
+  /** …not when nothing in the registry claims it, nor for our own hosts (the official badge needs https in the body). */
+  @Test
+  fun tellomi_http_links_the_registry_does_not_claim_get_no_preview() {
+    withBundledRegistry()
+    for (text in listOf("http://signal.org", "signal.org/hello", "http://tell.cc/g/abc")) {
+      Assert.assertEquals(text, 0, LinkPreviewUtil.findValidPreviewUrls(text).size().toLong())
+    }
+    val mixed = LinkPreviewUtil.findValidPreviewUrls("http://a.com https://signal.org/x")
+    Assert.assertEquals("https://signal.org/x", mixed.findFirst().get().url)
+  }
+
+  /** Without a registry nothing is upgraded (as upstream). */
+  @Test
+  fun tellomi_without_a_registry_http_links_get_no_preview() {
+    TellomiLinkRegistry.setForTesting(null)
+    Assert.assertEquals(0, LinkPreviewUtil.findValidPreviewUrls("看 http://b23.tv/abc").size().toLong())
   }
 }
