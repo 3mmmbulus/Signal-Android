@@ -1081,6 +1081,7 @@ class ConversationFragment :
   }
 
   override fun onDestroyView() {
+    TellomiSendTransition.cancelAll()
     selectionBarsGeneration++
     selectionBarsShown = false
     selectionBarsAnimator?.let {
@@ -2951,6 +2952,23 @@ class ConversationFragment :
       captionAboveMedia = captionAboveMedia
     )
 
+    // Tellomi（M9 发送动画）：纯文字、列表停在最底下时，新气泡从输入框飞上去。清空输入框之前把它的样子记下来。
+    val sendTransition = if (
+      clearCompose &&
+      canPlaySendTransition(slideDeck, quote, messageToEdit, scheduledDate, linkPreviews, contacts, preUploadResults, isViewOnce)
+    ) {
+      TellomiSendTransition.start(
+        host = requireActivity().window.decorView,
+        recycler = binding.conversationItemRecycler,
+        compose = composeText,
+        composeBox = inputPanel.composeBubble,
+        body = body,
+        matchAnyBody = mentions.isNotEmpty()
+      )
+    } else {
+      null
+    }
+
     disposables += send
       .doOnSubscribe {
         if (clearCompose) {
@@ -2970,9 +2988,40 @@ class ConversationFragment :
         },
         onError = {
           Log.w(TAG, "Error received during send!", it)
+          sendTransition?.cancel()
           toast(R.string.ConversationActivity_error_sending_media)
         }
       )
+  }
+
+  /**
+   * Tellomi（M9 发送动画）：只有纯文字（不带附件、引用、链接预览、联系人，不是编辑 / 定时 / 一次性查看）、不在弹窗会话里、
+   * 没在多选、列表停在最底下时才飞；用户关了动画、低内存机不飞（[TellomiMotion.allowsSendFlight]）。别的照旧直接出现。
+   */
+  private fun canPlaySendTransition(
+    slideDeck: SlideDeck?,
+    quote: QuoteModel?,
+    messageToEdit: MessageId?,
+    scheduledDate: Long,
+    linkPreviews: List<LinkPreview>,
+    contacts: List<Contact>,
+    preUploadResults: List<MessageSender.PreUploadResult>,
+    isViewOnce: Boolean
+  ): Boolean {
+    return slideDeck == null &&
+      quote == null &&
+      messageToEdit == null &&
+      scheduledDate == -1L &&
+      linkPreviews.isEmpty() &&
+      contacts.isEmpty() &&
+      preUploadResults.isEmpty() &&
+      !isViewOnce &&
+      !args.conversationScreenType.isInPopup &&
+      adapter.selectedItems.isEmpty() &&
+      // 同新消息自动滚到底的判断（shouldScrollToBottom）：最新那一条看得见就算在底部。只有一张开场卡片的空会话里键盘一起来
+      // 列表就能滚，isScrolledToBottom() 会是 false。
+      shouldScrollToBottom() &&
+      TellomiMotion.allowsSendFlight(TellomiMotion.signals(requireContext()))
   }
 
   private fun onSendComplete() {

@@ -5,6 +5,7 @@
 
 package org.thoughtcrime.securesms.conversation.v2.items
 
+import android.graphics.Canvas
 import android.graphics.Color
 import android.graphics.PorterDuff
 import android.graphics.Typeface
@@ -22,6 +23,7 @@ import android.view.GestureDetector
 import android.view.MotionEvent
 import android.view.View
 import android.view.ViewGroup
+import android.widget.TextView
 import androidx.core.content.ContextCompat
 import androidx.core.view.updateLayoutParams
 import androidx.lifecycle.Observer
@@ -39,6 +41,7 @@ import org.thoughtcrime.securesms.conversation.colors.ChatColors
 import org.thoughtcrime.securesms.conversation.mutiselect.Multiselect
 import org.thoughtcrime.securesms.conversation.mutiselect.MultiselectPart
 import org.thoughtcrime.securesms.conversation.mutiselect.Multiselectable
+import org.thoughtcrime.securesms.conversation.v2.TellomiSendTransition
 import org.thoughtcrime.securesms.conversation.v2.computed.FormattedDate
 import org.thoughtcrime.securesms.conversation.v2.data.ConversationMessageElement
 import org.thoughtcrime.securesms.database.model.MessageRecord
@@ -75,7 +78,8 @@ open class V2ConversationItemTextOnlyViewHolder<Model : MappingModel<Model>>(
   Multiselectable,
   InteractiveConversationElement,
   Observer<Recipient>,
-  TellomiBubbleTail.Provider {
+  TellomiBubbleTail.Provider,
+  TellomiSendTransition.Target {
 
   companion object {
     private val STYLE_FACTORY = SearchUtil.StyleFactory { arrayOf<CharacterStyle>(BackgroundColorSpan(Color.YELLOW), ForegroundColorSpan(Color.BLACK)) }
@@ -89,6 +93,13 @@ open class V2ConversationItemTextOnlyViewHolder<Model : MappingModel<Model>>(
 
   /** Tellomi：这一条画不画小尾巴（#1206）。 */
   private var tellomiHasTail = false
+
+  /** Tellomi（尾巴交接，规范 #1204 第 3 节）：这一行上次绑定的消息和那次画没画尾巴；同一条再绑定时没了尾巴，尾巴就淡出。 */
+  private var tellomiTailBoundId = -1L
+  private var tellomiTailWasShown = false
+
+  /** 尾巴从什么时候开始淡出（uptimeMillis），0 = 没在淡。 */
+  private var tellomiTailFadeStart = 0L
 
   private val projections = ProjectionList()
   private val dispatchTouchEventListener = V2OnDispatchTouchEventListener(conversationContext, binding)
@@ -232,6 +243,8 @@ open class V2ConversationItemTextOnlyViewHolder<Model : MappingModel<Model>>(
     }
 
     conversationMessage = model.conversationMessage
+    // Tellomi（M9 发送动画）：刚从输入框发出的这一条先藏着，由 TellomiSendTransition 从输入框飞过来，落定后再露出。
+    TellomiSendTransition.holdIfSending(conversationMessage.messageRecord, itemView)
     if (conversationMessage.threadRecipient.isGroup) {
       conversationMessage.messageRecord.fromRecipient.live().observe(conversationContext.lifecycleOwner, this)
     }
@@ -253,6 +266,16 @@ open class V2ConversationItemTextOnlyViewHolder<Model : MappingModel<Model>>(
     if (tellomiHasTail) {
       shapeDelegate.applyTellomiTail(isOutgoing = conversationMessage.messageRecord.isOutgoing)
     }
+    tellomiTailFadeStart = TellomiBubbleTail.handoverStart(
+      messageId = conversationMessage.messageRecord.id,
+      hasTail = tellomiHasTail,
+      previousMessageId = tellomiTailBoundId,
+      previousHadTail = tellomiTailWasShown,
+      fadeStart = tellomiTailFadeStart,
+      context = context
+    )
+    tellomiTailBoundId = conversationMessage.messageRecord.id
+    tellomiTailWasShown = tellomiHasTail
 
     if (ConversationAdapterBridge.PAYLOAD_TIMESTAMP in payload) {
       if (conversationMessage.computedProperties.formattedDate != formattedDate) {
@@ -384,10 +407,25 @@ open class V2ConversationItemTextOnlyViewHolder<Model : MappingModel<Model>>(
   override fun canPlayContent(): Boolean = false
 
   override fun getTellomiTail(parent: RecyclerView): TellomiBubbleTail.Spec? {
-    if (!tellomiHasTail || !binding.bodyWrapper.isShown || binding.bodyWrapper.scaleX != 1f) {
+    if (!binding.bodyWrapper.isShown || binding.bodyWrapper.scaleX != 1f) {
       return null
     }
+    if (tellomiHasTail) {
+      return tellomiBubbleSpec(parent)
+    }
 
+    // 尾巴交接：这一条刚没了尾巴（新消息接到了这一组下面），尾巴淡出。
+    val alpha = TellomiBubbleTail.handoverAlpha(tellomiTailFadeStart)
+    if (alpha <= 0f) {
+      tellomiTailFadeStart = 0L
+      return null
+    }
+    parent.postInvalidateOnAnimation()
+    return tellomiBubbleSpec(parent).withAlpha(alpha)
+  }
+
+  /** 气泡的位置、四个角、尾巴朝向和颜色（不管这一条画不画尾巴）。 */
+  private fun tellomiBubbleSpec(parent: RecyclerView): TellomiBubbleTail.Spec {
     val isLtr = ViewUtil.isLtr(parent)
     val projection = Projection.relativeToParent(
       parent,
@@ -409,6 +447,34 @@ open class V2ConversationItemTextOnlyViewHolder<Model : MappingModel<Model>>(
   }
 
   override fun shouldProjectContent(): Boolean = false
+
+  // Tellomi（M9 发送动画）：TellomiSendTransition 飞的就是这一行。
+
+  override val tellomiSendMessageId: Long
+    get() = conversationMessage.messageRecord.id
+
+  override val tellomiSendBubble: View
+    get() = binding.bodyWrapper
+
+  override val tellomiSendBody: TextView
+    get() = binding.body
+
+  override fun tellomiSendCanFly(): Boolean = !binding.body.isJumbomoji
+
+  override fun tellomiSendHasTail(): Boolean = tellomiHasTail
+
+  override fun tellomiSendDrawContent(canvas: Canvas) {
+    bodyBubbleDrawable.tellomiSuppressDraw = true
+    try {
+      itemView.draw(canvas)
+    } finally {
+      bodyBubbleDrawable.tellomiSuppressDraw = false
+    }
+  }
+
+  override fun tellomiSendBubbleSpec(parent: RecyclerView): TellomiBubbleTail.Spec? {
+    return if (binding.bodyWrapper.isLaidOut) tellomiBubbleSpec(parent) else null
+  }
 
   private fun invalidateFooterDrawable(coordinateRoot: ViewGroup) {
     if (footerDrawable.isSolidColor()) {

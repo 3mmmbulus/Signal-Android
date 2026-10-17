@@ -126,4 +126,26 @@ class TellomiMotionTest {
     val z = token.dampingRatio.toDouble()
     return if (z >= 1.0) 0.0 else exp(-PI * z / sqrt(1 - z * z))
   }
+
+  /** 发送动画的数：时长是 owner 选的 280 ms；曲线、淡入照 Telegram 两端；和 iOS `TellomiMotion.sendFlight` 同一组。 */
+  @Test
+  fun `send flight numbers`() {
+    assertEquals(280L, TellomiMotion.SendFlight.DURATION_MS)
+    assertEquals(120L, TellomiMotion.SendFlight.BUBBLE_FADE_IN_MS)
+    assertEquals(listOf(0.23f, 1f, 0.32f, 1f), TellomiMotion.SendFlight.X_CURVE.toList())
+    assertEquals(listOf(0.19919f, 0.01064f, 0.27921f, 0.91025f), TellomiMotion.SendFlight.Y_CURVE.toList())
+    assertEquals(150L, TellomiMotion.TailHandover.DURATION_MS)
+    assertEquals(listOf(0f, 0f, 0.2f, 1f), TellomiMotion.TailHandover.CURVE.toList())
+  }
+
+  /** 省电模式照飞（设计规范第 10 节），关了动画、低内存机不飞。 */
+  @Test
+  fun `send flight plays in power save but not without animations or on low memory phones`() {
+    assertTrue(TellomiMotion.allowsSendFlight(goodPhone))
+    assertTrue(TellomiMotion.allowsSendFlight(goodPhone.copy(powerSave = true)))
+    assertFalse(TellomiMotion.allowsSendFlight(goodPhone.copy(animatorsEnabled = false)))
+    assertFalse(TellomiMotion.allowsSendFlight(goodPhone.copy(lowRamDevice = true)))
+    assertFalse(TellomiMotion.allowsSendFlight(goodPhone.copy(memoryClassMb = 96)))
+    assertTrue(TellomiMotion.allowsSendFlight(goodPhone.copy(memoryClassMb = 0)))
+  }
 }

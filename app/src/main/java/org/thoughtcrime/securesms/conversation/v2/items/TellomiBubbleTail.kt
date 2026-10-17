@@ -10,11 +10,14 @@ import android.graphics.Canvas
 import android.graphics.Color
 import android.graphics.Paint
 import android.graphics.Path
+import android.os.SystemClock
 import android.view.View
 import androidx.annotation.ColorInt
 import androidx.core.graphics.withClip
+import androidx.core.view.animation.PathInterpolatorCompat
 import androidx.core.view.children
 import androidx.recyclerview.widget.RecyclerView
+import org.signal.core.ui.motion.TellomiMotion
 import org.thoughtcrime.securesms.conversation.ConversationItemDisplayMode
 import org.thoughtcrime.securesms.conversation.colors.ChatColors
 import org.thoughtcrime.securesms.database.model.MessageRecord
@@ -120,14 +123,60 @@ object TellomiBubbleTail {
    * @param towardsRight 尾巴伸向右边（画在气泡右下角）还是左边（左下角）。
    * @param color 纯色气泡的颜色。
    * @param gradient 渐变的聊天颜色；不是渐变时为 null，用 [color]。
+   * @param alpha 尾巴交接时淡出用（[handoverAlpha]），平时是 1。
    */
   class Spec @JvmOverloads constructor(
     val bubble: Projection,
     val towardsRight: Boolean,
     @ColorInt val color: Int,
     val gradient: ChatColors?,
-    val coverRadiusDp: Float = DEFAULT_COVER_RADIUS_DP
-  )
+    val coverRadiusDp: Float = DEFAULT_COVER_RADIUS_DP,
+    val alpha: Float = 1f
+  ) {
+    fun withAlpha(alpha: Float): Spec = Spec(bubble, towardsRight, color, gradient, coverRadiusDp, alpha)
+  }
+
+  private val HANDOVER_INTERPOLATOR = TellomiMotion.TailHandover.CURVE.let { PathInterpolatorCompat.create(it[0], it[1], it[2], it[3]) }
+
+  /**
+   * 尾巴交接（规范 #1204 第 3 节）：同一条消息上次绑定时画着尾巴、这次不画了（新消息接到了这一组下面，或者挂上了表情回应），
+   * 尾巴就淡出 [TellomiMotion.TailHandover.DURATION_MS]。返回新的开始时间（uptimeMillis，0 = 不淡）：
+   * 又画回尾巴、这一行换成了别的消息 → 0；同一条接着绑定 → 照旧淡。「移除动画」打开时直接换（规范第 10 节）。
+   *
+   * @param previousMessageId 这一行上次绑定的消息（没有是 -1）
+   * @param previousHadTail 上次画没画尾巴
+   */
+  @JvmStatic
+  @JvmOverloads
+  fun handoverStart(
+    messageId: Long,
+    hasTail: Boolean,
+    previousMessageId: Long,
+    previousHadTail: Boolean,
+    fadeStart: Long,
+    context: Context,
+    now: Long = SystemClock.uptimeMillis()
+  ): Long {
+    return when {
+      hasTail || previousMessageId != messageId -> 0L
+      previousHadTail -> if (TellomiMotion.tier(context) != TellomiMotion.Tier.MINIMAL) now else 0L
+      else -> fadeStart
+    }
+  }
+
+  /** 尾巴交接从 [fadeStart] 开始淡出，现在的透明度；淡完或没在淡是 0。 */
+  @JvmStatic
+  @JvmOverloads
+  fun handoverAlpha(fadeStart: Long, now: Long = SystemClock.uptimeMillis()): Float {
+    if (fadeStart <= 0L) {
+      return 0f
+    }
+    val progress = (now - fadeStart).toFloat() / TellomiMotion.TailHandover.DURATION_MS
+    if (progress >= 1f) {
+      return 0f
+    }
+    return 1f - HANDOVER_INTERPOLATOR.getInterpolation(progress.coerceAtLeast(0f))
+  }
 
   /** 气泡的渲染方实现：这一条现在要不要画尾巴、画在哪里；不画返回 null。坐标相对于 [parent]。 */
   interface Provider {
@@ -166,11 +215,11 @@ object TellomiBubbleTail {
         if (gradient != null && gradient.isGradient()) {
           val mask = gradient.chatBubbleMask
           mask.setBounds(0, 0, parent.width, parent.height)
-          mask.alpha = (255 * child.alpha).toInt()
+          mask.alpha = (255 * child.alpha * spec.alpha).toInt()
           c.withClip(tail) { mask.draw(this) }
         } else {
           paint.color = spec.color
-          paint.alpha = (Color.alpha(spec.color) * child.alpha).toInt()
+          paint.alpha = (Color.alpha(spec.color) * child.alpha * spec.alpha).toInt()
           c.drawPath(tail, paint)
         }
       }

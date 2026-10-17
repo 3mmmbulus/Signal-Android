@@ -180,4 +180,26 @@ class TellomiBubbleTailTest {
   companion object {
     private const val DENSITY = 2f
   }
+
+  /** 尾巴交接（规范 #1204 第 3 节）：同一条消息没了尾巴（新消息接到这一组下面），尾巴 150 ms ease-out 淡出。 */
+  @Test
+  fun `the tail of the message a new one joins fades out over 150 ms`() {
+    val context = ApplicationProvider.getApplicationContext<Application>()
+    val start = TellomiBubbleTail.handoverStart(messageId = 7, hasTail = false, previousMessageId = 7, previousHadTail = true, fadeStart = 0, context = context, now = 1000)
+    assertThat(start).isEqualTo(1000L)
+    assertThat(TellomiBubbleTail.handoverAlpha(start, now = 1000)).isEqualTo(1f)
+    val halfway = TellomiBubbleTail.handoverAlpha(start, now = 1075)
+    assertThat(halfway > 0f && halfway < 0.5f).isTrue() // ease-out: more than half gone at half time
+    assertThat(TellomiBubbleTail.handoverAlpha(start, now = 1150)).isEqualTo(0f)
+    assertThat(TellomiBubbleTail.handoverAlpha(0, now = 1000)).isEqualTo(0f)
+  }
+
+  @Test
+  fun `no fade when the row now shows another message or the tail comes back, and a running fade keeps going`() {
+    val context = ApplicationProvider.getApplicationContext<Application>()
+    assertThat(TellomiBubbleTail.handoverStart(8, hasTail = false, previousMessageId = 7, previousHadTail = true, fadeStart = 0, context = context, now = 1000)).isEqualTo(0L)
+    assertThat(TellomiBubbleTail.handoverStart(7, hasTail = true, previousMessageId = 7, previousHadTail = false, fadeStart = 900, context = context, now = 1000)).isEqualTo(0L)
+    assertThat(TellomiBubbleTail.handoverStart(7, hasTail = false, previousMessageId = 7, previousHadTail = false, fadeStart = 900, context = context, now = 1000)).isEqualTo(900L)
+    assertThat(TellomiBubbleTail.handoverStart(7, hasTail = false, previousMessageId = -1, previousHadTail = false, fadeStart = 0, context = context, now = 1000)).isEqualTo(0L)
+  }
 }

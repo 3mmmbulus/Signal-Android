@@ -112,6 +112,7 @@ import org.thoughtcrime.securesms.conversation.colors.Colorizer;
 import org.thoughtcrime.securesms.conversation.mutiselect.MultiselectCollection;
 import org.thoughtcrime.securesms.conversation.mutiselect.MultiselectPart;
 import org.thoughtcrime.securesms.conversation.ui.payment.PaymentMessageView;
+import org.thoughtcrime.securesms.conversation.v2.TellomiSendTransition;
 import org.thoughtcrime.securesms.conversation.v2.items.InteractiveConversationElement;
 import org.thoughtcrime.securesms.conversation.v2.items.SenderNameWithLabelView;
 import org.thoughtcrime.securesms.conversation.v2.items.TellomiBubbleTail;
@@ -306,6 +307,10 @@ public final class ConversationItem extends RelativeLayout implements BindableCo
 
   /** Tellomi：这一条画不画小尾巴、用什么颜色（#1206）。 */
   private           boolean    tellomiHasTail;
+  /** Tellomi（尾巴交接，规范 #1204 第 3 节）：这一行上次的消息和那次画没画尾巴；尾巴从什么时候开始淡出（0 = 没在淡）。 */
+  private           long       tellomiTailBoundId   = -1;
+  private           boolean    tellomiTailWasShown;
+  private           long       tellomiTailFadeStart;
   private @ColorInt int        tellomiTailColor;
   /** Tellomi（ADR-0068 §4.7）：正文在气泡里本来的位置和下边距，说明文字挪到媒体上方后放回去用。 */
   private int                  tellomiBodyIndex = -1;
@@ -439,6 +444,8 @@ public final class ConversationItem extends RelativeLayout implements BindableCo
 
     this.conversationMessage   = conversationMessage;
     this.messageRecord         = conversationMessage.getMessageRecord();
+    // Tellomi（M9 发送动画）：刚发出、正等着从输入框飞过来的那一条先藏着；这种行不飞，下一帧就放出来（TellomiSendTransition）。
+    TellomiSendTransition.holdIfSending(messageRecord, this);
     this.nextMessageRecord     = nextMessageRecord;
     this.locale                = locale;
     this.requestManager        = requestManager;
@@ -2684,6 +2691,9 @@ public final class ConversationItem extends RelativeLayout implements BindableCo
                                                   !current.getReactions().isEmpty(),
                                                   TellomiBubbleTail.hasVisibleBubble(current, context),
                                                   displayMode);
+    tellomiTailFadeStart = TellomiBubbleTail.handoverStart(current.getId(), tellomiHasTail, tellomiTailBoundId, tellomiTailWasShown, tellomiTailFadeStart, context);
+    tellomiTailBoundId   = current.getId();
+    tellomiTailWasShown  = tellomiHasTail;
 
     if (singular && !tellomiHasTail) {
       if (current.isOutgoing()) {
@@ -2935,8 +2945,19 @@ public final class ConversationItem extends RelativeLayout implements BindableCo
 
   @Override
   public @Nullable TellomiBubbleTail.Spec getTellomiTail(@NonNull RecyclerView parent) {
-    if (!tellomiHasTail || messageRecord == null || bodyBubbleCorners == null || !bodyBubble.isShown() || bodyBubble.getScaleX() != 1f) {
+    if (messageRecord == null || bodyBubbleCorners == null || !bodyBubble.isShown() || bodyBubble.getScaleX() != 1f) {
       return null;
+    }
+
+    float alpha = 1f;
+    if (!tellomiHasTail) {
+      // 尾巴交接：这一条刚没了尾巴（新消息接到了这一组下面），尾巴淡出。
+      alpha = TellomiBubbleTail.handoverAlpha(tellomiTailFadeStart);
+      if (alpha <= 0f) {
+        tellomiTailFadeStart = 0;
+        return null;
+      }
+      parent.postInvalidateOnAnimation();
     }
 
     Projection projection = Projection.relativeToParent(parent, bodyBubble, bodyBubbleCorners)
@@ -2944,7 +2965,7 @@ public final class ConversationItem extends RelativeLayout implements BindableCo
                                       .translateX(getTranslationX())
                                       .translateY(getTranslationY());
 
-    return new TellomiBubbleTail.Spec(projection, messageRecord.isOutgoing() == ViewUtil.isLtr(parent), tellomiTailColor, tellomiTailChatColors);
+    return new TellomiBubbleTail.Spec(projection, messageRecord.isOutgoing() == ViewUtil.isLtr(parent), tellomiTailColor, tellomiTailChatColors, TellomiBubbleTail.DEFAULT_COVER_RADIUS_DP, alpha);
   }
 
   @Override

@@ -128,4 +128,49 @@ object TellomiMotion {
 
   /** 是否播放飞行类、循环类等装饰性更强的动效（例如回应表情飞到胶囊）。简化档与最少档只做落点处的状态变化。 */
   fun allowsFlourish(tier: Tier): Boolean = tier == Tier.FULL
+
+  /**
+   * 发送动画（M9，设计规范 `bubbles-and-motion-design.md` 第 4 节）：点发送后，新气泡从输入框飞到会话里它的位置。
+   *
+   * 时长是 owner 2026-09-26 在 #1204 演示页选的 280 ms（Telegram 安卓 250、iOS 300）。其余照 Telegram 两端（只读机制，
+   * owner 2026-10-14「聊天类照 Telegram，两端都有就做」）：横向、纵向各一条曲线，横向前快、纵向跟列表，走出一道弧线；
+   * 输入框的框变成气泡的框；气泡底色连同尾巴很快淡入，输入框里的字和气泡里的字交叉淡入淡出。iOS `TellomiMotion.sendFlight` 同一组数。
+   */
+  object SendFlight {
+    const val DURATION_MS = 280L
+
+    /** 气泡底色（连同尾巴）由透明到不透明；同一段时间里输入框的字淡出、气泡的字淡入（Telegram 两端约 100 ms）。 */
+    const val BUBBLE_FADE_IN_MS = 120L
+
+    /** 横向：前快后慢，三分之一的时间就走完八成多（Telegram iOS `horizontalAnimationCurve`；安卓是同一形状的 EASE_OUT∘EASE_OUT_QUINT）。 */
+    val X_CURVE = floatArrayOf(0.23f, 1f, 0.32f, 1f)
+
+    /** 纵向：Telegram 两端列表插入新消息用的同一条曲线（iOS `verticalAnimationControlPoints`、安卓 `ChatListItemAnimator.DEFAULT_INTERPOLATOR`）。 */
+    val Y_CURVE = floatArrayOf(0.19919f, 0.01064f, 0.27921f, 0.91025f)
+
+    /** 等新的一行进列表最多等这么久；等不到就不飞（Telegram 安卓等 200 ms，本地库写入慢的机器上给宽一点）。 */
+    const val WAIT_FOR_ROW_MS = 600L
+
+    /** 不飞的时候（等不到、页面要走），留在输入框原处的那几行字淡掉、输入框淡回。 */
+    const val CANCEL_FADE_MS = 150L
+
+    /** 输入框超过这么多行就不飞（输入框最多显示 5 行，再多它自己滚动，看不全；Telegram 安卓超过 10 行不飞）。 */
+    const val MAX_LINES = 5
+  }
+
+  /** 尾巴交接（设计规范第 3 节）：新消息接到同一组时，上一条的尾巴淡出；它的下角本来就是 4，不用变形。 */
+  object TailHandover {
+    const val DURATION_MS = 150L
+
+    /** ease-out：`cubic-bezier(0, 0, 0.2, 1)`。 */
+    val CURVE = floatArrayOf(0f, 0f, 0.2f, 1f)
+  }
+
+  /**
+   * 发送动画飞不飞：用户关了动画（最少档）不飞；低内存机不飞（Telegram 安卓低端机也不飞）。
+   * 省电模式照飞——设计规范第 10 节「发送动画：省电模式同正常」，这里不用 [allowsFlourish]（它把省电模式也算进简化档）。
+   */
+  fun allowsSendFlight(signals: DeviceSignals): Boolean {
+    return signals.animatorsEnabled && !signals.lowRamDevice && signals.memoryClassMb !in 1..LOW_MEMORY_CLASS_MB
+  }
 }

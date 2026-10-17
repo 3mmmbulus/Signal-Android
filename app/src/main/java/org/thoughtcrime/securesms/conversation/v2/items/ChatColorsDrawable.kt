@@ -57,7 +57,16 @@ class ChatColorsDrawable(
   private var localChatColors: ChatColors? = null
   private var localMask: Drawable? = null
 
+  /**
+   * Tellomi（M9 发送动画）：为 true 时不画。TellomiSendTransition 把新的一行画成图时只要字和时间，气泡底色由它自己画，
+   * 好跟着从输入框变过来的框变形。只在那一次同步绘制期间打开。
+   */
+  var tellomiSuppressDraw = false
+
   override fun draw(canvas: Canvas) {
+    if (tellomiSuppressDraw) {
+      return
+    }
     val chatColors = getChatColors() ?: return
 
     val mask = getMask()
