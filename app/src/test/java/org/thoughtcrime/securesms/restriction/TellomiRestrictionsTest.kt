@@ -70,6 +70,17 @@ class TellomiRestrictionsTest {
   }
 
   @Test
+  fun `asks every six hours, every fifteen minutes while restricted, and after a failed attempt`() {
+    val now = System.currentTimeMillis()
+    assertThat(TellomiRestrictions.shouldRefresh(now, lastRefreshAt = 0, restricted = false)).isTrue()
+    assertThat(TellomiRestrictions.shouldRefresh(now, now - TimeUnit.HOURS.toMillis(5), restricted = false)).isFalse()
+    assertThat(TellomiRestrictions.shouldRefresh(now, now - TimeUnit.HOURS.toMillis(6), restricted = false)).isTrue()
+    assertThat(TellomiRestrictions.shouldRefresh(now, now - TimeUnit.MINUTES.toMillis(16), restricted = true)).isTrue()
+    assertThat(TellomiRestrictions.shouldRefresh(now, now - TimeUnit.MINUTES.toMillis(5), restricted = true)).isFalse()
+    assertThat(TellomiRestrictions.shouldRefresh(now, now + TimeUnit.HOURS.toMillis(1), restricted = false)).isTrue()
+  }
+
+  @Test
   fun `a forbidden send with the explanation is remembered and stops retries`() {
     assertThat(TellomiRestrictions.onForbidden(body(level = "all"))).isTrue()
     assertThat(TellomiRestrictions.active()?.level).isEqualTo(TellomiRestriction.Level.ALL)

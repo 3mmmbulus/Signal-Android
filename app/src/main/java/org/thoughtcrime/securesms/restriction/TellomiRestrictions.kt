@@ -96,6 +96,16 @@ object TellomiRestrictions {
   private const val PATH = "/v1/tellomi/restriction"
   private val REFRESH_INTERVAL = TimeUnit.HOURS.toMillis(6)
 
+  /** 有处置时问得勤一些：提前解除（申诉通过、处置有误）时，横幅不该还挂几个小时。 */
+  private val REFRESH_INTERVAL_WHILE_RESTRICTED = TimeUnit.MINUTES.toMillis(15)
+
+  /** 回前台时该不该问（时钟往回拨过也问一次）。 */
+  @JvmStatic
+  fun shouldRefresh(now: Long, lastRefreshAt: Long, restricted: Boolean): Boolean {
+    val sinceLast = now - lastRefreshAt
+    return sinceLast < 0 || sinceLast >= if (restricted) REFRESH_INTERVAL_WHILE_RESTRICTED else REFRESH_INTERVAL
+  }
+
   private val changes = MutableStateFlow<TellomiRestriction?>(null)
   private var loaded = false
 
@@ -142,7 +152,6 @@ object TellomiRestrictions {
   @JvmStatic
   @WorkerThread
   fun refresh(reason: String): TellomiRestriction? {
-    SignalStore.tellomiRestriction.lastRefreshAt = System.currentTimeMillis()
     val result = NetworkResult.fromWebSocketRequest(
       signalWebSocket = AppDependencies.authWebSocket,
       request = WebSocketRequestMessage.get(PATH),
@@ -150,6 +159,8 @@ object TellomiRestrictions {
     )
     return when (result) {
       is NetworkResult.Success -> {
+        // 问到了才记时间：回前台那一刻断网的话，下次回前台还要再问，不能白等 6 小时
+        SignalStore.tellomiRestriction.lastRefreshAt = System.currentTimeMillis()
         store(TellomiRestriction.parse(result.result))
         active()
       }
@@ -160,15 +171,13 @@ object TellomiRestrictions {
     }
   }
 
-  /** 回到前台时调（后台线程）：距离上次问超过 6 小时才问。 */
+  /** 回到前台时调（后台线程）：没有处置时距离上次问超过 6 小时才问，有处置时 15 分钟。 */
   @JvmStatic
   @WorkerThread
   fun onForeground() {
     if (!SignalStore.account.isRegistered) return
-    if (System.currentTimeMillis() - SignalStore.tellomiRestriction.lastRefreshAt >= REFRESH_INTERVAL) {
+    if (shouldRefresh(System.currentTimeMillis(), SignalStore.tellomiRestriction.lastRefreshAt, restricted = active() != null)) {
       refresh("foreground")
-    } else {
-      active()
     }
   }
 
