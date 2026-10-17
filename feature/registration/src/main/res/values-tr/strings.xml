@@ -144,7 +144,7 @@
     <!-- Row title for restore/transfer without using a previous device -->
     <string name="WelcomeFragment_restore_action_i_dont_have_my_old_phone">Eski telefonum yanımda değil</string>
     <!-- Row subtitle for restore/transfer without using a previous device -->
-    <string name="WelcomeFragment_restore_action_reinstalling">Ya da Tellomi\'ı aynı cihaza yeniden yüklüyorsun</string>
+    <string name="WelcomeFragment_restore_action_reinstalling">Ya da Tellomi\'yi aynı cihaza yeniden yüklüyorsun</string>
 
     <!-- ArchiveRestoreSelectionScreen -->
     <!-- Title text for the archive restore selection screen -->
@@ -263,7 +263,7 @@
     <!-- Button to link an existing Signal account to this device -->
     <string name="WelcomeScreen__link_your_account">Hesabını bağla</string>
     <!-- Prompt shown to users who don\'t have a Signal account yet -->
-    <string name="WelcomeScreen__not_on_signal_yet">Halen Tellomi\'da değil misin?</string>
+    <string name="WelcomeScreen__not_on_signal_yet">Halen Tellomi\'de değil misin?</string>
     <!-- Button to create a new Signal account -->
     <string name="WelcomeScreen__create_account">Hesap oluştur</string>
 
@@ -297,9 +297,9 @@
     <!-- Title for the invalid backup version dialog -->
     <string name="RemoteRestoreScreen__couldnt_restore_this_backup">Bu yedekleme geri yüklenemedi</string>
     <!-- Body for the invalid backup version dialog -->
-    <string name="RemoteRestoreScreen__update_latest">Tellomi\'ın bu sürümü yedeklemeni geri yükleyemez. En son sürüme güncelle ve tekrar dene.</string>
+    <string name="RemoteRestoreScreen__update_latest">Tellomi\'nin bu sürümü yedeklemeni geri yükleyemez. En son sürüme güncelle ve tekrar dene.</string>
     <!-- Button to update Signal -->
-    <string name="RemoteRestoreScreen__update_signal">Tellomi\'ı Güncelle</string>
+    <string name="RemoteRestoreScreen__update_signal">Tellomi\'yi Güncelle</string>
     <!-- Button to dismiss update dialog -->
     <string name="RemoteRestoreScreen__not_now">Şimdi değil</string>
     <!-- Title for unrecoverable backup failure dialog -->
@@ -331,7 +331,7 @@
     <string name="AccountLockedScreen__your_account">Gizliliğini ve güvenliğini korumak için hesabın kilitlendi. %1$d gün boyunca hesabında hareket olmazsa, PIN’e ihtiyaç duymadan bu telefon numarasını yeniden kaydedebilirsin. Tüm içerikler silinecektir.</string>
 
     <!-- Step 1 to quick restore -->
-    <string name="QuickRestoreQRScreen__step_1">Tellomi\'ı eski cihazında aç</string>
+    <string name="QuickRestoreQRScreen__step_1">Tellomi\'yi eski cihazında aç</string>
     <!-- Step 2 to quick restore -->
     <string name="QuickRestoreQRScreen__step_2">Kamera simgesine dokun </string>
     <!-- Step 3 to quick restore -->
@@ -388,7 +388,7 @@
     <!-- Title of the dialog confirming that the user wants to disable their Signal PIN. -->
     <string name="PinCreationScreen__warning">Uyarı</string>
     <!-- Warning shown in the dialog confirming that the user wants to disable their Signal PIN. -->
-    <string name="PinCreationScreen__disable_pin_warning">PIN\'i devre dışı bırakırsan, elle yedekleyip geri yüklemediğin sürece Tellomi\'ı yeniden kaydettiğinde tüm verilerini kaybedersin. PIN devre dışı iken Kayıt Kilidini açamazsın.</string>
+    <string name="PinCreationScreen__disable_pin_warning">PIN\'i devre dışı bırakırsan, elle yedekleyip geri yüklemediğin sürece Tellomi\'yi yeniden kaydettiğinde tüm verilerini kaybedersin. PIN devre dışı iken Kayıt Kilidini açamazsın.</string>
     <!-- Overflow menu item and dialog button that disables the Signal PIN. -->
     <string name="PinCreationScreen__disable_pin">PIN\'i devre dışı bırak</string>
     <!-- Labels the button that cancels disabling the Signal PIN. -->
@@ -405,7 +405,7 @@
     <!-- PIN entry screen title when restoring an account. -->
     <string name="PinEntryScreen__enter_your_pin">PIN\'ini gir</string>
     <!-- Describes the PIN that needs to be entered. -->
-    <string name="PinEntryScreen__enter_the_pin_you_created">Tellomi\'ı ilk kez yüklediğinde oluşturduğun PIN\'i gir</string>
+    <string name="PinEntryScreen__enter_the_pin_you_created">Tellomi\'yi ilk kez yüklediğinde oluşturduğun PIN\'i gir</string>
     <!-- Error shown when the user enters the code used to verify their phone number instead of their PIN, and it was not their actual PIN. -->
     <string name="PinEntryScreen__reentered_verification_code">Telefon numaranı doğrulamak için daha önce kullandığın kodu tekrar girdin. Hesabın için daha önce belirlediğin benzersiz Tellomi PIN\'ini gir.</string>
     <!-- Error shown when an incorrect PIN is entered. %1$d is the number of attempts remaining. -->
@@ -477,7 +477,7 @@
     <!-- Title for the screen that shows a QR code the user scans with their existing primary device to link this device as a secondary -->
     <string name="LinkAccountScreen__scan_this_code_to_link_your_account">Hesabını bağlamak için bu kodu tara</string>
     <!-- Step in the link-account instructions: open Signal on the user\'s existing phone -->
-    <string name="LinkAccountScreen__open_signal_on_your_phone">Tellomi\'ı telefonunda aç</string>
+    <string name="LinkAccountScreen__open_signal_on_your_phone">Tellomi\'yi telefonunda aç</string>
     <!-- Step in the link-account instructions: tap profile picture to open Signal Settings -->
     <string name="LinkAccountScreen__tap_your_profile_picture_to_open_signal_settings">Tellomi Ayarları\'nı açmak için profil resmine dokun</string>
     <!-- Step in the link-account instructions: navigate to the Linked devices section and tap Link new device. The quoted strings should match the button/menu labels in the primary device\'s settings. -->
@@ -491,7 +491,7 @@
     <!-- Error label shown in place of the QR code if it could not be generated -->
     <string name="LinkAccountScreen__failed_to_generate_code">Kod üretilemedi</string>
     <!-- Footer prompt asking the user if they have another device with Signal. Precedes a separate "Create account" link. -->
-    <string name="LinkAccountScreen__dont_have_signal_on_another_device">Başka bir cihazda Tellomi\'ın yok mu?</string>
+    <string name="LinkAccountScreen__dont_have_signal_on_another_device">Başka bir cihazda Tellomi\'nin yok mu?</string>
     <!-- Inline link in the link-account screen footer that takes the user to the new-account creation flow instead of linking -->
     <string name="LinkAccountScreen__create_account">Hesap oluştur</string>
     <!-- Button to retry generating the QR code after it failed to load -->
@@ -513,7 +513,7 @@
 
     <!-- Device transfer: Instructions screen -->
     <string name="DeviceTransferInstructions__transfer_your_account">Hesabını aktar</string>
-    <string name="DeviceTransferInstructions__to_transfer_open_signal_on_your_old_android_device">Hesabını aktarmak için eski Android cihazında Tellomi\'ı aç ve Hesabı Aktar\'ı seç.</string>
+    <string name="DeviceTransferInstructions__to_transfer_open_signal_on_your_old_android_device">Hesabını aktarmak için eski Android cihazında Tellomi\'yi aç ve Hesabı Aktar\'ı seç.</string>
     <string name="DeviceTransferInstructions__continue">Devam et</string>
 
     <!-- Device transfer: Setup screen -->
@@ -528,7 +528,7 @@
     <string name="DeviceTransferSetup__grant_location_permission">İzin ver</string>
     <string name="DeviceTransferSetup__location_services_required">Tellomi, eski cihazını keşfetmek ve ona bağlanmak için konum hizmetlerinin etkinleştirilmesine ihtiyaç duyar.</string>
     <string name="DeviceTransferSetup__turn_on_location_services">Konum hizmetlerini aç</string>
-    <string name="DeviceTransferSetup__wifi_required">Tellomi\'ın eski cihazını keşfetmesi ve ona bağlanması için Wi-Fi\'ın açık olması gerekir.</string>
+    <string name="DeviceTransferSetup__wifi_required">Tellomi\'nin eski cihazını keşfetmesi ve ona bağlanması için Wi-Fi\'ın açık olması gerekir.</string>
     <string name="DeviceTransferSetup__turn_on_wifi">Wi-Fi\'ı aç</string>
     <string name="DeviceTransferSetup__wifi_direct_unavailable">Üzgünüz, cihazının Wi-Fi Direct\'i desteklemediği görülüyor.</string>
     <string name="DeviceTransferSetup__restore_a_backup">Bunun yerine bir yedeklemeyi geri yükle</string>
@@ -576,9 +576,9 @@
     <!-- Title row label shown on the create-profile screen pointing at the discoverability picker. -->
     <string name="WhoCanSeeMyPhoneNumberFragment__who_can_find_me_by_number">Beni numaramdan kim bulabilir?</string>
     <!-- Description shown on the picker when "Everyone" is selected. -->
-    <string name="WhoCanSeeMyPhoneNumberFragment__anyone_who_has_your">Telefon numaranı bilen herkes Tellomi\'da olduğunu görecek ve seninle sohbet başlatabilecektir.</string>
+    <string name="WhoCanSeeMyPhoneNumberFragment__anyone_who_has_your">Telefon numaranı bilen herkes Tellomi\'de olduğunu görecek ve seninle sohbet başlatabilecektir.</string>
     <!-- Description shown on the picker when "Nobody" is selected. -->
-    <string name="WhoCanSeeMyPhoneNumberFragment__nobody_will_be_able">Ona mesaj göndermediğin veya mevcut bir sohbetin olmadığı sürece kimse Tellomi\'da olduğunu göremez.</string>
+    <string name="WhoCanSeeMyPhoneNumberFragment__nobody_will_be_able">Ona mesaj göndermediğin veya mevcut bir sohbetin olmadığı sürece kimse Tellomi\'de olduğunu göremez.</string>
     <!-- Radio option label for "Everyone can find me by number". -->
     <string name="PhoneNumberPrivacy_everyone">Herkes</string>
     <!-- Radio option label for "Nobody can find me by number". -->
@@ -586,7 +586,7 @@
     <!-- Title for the confirmation dialog shown when the user selects "Nobody". -->
     <string name="PhoneNumberPrivacySettingsFragment__nobody_can_find_me_warning_title">Emin misin?</string>
     <!-- Body for the confirmation dialog shown when the user selects "Nobody". -->
-    <string name="PhoneNumberPrivacySettingsFragment__nobody_can_find_me_warning_message">\"Beni numaramla kimler bulabilir\" seçeneğini \"Hiç kimse\" olarak ayarlamak, insanların seni Tellomi\'da bulmasını zorlaştıracaktır.</string>
+    <string name="PhoneNumberPrivacySettingsFragment__nobody_can_find_me_warning_message">\"Beni numaramla kimler bulabilir\" seçeneğini \"Hiç kimse\" olarak ayarlamak, insanların seni Tellomi\'de bulmasını zorlaştıracaktır.</string>
     <!-- Cancel button on the "Nobody" confirmation dialog. -->
     <string name="PhoneNumberPrivacySettingsFragment__cancel">İptal</string>
     <!-- Save button on the discoverability picker. -->
@@ -624,7 +624,7 @@
     <!-- Selling point of the existing-login option: the account can be restored. -->
     <string name="SignalLoginPaymentScreen__login_and_restore_your_account">Oturum aç ve hesabını geri yükle</string>
     <!-- Selling point of the existing-login option, thanking the user for their previous purchase. -->
-    <string name="SignalLoginPaymentScreen__thanks_for_supporting_signal">Tellomi\'ı desteklediğin için teşekkürler</string>
+    <string name="SignalLoginPaymentScreen__thanks_for_supporting_signal">Tellomi\'yi desteklediğin için teşekkürler</string>
     <!-- Action button that starts the purchase. Placeholder is the localized price, e.g. "$1.99". -->
     <string name="SignalLoginPaymentScreen__pay_s">%1$s öde</string>
     <!-- Action button that starts the purchase, shown while the price is still loading. -->
@@ -672,7 +672,7 @@
     <!-- Body of the dialog shown when Google Play services works but nobody is signed into the Play Store. -->
     <string name="SignalLoginPaymentScreen__to_purchase_a_signal_login_sign_into_the_google_play_store">Tellomi Login satın almak için lütfen Google Play Store\'da oturum aç.</string>
     <!-- Body of the dialog shown when this version of Signal cannot make Google Play purchases at all. -->
-    <string name="SignalLoginPaymentScreen__you_cant_purchase_a_signal_login_in_this_version">Tellomi\'ın bu sürümünde Tellomi Login satın alamazsın. Satın almak için Tellomi\'ı Google Play Store\'dan yükle.</string>
+    <string name="SignalLoginPaymentScreen__you_cant_purchase_a_signal_login_in_this_version">Tellomi\'nin bu sürümünde Tellomi Login satın alamazsın. Satın almak için Tellomi\'yi Google Play Store\'dan yükle.</string>
     <!-- Button that opens the Google Play store so the user can sign into it. -->
     <string name="SignalLoginPaymentScreen__open_play_store">Play Store\'u Aç</string>
 
@@ -794,7 +794,7 @@
     <!-- Title of the dialog confirming the user wants to skip choosing a username. -->
     <string name="AddUsernameScreen__are_you_sure">Emin misin?</string>
     <!-- Body of the dialog confirming the user wants to skip choosing a username. -->
-    <string name="AddUsernameScreen__without_a_username_people_wont_be_able_to_find_you">Kullanıcı adın olmadan kişiler seni Tellomi\'da bulamaz.</string>
+    <string name="AddUsernameScreen__without_a_username_people_wont_be_able_to_find_you">Kullanıcı adın olmadan kişiler seni Tellomi\'de bulamaz.</string>
     <!-- Button in the skip-username confirmation dialog that returns to the screen without skipping. -->
     <string name="AddUsernameScreen__cancel">İptal</string>
     <!-- Button in the skip-username confirmation dialog that skips choosing a username. -->

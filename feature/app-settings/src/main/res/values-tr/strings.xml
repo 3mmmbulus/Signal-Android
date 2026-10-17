@@ -3,7 +3,7 @@
     <!-- RegistrationLockV2Dialog -->
     <string name="RegistrationLockV2Dialog_turn_on_registration_lock">Kayıt Kilidi Açılsın mı?</string>
     <string name="RegistrationLockV2Dialog_turn_off_registration_lock">Kayıt Kilidi Kapatılsın mı?</string>
-    <string name="RegistrationLockV2Dialog_if_you_forget_your_signal_pin_when_registering_again">Tellomi\'a tekrar kaydolurken Tellomi PIN\'ini unutursan, hesabına 7 gün boyunca erişemezsin.</string>
+    <string name="RegistrationLockV2Dialog_if_you_forget_your_signal_pin_when_registering_again">Tellomi\'ye tekrar kaydolurken Tellomi PIN\'ini unutursan, hesabına 7 gün boyunca erişemezsin.</string>
     <string name="RegistrationLockV2Dialog_turn_on">Aç</string>
     <string name="RegistrationLockV2Dialog_turn_off">Kapat</string>
     <string name="preferences__advanced_pin_settings">Gelişmiş PIN ayarları</string>
@@ -25,7 +25,7 @@
     <!-- Option in settings that will take use to re-register if they are no longer registered -->
     <string name="preferences_account_reregister">Hesabı yeniden kaydet</string>
     <!-- Option in settings that will take user to our website or playstore to update their expired build -->
-    <string name="preferences_account_update_signal">Tellomi\'ı Güncelle</string>
+    <string name="preferences_account_update_signal">Tellomi\'yi Güncelle</string>
     <!-- Option in settings shown when user is no longer registered or expired client that will WIPE ALL THEIR DATA -->
     <string name="preferences_account_delete_all_data">Tüm verileri sil</string>
     <!-- Title for confirmation dialog confirming user wants to delete all their data -->
@@ -40,7 +40,7 @@
     <!-- AccountSettingsFragment -->
     <string name="AccountSettingsFragment__account">Hesap</string>
     <string name="AccountSettingsFragment__youll_be_asked_less_frequently">Zaman geçtikçe daha az sorulacaktır</string>
-    <string name="AccountSettingsFragment__require_your_signal_pin">Telefon numaran Tellomi\'a tekrar kaydedilirken Tellomi PIN\'i istensin.</string>
+    <string name="AccountSettingsFragment__require_your_signal_pin">Telefon numaran Tellomi\'ye tekrar kaydedilirken Tellomi PIN\'i istensin.</string>
     <string name="AccountSettingsFragment__change_phone_number">Telefon numarası değiştir</string>
     <!-- Account setting that allows user to request and export their signal account data -->
     <string name="AccountSettingsFragment__request_account_data">Hesap verilerin</string>
@@ -131,7 +131,7 @@
     <!-- Dialog message shown when the account already has as many authenticator apps as it\'s allowed -->
     <string name="TotpSetupScreen__you_cant_add_more_than_d">%1$d kimlik doğrulama uygulamasından fazlasını ekleyemezsin. Önce bir tanesini kaldırmayı dene.</string>
     <!-- Dialog message shown when we couldn\'t reach the service to start setting up an authenticator app -->
-    <string name="TotpSetupScreen__couldnt_reach_signal">Tellomi\'a ulaşılamadı. Bağlantını kontrol edip tekrar dene.</string>
+    <string name="TotpSetupScreen__couldnt_reach_signal">Tellomi\'ye ulaşılamadı. Bağlantını kontrol edip tekrar dene.</string>
     <!-- Header of the third step of authenticator app setup -->
     <string name="TotpSetupScreen__step_3">Adım 3</string>
     <!-- Body of the third step of authenticator app setup -->
@@ -149,7 +149,7 @@
     <!-- Error shown under the code field when the code the user entered was rejected -->
     <string name="TotpCodeEntryScreen__incorrect_code">Hatalı kod. Şu anda kimlik doğrulama uygulamanda gösterilen kodu gir.</string>
     <!-- Error shown under the code field when we couldn\'t reach the service to check the code -->
-    <string name="TotpCodeEntryScreen__couldnt_reach_signal">Tellomi\'a ulaşılamadı. Bağlantını kontrol edip tekrar dene.</string>
+    <string name="TotpCodeEntryScreen__couldnt_reach_signal">Tellomi\'ye ulaşılamadı. Bağlantını kontrol edip tekrar dene.</string>
 
     <!-- Default name given to an authenticator app the moment it\'s set up, before the user chooses their own name for it -->
     <string name="TotpRepository__authenticator">Kimlik doğrulayıcı</string>

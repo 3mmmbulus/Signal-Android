@@ -65,13 +65,13 @@
   <!-- Accessibility description for the button that leaves media selection and opens the camera. -->
   <string name="MediaSelectScreen__go_to_camera">Kameraya git</string>
   <!-- Message shown in place of the gallery when the user has not granted permission to read their photos and videos. -->
-  <string name="MediaSelectScreen__signal_needs_permission_to_show_your_photos_and_videos">Tellomi\'ın fotoğraflarını ve videolarını göstermek için izne ihtiyacı var</string>
+  <string name="MediaSelectScreen__signal_needs_permission_to_show_your_photos_and_videos">Tellomi\'nin fotoğraflarını ve videolarını göstermek için izne ihtiyacı var</string>
   <!-- Label for the button that asks the system for permission to read the user\'s photos and videos. -->
   <string name="MediaSelectScreen__allow_access">Erişimine İzin Ver</string>
   <!-- Message shown in place of the gallery when the user only shared selected photos with Signal and none of them can be shown. -->
   <string name="MediaSelectScreen__no_photos_or_videos_found">Fotoğraf veya video bulunamadı. Tellomi sadece seçtiğin fotoğraflara ve videolara erişebilir.</string>
   <!-- Reminder shown above the gallery when the user only shared selected photos with Signal. -->
-  <string name="MediaSelectScreen__signal_has_limited_access">Tellomi\'ın fotoğraflara veya videolara erişimi sınırlı</string>
+  <string name="MediaSelectScreen__signal_has_limited_access">Tellomi\'nin fotoğraflara veya videolara erişimi sınırlı</string>
   <!-- Label for the button that opens the menu for changing which photos and videos Signal can see. -->
   <string name="MediaSelectScreen__manage">Yönet</string>
   <!-- Menu option that re-opens the system picker so the user can share more photos and videos with Signal. -->
@@ -83,7 +83,7 @@
   <!-- Subtitle of the sheet shown when the permission to read photos and videos has been permanently denied, introducing the steps that follow. -->
   <string name="MediaSelectScreen__to_show_photos_and_videos">Fotoğrafları ve videoları göstermek için:</string>
   <!-- Snackbar shown when the user denies the permission to read their photos and videos. -->
-  <string name="MediaSelectScreen__signal_needs_access_to_show_your_photos_and_videos">Tellomi\'ın fotoğraflarını ve videolarını göstermek için erişime ihtiyacı var.</string>
+  <string name="MediaSelectScreen__signal_needs_access_to_show_your_photos_and_videos">Tellomi\'nin fotoğraflarını ve videolarını göstermek için erişime ihtiyacı var.</string>
 
   <!-- Label for the button that switches the capture screen to taking a photo. -->
   <string name="MediaCaptureScreen__photo">Fotoğraf</string>
@@ -142,23 +142,23 @@
   <!-- Dialog title asking users for microphone permission -->
   <string name="CameraXFragment_allow_access_microphone">Mikrofonuna erişim izni ver</string>
   <!-- Text explaining why Signal needs camera access in order to take photos and videos -->
-  <string name="CameraXFragment_to_capture_photos_and_video_allow_camera">Fotoğraf veya video çekmek için, Tellomi\'ın kameraya erişimine izin ver.</string>
+  <string name="CameraXFragment_to_capture_photos_and_video_allow_camera">Fotoğraf veya video çekmek için, Tellomi\'nin kameraya erişimine izin ver.</string>
   <!-- Text explaining why Signal needs camera and microphone access in order to take photos and videos -->
-  <string name="CameraXFragment_to_capture_photos_and_video_allow_camera_microphone">Fotoğraf ve video çekmek için Tellomi\'ın kameraya ve mikrofona erişimine izin ver.</string>
+  <string name="CameraXFragment_to_capture_photos_and_video_allow_camera_microphone">Fotoğraf ve video çekmek için Tellomi\'nin kameraya ve mikrofona erişimine izin ver.</string>
   <!-- Text explaining why Signal needs microphone access to take videos -->
-  <string name="CameraXFragment_to_capture_videos_with_sound">Sesli video çekmek için Tellomi\'ın mikrofonuna erişimine izin ver.</string>
+  <string name="CameraXFragment_to_capture_videos_with_sound">Sesli video çekmek için Tellomi\'nin mikrofonuna erişimine izin ver.</string>
   <!-- Text explaining why Signal needs camera access to scan QR codes -->
-  <string name="CameraXFragment_to_scan_qr_code_allow_camera">Kare kod taramak için Tellomi\'ın kameraya erişimine izin ver.</string>
+  <string name="CameraXFragment_to_scan_qr_code_allow_camera">Kare kod taramak için Tellomi\'nin kameraya erişimine izin ver.</string>
   <!-- Toast dialog explaining why Signal needs camera permissions when capturing photos -->
-  <string name="CameraXFragment_signal_needs_camera_access_capture_photos">Tellomi\'ın fotoğraf çekmek için kamera erişimine ihtiyacı var</string>
+  <string name="CameraXFragment_signal_needs_camera_access_capture_photos">Tellomi\'nin fotoğraf çekmek için kamera erişimine ihtiyacı var</string>
   <!-- Toast dialog explaining why Signal needs camera permissions when scanning QR codes -->
-  <string name="CameraXFragment_signal_needs_camera_access_scan_qr_code">Tellomi\'ın kare kodları taramak için kamera erişimine ihtiyacı var</string>
+  <string name="CameraXFragment_signal_needs_camera_access_scan_qr_code">Tellomi\'nin kare kodları taramak için kamera erişimine ihtiyacı var</string>
   <!-- Toast dialog explaining why Signal needs microphone permissions -->
-  <string name="CameraXFragment_signal_needs_microphone_access_video">Tellomi\'ın video çekmek için mikrofon erişimine ihtiyacı var</string>
+  <string name="CameraXFragment_signal_needs_microphone_access_video">Tellomi\'nin video çekmek için mikrofon erişimine ihtiyacı var</string>
   <!-- Dialog description that explains the steps needed to give camera permission -->
-  <string name="CameraXFragment_to_capture_photos">Tellomi\'da fotoğraf çekmek için:</string>
+  <string name="CameraXFragment_to_capture_photos">Tellomi\'de fotoğraf çekmek için:</string>
   <!-- Dialog description that explains the steps needed to give camera and microphone permission -->
-  <string name="CameraXFragment_to_capture_photos_videos">Tellomi\'da fotoğraf ve video çekmek için:</string>
+  <string name="CameraXFragment_to_capture_photos_videos">Tellomi\'de fotoğraf ve video çekmek için:</string>
   <!-- Dialog description that explains the steps needed to give microphone permission -->
   <string name="CameraXFragment_to_capture_videos">Sesli video çekmek için:</string>
   <!-- Dialog description that explains the steps needed to give Signal camera permissions -->
@@ -227,7 +227,7 @@
   <!-- The title of a dialog notifying that the user scanned a QR code that could be used to link a Signal device. -->
   <string name="LinkedDeviceScannedDialog__device_link_dialog_title">Cihaz bağlansın mı?</string>
   <!-- The body of a dialog notifying that the user scanned a QR code that could be used to link a Signal device. -->
-  <string name="LinkedDeviceScannedDialog__it_looks_like_youre_trying">Tellomi\'da bir cihaz bağlamaya çalışıyor gibi görünüyorsun. Devam et\'e dokun. Ardından \"Yeni Bir Cihaz Bağla\"ya dokunup karekodu yeniden tara.</string>
+  <string name="LinkedDeviceScannedDialog__it_looks_like_youre_trying">Tellomi\'de bir cihaz bağlamaya çalışıyor gibi görünüyorsun. Devam et\'e dokun. Ardından \"Yeni Bir Cihaz Bağla\"ya dokunup karekodu yeniden tara.</string>
   <!-- The label of a dialog asking the user if they would like to continue to the linked device settings screen. -->
   <string name="LinkedDeviceScannedDialog__device_link_dialog_continue">Devam et</string>
 
