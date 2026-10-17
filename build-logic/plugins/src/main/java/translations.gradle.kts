@@ -614,6 +614,9 @@ tasks.register("resolveStaticIps") {
     assertDnsNotLying(hosts)
 
     val staticIpResolver = StaticIpResolver()
+    // Tellomi (tellomi/tellomi#1687): svr2 / cdsi used to be resolved from Signal's hosts (svr2.signal.org,
+    // cdsi.signal.org) and compiled into BuildConfig, but nothing reads SIGNAL_SVR2_IPS / SIGNAL_CDSI_IPS and
+    // Tellomi has no SVR2 / CDSI (they point at .invalid). Keep the fields, ship no Signal IPs.
     val content = """
       service_ips=${staticIpResolver.resolveToBuildConfig("chat.tellomi.app")}
       storage_ips=${staticIpResolver.resolveToBuildConfig("storage.tellomi.app")}
@@ -622,8 +625,8 @@ tasks.register("resolveStaticIps") {
       cdn3_ips=new String[]{}
       sfu_ips=${staticIpResolver.resolveToBuildConfig("chat.tellomi.app")}
       content_proxy_ips=${staticIpResolver.resolveToBuildConfig("contentproxy.tellomi.app")}
-      svr2_ips=${staticIpResolver.resolveToBuildConfig("svr2.signal.org")}
-      cdsi_ips=${staticIpResolver.resolveToBuildConfig("cdsi.signal.org")}
+      svr2_ips=new String[]{}
+      cdsi_ips=new String[]{}
     """.trimIndent() + "\n"
     File(projectDirFile, "static-ips.properties").writeText(content)
   }
