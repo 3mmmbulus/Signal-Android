@@ -2322,6 +2322,29 @@ class AttachmentTable(
   }
 
   /**
+   * Tellomi (tellomi/tellomi#1263 P-5, ADR-0068 §4.4): the photo picker's "Hide with Spoiler" on an attachment that was
+   * pre-uploaded before the user covered it. The pointer goes out with `tellomi.spoiler` and this device shows it covered
+   * too (like Telegram on both platforms). Only an image / video (§4.1).
+   */
+  fun setTellomiSpoiler(attachmentId: AttachmentId) {
+    writableDatabase.withinTransaction {
+      val attachment = getAttachment(attachmentId) ?: return@withinTransaction
+      if (!MediaUtil.isImageOrVideoType(attachment.contentType)) {
+        return@withinTransaction
+      }
+      val current = attachment.transformProperties ?: TransformProperties.empty()
+      if (current.tellomiSpoiler || current.tellomiAsFile) {
+        return@withinTransaction
+      }
+      writableDatabase
+        .update(TABLE_NAME)
+        .values(TRANSFORM_PROPERTIES to current.copy(tellomiSpoiler = true, tellomiSpoilerRevealed = false).serialize())
+        .where("$ID = ?", attachmentId.id)
+        .run()
+    }
+  }
+
+  /**
    * Tellomi (spec R-1, D10): this device has uncovered a covered image / video. Stays uncovered from now on, on this device
    * only; the conversation redraws through the attachment observers.
    */

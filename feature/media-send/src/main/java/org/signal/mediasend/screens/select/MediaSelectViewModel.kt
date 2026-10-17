@@ -118,6 +118,7 @@ internal class MediaSelectViewModel(
       MediaSelectScreenEvents.SendSeparately -> parentEventEmitter(MediaSendFlowEvent.SendNow(separately = true))
       is MediaSelectScreenEvents.SendAsFile -> parentEventEmitter(MediaSendFlowEvent.SendNow(asFile = true, convertHeicToJpeg = event.convertHeicToJpeg))
       MediaSelectScreenEvents.ToggleCaptionAboveMedia -> parentEventEmitter(MediaSendFlowEvent.ToggleCaptionAboveMedia)
+      MediaSelectScreenEvents.ToggleSpoiler -> parentEventEmitter(MediaSendFlowEvent.ToggleSpoiler)
       MediaSelectScreenEvents.Close -> parentEventEmitter(MediaSendFlowEvent.CloseRequested)
       is MediaSelectScreenEvents.DockEntryClicked -> onDockEntryClicked(event.entry)
     }

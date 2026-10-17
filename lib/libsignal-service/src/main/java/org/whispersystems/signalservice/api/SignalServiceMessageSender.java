@@ -1175,6 +1175,12 @@ public class SignalServiceMessageSender {
       builder.requiredProtocolVersion(Math.max(DataMessage.ProtocolVersion.VIEW_ONCE_VIDEO.getValue(), builder.requiredProtocolVersion));
     }
 
+    // Tellomi (ADR-0068 §4.2–4.4): any covered pointer (a body attachment or a quote thumbnail) needs version 9, so a client
+    // that can't cover it shows "needs a newer version" instead of the picture.
+    if (TellomiSpoilerVersion.needsSpoilerVersion(builder.attachments, builder.quote)) {
+      builder.requiredProtocolVersion(Math.max(DataMessage.ProtocolVersion.TELLOMI_MEDIA_SPOILER.getValue(), builder.requiredProtocolVersion));
+    }
+
     if (message.getReaction().isPresent()) {
       DataMessage.Reaction.Builder reactionBuilder = new DataMessage.Reaction.Builder()
                                                                              .emoji(message.getReaction().get().getEmoji())

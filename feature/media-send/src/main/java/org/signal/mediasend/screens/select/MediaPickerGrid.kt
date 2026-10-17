@@ -228,6 +228,7 @@ internal fun MediaPickerFilesScreen(
             onOpen = { onEvent(MediaSelectScreenEvents.OpenSelectedMedia(it)) },
             onDeselect = deselectInPreview,
             onReorder = { from, to -> onEvent(MediaSelectScreenEvents.ReorderSelectedMedia(from, to)) },
+            spoileredUris = state.sendOptions.spoileredUris,
             modifier = Modifier.fillMaxSize()
           )
         } else {
@@ -275,6 +276,7 @@ internal fun MediaPickerFilesScreen(
                   media = media,
                   selectionIndex = state.selectedMedia.indexOfFirst { it.uri == media.uri },
                   recipientChatColor = recipientChatColor,
+                  isSpoilered = media.uri in state.sendOptions.spoileredUris,
                   onEvent = onEvent
                 )
               }
@@ -618,20 +620,23 @@ private fun folderTitle(folder: MediaFolder): String {
 }
 
 /**
- * P-5 的「···」里有哪几项，按这个顺序：以文件发送（#1263，已知的单个会话、没开一次性查看）；以高清 / 标准质量发送（已选里有照片）；
- * 单独发送（已选 ≥ 2、且是已知的单个会话）；—— 分隔线 ——；说明文字上移 / 下移（M-2，已写说明时，开关，照 Telegram iOS 的顺序）。
+ * P-5 的「···」里有哪几项，按这个顺序：以文件发送（#1263，已知的单个会话、没开一次性查看、已选里没有罩住的）；以高清 / 标准质量发送
+ * （已选里有照片）；单独发送（已选 ≥ 2、且是已知的单个会话）；—— 分隔线 ——；说明文字上移 / 下移（M-2，已写说明时，开关）；
+ * 罩住图片 ⇄ 取消遮罩（#1263 P-5，开关；照 Telegram iOS `MediaPickerScreen` 的次序）。
  */
-private enum class MoreMenuItem {
+internal enum class MoreMenuItem {
   SEND_AS_FILE,
   SEND_HIGH_QUALITY,
   SEND_STANDARD_QUALITY,
   SEND_SEPARATELY,
   MOVE_CAPTION_UP,
-  MOVE_CAPTION_DOWN;
+  MOVE_CAPTION_DOWN,
+  HIDE_WITH_SPOILER,
+  REMOVE_SPOILER;
 
   /** 开关类的项前面有一条分隔线，和「立即发送」的几项分开。 */
   val isToggle: Boolean
-    get() = this == MOVE_CAPTION_UP || this == MOVE_CAPTION_DOWN
+    get() = this == MOVE_CAPTION_UP || this == MOVE_CAPTION_DOWN || this == HIDE_WITH_SPOILER || this == REMOVE_SPOILER
 }
 
 @Composable
@@ -642,10 +647,19 @@ private fun rememberMoreMenuItems(state: MediaSelectState.Files): List<MoreMenuI
     state.selectedMedia.all { ContentTypeUtil.isImageType(it.contentType) && !ContentTypeUtil.isGif(it.contentType) }
   val options = state.sendOptions
   val hasCaption = !options.message.isNullOrBlank()
-  return remember(hasPhoto, hasCaption, state.selectedMedia.size, options.sentMediaQuality, options.canSendSeparately, options.canSendAsFile, options.canMoveCaption, options.isCaptionAboveMedia, options.isViewOnceEnabled) {
-    buildList {
-      // 一次性查看的只能是照片 / 视频本身，文件没有一次性查看（遮罩那一刀再加「开了遮罩就没有」，ADR-0068 §4.4）。
-      if (state.selectedMedia.isNotEmpty() && options.canSendAsFile && !options.isViewOnceEnabled) {
+  val selectedUris = state.selectedMedia.map { it.uri }
+  return remember(hasPhoto, hasCaption, selectedUris, options.sentMediaQuality, options.canSendSeparately, options.canSendAsFile, options.canMoveCaption, options.isCaptionAboveMedia, options.isViewOnceEnabled, options.canSpoiler, options.spoileredUris) {
+    moreMenuItems(state, hasPhoto = hasPhoto, hasCaption = hasCaption)
+  }
+}
+
+/** [rememberMoreMenuItems] 的规则本身（单元测试直接调）。 */
+internal fun moreMenuItems(state: MediaSelectState.Files, hasPhoto: Boolean, hasCaption: Boolean): List<MoreMenuItem> {
+  val options = state.sendOptions
+  val anySpoilered = state.selectedMedia.any { it.uri in options.spoileredUris }
+  return buildList {
+      // 一次性查看的只能是照片 / 视频本身，文件没有一次性查看；罩了的不能按文件发（同 Telegram 两端；按文件发不带遮罩，ADR-0068 §4.1）。
+      if (state.selectedMedia.isNotEmpty() && options.canSendAsFile && !options.isViewOnceEnabled && !anySpoilered) {
         add(MoreMenuItem.SEND_AS_FILE)
       }
       if (hasPhoto && !options.isViewOnceEnabled) {
@@ -659,7 +673,11 @@ private fun rememberMoreMenuItems(state: MediaSelectState.Files): List<MoreMenuI
       if (hasCaption && state.selectedMedia.isNotEmpty() && options.canMoveCaption && !options.isViewOnceEnabled) {
         add(if (options.isCaptionAboveMedia) MoreMenuItem.MOVE_CAPTION_DOWN else MoreMenuItem.MOVE_CAPTION_UP)
       }
-    }
+      // #1263 P-5：会话里、有选中就有（一次性查看的不罩，ADR-0068 §4.4）。有一张没罩是「罩住图片」，全罩了是「取消遮罩」
+      // （照 Telegram iOS `hasGeneric`；安卓 TG 是「有一张罩了就是取消」，两端不同取 iOS，同 spec P-5）。
+      if (state.selectedMedia.isNotEmpty() && options.canSpoiler && !options.isViewOnceEnabled) {
+        add(if (state.selectedMedia.all { it.uri in options.spoileredUris }) MoreMenuItem.REMOVE_SPOILER else MoreMenuItem.HIDE_WITH_SPOILER)
+      }
   }
 }
 
@@ -688,6 +706,8 @@ private fun MoreMenuButton(
           MoreMenuItem.SEND_SEPARATELY -> stringResource(R.string.MediaSelectScreen__send_separately) to SignalIcons.Photo.imageVector
           MoreMenuItem.MOVE_CAPTION_UP -> stringResource(R.string.MediaSelectScreen__move_caption_up) to ImageVector.vectorResource(R.drawable.tellomi_symbol_arrow_up_24)
           MoreMenuItem.MOVE_CAPTION_DOWN -> stringResource(R.string.MediaSelectScreen__move_caption_down) to ImageVector.vectorResource(R.drawable.tellomi_symbol_arrow_down_24)
+          MoreMenuItem.HIDE_WITH_SPOILER -> stringResource(R.string.MediaSelectScreen__hide_with_spoiler) to ImageVector.vectorResource(R.drawable.tellomi_symbol_eye_slash_24)
+          MoreMenuItem.REMOVE_SPOILER -> stringResource(R.string.MediaSelectScreen__remove_spoiler) to ImageVector.vectorResource(R.drawable.tellomi_symbol_eye_24)
         }
         if (item.isToggle && index > 0 && !items[index - 1].isToggle) {
           HorizontalDivider()
@@ -708,6 +728,7 @@ private fun MoreMenuButton(
               MoreMenuItem.SEND_SEPARATELY -> onEvent(MediaSelectScreenEvents.SendSeparately)
               // 开关：菜单收起，下次打开换成另一项（同 Telegram iOS，点了先收起再切）。
               MoreMenuItem.MOVE_CAPTION_UP, MoreMenuItem.MOVE_CAPTION_DOWN -> onEvent(MediaSelectScreenEvents.ToggleCaptionAboveMedia)
+              MoreMenuItem.HIDE_WITH_SPOILER, MoreMenuItem.REMOVE_SPOILER -> onEvent(MediaSelectScreenEvents.ToggleSpoiler)
             }
           }
         )
@@ -747,6 +768,7 @@ private fun PickerTile(
   media: Media,
   selectionIndex: Int,
   recipientChatColor: Color?,
+  isSpoilered: Boolean = false,
   onEvent: (MediaSelectScreenEvents) -> Unit
 ) {
   val openLabel = stringResource(R.string.MediaSelectScreen__open_media)
@@ -770,9 +792,14 @@ private fun PickerTile(
       GlideImage(
         model = media.uri,
         imageSize = DpSize(maxWidth, maxHeight),
-        modifier = Modifier.fillMaxSize()
+        modifier = Modifier
+          .fillMaxSize()
+          .spoilerBlur(isSpoilered)
       )
     }
+
+    // #1263 P-6：罩住的格子：模糊 + 粒子，0.2 秒淡入淡出；角标和勾画在上面，点照片照旧打开查看器（选图里不能揭示）。
+    PickerSpoilerOverlay(visible = isSpoilered, modifier = Modifier.fillMaxSize())
 
     if (ContentTypeUtil.isVideo(media.contentType) && !media.isVideoGif) {
       PickerVideoBadge(

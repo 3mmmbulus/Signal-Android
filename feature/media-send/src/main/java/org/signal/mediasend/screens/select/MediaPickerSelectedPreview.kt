@@ -111,6 +111,8 @@ internal fun MediaPickerSelectedPreview(
   onOpen: (Media) -> Unit,
   onDeselect: (Media) -> Unit,
   onReorder: (fromIndex: Int, toIndex: Int) -> Unit,
+  /** #1263 P-6：罩住的那几张，卡片同网格一样罩着（照 Telegram iOS `MediaPickerSelectedListNode`）。 */
+  spoileredUris: Set<android.net.Uri> = emptySet(),
   modifier: Modifier = Modifier
 ) {
   Box(modifier = modifier.testTag(TestTags.MEDIA_PICKER_SELECTED_PREVIEW)) {
@@ -134,7 +136,8 @@ internal fun MediaPickerSelectedPreview(
           color = recipientChatColor ?: MaterialTheme.colorScheme.primary,
           onOpen = onOpen,
           onDeselect = onDeselect,
-          onReorder = onReorder
+          onReorder = onReorder,
+          spoileredUris = spoileredUris
         )
       }
 
@@ -202,7 +205,8 @@ private fun PreviewRow(
   color: Color,
   onOpen: (Media) -> Unit,
   onDeselect: (Media) -> Unit,
-  onReorder: (fromIndex: Int, toIndex: Int) -> Unit
+  onReorder: (fromIndex: Int, toIndex: Int) -> Unit,
+  spoileredUris: Set<android.net.Uri> = emptySet()
 ) {
   BoxWithConstraints(modifier = Modifier.fillMaxWidth()) {
     val density = LocalDensity.current
@@ -344,6 +348,7 @@ private fun PreviewRow(
               number = index + 1,
               color = color,
               size = DpSize(width, rowHeightDp.dp),
+              isSpoilered = media.uri in spoileredUris,
               onOpen = { onOpen(media) },
               onDeselect = { onDeselect(media) },
               modifier = Modifier
@@ -381,6 +386,7 @@ private fun PreviewCard(
   number: Int,
   color: Color,
   size: DpSize,
+  isSpoilered: Boolean = false,
   onOpen: () -> Unit,
   onDeselect: () -> Unit,
   modifier: Modifier = Modifier
@@ -404,9 +410,13 @@ private fun PreviewCard(
       GlideImage(
         model = media.uri,
         imageSize = size,
-        modifier = Modifier.fillMaxSize()
+        modifier = Modifier
+          .fillMaxSize()
+          .spoilerBlur(isSpoilered)
       )
     }
+
+    PickerSpoilerOverlay(visible = isSpoilered, modifier = Modifier.fillMaxSize())
 
     if (ContentTypeUtil.isVideo(media.contentType) && !media.isVideoGif) {
       Text(

@@ -239,7 +239,12 @@ data class SendRequest(
   /** Tellomi（#1263）：按文件发送时，已选里的 HEIC 先转成 JPEG（用户在提问里选了「转成 JPEG」）。 */
   val convertHeicToJpeg: Boolean = false,
   /** Tellomi（#1263，ADR-0068 §4.7）：说明文字画在媒体上方。按文件发送的不适用。 */
-  val captionAboveMedia: Boolean = false
+  val captionAboveMedia: Boolean = false,
+  /**
+   * Tellomi（#1263 P-5，ADR-0068 §4.4）：罩住的（按 [selectedMedia] 里的 URI）。只有图片 / 视频罩，发出去带
+   * `AttachmentPointer.tellomi.spoiler`、要求协议版本 9；按文件发、一次性查看的不罩。
+   */
+  val spoileredUris: Set<Uri> = emptySet()
 )
 
 /**

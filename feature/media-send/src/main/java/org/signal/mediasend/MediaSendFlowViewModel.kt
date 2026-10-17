@@ -310,6 +310,10 @@ class MediaSendFlowViewModel(
       is MediaSendFlowEvent.SwitchFolder -> backStack.switchFolder(event.mediaFolder)
       is MediaSendFlowEvent.SendNow -> sendNow(event.quality, event.separately, event.asFile, event.convertHeicToJpeg)
       MediaSendFlowEvent.ToggleCaptionAboveMedia -> updateState { copy(isCaptionAboveMedia = !isCaptionAboveMedia) }
+      MediaSendFlowEvent.ToggleSpoiler -> updateState {
+        val selected = selectedMedia.mapTo(mutableSetOf()) { it.uri }
+        copy(tellomiSpoileredUris = if (selected.all(tellomiSpoileredUris::contains)) tellomiSpoileredUris - selected else tellomiSpoileredUris + selected)
+      }
       is MediaSendFlowEvent.AttachmentDockEntrySelected -> sendHudCommand(MediaSendFlowHudCommand.AttachmentDockEntrySelected(event.id))
       is MediaSendFlowEvent.ShowToast -> internalToastEvents.trySend(event.toast)
       is MediaSendFlowEvent.OpenAttachmentPage -> internalState.update { it.copy(attachmentPage = event.page) }
@@ -870,6 +874,7 @@ class MediaSendFlowViewModel(
         focusedMedia = newFocus,
         editorStateMap = editorStateMap - removedUris,
         albumEditPreviews = albumEditPreviews - removedUris,
+        tellomiSpoileredUris = tellomiSpoileredUris - removedUris,
         cameraFirstCapture = newCameraFirstCapture,
         // A removed capture's file goes with it, so it leaves the camera's filmstrip for good.
         cameraCaptureUris = cameraCaptureUris - removedUris
@@ -1455,7 +1460,9 @@ class MediaSendFlowViewModel(
       sendSeparately = sendSeparatelyOnce,
       sendAsFile = asFile != null,
       convertHeicToJpeg = asFile?.convertHeicToJpeg == true,
-      captionAboveMedia = snapshot.isCaptionAboveMedia && asFile == null
+      captionAboveMedia = snapshot.isCaptionAboveMedia && asFile == null,
+      // ADR-0068 §4.4：按文件发、一次性查看的不罩。
+      spoileredUris = if (asFile != null || isViewOnceEnabled()) emptySet() else snapshot.selectedSpoileredUris
     )
     clearSendNowOptions()
 

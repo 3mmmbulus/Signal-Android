@@ -104,6 +104,8 @@
   <!-- Tellomi（tellomi/tellomi#1263 M-2，ADR-0068 §4.7）说明文字在媒体上方 / 下方 -->
   <string name="MediaSelectScreen__move_caption_up">说明文字上移</string>
   <string name="MediaSelectScreen__move_caption_down">说明文字下移</string>
+  <string name="MediaSelectScreen__hide_with_spoiler">罩住图片</string>
+  <string name="MediaSelectScreen__remove_spoiler">取消遮罩</string>
   <string name="MediaSelectScreen__open_media">打开</string>
   <string name="MediaSelectScreen__select">选择</string>
   <string name="MediaSelectScreen__you_have_limited_access">你已限制 Tellomi 访问照片。</string>

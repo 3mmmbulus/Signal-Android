@@ -99,6 +99,9 @@ internal sealed interface MediaSendFlowEvent {
   /** Tellomi（#1263，ADR-0068 §4.7）：「···」→ 说明文字上移 / 下移。 */
   data object ToggleCaptionAboveMedia : MediaSendFlowEvent
 
+  /** Tellomi（#1263 P-5，ADR-0068 §4.4）：「···」→ 罩住图片（有一张没罩就罩上全部已选）⇄ 取消遮罩（全罩了就全部拿掉）。 */
+  data object ToggleSpoiler : MediaSendFlowEvent
+
   /**
    * P-5：「···」里的立即发送。[quality] 非空时这一次用它发（D9：不写设置）；[separately] 时一张一条、说明挂最后一条。
    * [asFile]（tellomi/tellomi#1263，ADR-0068）时按文件发原图，也是一个一条；[convertHeicToJpeg] 时其中的 HEIC 先转成 JPEG。

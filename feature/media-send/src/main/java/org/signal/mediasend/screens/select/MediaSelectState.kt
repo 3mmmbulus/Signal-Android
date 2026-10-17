@@ -108,7 +108,10 @@ sealed interface MediaSelectState {
     val canSendSeparately: Boolean = false,
     val canSendAsFile: Boolean = false,
     val canMoveCaption: Boolean = false,
-    val isCaptionAboveMedia: Boolean = false
+    val isCaptionAboveMedia: Boolean = false,
+    /** Tellomi（#1263 P-5 / P-6）：「罩住图片」：会话里才有（同「以文件发送」）；罩住的已选。 */
+    val canSpoiler: Boolean = false,
+    val spoileredUris: Set<android.net.Uri> = emptySet()
   ) {
     companion object {
       fun from(parent: MediaSendFlowState): SendOptions {
@@ -125,7 +128,9 @@ sealed interface MediaSelectState {
           canSendSeparately = sentByConversation,
           canSendAsFile = sentByConversation,
           canMoveCaption = sentByConversation,
-          isCaptionAboveMedia = parent.isCaptionAboveMedia
+          isCaptionAboveMedia = parent.isCaptionAboveMedia,
+          canSpoiler = sentByConversation,
+          spoileredUris = parent.selectedSpoileredUris
         )
       }
     }

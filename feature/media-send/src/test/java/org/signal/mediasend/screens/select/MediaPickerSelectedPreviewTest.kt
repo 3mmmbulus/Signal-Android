@@ -20,6 +20,7 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.assert
+import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertTextEquals
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
@@ -105,6 +106,18 @@ class MediaPickerSelectedPreviewTest {
     composeTestRule.onNodeWithTag(TestTags.MEDIA_SELECT_GRID).assertIsDisplayed()
     composeTestRule.onNodeWithTag(TestTags.MEDIA_PICKER_COUNT_PILL).assertIsDisplayed()
     assertTrue("返回不是关闭", events.none { it is MediaSelectScreenEvents.Close })
+  }
+
+  /** #1263 P-6：罩住的那几张，「只看已选」的卡片也罩着（照 Telegram iOS `MediaPickerSelectedListNode`）。 */
+  @Test
+  fun `Given covered photos, when the selected-only preview is shown, then their cards are covered`() {
+    selection = listOf(MEDIA[3], MEDIA[0], MEDIA[5])
+    setContent(spoileredUris = setOf(MEDIA[3].uri, MEDIA[5].uri))
+    composeTestRule.onNodeWithTag(TestTags.MEDIA_PICKER_COUNT_PILL).performClick()
+    composeTestRule.waitForIdle()
+
+    composeTestRule.onNodeWithTag(TestTags.MEDIA_PICKER_SELECTED_PREVIEW).assertIsDisplayed()
+    composeTestRule.onAllNodesWithTag(PickerSpoiler.TEST_TAG, useUnmergedTree = true).assertCountEquals(2)
   }
 
   @Test
@@ -372,7 +385,7 @@ class MediaPickerSelectedPreviewTest {
     }
   }
 
-  private fun setContent(caption: String? = null, recipientId: Long? = null) {
+  private fun setContent(caption: String? = null, recipientId: Long? = null, spoileredUris: Set<android.net.Uri> = emptySet()) {
     composeTestRule.setContent {
       SignalTheme {
         CompositionLocalProvider(
@@ -386,7 +399,7 @@ class MediaPickerSelectedPreviewTest {
                 selectedMedia = selection,
                 recipientId = recipientId?.let { MediaRecipientId(it) },
                 mediaPermissions = MediaPermissions.FULL,
-                sendOptions = MediaSelectState.SendOptions(message = caption)
+                sendOptions = MediaSelectState.SendOptions(message = caption, spoileredUris = spoileredUris)
               ),
               onEvent = ::onEvent
             )

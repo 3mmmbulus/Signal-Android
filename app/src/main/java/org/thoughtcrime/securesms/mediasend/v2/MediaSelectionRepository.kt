@@ -92,7 +92,8 @@ class MediaSelectionRepository(context: Context) {
     sendType: MessageSendType,
     scheduledTime: Long = -1,
     sendAsFile: Boolean = false,
-    convertHeicToJpeg: Boolean = false
+    convertHeicToJpeg: Boolean = false,
+    spoileredUris: Set<Uri> = emptySet()
   ): Maybe<MediaSendActivityResult> {
     if (selectedMedia.isEmpty()) {
       throw IllegalStateException("No selected media!")
@@ -106,7 +107,9 @@ class MediaSelectionRepository(context: Context) {
       val trimmedBodyRanges: BodyRangeList? = if (isViewOnce) null else bodyRanges
       val modelsToTransform: Map<Media, MediaTransform> = buildModelsToTransform(selectedMedia, stateMap, quality)
       val oldToNewMediaMap: Map<Media, Media> = MediaRepository.transformMediaSync(context, selectedMedia, modelsToTransform)
-      val updatedMedia = oldToNewMediaMap.values.toList()
+      // Tellomi（tellomi/tellomi#1263 P-5，ADR-0068 §4.4）：罩住的那几张（编辑过的换成了新的 URI）。按文件发、一次性查看的不罩。
+      val spoileredNewUris: Set<Uri> = if (sendAsFile || isViewOnce) emptySet() else TellomiMediaSpoilers.renderedUris(selectedMedia, oldToNewMediaMap, spoileredUris)
+      val updatedMedia = oldToNewMediaMap.values.map { TellomiMediaSpoilers.mark(it, spoileredNewUris) }
 
       for (media in updatedMedia) {
         val uri: Uri = media.uri
@@ -209,6 +212,8 @@ class MediaSelectionRepository(context: Context) {
         uploadRepository.updateCaptions(updatedMedia)
         uploadRepository.updateDisplayOrder(updatedMedia)
         uploadRepository.getPreUploadResults { uploadResults ->
+          // Tellomi（#1263）：预上传的附件在选的时候就落库了（那时还没罩），这里补上遮罩标记，发送时读它。
+          TellomiMediaSpoilers.markPreUploaded(uploadResults, spoileredNewUris)
           if (contacts.isNotEmpty()) {
             sendMessages(contacts, splitBody, uploadResults, trimmedMentions, trimmedBodyRanges, isViewOnce, clippedVideosForStories)
             uploadRepository.deleteAbandonedAttachments()

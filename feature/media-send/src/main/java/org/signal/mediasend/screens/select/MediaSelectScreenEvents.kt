@@ -87,6 +87,9 @@ sealed interface MediaSelectScreenEvents {
   /** P-5 / M-2（#1263，ADR-0068 §4.7）：「···」→ 说明文字上移 / 下移（开关，不发送）。 */
   data object ToggleCaptionAboveMedia : MediaSelectScreenEvents
 
+  /** Tellomi（#1263 P-5）：「···」→ 罩住图片 ⇄ 取消遮罩。 */
+  data object ToggleSpoiler : MediaSelectScreenEvents
+
   /** P-1：左上角 ✕。 */
   data object Close : MediaSelectScreenEvents
 

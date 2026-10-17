@@ -60,6 +60,11 @@ data class MediaSendFlowState(
    */
   val isCaptionAboveMedia: Boolean = false,
   /**
+   * Tellomi（tellomi/tellomi#1263 spec P-5 / P-6，ADR-0068 §4.4）：「···」→「罩住图片」罩上的已选（按 URI）。取消勾选就拿掉，
+   * 之后新勾的不自动罩（同 Telegram 安卓 `addToSelectedPhotos`）。只管这一次打开的面板。
+   */
+  val tellomiSpoileredUris: Set<Uri> = emptySet(),
+  /**
    * Optional message/caption text to accompany the media. Retains mention and styling spans.
    */
   val message: @WriteWith<NullableCharSequenceParceler> CharSequence? = null,
@@ -204,6 +209,10 @@ data class MediaSendFlowState(
    */
   val canMoveCaption: Boolean
     get() = isSentByConversation && !message.isNullOrBlank() && !isViewOnceEnabled
+
+  /** Tellomi（#1263 P-5）：罩住的已选（取消勾选的不算）。 */
+  val selectedSpoileredUris: Set<Uri>
+    get() = selectedMedia.mapNotNullTo(mutableSetOf()) { it.uri.takeIf(tellomiSpoileredUris::contains) }
 
   /**
    * No-op parceler for flags tracking work that cannot outlive the process that started it.

@@ -105,6 +105,9 @@
   <!-- Tellomi（tellomi/tellomi#1263 M-2，ADR-0068 §4.7）说明文字在媒体上方 / 下方 -->
   <string name="MediaSelectScreen__move_caption_up">Move Caption Up</string>
   <string name="MediaSelectScreen__move_caption_down">Move Caption Down</string>
+  <!-- Tellomi（tellomi/tellomi#1263 P-5）：选图「···」的开关：罩住全部已选 / 全部拿掉。 -->
+  <string name="MediaSelectScreen__hide_with_spoiler">Hide with Spoiler</string>
+  <string name="MediaSelectScreen__remove_spoiler">Remove Spoiler</string>
   <string name="MediaSelectScreen__open_media">Open</string>
   <string name="MediaSelectScreen__select">Select</string>
   <string name="MediaSelectScreen__you_have_limited_access">You\'ve limited Tellomi\'s access to your photos.</string>

@@ -380,6 +380,77 @@ class MediaPickerGridTest {
     composeTestRule.onNodeWithText("Move Caption Up").assertDoesNotExist()
   }
 
+  // #1263（P-5 / P-6，ADR-0068 §4.4）：分隔线下面「说明文字上移」后面是「罩住图片」；全罩了是「取消遮罩」；罩了就没有以文件发送；
+  // 罩住的格子盖一层遮罩。
+
+  @Test
+  fun `Given a conversation, when the more menu is opened, then hide with spoiler comes last and toggles`() {
+    setContent(
+      selectedMedia = MEDIA.take(2),
+      sendOptions = MediaSelectState.SendOptions(message = "caption", canSendAsFile = true, canMoveCaption = true, canSpoiler = true)
+    )
+
+    composeTestRule.onNode(hasContentDescription("More options")).performClick()
+    val moveUp = composeTestRule.onNodeWithText("Move Caption Up").fetchSemanticsNode().boundsInRoot.top
+    val hide = composeTestRule.onNodeWithText("Hide with Spoiler").assertIsDisplayed().fetchSemanticsNode().boundsInRoot.top
+    assertThat(moveUp < hide).isTrue()
+    composeTestRule.onNodeWithText("Hide with Spoiler").performClick()
+
+    assertThat(events.filterIsInstance<MediaSelectScreenEvents.ToggleSpoiler>().size).isEqualTo(1)
+    assertThat(sentAsFile()).isEmpty()
+  }
+
+  @Test
+  fun `Given every selected photo is covered, when the more menu is opened, then it offers remove spoiler and no send as file`() {
+    setContent(
+      selectedMedia = MEDIA.take(2),
+      sendOptions = MediaSelectState.SendOptions(canSendAsFile = true, canSpoiler = true, spoileredUris = MEDIA.take(2).map { it.uri }.toSet())
+    )
+
+    composeTestRule.onNode(hasContentDescription("More options")).performClick()
+    composeTestRule.onNodeWithText("Remove Spoiler").assertIsDisplayed()
+    composeTestRule.onNodeWithText("Hide with Spoiler").assertDoesNotExist()
+    composeTestRule.onNodeWithText("Send as 2 Files").assertDoesNotExist()
+  }
+
+  @Test
+  fun `Given one of two is covered, when the more menu is opened, then it still offers hide with spoiler`() {
+    setContent(
+      selectedMedia = MEDIA.take(2),
+      sendOptions = MediaSelectState.SendOptions(canSendAsFile = true, canSpoiler = true, spoileredUris = setOf(MEDIA[0].uri))
+    )
+
+    composeTestRule.onNode(hasContentDescription("More options")).performClick()
+    composeTestRule.onNodeWithText("Hide with Spoiler").assertIsDisplayed()
+    composeTestRule.onNodeWithText("Send as 2 Files").assertDoesNotExist()
+  }
+
+  @Test
+  fun `Given covered photos, when displayed, then only their tiles are covered`() {
+    setContent(
+      selectedMedia = MEDIA.take(3),
+      sendOptions = MediaSelectState.SendOptions(canSpoiler = true, spoileredUris = setOf(MEDIA[0].uri, MEDIA[2].uri))
+    )
+
+    composeTestRule.onAllNodesWithTag(PickerSpoiler.TEST_TAG, useUnmergedTree = true).assertCountEquals(2)
+  }
+
+  @Test
+  fun `Given a flow that is not a known conversation, when the more menu is opened, then there is no spoiler`() {
+    setContent(selectedMedia = MEDIA.take(1), sendOptions = MediaSelectState.SendOptions(canSpoiler = false))
+
+    composeTestRule.onNode(hasContentDescription("More options")).performClick()
+    composeTestRule.onNodeWithText("Hide with Spoiler").assertDoesNotExist()
+  }
+
+  @Test
+  fun `spoiler overlay timings and density`() {
+    assertThat(PickerSpoiler.FADE_MILLIS).isEqualTo(200)
+    assertThat(PickerSpoiler.scrimAlpha(sdk = 30) > PickerSpoiler.scrimAlpha(sdk = 31)).isTrue()
+    assertThat(PickerSpoiler.particleCount(120f, 120f)).isEqualTo(73)
+    assertThat(PickerSpoiler.particleCount(10f, 10f)).isEqualTo(24)
+  }
+
   // P-1：「最近 ⌄」里换相册。
 
   @Test

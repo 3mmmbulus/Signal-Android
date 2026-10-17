@@ -234,7 +234,8 @@ object MediaSendV3Repository : MediaSendRepository {
         sendType = resolveSendType(request.sendType),
         scheduledTime = request.scheduledTime,
         sendAsFile = request.sendAsFile,
-        convertHeicToJpeg = request.convertHeicToJpeg
+        convertHeicToJpeg = request.convertHeicToJpeg,
+        spoileredUris = request.spoileredUris
       ).blockingGet()
 
       // Tellomi（tellomi/tellomi#1261 P-5）：「单独发送」由会话页一张一条地发（只有已知的单个会话才有这一项）；

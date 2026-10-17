@@ -317,7 +317,10 @@ abstract class PushSendJob protected constructor(parameters: Parameters) : BaseJ
         blurHash = Optional.ofNullable(attachment.blurHash).map(BlurHash::hash),
         uploadTimestamp = attachment.uploadTimestamp,
         uuid = attachment.uuid,
-        tellomiAsFile = attachment.transformProperties?.tellomiAsFile == true
+        tellomiAsFile = attachment.transformProperties?.tellomiAsFile == true,
+        // Tellomi（#1263 P-5，ADR-0068 §4.4）：选图时罩住的（引用缩略图照原图带着）；按文件的不罩。
+        tellomiSpoiler = attachment.transformProperties?.let { it.tellomiSpoiler && !it.tellomiAsFile } == true &&
+          MediaUtil.isImageOrVideoType(attachment.contentType)
       )
     } catch (e: IOException) {
       Log.w(TAG, e)

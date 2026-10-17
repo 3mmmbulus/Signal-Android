@@ -176,9 +176,12 @@ public final class AttachmentPointerUtil {
       builder.clientUuid(UuidUtil.toByteString(attachment.getUuid()));
     }
 
-    // Tellomi (ADR-0068): only set when true, so ordinary attachments stay byte-identical to upstream.
+    // Tellomi (ADR-0068): only set when true, so ordinary attachments stay byte-identical to upstream. Sent as a file wins
+    // (the receiver ignores a spoiler on it anyway, §4.1 rule 1).
     if (attachment.getTellomiAsFile()) {
       builder.tellomi(new TellomiAttachment.Builder().asFile(true).build());
+    } else if (attachment.getTellomiSpoiler()) {
+      builder.tellomi(new TellomiAttachment.Builder().spoiler(true).build());
     }
 
     return builder.build();
