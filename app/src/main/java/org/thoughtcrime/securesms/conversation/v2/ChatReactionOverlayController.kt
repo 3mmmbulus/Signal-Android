@@ -19,6 +19,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.geometry.Offset
 import androidx.core.content.ContextCompat
+import com.airbnb.lottie.LottieCompositionFactory
 import org.signal.core.ui.motion.TellomiHaptics
 import org.signal.emoji.EmojiProvider
 import org.signal.emoji.EmojiUtil
@@ -120,11 +121,13 @@ class ChatReactionOverlayController(
 
   private data class Strip(
     val emojiStrings: List<String>,
+    /** Tellomi (A-06): what each slot actually shows (the reaction already on the message, else the preferred skin tone). */
+    val displayedEmoji: List<String>,
     val drawables: List<Drawable?>,
     val appliedIndex: Int
   ) {
     companion object {
-      val EMPTY = Strip(emptyList(), emptyList(), ReactionScrubber.NO_SELECTION)
+      val EMPTY = Strip(emptyList(), emptyList(), emptyList(), ReactionScrubber.NO_SELECTION)
     }
   }
 
@@ -185,6 +188,7 @@ class ChatReactionOverlayController(
       isMessageOnLeft = snapshot.isMessageOnLeft,
       lastSeenDownY = lastSeenDownPoint.y,
       emoji = strip.drawables,
+      displayedEmoji = strip.displayedEmoji,
       appliedEmojiIndex = strip.appliedIndex,
       canReact = builtMenu.canReact,
       returnPosition = snapshot.returnPosition
@@ -476,20 +480,26 @@ class ChatReactionOverlayController(
 
     var appliedIndex = ReactionScrubber.NO_SELECTION
     val drawables = mutableListOf<Drawable?>()
+    val displayedEmoji = mutableListOf<String>()
 
     emojiStrings.forEachIndexed { index, emoji ->
-      val isApplied = applied != null && EmojiUtil.isCanonicallyEqual(emoji, applied)
-      if (isApplied && appliedIndex == ReactionScrubber.NO_SELECTION) {
+      val displayed = if (applied != null && EmojiUtil.isCanonicallyEqual(emoji, applied) && appliedIndex == ReactionScrubber.NO_SELECTION) {
         appliedIndex = index
-        drawables += EmojiProvider.getEmojiDrawable(context, applied, true)
+        applied
       } else {
-        drawables += EmojiProvider.getEmojiDrawable(context, SignalStore.emoji.getPreferredVariation(emoji), true)
+        SignalStore.emoji.getPreferredVariation(emoji)
       }
+      displayedEmoji += displayed
+      drawables += EmojiProvider.getEmojiDrawable(context, displayed, true)
     }
     drawables += ContextCompat.getDrawable(context, R.drawable.ic_chevron_down_24)
 
+    // Tellomi (A-06): start reading the strip's animations now; they are cached by asset name, so the slots find them ready.
+    displayedEmoji.mapNotNull(TellomiReactionAnimations::assetPath).forEach { LottieCompositionFactory.fromAsset(context, it) }
+
     return Strip(
       emojiStrings = emojiStrings,
+      displayedEmoji = displayedEmoji,
       drawables = drawables,
       appliedIndex = appliedIndex
     )

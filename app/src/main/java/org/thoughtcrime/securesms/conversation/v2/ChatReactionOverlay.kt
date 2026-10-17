@@ -69,9 +69,16 @@ import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.util.lerp
 import androidx.compose.ui.viewinterop.AndroidView
+import com.airbnb.lottie.LottieComposition
+import com.airbnb.lottie.compose.LottieAnimation
+import com.airbnb.lottie.compose.LottieClipSpec
+import com.airbnb.lottie.compose.LottieCompositionSpec
+import com.airbnb.lottie.compose.rememberLottieAnimatable
+import com.airbnb.lottie.compose.rememberLottieComposition
 import com.google.accompanist.drawablepainter.rememberDrawablePainter
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import org.signal.core.ui.compose.navigationBarsCompat
 import org.signal.core.ui.motion.TellomiMotion
@@ -101,6 +108,12 @@ private val EMOJI_HEIGHT = 48.dp
 private val SLOT_WIDTH = TellomiReactionStrip.ITEM_SIZE_DP.dp
 private val STRIP_WIDTH = TellomiReactionStrip.WIDTH_DP.dp
 private val STRIP_HEIGHT = TellomiReactionStrip.HEIGHT_DP.dp
+
+/**
+ * Tellomi (A-06): an animated emoji's box. The Noto artwork leaves a little margin on its canvas, so it needs a slightly larger box
+ * than the 28 dp static glyph to look the same size (iOS: 0.86 of the slot against the glyph's 0.78).
+ */
+private val ANIMATED_EMOJI_SIZE = 31.dp
 
 /** Tellomi (A-06): the reaction already on the message sits in a slot-sized circle and shrinks to 0.8 (Telegram). */
 private val SELECTION_INDICATOR_SIZE = TellomiReactionStrip.ITEM_SIZE_DP.dp
@@ -146,6 +159,8 @@ data class ReactionOverlaySelection(
   val isMessageOnLeft: Boolean,
   val lastSeenDownY: Float,
   val emoji: List<Drawable?>,
+  /** Tellomi (A-06): the emoji each slot shows, to find its animation ([TellomiReactionAnimations]). */
+  val displayedEmoji: List<String> = emptyList(),
   val appliedEmojiIndex: Int,
   val canReact: Boolean,
   val returnPosition: () -> Offset?
@@ -470,6 +485,10 @@ fun ChatReactionOverlay(
           reveal = emojiReveal[index].value,
           indicatorAlpha = indicatorReveal.value,
           selectedIndex = { controller.selectedIndex },
+          animationAsset = selection.displayedEmoji.getOrNull(index)
+            ?.takeIf { TellomiReactionAnimations.isPlaybackAllowed(tier) }
+            ?.let(TellomiReactionAnimations::assetPath),
+          hasStartedEntering = { emojiReveal[index].value > 0f },
           pullShift = { pullDirection * TellomiReactionStrip.pullShiftDp(index, pull.value) * density.density },
           pullGrowth = { 1f + TellomiReactionStrip.PULL_EXPAND_BUTTON_GROWTH * min(pull.value, 1f) },
           onSlotPlaced = { bounds -> controller.onSlotPlaced(index, bounds) },
@@ -544,6 +563,8 @@ private fun ReactionEmoji(
   reveal: Float,
   indicatorAlpha: Float,
   selectedIndex: () -> Int,
+  animationAsset: String?,
+  hasStartedEntering: () -> Boolean,
   pullShift: () -> Float,
   pullGrowth: () -> Float,
   onSlotPlaced: (RectF) -> Unit,
@@ -620,18 +641,57 @@ private fun ReactionEmoji(
       return@Box
     }
 
-    Image(
-      painter = rememberDrawablePainter(emoji),
-      contentDescription = null,
-      modifier = Modifier
-        .size(width = EMOJI_WIDTH, height = EMOJI_HEIGHT)
-        .graphicsLayer {
-          translationY = growLift
-          scaleX = grow * restingScale * reveal
-          scaleY = grow * restingScale * reveal
-        }
-    )
+    val emojiTransform = Modifier.graphicsLayer {
+      translationY = growLift
+      scaleX = grow * restingScale * reveal
+      scaleY = grow * restingScale * reveal
+    }
+
+    val composition = animationAsset?.let { rememberLottieComposition(LottieCompositionSpec.Asset(it)).value }
+    if (composition != null) {
+      AnimatedReactionEmoji(composition = composition, hasStartedEntering = hasStartedEntering, modifier = emojiTransform)
+    } else {
+      Image(
+        painter = rememberDrawablePainter(emoji),
+        contentDescription = null,
+        modifier = Modifier
+          .size(width = EMOJI_WIDTH, height = EMOJI_HEIGHT)
+          .then(emojiTransform)
+      )
+    }
   }
+}
+
+/**
+ * Tellomi (interaction audit A-06): the slot's Noto animation. It rests on the file's "rest" frame, and once the slot starts
+ * to pop in it plays one full turn from that frame back to it, as Telegram plays each reaction's appear animation once.
+ */
+@Composable
+private fun AnimatedReactionEmoji(composition: LottieComposition, hasStartedEntering: () -> Boolean, modifier: Modifier) {
+  val animatable = rememberLottieAnimatable()
+
+  LaunchedEffect(composition) {
+    val restFrame = composition.getMarker(TellomiReactionAnimations.REST_MARKER)?.startFrame ?: composition.startFrame
+    val restProgress = composition.getProgressForFrame(restFrame)
+    animatable.snapTo(composition, progress = restProgress)
+
+    snapshotFlow { hasStartedEntering() }.first { it }
+    TellomiReactionAnimations.appearSegments(restFrame, composition.startFrame, composition.endFrame - 1f).forEach { segment ->
+      animatable.animate(
+        composition = composition,
+        clipSpec = LottieClipSpec.Frame(segment.start.roundToInt(), segment.endInclusive.roundToInt())
+      )
+    }
+    animatable.snapTo(composition, progress = restProgress)
+  }
+
+  LottieAnimation(
+    composition = composition,
+    progress = { animatable.progress },
+    modifier = Modifier
+      .requiredSize(ANIMATED_EMOJI_SIZE)
+      .then(modifier)
+  )
 }
 
 /**

@@ -28,6 +28,7 @@ import org.signal.core.ui.compose.Scaffolds
 import org.signal.core.ui.compose.SignalIcons
 import org.signal.core.util.logging.Log
 import org.thoughtcrime.securesms.R
+import org.thoughtcrime.securesms.conversation.v2.TellomiReactionAnimations
 import java.io.InputStream
 
 class LicenseFragment : ComposeFragment() {
@@ -40,7 +41,9 @@ class LicenseFragment : ComposeFragment() {
         tellomiSourceCodeNotice(requireContext()) +
           requireContext().resources.openRawResource(R.raw.third_party_licenses).readToLines() +
           requireContext().assets.open("acknowledgments/libsignal.md").readToLines() +
-          requireContext().assets.open("acknowledgments/ringrtc.md").readToLines()
+          requireContext().assets.open("acknowledgments/ringrtc.md").readToLines() +
+          // Tellomi (interaction audit A-06): CC BY 4.0 credit for the reaction bar's animated emoji.
+          requireContext().assets.open(TellomiReactionAnimations.ACKNOWLEDGMENT_ASSET).readToLines()
       }
       .subscribeOn(Schedulers.io())
       .observeOn(AndroidSchedulers.mainThread())
