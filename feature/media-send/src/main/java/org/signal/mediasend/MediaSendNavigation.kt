@@ -2,18 +2,25 @@ package org.signal.mediasend
 
 import android.annotation.SuppressLint
 import androidx.activity.compose.BackHandler
+import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.Crossfade
+import androidx.compose.animation.ContentTransform
+import androidx.compose.animation.EnterExitState
+import androidx.compose.animation.EnterTransition
 import androidx.compose.animation.core.tween
+import androidx.compose.animation.core.updateTransition
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxScope
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -21,8 +28,11 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.drawscope.clipRect
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -55,7 +65,13 @@ import org.signal.mediasend.screens.files.AttachmentFilesGalleryScreen
 import org.signal.mediasend.screens.files.AttachmentFilesGalleryViewModel
 import org.signal.mediasend.screens.files.AttachmentFilesScreen
 import org.signal.mediasend.screens.files.AttachmentFilesViewModel
+import org.signal.mediasend.screens.select.AttachmentDockPillMemory
+import org.signal.mediasend.screens.select.AttachmentDockTransition
 import org.signal.mediasend.screens.select.AttachmentSheet
+import org.signal.mediasend.screens.select.DockMetrics
+import org.signal.mediasend.screens.select.LocalAttachmentDockPillMemory
+import org.signal.mediasend.screens.select.LocalAttachmentDockTransition
+import org.signal.mediasend.screens.select.LocalAttachmentPageExiting
 import org.signal.mediasend.screens.select.LocalAttachmentSheetState
 import org.signal.mediasend.screens.select.MediaSelectScreen
 import org.signal.mediasend.screens.select.MediaSelectViewModel
@@ -153,46 +169,89 @@ internal fun MediaSendNavigation(
           selectViewModel.readMediaPermission.Content()
 
           // Tellomi（tellomi/tellomi#1115）：从「+」打开时，选图网格是附件 Sheet（聊天露在上面）。
-          // tellomi/tellomi#1121 F-1：dock 的「相册」「文件」在同一个 Sheet 里换页——Sheet 不动，只有内容交叉淡入淡出（同 iOS 端）。
+          // tellomi/tellomi#1121 F-1：dock 的「相册」「文件」在同一个 Sheet 里换页——Sheet 不动，只换内容。
+          // 2026-10-17（D11，照 iOS Signal-iOS#265 / Telegram iOS `AttachmentController.animateSwitchTransition`）：新页直接不透明地垫在
+          // 底下，只有旧页在上面淡出（0.23 s）；旧页的 dock 立刻不画、新页那条 dock 一直在原处，选中块从旧格滑到新格。
+          // 原来两页（连同两条 dock）一起交叉淡入淡出 0.2 s，换页时 dock 半透明叠着闪一下。
           val attachmentSheet = LocalAttachmentSheetState.current
           if (attachmentSheet != null) {
             val page by remember { viewModel.state.map { it.attachmentPage }.distinctUntilChanged() }
               .collectAsStateWithLifecycle(initialValue = viewModel.state.value.attachmentPage)
+            val pillMemory = remember { AttachmentDockPillMemory() }
             AttachmentSheet(
               state = attachmentSheet,
               canDismissDirectly = state.selectedMedia.isEmpty(),
               onDismissRequest = viewModel::onCloseRequested
             ) {
-              Crossfade(targetState = page, animationSpec = tween(ATTACHMENT_PAGE_CROSSFADE_MS), label = "attachment-page") { current ->
-                when (current) {
-                  MediaSendFlowActivityContract.AttachmentPage.GALLERY -> MediaSelectScreen(
-                    state = state,
-                    onEvent = selectViewModel::onEvent,
-                    selectionAdditions = selectViewModel.selectionAdditions
+              val pageTransition = updateTransition(targetState = page, label = "attachment-page")
+              // 每换一次页，新页的 zIndex 都比上一页低：新页画在旧页底下。不能固定写 -1——上一页当初进来时也是 -1，
+              // 一样高时后来的画在上面，旧页的淡出就被新页整个盖住（2026-10-17 模拟器录屏：换页是一下子切过去的）。
+              val pageZIndex = remember { floatArrayOf(0f) }
+              pageTransition.AnimatedContent(
+                transitionSpec = {
+                  pageZIndex[0] -= 1f
+                  ContentTransform(
+                    targetContentEnter = EnterTransition.None,
+                    initialContentExit = fadeOut(tween(ATTACHMENT_PAGE_FADE_OUT_MS)),
+                    targetContentZIndex = pageZIndex[0],
+                    sizeTransform = null
                   )
-
-                  MediaSendFlowActivityContract.AttachmentPage.FILES -> {
-                    val filesViewModel: AttachmentFilesViewModel = viewModel(
-                      key = ATTACHMENT_FILES_VIEW_MODEL_KEY,
-                      factory = AttachmentFilesViewModel.Factory(
-                        parentState = viewModel.state,
-                        parentEventEmitter = viewModel::onEvent
+                }
+              ) { current ->
+                val exiting = transition.targetState == EnterExitState.PostExit
+                val dockTransition = AttachmentDockTransition(
+                  visible = !exiting,
+                  enterFrom = pageTransition.currentState.takeIf { !exiting && it != current }
+                )
+                // 淡出的旧页不画底部 dock 那一条：旧页是不透明的，盖在上面会把新页那条 dock 一起遮住——换页第一帧整条 dock 不见、
+                // 接着像在淡入（2026-10-17 模拟器录屏）。dock 那一条 = dock 的高度 + 导航栏（各页的 dock 都贴着导航栏上沿）。
+                val density = LocalDensity.current
+                val dockAreaPx = with(density) { DockMetrics.stripHeight.toPx() } + WindowInsets.navigationBars.getBottom(density)
+                CompositionLocalProvider(
+                  LocalAttachmentDockTransition provides dockTransition,
+                  LocalAttachmentDockPillMemory provides pillMemory,
+                  LocalAttachmentPageExiting provides exiting
+                ) {
+                  Box(
+                    modifier = if (exiting) {
+                      Modifier.drawWithContent {
+                        clipRect(bottom = size.height - dockAreaPx) { this@drawWithContent.drawContent() }
+                      }
+                    } else {
+                      Modifier
+                    }
+                  ) {
+                    when (current) {
+                      MediaSendFlowActivityContract.AttachmentPage.GALLERY -> MediaSelectScreen(
+                        state = state,
+                        onEvent = selectViewModel::onEvent,
+                        selectionAdditions = selectViewModel.selectionAdditions
                       )
-                    )
-                    val filesState by filesViewModel.state.collectAsStateWithLifecycle()
-                    AttachmentFilesScreen(state = filesState, onEvent = filesViewModel::onEvent)
-                  }
 
-                  // Tellomi（2026-10-16）：投票、联系人也在 Sheet 里换页（照 Telegram 两端），页面由 app 画。
-                  MediaSendFlowActivityContract.AttachmentPage.POLL,
-                  MediaSendFlowActivityContract.AttachmentPage.CONTACT -> AttachmentExtraPageHost(
-                    page = current,
-                    recipientId = state.recipientId?.id,
-                    dock = viewModel.state.value.attachmentSheet?.dock.orEmpty(),
-                    onDockClick = { entry -> viewModel.onEvent(dockEventFor(entry)) },
-                    onClose = viewModel::onCloseRequested,
-                    onResult = { result -> viewModel.onEvent(MediaSendFlowEvent.AttachmentPageResult(current, result)) }
-                  )
+                      MediaSendFlowActivityContract.AttachmentPage.FILES -> {
+                        val filesViewModel: AttachmentFilesViewModel = viewModel(
+                          key = ATTACHMENT_FILES_VIEW_MODEL_KEY,
+                          factory = AttachmentFilesViewModel.Factory(
+                            parentState = viewModel.state,
+                            parentEventEmitter = viewModel::onEvent
+                          )
+                        )
+                        val filesState by filesViewModel.state.collectAsStateWithLifecycle()
+                        AttachmentFilesScreen(state = filesState, onEvent = filesViewModel::onEvent)
+                      }
+
+                      // Tellomi（2026-10-16）：投票、联系人也在 Sheet 里换页（照 Telegram 两端），页面由 app 画。
+                      MediaSendFlowActivityContract.AttachmentPage.POLL,
+                      MediaSendFlowActivityContract.AttachmentPage.CONTACT -> AttachmentExtraPageHost(
+                        page = current,
+                        recipientId = state.recipientId?.id,
+                        dock = viewModel.state.value.attachmentSheet?.dock.orEmpty(),
+                        onDockClick = { entry -> viewModel.onEvent(dockEventFor(entry)) },
+                        onClose = viewModel::onCloseRequested,
+                        onResult = { result -> viewModel.onEvent(MediaSendFlowEvent.AttachmentPageResult(current, result)) }
+                      )
+                    }
+                  }
                 }
               }
             }
@@ -298,7 +357,9 @@ private fun OpaqueInAttachmentSheet(
 }
 
 private val TOAST_DURATION = 3.seconds
-private const val ATTACHMENT_PAGE_CROSSFADE_MS = 200
+
+/** 换页时旧页淡出的时长（Telegram iOS `AttachmentController`：0.23 s；同 iOS 端）。 */
+private const val ATTACHMENT_PAGE_FADE_OUT_MS = 230
 private const val ATTACHMENT_FILES_VIEW_MODEL_KEY = "tellomi-attachment-files"
 private val SEND_PROGRESS_DELAY = 300.milliseconds
 

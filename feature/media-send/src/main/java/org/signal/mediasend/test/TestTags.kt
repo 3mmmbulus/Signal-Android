@@ -120,6 +120,7 @@ object TestTags {
   const val ATTACHMENT_SHEET = "attachment_sheet"
   const val ATTACHMENT_SHEET_SCRIM = "attachment_sheet_scrim"
   const val ATTACHMENT_DOCK = "attachment_dock"
+  const val ATTACHMENT_DOCK_PILL = "attachment_dock_pill"
 
   /** Tag for the attachment sheet dock entry with [id]. */
   fun attachmentDockEntry(id: String): String = "attachment_dock_entry_$id"

@@ -18,6 +18,9 @@ import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.platform.testTag
@@ -93,6 +96,98 @@ class AttachmentSheetTest {
   private var dismissRequests = 0
 
   // region dock
+
+  /**
+   * 2026-10-17（D11，照 iOS Signal-iOS#265）：选中块是一块会滑的胶囊——换格时弹簧滑过去（中途在两格之间），不是一下子跳过去。
+   */
+  @Test
+  fun `Given the dock, when the selected page changes, then the pill slides over instead of jumping`() {
+    var page by mutableStateOf(MediaSendFlowActivityContract.AttachmentPage.GALLERY)
+    composeTestRule.setContent {
+      SignalTheme {
+        AttachmentDock(entries = DOCK, currentPage = page, onClick = {})
+      }
+    }
+    val galleryLeft = entryLeft(GALLERY)
+    val fileLeft = entryLeft(FILE)
+    assertThat(abs(pillLeft() - galleryLeft)).isLessThan(1f)
+
+    composeTestRule.mainClock.autoAdvance = false
+    composeTestRule.runOnUiThread { page = MediaSendFlowActivityContract.AttachmentPage.FILES }
+    composeTestRule.mainClock.advanceTimeByFrame()
+    // 一帧一帧看：中途有停在两格之间的帧（滑过去），不是一下子到位
+    val frames = (0 until 20).map {
+      composeTestRule.mainClock.advanceTimeBy(16)
+      pillLeft()
+    }
+    assertThat(frames.any { it > galleryLeft + 1f && it < fileLeft - 1f }).isTrue()
+
+    composeTestRule.mainClock.autoAdvance = true
+    composeTestRule.waitForIdle()
+    assertThat(abs(pillLeft() - fileLeft)).isLessThan(1f)
+  }
+
+  /**
+   * 按住 dock 从「相册」拖到「联系人」松手：「联系人」交给页面（同点它）；页面没换的话选中块弹回「相册」。
+   */
+  @Test
+  fun `Given the dock, when a finger drags from gallery to contact, then contact is handed on and the pill springs back`() {
+    val clicked = mutableListOf<MediaSendFlowActivityContract.DockEntry>()
+    composeTestRule.setContent {
+      SignalTheme {
+        AttachmentDock(entries = DOCK, currentPage = MediaSendFlowActivityContract.AttachmentPage.GALLERY, onClick = { clicked += it })
+      }
+    }
+    val dock = composeTestRule.onNodeWithTag(TestTags.ATTACHMENT_DOCK).getBoundsInRoot()
+    val from = entryCenter(GALLERY)
+    val to = entryCenter(CONTACT)
+    composeTestRule.onNodeWithTag(TestTags.ATTACHMENT_DOCK).performTouchInput {
+      swipe(
+        start = Offset((from.x - dock.left.value).dp.toPx(), height / 2f),
+        end = Offset((to.x - dock.left.value).dp.toPx(), height / 2f),
+        durationMillis = 300
+      )
+    }
+    composeTestRule.waitForIdle()
+
+    assertThat(clicked).containsExactly(CONTACT)
+    assertThat(abs(pillLeft() - entryLeft(GALLERY))).isLessThan(1f)
+  }
+
+  /**
+   * 换页进来的 dock：选中块从旧 dock 的选中块那里开始（Sheet 记着），再滑到这一页的格子——dock 看起来一直在原处，只有选中块在走。
+   */
+  @Test
+  fun `Given a page switch, when the new page's dock appears, then its pill starts where the old one was and slides to its own entry`() {
+    val memory = AttachmentDockPillMemory().apply { position = 0f }
+    composeTestRule.mainClock.autoAdvance = false
+    composeTestRule.setContent {
+      SignalTheme {
+        CompositionLocalProvider(
+          LocalAttachmentDockTransition provides AttachmentDockTransition(enterFrom = MediaSendFlowActivityContract.AttachmentPage.GALLERY),
+          LocalAttachmentDockPillMemory provides memory
+        ) {
+          AttachmentDock(entries = DOCK, currentPage = MediaSendFlowActivityContract.AttachmentPage.FILES, onClick = {})
+        }
+      }
+    }
+    composeTestRule.mainClock.advanceTimeByFrame()
+    assertThat(abs(pillLeft() - entryLeft(GALLERY))).isLessThan(1f)
+
+    composeTestRule.mainClock.autoAdvance = true
+    composeTestRule.waitForIdle()
+    assertThat(abs(pillLeft() - entryLeft(FILE))).isLessThan(1f)
+    assertThat(memory.position).isEqualTo(1f)
+  }
+
+  private fun pillLeft(): Float = composeTestRule.onNodeWithTag(TestTags.ATTACHMENT_DOCK_PILL, useUnmergedTree = true).getBoundsInRoot().left.value
+
+  private fun entryLeft(entry: MediaSendFlowActivityContract.DockEntry): Float = composeTestRule.onNodeWithTag(TestTags.attachmentDockEntry(entry.id)).getBoundsInRoot().left.value
+
+  private fun entryCenter(entry: MediaSendFlowActivityContract.DockEntry): Offset {
+    val bounds = composeTestRule.onNodeWithTag(TestTags.attachmentDockEntry(entry.id)).getBoundsInRoot()
+    return Offset((bounds.left.value + bounds.right.value) / 2f, (bounds.top.value + bounds.bottom.value) / 2f)
+  }
 
   @Test
   fun `Given the attachment sheet with nothing selected, when displayed, then the dock shows its entries in order with gallery selected`() {

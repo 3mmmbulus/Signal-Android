@@ -392,7 +392,10 @@ private fun PickerCameraCell(access: PickerCameraAccess, onClick: () -> Unit) {
       .testTag(TestTags.MEDIA_PICKER_CAMERA)
   ) {
     if (access == PickerCameraAccess.GRANTED) {
-      LocalPickerCameraViewfinder.current(Modifier.fillMaxSize())
+      // 相册页正在淡出（换到别的页）：实时取景不跟着 alpha 淡，会不透明地留着再黑一帧，所以淡出时只留深色底和小相机图标
+      if (!LocalAttachmentPageExiting.current) {
+        LocalPickerCameraViewfinder.current(Modifier.fillMaxSize())
+      }
       // 取景可能很亮：小图标垫一个半透明深色圆底。
       Icon(
         imageVector = SignalIcons.Camera.imageVector,
