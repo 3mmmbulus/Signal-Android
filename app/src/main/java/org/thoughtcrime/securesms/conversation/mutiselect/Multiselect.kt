@@ -2,6 +2,7 @@ package org.thoughtcrime.securesms.conversation.mutiselect
 
 import org.thoughtcrime.securesms.conversation.ConversationMessage
 import org.thoughtcrime.securesms.database.model.MmsMessageRecord
+import org.thoughtcrime.securesms.maps.TellomiLocationBubble
 import org.thoughtcrime.securesms.mms.SlideDeck
 import org.thoughtcrime.securesms.mms.TextSlide
 
@@ -23,6 +24,12 @@ object Multiselect {
       return MultiselectCollection.Double(MultiselectPart.CollapsedHead(conversationMessage), MultiselectPart.Update(conversationMessage))
     } else if (messageRecord.isUpdate) {
       return MultiselectCollection.Single(MultiselectPart.Update(conversationMessage))
+    }
+
+    // Tellomi (spec attachment-files-location L-11): a location message is one piece (the map, its name and address), not a
+    // photo and its caption; selecting it forwards both, as the message it is.
+    if (TellomiLocationBubble.recognize(messageRecord) != null) {
+      return MultiselectCollection.Single(MultiselectPart.Message(conversationMessage))
     }
 
     val parts: LinkedHashSet<MultiselectPart> = linkedSetOf()

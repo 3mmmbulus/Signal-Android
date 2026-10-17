@@ -45,6 +45,9 @@ class ConversationItemThumbnail @JvmOverloads constructor(
   private var maximumThumbnailHeight = 0
   private var minimumThumbnailHeight = 0
 
+  /** Tellomi (spec attachment-files-location L-11): [width, height] the single image is drawn at (centre-cropped), or null. */
+  private var tellomiFixedSize: IntArray? = null
+
   init {
     inflate(context, R.layout.conversation_item_thumbnail, this)
 
@@ -188,6 +191,11 @@ class ConversationItemThumbnail @JvmOverloads constructor(
     state.thumbnailViewState.applyState(thumbnail)
   }
 
+  /** Tellomi (spec L-11): a location's map is drawn at exactly this size (width × half-width), whatever the image's own shape. Null: as usual. */
+  fun setTellomiFixedSize(size: IntArray?) {
+    tellomiFixedSize = size
+  }
+
   /** Tellomi (card-visual §3.2): the large image of a link card is cut to a box no wider than 1.91:1, so its height has a lower bound too. */
   fun setMinimumThumbnailHeight(@Px height: Int) {
     minimumThumbnailHeight = height
@@ -210,7 +218,10 @@ class ConversationItemThumbnail @JvmOverloads constructor(
     if (slides.size == 1) {
       val slide = slides[0]
 
-      if (slide.isVideoGif) {
+      val fixedSize = tellomiFixedSize
+      if (fixedSize != null) {
+        setThumbnailBounds(intArrayOf(fixedSize[0], fixedSize[0], fixedSize[1], fixedSize[1]))
+      } else if (slide.isVideoGif) {
         setThumbnailBounds(gifBounds)
       } else {
         setThumbnailBounds(normalBounds)
@@ -237,7 +248,9 @@ class ConversationItemThumbnail @JvmOverloads constructor(
 
       val attachment = slides[0].asAttachment()
 
-      thumbnail.get().setImageResource(requestManager, slides[0], showControls, isPreview, attachment.width, attachment.height, missingThumbnailBackgroundColor)
+      val naturalWidth = fixedSize?.get(0) ?: attachment.width
+      val naturalHeight = fixedSize?.get(1) ?: attachment.height
+      thumbnail.get().setImageResource(requestManager, slides[0], showControls, isPreview, naturalWidth, naturalHeight, missingThumbnailBackgroundColor)
       touchDelegate = thumbnail.get().touchDelegate
     } else {
       state = state.copy(

@@ -2308,6 +2308,30 @@
     <!-- This is the subject line for the email that is sent to support -->
     <string name="PassphrasePromptActivity_signal_android_lock_screen">Tellomi Android - Lock Screen</string>
 
+    <!-- TellomiLocationActivity (spec attachment-files-location L-11) -->
+    <!-- Title of the location page a location message opens; also the name shown when the location has none. -->
+    <string name="TellomiLocation__title">Location</string>
+    <!-- Title of the location page when the location is a named place. -->
+    <string name="TellomiLocation__title_place">Place</string>
+    <!-- Button on the location page that lists the map apps on this phone to get directions in. -->
+    <string name="TellomiLocation__directions">Directions</string>
+    <!-- Shown on the location page while the address is being looked up. -->
+    <string name="TellomiLocation__locating">Locating…</string>
+    <!-- On the location page, shown instead of a distance when the user is at the location. -->
+    <string name="TellomiLocation__you_are_here">You are here</string>
+    <!-- On the location page: how far the location is. %1$s is a distance such as 1.2 km. -->
+    <string name="TellomiLocation__distance_away">%1$s away</string>
+    <!-- Title of the list of map apps on this phone to open a location in. -->
+    <string name="TellomiLocation__open_in">Open in</string>
+    <!-- Menu item on the location page that copies the address. -->
+    <string name="TellomiLocation__copy_address">Copy address</string>
+    <!-- Shown after the address was copied. -->
+    <string name="TellomiLocation__address_copied">Address copied</string>
+    <!-- Menu item on the location page that shares the location. -->
+    <string name="TellomiLocation__share">Share</string>
+    <!-- Shown when no map app on this phone can open the location. -->
+    <string name="TellomiLocation__no_map_app">No map app on this phone</string>
+
     <!-- PlacePickerActivity -->
     <string name="PlacePickerActivity_title">Map</string>
 

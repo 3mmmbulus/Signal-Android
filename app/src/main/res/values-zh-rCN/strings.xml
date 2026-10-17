@@ -2210,6 +2210,19 @@
     <!-- This is the subject line for the email that is sent to support -->
     <string name="PassphrasePromptActivity_signal_android_lock_screen">Tellomi Android - 锁定屏幕</string>
 
+    <!-- TellomiLocationActivity (spec attachment-files-location L-11) -->
+    <string name="TellomiLocation__title">位置</string>
+    <string name="TellomiLocation__title_place">地点</string>
+    <string name="TellomiLocation__directions">路线</string>
+    <string name="TellomiLocation__locating">正在定位…</string>
+    <string name="TellomiLocation__you_are_here">你在这里</string>
+    <string name="TellomiLocation__distance_away">距离 %1$s</string>
+    <string name="TellomiLocation__open_in">打开方式</string>
+    <string name="TellomiLocation__copy_address">复制地址</string>
+    <string name="TellomiLocation__address_copied">已复制地址</string>
+    <string name="TellomiLocation__share">分享</string>
+    <string name="TellomiLocation__no_map_app">这台手机上没有地图 App</string>
+
     <!-- PlacePickerActivity -->
     <string name="PlacePickerActivity_title">地图</string>
 

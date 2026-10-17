@@ -134,6 +134,9 @@ import org.thoughtcrime.securesms.linkpreview.TellomiFirstPartyCard;
 import org.thoughtcrime.securesms.linkpreview.TellomiLinkCard;
 import org.thoughtcrime.securesms.linkpreview.TellomiLinkDisplay;
 import org.thoughtcrime.securesms.linkpreview.TellomiLinkVisual;
+import org.thoughtcrime.securesms.maps.TellomiLocationActivity;
+import org.thoughtcrime.securesms.maps.TellomiLocationBubble;
+import org.thoughtcrime.securesms.maps.TellomiLocationMessage;
 import org.thoughtcrime.securesms.mediapreview.MediaIntentFactory;
 import org.thoughtcrime.securesms.mediapreview.MediaPreviewCache;
 import org.thoughtcrime.securesms.mediapreview.MediaPreviewFragment;
@@ -253,6 +256,8 @@ public final class ConversationItem extends RelativeLayout implements BindableCo
   private final @NonNull List<Outliner>                          outliners     = new ArrayList<>(2);
   private                LiveRecipient                           conversationRecipient;
   private                NullableStub<ConversationItemThumbnail> mediaThumbnailStub;
+  /** Tellomi (spec attachment-files-location L-11): the location this message carries, drawn as a map bubble; null for other messages. */
+  private @Nullable TellomiLocationMessage tellomiLocation;
   private                Stub<AudioView>                         audioViewStub;
   private                Stub<DocumentView>                      documentViewStub;
   private                Stub<SharedContactView>                 sharedContactStub;
@@ -450,6 +455,7 @@ public final class ConversationItem extends RelativeLayout implements BindableCo
 
     TellomiLinkCard requestLinkCard = getRequestLinkCard();
     this.showsRequestLinkCard = !isMessageRequestAccepted && requestLinkCard != null && requestLinkCard.getDomain() != null;
+    this.tellomiLocation      = TellomiLocationBubble.recognize(messageRecord);
 
     lastFooterDecisionLineWidth = -1;
     lastFooterWasCollapsed      = false;
@@ -1197,7 +1203,17 @@ public final class ConversationItem extends RelativeLayout implements BindableCo
   }
 
   private boolean isCaptionlessMms(MessageRecord messageRecord) {
-    return MessageRecordUtil.isCaptionlessMms(messageRecord, context);
+    return MessageRecordUtil.isCaptionlessMms(messageRecord, context) || isTellomiPlainLocation(messageRecord);
+  }
+
+  /** Tellomi (spec L-11): a location without a name is only the map (time on it); its body (address + link) is not drawn. */
+  private boolean isTellomiPlainLocation(@NonNull MessageRecord record) {
+    return tellomiLocation != null && record == messageRecord && !tellomiLocation.isPlace();
+  }
+
+  /** The body is not drawn under the media: empty, or a plain location's (Tellomi, spec L-11). */
+  private boolean isDisplayBodyHidden(@NonNull MessageRecord record) {
+    return record.isDisplayBodyEmpty(getContext()) || isTellomiPlainLocation(record);
   }
 
   private boolean hasAudio(MessageRecord messageRecord) {
@@ -1383,6 +1399,7 @@ public final class ConversationItem extends RelativeLayout implements BindableCo
 
     bodyText.setOverflowText(null);
     bodyText.setMaxLength(-1);
+    bodyText.setEllipsize(null);
 
     if (messageRecord instanceof InMemoryMessageRecord.DeletedMessageTombstone) {
       String          deletedMessage = context.getString(R.string.ConversationItem_delete_for_everyone_question);
@@ -1421,6 +1438,20 @@ public final class ConversationItem extends RelativeLayout implements BindableCo
       bodyText.setText(italics);
       bodyText.setVisibility(View.VISIBLE);
       bodyText.setOverflowText(null);
+    } else if (tellomiLocation != null && tellomiLocation.isPlace()) {
+      // Tellomi (spec L-11): a place's name and address under the map instead of the body (name, address, maps link).
+      int mapWidth  = TellomiLocationBubble.mapSize(readDimen(R.dimen.media_bubble_max_width))[0];
+      int textWidth = mapWidth - 2 * readDimen(R.dimen.message_bubble_horizontal_padding);
+      int addressColor = messageRecord.isOutgoing() ? colorizer.getOutgoingFooterTextColor(context)
+                                                    : colorizer.getIncomingFooterTextColor(context, hasWallpaper);
+      bodyText.setText(TellomiLocationBubble.text(context, tellomiLocation, bodyText.getCurrentTextColor(), addressColor, textWidth));
+      bodyText.setMaxLines(TellomiLocationBubble.maxLines(tellomiLocation));
+      bodyText.setEllipsize(TextUtils.TruncateAt.END);
+      bodyText.setVisibility(View.VISIBLE);
+      if (!isMessageDetails) {
+        bodyText.setOnClickListener(v -> openTellomiLocation(v));
+      }
+      if (callToActionStub.resolved()) callToActionStub.get().setVisibility(View.GONE);
     } else if (isCaptionlessMms(messageRecord) || isStoryReaction(messageRecord) || isGiftMessage(messageRecord) || messageRecord.isPaymentNotification() || messageRecord.isPaymentTombstone()) {
       bodyText.setText(null);
       bodyText.setOverflowText(null);
@@ -1812,12 +1843,14 @@ public final class ConversationItem extends RelativeLayout implements BindableCo
       mediaThumbnailStub.require().setMaximumThumbnailHeight(readDimen(isContentCondensed() ? R.dimen.media_bubble_max_height_condensed
                                                                                             : R.dimen.media_bubble_max_height));
 
+      // Tellomi (spec L-11): a location's map is width × half-width, the snapshot centre-cropped.
+      mediaThumbnailStub.require().setTellomiFixedSize(tellomiLocation != null ? TellomiLocationBubble.mapSize(readDimen(R.dimen.media_bubble_max_width)) : null);
       mediaThumbnailStub.require().setThumbnailClickListener(new ThumbnailClickListener());
       mediaThumbnailStub.require().setCancelTransferClickListener(attachmentCancelClickListener);
       mediaThumbnailStub.require().setPlayVideoClickListener(playVideoClickListener);
       mediaThumbnailStub.require().setOnLongClickListener(passthroughClickListener);
       mediaThumbnailStub.require().setOnClickListener(passthroughClickListener);
-      mediaThumbnailStub.require().showShade((messageRecord.isDisplayBodyEmpty(getContext()) || isTellomiCaptionAbove(messageRecord)) && !hasExtraText(messageRecord) && !hasCondensedContent(messageRecord));
+      mediaThumbnailStub.require().showShade((isDisplayBodyHidden(messageRecord) || isTellomiCaptionAbove(messageRecord)) && !hasExtraText(messageRecord) && !hasCondensedContent(messageRecord));
       mediaThumbnailStub.require().setImageResource(requestManager,
                                                     thumbnailSlides,
                                                     showControls,
@@ -1996,7 +2029,7 @@ public final class ConversationItem extends RelativeLayout implements BindableCo
     }
 
     // Tellomi（ADR-0068 §4.7）：说明在上方时，图下面没有别的了，下边跟气泡一样圆。
-    if (!current.isDisplayBodyEmpty(getContext()) && !isTellomiCaptionAbove(current)) {
+    if (!isDisplayBodyHidden(current) && !isTellomiCaptionAbove(current)) {
       bottomStart = 0;
       bottomEnd   = 0;
     }
@@ -2403,7 +2436,7 @@ public final class ConversationItem extends RelativeLayout implements BindableCo
       return stickerFooter;
     } else if (hasSharedContact(messageRecord) && messageRecord.isDisplayBodyEmpty(getContext())) {
       return sharedContactStub.get().getFooter();
-    } else if (hasOnlyThumbnail(messageRecord) && messageRecord.isDisplayBodyEmpty(getContext())) {
+    } else if (hasOnlyThumbnail(messageRecord) && isDisplayBodyHidden(messageRecord)) {
       return mediaThumbnailStub.require().getFooter().get();
     } else if (isTellomiCaptionAbove(messageRecord)) {
       // Tellomi（ADR-0068 §4.7）：说明在上方时图是气泡最下面一块，时间压在图上（同没有说明的图、同 Telegram / iOS / 电脑端）。
@@ -2415,6 +2448,17 @@ public final class ConversationItem extends RelativeLayout implements BindableCo
 
   private int readDimen(@DimenRes int dimenId) {
     return context.getResources().getDimensionPixelOffset(dimenId);
+  }
+
+  /** Tellomi (spec L-11): the location page; in multi-select or for a failed message the tap does what it always does. */
+  private void openTellomiLocation(@NonNull View view) {
+    if (tellomiLocation == null || shouldInterceptClicks(messageRecord) || !batchSelected.isEmpty() || isSuppressedInteractionMode()) {
+      passthroughClickListener.onClick(view);
+      return;
+    }
+    Slide slide = messageRecord instanceof MmsMessageRecord ? ((MmsMessageRecord) messageRecord).getSlideDeck().getThumbnailSlide() : null;
+    Uri   map   = slide != null ? slide.getUri() : null;
+    getContext().startActivity(TellomiLocationActivity.intent(getContext(), tellomiLocation, map));
   }
 
   private boolean shouldInterceptClicks(MessageRecord messageRecord) {
@@ -2524,6 +2568,7 @@ public final class ConversationItem extends RelativeLayout implements BindableCo
    */
   private boolean isTellomiCaptionAbove(@NonNull MessageRecord record) {
     return TellomiCaptionAbove.isCaptionAboveMedia(record.getMessageExtras()) &&
+           tellomiLocation == null &&
            tellomiBodyIndex >= 0 &&
            hasThumbnail(record) &&
            mediaThumbnailStub.resolved() &&
@@ -3343,6 +3388,9 @@ public final class ConversationItem extends RelativeLayout implements BindableCo
     public void onClick(final View v, final Slide slide) {
       if (shouldInterceptClicks(messageRecord) || !batchSelected.isEmpty() || (isSuppressedInteractionMode() && (!slide.hasDocument() || (slide.hasDocument() && !MessageRecordUtil.isScheduled(messageRecord))))) {
         performClick();
+      } else if (tellomiLocation != null) {
+        // Tellomi (spec L-11): the map opens the location page, not the photo viewer.
+        openTellomiLocation(v);
       } else if (!canPlayContent && mediaItem != null && eventListener != null) {
         eventListener.onPlayInlineContent(conversationMessage);
       } else if (MediaPreviewFragment.isContentTypeSupported(slide.getContentType()) && slide.getDisplayUri() != null && !MediaUtil.isTellomiAsFile(slide.asAttachment())) {

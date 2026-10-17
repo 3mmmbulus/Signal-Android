@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Tellomi (spec attachment-files-location L-11): menu items of the location page. -->
+<resources>
+    <item name="tellomi_location_menu_copy" type="id" />
+    <item name="tellomi_location_menu_share" type="id" />
+</resources>
