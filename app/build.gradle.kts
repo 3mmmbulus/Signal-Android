@@ -39,8 +39,8 @@ staticIps.stringPropertyNames().forEach { rootProject.extra[it] = staticIps.getP
 // **不从 1 重新开始**：现有测试安装的 versionCode 已经是 174801（上游 1748 派生的），
 // 降号会让 Android 直接拒绝覆盖升级，测试机得卸载重装、本地聊天记录一起丢。
 // 所以从当前值之上继续。以后要重排号，只能挑一个「所有人反正都要重装」的节点。
-val canonicalVersionCode = 1770
-val canonicalVersionName = "0.1.21"
+val canonicalVersionCode = 1771
+val canonicalVersionName = "0.1.22"
 val currentHotfixVersion = 0
 val maxHotfixVersions = 100
 
