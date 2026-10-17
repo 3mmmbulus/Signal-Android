@@ -19,6 +19,8 @@ import org.signal.core.util.dp
 import org.thoughtcrime.securesms.database.model.MessageRecord
 import org.thoughtcrime.securesms.database.model.MmsMessageRecord
 import org.thoughtcrime.securesms.mms.ImageSlide
+import org.thoughtcrime.securesms.mms.Slide
+import org.thoughtcrime.securesms.util.MediaUtil
 import kotlin.math.min
 
 /**
@@ -53,6 +55,26 @@ object TellomiLocationBubble {
     val slide = slides[0]
     if (slide !is ImageSlide || slide.hasVideo() || slide.hasSticker() || slide.isBorderless) return null
     return TellomiLocationMessage.parse(record.body)
+  }
+
+  /**
+   * The chat list and notifications write a location as "📍 Location" (like "📷 Photo"), not its name, address and maps link;
+   * places too. Telegram does this on both platforms (Android `MessageObject` geo / venue → `AttachLocation`, iOS
+   * `MessageContentKind` `.location` → `Message.Location`). Spec attachment-files-location §3.3.1; same as iOS
+   * `TellomiLocationMessage.previewText`.
+   */
+  const val PREVIEW_EMOJI = "\uD83D\uDCCD"
+
+  /**
+   * A reply quoting [body] with [slide] quotes a location: the body reads as one and the quoted attachment is one still image
+   * (no GIF, video, sticker or borderless image, as [recognize]). The quote then says "Location" next to the map instead of the text. Same as iOS
+   * `TellomiLocationMessage.isQuotedLocation`.
+   */
+  @JvmStatic
+  fun isQuotedLocation(body: CharSequence?, slide: Slide?, slideCount: Int, contentType: String?): Boolean {
+    if (body == null || slide == null || slideCount != 1) return false
+    if (slide.hasSticker() || slide.isBorderless || slide.isVideoGif || !MediaUtil.isImageType(contentType) || MediaUtil.isGif(contentType)) return false
+    return TellomiLocationMessage.parse(body.toString()) != null
   }
 
   /** The map's size in px: as wide as photos may be, at most 300dp; half as high. */

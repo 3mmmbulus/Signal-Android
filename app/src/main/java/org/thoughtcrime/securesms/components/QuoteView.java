@@ -40,6 +40,7 @@ import org.thoughtcrime.securesms.conversation.v2.items.SenderNameWithLabelView;
 import org.thoughtcrime.securesms.database.model.Mention;
 import org.thoughtcrime.securesms.database.model.databaseprotos.BodyRangeList;
 import org.thoughtcrime.securesms.groups.memberlabel.MemberLabel;
+import org.thoughtcrime.securesms.maps.TellomiLocationBubble;
 import org.thoughtcrime.securesms.mms.QuoteModel;
 import org.thoughtcrime.securesms.mms.Slide;
 import org.thoughtcrime.securesms.mms.SlideDeck;
@@ -328,6 +329,15 @@ public class QuoteView extends ConstraintLayout implements RecipientForeverObser
     } else {
       storyReactionEmoji.setVisibility(View.GONE);
       missingStoryReaction.setVisibility(View.GONE);
+    }
+
+    // Tellomi (spec attachment-files-location §3.3.1): a reply to a location says "Location" next to the map, as a photo says
+    // "Photo", not its name / address / maps link (Telegram's reply header on both platforms)
+    if (!isStoryReply() && TellomiLocationBubble.isQuotedLocation(body, slide, attachments.getSlides().size(), quoteTargetContentType)) {
+      bodyView.setVisibility(GONE);
+      mediaDescriptionText.setVisibility(VISIBLE);
+      mediaDescriptionText.setText(R.string.AttachmentKeyboard_location);
+      return;
     }
 
     StoryTextPostModel textPostModel = isStoryReply() ? getStoryTextPost(body) : null;

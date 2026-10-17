@@ -13,6 +13,7 @@ import android.graphics.Color
 import android.net.Uri
 import androidx.test.core.app.ApplicationProvider
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
@@ -24,6 +25,7 @@ import org.robolectric.Shadows.shadowOf
 import org.robolectric.annotation.Config
 import org.robolectric.annotation.GraphicsMode
 import org.thoughtcrime.securesms.database.FakeMessageRecords
+import org.thoughtcrime.securesms.database.ThreadBodyUtil
 import org.thoughtcrime.securesms.mms.SlideDeck
 import org.thoughtcrime.securesms.testutil.MockAppDependenciesRule
 import org.thoughtcrime.securesms.util.MediaUtil
@@ -117,6 +119,44 @@ class TellomiLocationBubbleTest {
     assertTrue(location.asSingle().singlePart is org.thoughtcrime.securesms.conversation.mutiselect.MultiselectPart.Message)
     val photo = parts(FakeMessageRecords.buildMediaMmsMessageRecord(body = "Look at this", slideDeck = SlideDeck(listOf(image()))))
     assertEquals(2, photo.size)
+  }
+
+  // ---------------------------------------------------------------------------------------------------------------------------
+  // Chat list, notifications, replies (spec §3.3.1)
+  // ---------------------------------------------------------------------------------------------------------------------------
+
+  @Test
+  fun `the chat list and notifications say Location, not the name, address and link`() {
+    val context = ApplicationProvider.getApplicationContext<Application>()
+    val bodies = listOf(
+      placeBody,
+      "中国\n上海市静安区\n南京西路789号\n\nhttps://maps.google.com/maps?q=31.2297%2C121.4560",
+      "https://maps.google.com/maps?q=31.2297%2C121.4560"
+    )
+    for (body in bodies) {
+      val record = FakeMessageRecords.buildMediaMmsMessageRecord(body = body, slideDeck = SlideDeck(listOf(image())))
+      assertEquals(body, "\uD83D\uDCCD Location", ThreadBodyUtil.getFormattedBodyFor(context, record).body.toString())
+      assertEquals(body, "\uD83D\uDCCD Location", ThreadBodyUtil.getFormattedBodyForNotification(context, record, null).toString())
+    }
+    // A photo is still a photo.
+    val photo = FakeMessageRecords.buildMediaMmsMessageRecord(body = "", slideDeck = SlideDeck(listOf(image())))
+    assertEquals("\uD83D\uDCF7 Photo", ThreadBodyUtil.getFormattedBodyFor(context, photo).body.toString())
+  }
+
+  @Test
+  fun `a reply quoting a location says Location`() {
+    fun slide(contentType: String = MediaUtil.IMAGE_JPEG, borderless: Boolean = false, videoGif: Boolean = false) = SlideDeck(listOf(image(contentType = contentType, borderless = borderless, videoGif = videoGif))).slides[0]
+
+    assertTrue(TellomiLocationBubble.isQuotedLocation(placeBody, slide(), 1, MediaUtil.IMAGE_JPEG))
+    assertTrue(TellomiLocationBubble.isQuotedLocation(placeBody, slide(MediaUtil.IMAGE_PNG), 1, MediaUtil.IMAGE_PNG))
+
+    assertFalse(TellomiLocationBubble.isQuotedLocation("Look at this", slide(), 1, MediaUtil.IMAGE_JPEG))
+    assertFalse(TellomiLocationBubble.isQuotedLocation(placeBody, null, 0, null))
+    assertFalse(TellomiLocationBubble.isQuotedLocation(placeBody, slide(), 2, MediaUtil.IMAGE_JPEG))
+    assertFalse(TellomiLocationBubble.isQuotedLocation(placeBody, slide(MediaUtil.IMAGE_GIF), 1, MediaUtil.IMAGE_GIF))
+    assertFalse(TellomiLocationBubble.isQuotedLocation(placeBody, slide(MediaUtil.VIDEO_MP4), 1, MediaUtil.VIDEO_MP4))
+    assertFalse(TellomiLocationBubble.isQuotedLocation(placeBody, slide(MediaUtil.VIDEO_MP4, videoGif = true), 1, MediaUtil.VIDEO_MP4))
+    assertFalse(TellomiLocationBubble.isQuotedLocation(placeBody, slide(borderless = true), 1, MediaUtil.IMAGE_JPEG))
   }
 
   // ---------------------------------------------------------------------------------------------------------------------------

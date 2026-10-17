@@ -15,6 +15,7 @@ import org.thoughtcrime.securesms.contactshare.Contact;
 import org.thoughtcrime.securesms.contactshare.ContactUtil;
 import org.thoughtcrime.securesms.database.model.MessageRecord;
 import org.thoughtcrime.securesms.database.model.MmsMessageRecord;
+import org.thoughtcrime.securesms.maps.TellomiLocationBubble;
 import org.thoughtcrime.securesms.mms.GifSlide;
 import org.thoughtcrime.securesms.mms.Slide;
 import org.thoughtcrime.securesms.mms.StickerSlide;
@@ -80,6 +81,9 @@ public final class ThreadBodyUtil {
     } else if (MessageRecordUtil.hasPinnedMessageUpdate(record)) {
       return record.getFromRecipient().isSelf() ? new ThreadBody(context.getString(R.string.PinnedMessage__you_pinned_a_message))
                                                 : new ThreadBody(context.getString(R.string.PinnedMessage__s_pinned_a_message, record.getFromRecipient().getDisplayName(context)));
+    } else if (TellomiLocationBubble.recognize(record) != null) {
+      // Tellomi (spec attachment-files-location §3.3.1): "📍 Location", not the name, address and maps link (Telegram: AttachLocation)
+      return format(TellomiLocationBubble.PREVIEW_EMOJI, context.getString(R.string.AttachmentKeyboard_location), null);
     }
 
     boolean hasImage     = false;
