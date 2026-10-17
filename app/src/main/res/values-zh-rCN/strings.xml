@@ -241,11 +241,11 @@
     <!-- Dialog button to report as spam only -->
     <string name="BlockUnblockDialog_report_spam">举报垃圾消息</string>
     <!-- Dialog message when reporting spam of an individual (1:1 conversation) -->
-    <string name="BlockUnblockDialog_report_spam_description">Tellomi 将会通知此用户，其可能发送了垃圾消息。Tellomi 无法看到任何聊天的内容。</string>
+    <string name="BlockUnblockDialog_report_spam_description">Tellomi 会收到通知：此人可能在发送垃圾消息。Tellomi 无法看到任何聊天的内容。</string>
     <!-- Dialog message when reporting spam of a group and we can determine the group member that invited you, placeholder is a name -->
-    <string name="BlockUnblockDialog_report_spam_group_named_adder">Tellomi 将会给邀请您加入群组的%1$s发送通知，告知其可能发送了垃圾消息。Tellomi 无法看到任何聊天的内容。</string>
+    <string name="BlockUnblockDialog_report_spam_group_named_adder">Tellomi 会收到通知：邀请您加入此群组的%1$s可能在发送垃圾消息。Tellomi 无法看到任何聊天的内容。</string>
     <!-- Dialog message when reporting spam of a group and we cannot determine the group member that invited you -->
-    <string name="BlockUnblockDialog_report_spam_group_unknown_adder">Tellomi 将会给邀请您加入群组的用户发送通知，告知其可能发送了垃圾消息。Tellomi 无法看到任何聊天的内容。</string>
+    <string name="BlockUnblockDialog_report_spam_group_unknown_adder">Tellomi 会收到通知：邀请您加入此群组的人可能在发送垃圾消息。Tellomi 无法看到任何聊天的内容。</string>
 
     <!-- BucketedThreadMedia -->
     <string name="BucketedThreadMedia_Today">今天</string>
@@ -643,7 +643,7 @@
     <!-- Dialog title shown after reporting spam and tapping the conversation item -->
     <string name="ConversationFragment_reported_spam">已举报垃圾消息</string>
     <!-- Dialog message shown after reporting spam and tapping the conversation item -->
-    <string name="ConversationFragment_reported_spam_message">Tellomi 已通知此用户，其可能发送了垃圾消息。Tellomi 无法看到任何聊天的内容。</string>
+    <string name="ConversationFragment_reported_spam_message">Tellomi 已收到通知：此人可能在发送垃圾消息。Tellomi 无法看到任何聊天的内容。</string>
     <!-- Toast shown after reporting spam and tapping the conversation item -->
     <string name="ConversationFragment_reported_as_spam">已举报为垃圾消息</string>
     <!-- Toast shown after reporting and blocking a conversation -->
