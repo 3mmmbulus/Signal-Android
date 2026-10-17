@@ -42,6 +42,7 @@ import com.bumptech.glide.request.target.CustomTarget;
 
 import org.signal.core.models.media.TransformProperties;
 import org.signal.core.models.database.AttachmentId;
+import org.signal.core.ui.motion.TellomiMotion;
 import org.signal.core.util.ThreadUtil;
 import org.signal.core.util.concurrent.ListenableFuture;
 import org.signal.core.util.concurrent.SignalExecutors;
@@ -671,7 +672,8 @@ public class ThumbnailView extends FrameLayout {
     RequestBuilder<Drawable> requestBuilder = applySizing(requestManager.load(new DecryptableUri(Objects.requireNonNull(slide.getDisplayUri()), videoTrimStartTimeUs))
                                                               .diskCacheStrategy(DiskCacheStrategy.RESOURCE)
                                                               .downsample(SignalDownsampleStrategy.CENTER_OUTSIDE_NO_UPSCALE)
-                                                              .transition(withCrossFade()));
+                                                              // Tellomi（交互审计 A-13）：传完的图从模糊占位上淡入，照 Telegram 两端 150 ms（Glide 默认 300）
+                                                              .transition(withCrossFade(TellomiMotion.THUMBNAIL_CROSSFADE_MS)));
 
     if (slide.isInProgress()) {
       return requestBuilder;

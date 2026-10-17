@@ -148,4 +148,10 @@ class TellomiMotionTest {
     assertFalse(TellomiMotion.allowsSendFlight(goodPhone.copy(memoryClassMb = 96)))
     assertTrue(TellomiMotion.allowsSendFlight(goodPhone.copy(memoryClassMb = 0)))
   }
+
+  /** 传完的图从占位上淡入：照 Telegram 两端 150 ms，和 iOS `TellomiMotion.fadeOutDuration` 同一个数（交互审计 A-13）。 */
+  @Test
+  fun `a finished image fades in over its placeholder in 150 ms like Telegram`() {
+    assertEquals(150, TellomiMotion.THUMBNAIL_CROSSFADE_MS)
+  }
 }

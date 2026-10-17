@@ -158,6 +158,13 @@ object TellomiMotion {
     const val MAX_LINES = 5
   }
 
+  /**
+   * 传完的图从占位（模糊图 / 缩略图）上交叉淡入（交互审计 A-13）：照 Telegram 两端 150 ms——Android `ImageReceiver`
+   * 的 `DEFAULT_CROSSFADE_DURATION`，iOS `TransformImageNode` `.subsequentUpdates` 旧图 0.15 s 淡掉。
+   * iOS 同一个数：`TellomiMotion.fadeOutDuration`（`TellomiTransferHandoff`）。Glide 自己的默认是 300 ms。
+   */
+  const val THUMBNAIL_CROSSFADE_MS = 150
+
   /** 尾巴交接（设计规范第 3 节）：新消息接到同一组时，上一条的尾巴淡出；它的下角本来就是 4，不用变形。 */
   object TailHandover {
     const val DURATION_MS = 150L
