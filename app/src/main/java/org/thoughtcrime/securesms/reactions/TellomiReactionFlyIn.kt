@@ -10,14 +10,18 @@ import android.graphics.drawable.Drawable
 import android.os.SystemClock
 import android.view.Choreographer
 import android.view.View
+import androidx.core.content.ContextCompat
 import androidx.dynamicanimation.animation.FloatValueHolder
 import androidx.dynamicanimation.animation.SpringAnimation
 import androidx.dynamicanimation.animation.SpringForce
 import org.signal.core.ui.motion.TellomiHaptics
 import org.signal.core.ui.motion.TellomiMotion
+import org.signal.emoji.EmojiProvider
 import java.lang.ref.WeakReference
 import kotlin.math.abs
+import kotlin.math.hypot
 import kotlin.math.roundToInt
+import org.signal.core.ui.R as CoreUiR
 
 /**
  * Tellomi（交互审计 A-07 Android 半边；owner 2026-09-26 定「两端都飞」）：回应条上选中的表情飞到消息下方胶囊里的同一个表情上。
@@ -63,6 +67,10 @@ class TellomiReactionFlyIn private constructor(
   private var targetSize = 0f
   private var flightTargetX = 0f
   private var flightTargetY = 0f
+
+  /** Tellomi（A-07 爆开）：起飞时离落点多远；飞过 70% 就在落点爆开一次。 */
+  private var startDistance = 0f
+  private var burstPlayed = false
 
   init {
     awaiting = key
@@ -118,6 +126,9 @@ class TellomiReactionFlyIn private constructor(
           targetSize = ts
           sizeSpring?.animateToFinalPosition(ts * LANDING_OVERSHOOT)
         }
+        if (!burstPlayed && TellomiReactionBurst.shouldTrigger(startDistance, hypot(tx - centerX.value, ty - centerY.value))) {
+          playBurst(tx, ty, ts)
+        }
         if (xSpring?.isRunning != true && ySpring?.isRunning != true) {
           settle()
         }
@@ -138,6 +149,7 @@ class TellomiReactionFlyIn private constructor(
     flightTargetX = tx
     flightTargetY = ty
 
+    startDistance = hypot(tx - centerX.value, ty - centerY.value)
     xSpring = spring(centerX, HORIZONTAL).apply { animateToFinalPosition(tx) }
     ySpring = spring(centerY, VERTICAL).apply {
       setStartVelocity(verticalStartVelocity(ty - centerY.value, density))
@@ -150,6 +162,9 @@ class TellomiReactionFlyIn private constructor(
   /** 落定：大一点的飞行字弹回胶囊里那个字的大小，然后换成真的那个字。 */
   private fun settle() {
     phase = Phase.SETTLING
+    if (!burstPlayed) {
+      playBurst(flightTargetX, flightTargetY, targetSize)
+    }
     TellomiHaptics.perform(host, TellomiHaptics.Event.SELECTION_TICK)
     sizeSpring?.cancel()
     sizeSpring = spring(size, TellomiMotion.Emphasis).apply {
@@ -157,6 +172,14 @@ class TellomiReactionFlyIn private constructor(
       addEndListener { _, _, _, _ -> finish() }
       animateToFinalPosition(targetSize)
     }
+  }
+
+  /** Tellomi（A-07）：在落点（host 坐标）播一次爆开，用一份新的表情图画粒子。 */
+  private fun playBurst(x: Float, y: Float, emojiSize: Float) {
+    burstPlayed = true
+    val emoji = EmojiProvider.getEmojiDrawable(host.context, key.baseEmoji, true) ?: return
+    val ringColor = ContextCompat.getColor(host.context, CoreUiR.color.signal_colorOnSurfaceVariant)
+    TellomiReactionBurst.play(host, emoji, x, y, emojiSize, ringColor)
   }
 
   /** 等不到落点：原地淡出，藏着的字放回来。可以重复调用。 */
