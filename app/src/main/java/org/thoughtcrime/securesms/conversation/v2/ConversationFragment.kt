@@ -736,10 +736,6 @@ class ConversationFragment :
         reactionOverlay.hide()
         disposables += viewModel.updateReaction(messageRecord, emoji).subscribe()
       },
-      onCustomReactionSelected = { messageRecord, hasAddedCustomEmoji ->
-        reactionOverlay.hide()
-        onCustomReactionSelected(messageRecord, hasAddedCustomEmoji)
-      },
       onActionSelected = { action -> reactionActionListener?.onActionSelected(action) },
       onStartHide = { focusedView -> reactionHideListener?.startHide(focusedView) },
       onHidden = { reactionHideListener?.onHide() },
@@ -5225,18 +5221,6 @@ class ConversationFragment :
     }
 
     return null
-  }
-
-  private fun onCustomReactionSelected(messageRecord: MessageRecord, hasAddedCustomEmoji: Boolean) {
-    disposables += viewModel.updateCustomReaction(messageRecord, hasAddedCustomEmoji)
-      .observeOn(AndroidSchedulers.mainThread())
-      .subscribeBy(
-        onSuccess = {
-          ReactWithAnyEmojiBottomSheetDialogFragment
-            .createForMessageRecord(messageRecord, -1)
-            .show(childFragmentManager, BottomSheetUtil.STANDARD_BOTTOM_SHEET_FRAGMENT_TAG)
-        }
-      )
   }
 
   private inner class MotionEventRelayDrain(lifecycleOwner: LifecycleOwner) : MotionEventRelay.Drain {

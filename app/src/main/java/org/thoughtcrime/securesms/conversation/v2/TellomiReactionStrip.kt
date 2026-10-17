@@ -19,6 +19,7 @@ import kotlin.math.roundToLong
  * - 出场：0.25 s、Overshoot(0.5)，条从消息那一头缩放展开（底板从那一头往另一头揭开，先露出 25%）；
  *   表情各自 0.3 s 从 0 弹到原大，延迟 200 ms × |表情中心在条上的位置 − 锚点|，锚点是消息那一头的 80%（另一头是 20%）；
  *   尾巴两个圆在进度过了 25% 之后跟着长出来。
+ * - 展开：条就地长成全部表情的面板（下面「原地展开」一段）。
  */
 object TellomiReactionStrip {
 
@@ -134,4 +135,99 @@ object TellomiReactionStrip {
 
   /** 小圆圆心离条下沿多远（dp）：挂在大圆下面再隔 2 dp。 */
   const val SMALL_TAIL_DROP_DP = BIG_TAIL_RADIUS_DP + 2f + SMALL_TAIL_RADIUS_DP
+
+  // 原地展开（A-06，owner 2026-10-17）：点 ⌄、在 ⌄ 上松手、或按住 ⌄ 往条的开头拉，条就地长成表情面板，不另弹 Sheet。
+  // 数取自 Telegram 安卓 `ReactionsContainerLayout`（拉）和 `CustomEmojiReactionsWindow`（长成面板）。
+
+  /** 拉的进度以 42 dp 为 1（Telegram `getPullingLeftProgress`）。 */
+  const val PULL_UNIT_DP = 42f
+
+  /**
+   * 手指往开头走过这么多才算开始拉，进度从这里起算（相当于 Telegram 列表的 touch slop）。
+   * 上游的点按死区有 40 dp，等它判定就太晚了：拉了一半还算点。
+   */
+  const val PULL_SLOP_DP = 8f
+
+  /** 手指每走 1，条只跟 0.6；进度过了 1 只跟 0.05（Telegram 的 k）。 */
+  const val PULL_RESISTANCE = 0.6f
+  const val PULL_RESISTANCE_PAST_ONE = 0.05f
+  const val PULL_MAX_PROGRESS = 2f
+
+  /** 松手时进度过了 0.95 就展开，否则 150 ms 弹回去。 */
+  const val PULL_EXPAND_THRESHOLD = 0.95f
+  const val PULL_BACK_DURATION_MS = 150
+
+  /** 拉的时候表情往开头挤，离开头越远挤得越多，进度 1 时最远的挪 46 dp（Telegram `checkPressedProgress`）。 */
+  const val PULL_ITEM_SHIFT_DP = 46f
+
+  /** 换算挤的比例时条宽要扣掉的那段（Telegram 的 `getMeasuredWidth() - dp(34)`）。 */
+  private const val PULL_SHIFT_WIDTH_INSET_DP = 34f
+
+  /** ⌄ 在拉满（进度 1）时放大到多少：Telegram 在条尾长出一个新表情，这里让 ⌄ 自己鼓起来。 */
+  const val PULL_EXPAND_BUTTON_GROWTH = 0.25f
+
+  /** 长成面板：350 ms、`CubicBezierInterpolator.DEFAULT`（0.25, 0.1, 0.25, 1）。 */
+  const val EXPAND_DURATION_MS = 350
+
+  /** 面板宽 = 条宽，高最多 300 dp（Telegram 36 × 8 + 12）。 */
+  const val PANEL_MAX_HEIGHT_DP = 300f
+
+  /** 面板最矮多少：横屏再加键盘时也留得下搜索、两行表情和分类条。 */
+  const val PANEL_MIN_HEIGHT_DP = 160f
+
+  /** 面板顶在条顶上面 96 dp（Telegram 44 + 52）；离上沿至少 16 dp，离下沿（导航条 / 键盘之上）至少 32 dp。 */
+  const val PANEL_LIFT_DP = 96f
+  const val PANEL_TOP_MARGIN_DP = 16f
+  const val PANEL_BOTTOM_MARGIN_DP = 32f
+
+  /** 圆角从条的半高变到 8 dp。 */
+  const val PANEL_CORNER_RADIUS_DP = 8f
+
+  /** 条上的表情在展开的前 20% 就淡完（Telegram `1 - progress / 0.2`），面板内容跟着进度淡入。 */
+  private const val STRIP_FADE_SPAN = 0.2f
+
+  /**
+   * 手指从按下 ⌄ 的地方往条的开头走了 [distance]（和 [unit] 同单位），换算成拉的进度 0–[PULL_MAX_PROGRESS]。
+   * Telegram 是一步一步累加的；手指一路往一个方向走时，结果和这里一次算出来的一样。
+   */
+  @JvmStatic
+  fun pullProgress(distance: Float, unit: Float): Float {
+    if (distance <= 0f || unit <= 0f) {
+      return 0f
+    }
+    val firstStretch = unit / PULL_RESISTANCE
+    val offset = if (distance <= firstStretch) {
+      distance * PULL_RESISTANCE
+    } else {
+      unit + (distance - firstStretch) * PULL_RESISTANCE_PAST_ONE
+    }
+    return (offset / unit).coerceIn(0f, PULL_MAX_PROGRESS)
+  }
+
+  /** 拉到 [progress] 时第 [index] 格（按排版方向从开头数）往开头挪多少 dp。 */
+  @JvmStatic
+  fun pullShiftDp(index: Int, progress: Float): Float {
+    val left = SIDE_PADDING_DP + ITEM_SIZE_DP * index
+    val fraction = (left / (WIDTH_DP - PULL_SHIFT_WIDTH_INSET_DP)).coerceIn(0f, 1f)
+    return fraction * progress.coerceIn(0f, PULL_MAX_PROGRESS) * PULL_ITEM_SHIFT_DP
+  }
+
+  /** 展开进度 [expand] 时条上的表情、尾巴还剩多少不透明度。 */
+  @JvmStatic
+  fun stripAlphaWhileExpanding(expand: Float): Float = (1f - expand / STRIP_FADE_SPAN).coerceIn(0f, 1f)
+
+  /**
+   * 面板放在哪（和 [stripTop]、[top]、[bottom] 同一坐标系、同单位，[density] 把 dp 换过去）：
+   * 高 = min(300 dp, 能用的高度)，不低于 [PANEL_MIN_HEIGHT_DP]；顶 = 条顶 − 96 dp，再夹在 [top] + 16 dp 和 [bottom] − 32 dp − 高 之间。
+   * [bottom] 是导航条或键盘的上沿。返回 (顶, 高)。
+   */
+  @JvmStatic
+  fun panelVerticalFrame(stripTop: Float, top: Float, bottom: Float, density: Float): Pair<Float, Float> {
+    val minTop = top + PANEL_TOP_MARGIN_DP * density
+    val maxBottom = bottom - PANEL_BOTTOM_MARGIN_DP * density
+    val height = min(PANEL_MAX_HEIGHT_DP * density, max(PANEL_MIN_HEIGHT_DP * density, maxBottom - minTop))
+    val wanted = stripTop - PANEL_LIFT_DP * density
+    val panelTop = max(minTop, min(wanted, maxBottom - height))
+    return panelTop to height
+  }
 }

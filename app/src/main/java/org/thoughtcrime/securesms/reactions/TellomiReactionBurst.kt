@@ -47,8 +47,10 @@ object TellomiReactionBurst {
   const val PARTICLE_COUNT = 10
   const val DURATION_MS = 700L
   const val RING_DURATION_MS = 350L
+
   /** 粒子飞出的距离 = 表情大小 × 这个数（再按粒子错开 ±20%）。 */
   const val REACH_FACTOR = 2.2f
+
   /** 散开的同时整体往上飘这么多（dp）。 */
   const val FLOAT_UP_DP = 14f
 

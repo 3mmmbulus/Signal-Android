@@ -6,6 +6,7 @@
 package org.thoughtcrime.securesms.conversation
 
 import android.view.MotionEvent
+import org.thoughtcrime.securesms.conversation.v2.TellomiReactionStrip
 import kotlin.math.abs
 
 /**
@@ -16,8 +17,10 @@ import kotlin.math.abs
  *   part of [Geometry]: it owes nothing to where the strip landed, and a message that takes no
  *   reactions never lays one out, so a geometry-carried value would stay zero and turn every lift
  *   into a dismiss.
+ * @param pullUnit Tellomi (interaction audit A-06): how far a pull on the last slot has to go for a progress of 1, in
+ *   the gesture's units ([TellomiReactionStrip.PULL_UNIT_DP]); zero turns pulling off.
  */
-class ReactionScrubber(private val emojiCount: Int, private val deadZoneSize: Float) {
+class ReactionScrubber(private val emojiCount: Int, private val deadZoneSize: Float, private val pullUnit: Float = 0f) {
 
   /**
    * Where the strip ended up, in the coordinate space the gesture arrives in.
@@ -44,7 +47,10 @@ class ReactionScrubber(private val emojiCount: Int, private val deadZoneSize: Fl
     UNINITIALIZED,
     DEADZONE,
     SCRUB,
-    TAP
+    TAP,
+
+    /** Tellomi (A-06): a touch that went down on the last slot is dragging toward the strip's start. */
+    PULL
   }
 
   /**
@@ -59,6 +65,14 @@ class ReactionScrubber(private val emojiCount: Int, private val deadZoneSize: Fl
     data class Commit(override val consumed: Boolean, val index: Int) : Outcome
 
     data class Dismiss(override val consumed: Boolean) : Outcome
+
+    /**
+     * Tellomi (interaction audit A-06): the last slot is being pulled toward the strip's start, Telegram's way into the
+     * full picker. [progress] is 0 to [TellomiReactionStrip.PULL_MAX_PROGRESS]; [isReleased] means the thumb lifted
+     * short of [TellomiReactionStrip.PULL_EXPAND_THRESHOLD] and the strip should spring back. A lift past it is a
+     * [Commit] of the last slot instead.
+     */
+    data class Pull(override val consumed: Boolean, val previousProgress: Float, val progress: Float, val isReleased: Boolean) : Outcome
   }
 
   var geometry: Geometry = Geometry()
@@ -70,6 +84,8 @@ class ReactionScrubber(private val emojiCount: Int, private val deadZoneSize: Fl
     private set
 
   private var downIsOurs: Boolean = false
+  private var downIndex: Int = NO_SELECTION
+  private var pullProgress: Float = 0f
 
   private var deadZoneX: Float = 0f
   private var deadZoneY: Float = 0f
@@ -81,6 +97,8 @@ class ReactionScrubber(private val emojiCount: Int, private val deadZoneSize: Fl
     phase = Phase.UNINITIALIZED
     selectedIndex = NO_SELECTION
     downIsOurs = false
+    downIndex = NO_SELECTION
+    pullProgress = 0f
   }
 
   fun close() {
@@ -102,6 +120,11 @@ class ReactionScrubber(private val emojiCount: Int, private val deadZoneSize: Fl
       phase = Phase.DEADZONE
     }
 
+    if (phase == Phase.DEADZONE && startsPull(x, y)) {
+      // Tellomi (A-06): decided well inside the dead zone, which is too wide for a pull to wait for.
+      phase = Phase.PULL
+    }
+
     if (phase == Phase.DEADZONE) {
       val escapedDeadZone = abs(deadZoneX - x) > deadZoneSize || abs(deadZoneY - y) > deadZoneSize
 
@@ -120,6 +143,10 @@ class ReactionScrubber(private val emojiCount: Int, private val deadZoneSize: Fl
       }
     }
 
+    if (phase == Phase.PULL) {
+      return pull(action, x)
+    }
+
     return when (action) {
       MotionEvent.ACTION_DOWN -> {
         val outcome = moveSelectionTo(selectionAt(x, y, geometry.stripTop, geometry.stripBottom), consumed = true)
@@ -127,6 +154,7 @@ class ReactionScrubber(private val emojiCount: Int, private val deadZoneSize: Fl
         deadZoneY = y
         phase = Phase.DEADZONE
         downIsOurs = true
+        downIndex = outcome.index
         outcome
       }
 
@@ -153,7 +181,68 @@ class ReactionScrubber(private val emojiCount: Int, private val deadZoneSize: Fl
     return Outcome.Dismiss(consumed = consumed)
   }
 
-  private fun moveSelectionTo(index: Int, consumed: Boolean): Outcome {
+  /**
+   * Tellomi (interaction audit A-06): Telegram's strip scrolls, and dragging on past its end pulls the picker open. This
+   * strip does not scroll, and a drag along it already picks a reaction, so only a touch that went down on the last slot
+   * and leaves it toward the start — past a touch slop, more along the strip than across it — pulls.
+   */
+  private fun startsPull(x: Float, y: Float): Boolean {
+    val toward = towardStart(x)
+    return pullUnit > 0f &&
+      downIsOurs &&
+      downIndex == emojiCount - 1 &&
+      geometry.isStripVisible &&
+      toward > pullSlop() &&
+      toward > abs(deadZoneY - y)
+  }
+
+  /** [TellomiReactionStrip.PULL_SLOP_DP] in the gesture's units, which [pullUnit] is the 42 dp of. */
+  private fun pullSlop(): Float = pullUnit * TellomiReactionStrip.PULL_SLOP_DP / TellomiReactionStrip.PULL_UNIT_DP
+
+  /** How far [x] is from where the touch went down, toward the strip's start; negative going the other way. */
+  private fun towardStart(x: Float): Float {
+    val direction = if (geometry.stripEnd < geometry.stripStart) -1f else 1f
+    return (deadZoneX - x) * direction
+  }
+
+  /** The pull's progress at [x], counted from where it got past the slop. */
+  private fun pullProgressAt(x: Float): Float = TellomiReactionStrip.pullProgress(towardStart(x) - pullSlop(), pullUnit)
+
+  private fun pull(action: Int, x: Float): Outcome {
+    val previous = pullProgress
+
+    return when (action) {
+      MotionEvent.ACTION_MOVE -> {
+        pullProgress = pullProgressAt(x)
+        Outcome.Pull(consumed = true, previousProgress = previous, progress = pullProgress, isReleased = false)
+      }
+
+      MotionEvent.ACTION_UP -> {
+        val progress = pullProgressAt(x)
+        pullProgress = 0f
+
+        if (progress > TellomiReactionStrip.PULL_EXPAND_THRESHOLD) {
+          selectedIndex = emojiCount - 1
+          Outcome.Commit(consumed = true, index = emojiCount - 1)
+        } else {
+          // Back to waiting for the next touch, as after a tap.
+          phase = Phase.TAP
+          selectedIndex = NO_SELECTION
+          Outcome.Pull(consumed = true, previousProgress = previous, progress = 0f, isReleased = true)
+        }
+      }
+
+      MotionEvent.ACTION_CANCEL -> {
+        pullProgress = 0f
+        close()
+        Outcome.Dismiss(consumed = true)
+      }
+
+      else -> Outcome.Pull(consumed = true, previousProgress = previous, progress = previous, isReleased = false)
+    }
+  }
+
+  private fun moveSelectionTo(index: Int, consumed: Boolean): Outcome.Scrubbing {
     val previousIndex = selectedIndex
     selectedIndex = index
 

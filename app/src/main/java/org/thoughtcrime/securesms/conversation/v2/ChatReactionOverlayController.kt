@@ -6,12 +6,14 @@
 package org.thoughtcrime.securesms.conversation.v2
 
 import android.content.Context
+import android.content.Intent
 import android.graphics.PointF
 import android.graphics.RectF
 import android.graphics.drawable.Drawable
 import android.view.MotionEvent
 import android.view.View
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
@@ -32,6 +34,7 @@ import org.thoughtcrime.securesms.database.model.MessageRecord
 import org.thoughtcrime.securesms.keyvalue.EmojiValues
 import org.thoughtcrime.securesms.keyvalue.SignalStore
 import org.thoughtcrime.securesms.reactions.any.ReactWithAnyEmojiBottomSheetDialogFragment
+import org.thoughtcrime.securesms.reactions.edit.EditReactionsActivity
 import org.thoughtcrime.securesms.recipients.Recipient
 import kotlin.math.abs
 import kotlin.math.roundToInt
@@ -49,7 +52,6 @@ class ChatReactionOverlayController(
   private val menuAnchor: () -> View,
   /** Tellomi (A-07): the third argument is where the chosen emoji is on screen for it to fly from, or null when it should not fly. */
   private val onReactionSelected: (MessageRecord, String, RectF?) -> Unit,
-  private val onCustomReactionSelected: (MessageRecord, Boolean) -> Unit,
   private val onActionSelected: (ReactionAction) -> Unit,
   private val onStartHide: (View?) -> Unit,
   private val onHidden: () -> Unit,
@@ -77,9 +79,25 @@ class ChatReactionOverlayController(
   var originInWindow: Offset by mutableStateOf(Offset.Zero)
     private set
 
+  /**
+   * Tellomi (interaction audit A-06, owner 2026-10-17): the strip has grown into the full emoji panel in place, as
+   * Telegram's does, instead of a separate sheet opening.
+   */
+  var isExpanded: Boolean by mutableStateOf(false)
+    private set
+
+  /** Tellomi (A-06): how far the expand slot is pulled toward the strip's start, 0 to 2 ([TellomiReactionStrip.pullProgress]). */
+  var pullProgress: Float by mutableFloatStateOf(0f)
+    private set
+
+  /** Tellomi (A-06): the thumb is still on a pull; once it lifts short of expanding the strip springs back. */
+  var isPulling: Boolean by mutableStateOf(false)
+    private set
+
   val scrubber = ReactionScrubber(
     emojiCount = REACTION_EMOJI_COUNT,
-    deadZoneSize = context.resources.getDimensionPixelSize(R.dimen.conversation_reaction_touch_deadzone_size).toFloat()
+    deadZoneSize = context.resources.getDimensionPixelSize(R.dimen.conversation_reaction_touch_deadzone_size).toFloat(),
+    pullUnit = TellomiReactionStrip.PULL_UNIT_DP * context.resources.displayMetrics.density
   )
 
   val isShowing: Boolean
@@ -96,18 +114,25 @@ class ChatReactionOverlayController(
   /** Tellomi (A-07 fly-in): each slot's untransformed bounds in window coordinates, as last placed. */
   private val slotBounds = Array(REACTION_EMOJI_COUNT) { RectF() }
 
+  /** Tellomi (A-06): the expanded panel in window coordinates, and whether the gesture in progress began inside it. */
+  private val panelBounds = RectF()
+  private var touchInPanel = false
+
   private data class Strip(
     val emojiStrings: List<String>,
     val drawables: List<Drawable?>,
-    val appliedIndex: Int,
-    val customSlotHasEmoji: Boolean
+    val appliedIndex: Int
   ) {
     companion object {
-      val EMPTY = Strip(emptyList(), emptyList(), ReactionScrubber.NO_SELECTION, false)
+      val EMPTY = Strip(emptyList(), emptyList(), ReactionScrubber.NO_SELECTION)
     }
   }
 
   fun messageRecord(): MessageRecord = requireNotNull(messageRecord) { "Nothing is showing." }
+
+  /** Tellomi (A-06): the message the expanded panel reacts to, or null while the strip has not grown into it. */
+  val expandedMessageRecord: MessageRecord?
+    get() = messageRecord.takeIf { isExpanded }
 
   /** The pointer is already down by now, so the scrubber is opened rather than waiting for one. */
   fun show(
@@ -138,9 +163,14 @@ class ChatReactionOverlayController(
     this.menuPlaced = false
     this.pendingAction = null
     this.slotBounds.forEach { it.setEmpty() }
+    this.panelBounds.setEmpty()
+    this.touchInPanel = false
     this.menu = ConversationContextMenu(menuAnchor(), builtMenu.items)
 
     selectedIndex = ReactionScrubber.NO_SELECTION
+    isExpanded = false
+    pullProgress = 0f
+    isPulling = false
 
     // Holds window coordinates from a view a re-entered conversation has already replaced.
     scrubber.geometry = ReactionScrubber.Geometry()
@@ -203,6 +233,10 @@ class ChatReactionOverlayController(
     menu = null
     pendingAction = null
     selectedIndex = ReactionScrubber.NO_SELECTION
+    isExpanded = false
+    pullProgress = 0f
+    isPulling = false
+    panelBounds.setEmpty()
 
     onHidden()
 
@@ -247,6 +281,10 @@ class ChatReactionOverlayController(
 
   /** While nothing is showing this only remembers where a press landed, for the next [show]. */
   fun applyTouchEvent(motionEvent: MotionEvent): Boolean {
+    if (isShowing && isExpanded && isRevealed) {
+      return applyExpandedTouchEvent(motionEvent)
+    }
+
     if (!isShowing || !scrubber.isShowing) {
       if (motionEvent.action == MotionEvent.ACTION_DOWN) {
         lastSeenDownPoint.set(motionEvent.x, motionEvent.y)
@@ -272,9 +310,111 @@ class ChatReactionOverlayController(
 
       is ReactionScrubber.Outcome.Commit -> commit(outcome.index)
       is ReactionScrubber.Outcome.Dismiss -> hide()
+      is ReactionScrubber.Outcome.Pull -> onPull(outcome)
     }
 
     return outcome.consumed
+  }
+
+  /**
+   * Tellomi (interaction audit A-06): Telegram ticks as the pull crosses a progress of 1 either way (where letting go
+   * would open the picker); here that is the gesture threshold pair rather than a keyboard tap.
+   */
+  private fun onPull(outcome: ReactionScrubber.Outcome.Pull) {
+    val crossedUp = outcome.previousProgress <= 1f && outcome.progress > 1f
+    val crossedDown = outcome.previousProgress > 1f && outcome.progress <= 1f && !outcome.isReleased
+    if (crossedUp) {
+      TellomiHaptics.perform(hapticView(), TellomiHaptics.Event.THRESHOLD_ACTIVATE)
+    } else if (crossedDown) {
+      TellomiHaptics.perform(hapticView(), TellomiHaptics.Event.THRESHOLD_DEACTIVATE)
+    }
+
+    selectedIndex = scrubber.selectedIndex
+    pullProgress = outcome.progress
+    isPulling = !outcome.isReleased
+  }
+
+  /**
+   * Tellomi (A-06): once the panel is out, a gesture that starts in it is left to the panel's own views (the grid scrolls,
+   * search takes focus); one that starts anywhere else is kept from the conversation behind and closes everything when it
+   * lifts, as a tap outside the strip did.
+   */
+  private fun applyExpandedTouchEvent(motionEvent: MotionEvent): Boolean {
+    if (motionEvent.actionMasked == MotionEvent.ACTION_DOWN) {
+      touchInPanel = panelBounds.contains(motionEvent.x, motionEvent.y)
+    }
+
+    if (touchInPanel) {
+      return false
+    }
+
+    if (motionEvent.actionMasked == MotionEvent.ACTION_UP) {
+      hide()
+    }
+
+    return true
+  }
+
+  /** Tellomi (A-06): where the expanded panel ended up, in window coordinates. */
+  fun onPanelPlaced(bounds: RectF) {
+    panelBounds.set(bounds)
+  }
+
+  /**
+   * Tellomi (A-06): the strip's growth into the panel, 0 to 1. Telegram fades the menu out as it goes and the panel takes
+   * its place; the menu is a popup window above this one, so it also has to go once it is invisible or it would keep
+   * taking touches meant for the panel.
+   */
+  fun onExpandProgress(progress: Float) {
+    if (!isExpanded) {
+      return
+    }
+
+    menu?.setContentAlpha(1f - progress)
+    if (progress >= 1f) {
+      menu?.dismiss()
+    }
+  }
+
+  /**
+   * Tellomi (A-06): a reaction picked in the panel goes the way one picked on the strip does (fly-in, announcement, send),
+   * and is remembered as the sheet did: its skin tone as the preferred one, and among recently used unless it took the
+   * reaction back.
+   */
+  fun onPanelEmojiSelected(emoji: String, source: RectF?) {
+    val record = messageRecord ?: return
+    if (!isRevealed) {
+      return
+    }
+
+    TellomiHaptics.perform(hapticView(), TellomiHaptics.Event.CONFIRM)
+    SignalStore.emoji.setPreferredVariation(emoji)
+
+    val isTakingBack = ReactionMenu.appliedEmoji(record) == emoji
+    if (!isTakingBack) {
+      RecentEmojiPageModel(context, ReactWithAnyEmojiBottomSheetDialogFragment.REACTION_STORAGE_KEY).onCodePointSelected(emoji)
+    }
+
+    onReactionSelected(record, emoji, if (isTakingBack) null else source)
+  }
+
+  /** Tellomi (A-06): "Customize reactions" in the panel, as the sheet had it. */
+  fun onPanelConfigure() {
+    hide()
+    context.startActivity(Intent(context, EditReactionsActivity::class.java))
+  }
+
+  private fun expand() {
+    if (isExpanded || messageRecord == null) {
+      return
+    }
+
+    scrubber.close()
+    selectedIndex = ReactionScrubber.NO_SELECTION
+    isPulling = false
+    pullProgress = 0f
+    touchInPanel = false
+    isExpanded = true
   }
 
   private fun commit(index: Int) {
@@ -284,7 +424,8 @@ class ChatReactionOverlayController(
     TellomiHaptics.perform(hapticView(), TellomiHaptics.Event.CONFIRM)
 
     if (index == REACTION_EMOJI_COUNT - 1) {
-      onCustomReactionSelected(record, strip.customSlotHasEmoji)
+      // Tellomi (A-06): the expand slot grows the strip into the full picker where it is, rather than opening a sheet.
+      expand()
     } else {
       strip.emojiStrings.getOrNull(index)?.let { emoji ->
         // Tellomi (A-07): taking a reaction back does not fly anywhere.
@@ -350,8 +491,7 @@ class ChatReactionOverlayController(
     return Strip(
       emojiStrings = emojiStrings,
       drawables = drawables,
-      appliedIndex = appliedIndex,
-      customSlotHasEmoji = false
+      appliedIndex = appliedIndex
     )
   }
 }

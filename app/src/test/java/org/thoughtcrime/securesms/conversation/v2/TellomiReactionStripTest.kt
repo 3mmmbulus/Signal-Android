@@ -6,6 +6,7 @@
 package org.thoughtcrime.securesms.conversation.v2
 
 import assertk.assertThat
+import assertk.assertions.isCloseTo
 import assertk.assertions.isEqualTo
 import assertk.assertions.isGreaterThan
 import assertk.assertions.isLessThan
@@ -98,5 +99,71 @@ class TellomiReactionStripTest {
     assertThat(TellomiReactionStrip.smallTailCenterXDp(anchorOnLeft = true)).isEqualTo(28f)
     assertThat(TellomiReactionStrip.bigTailCenterXDp(anchorOnLeft = false)).isEqualTo(268f)
     assertThat(TellomiReactionStrip.smallTailCenterXDp(anchorOnLeft = false)).isEqualTo(276f)
+  }
+
+  @Test
+  fun `a pull follows the finger at 0 6 until a progress of 1, then at 0 05, capped at 2`() {
+    val unit = 42f
+    assertThat(TellomiReactionStrip.pullProgress(0f, unit)).isEqualTo(0f)
+    assertThat(TellomiReactionStrip.pullProgress(-30f, unit)).isEqualTo(0f)
+    assertThat(TellomiReactionStrip.pullProgress(35f, unit)).isCloseTo(0.5f, 1e-4f)
+    // 42 / 0.6 = 70 of finger travel brings the progress to 1.
+    assertThat(TellomiReactionStrip.pullProgress(70f, unit)).isCloseTo(1f, 1e-4f)
+    // Past 1 only 0.05 of the travel counts: another 84 adds 0.1.
+    assertThat(TellomiReactionStrip.pullProgress(154f, unit)).isCloseTo(1.1f, 1e-4f)
+    assertThat(TellomiReactionStrip.pullProgress(10_000f, unit)).isEqualTo(2f)
+  }
+
+  @Test
+  fun `letting go opens the panel only past 0 95, about 66 dp of travel`() {
+    val unit = TellomiReactionStrip.PULL_UNIT_DP
+    assertThat(TellomiReactionStrip.pullProgress(66f, unit)).isLessThan(TellomiReactionStrip.PULL_EXPAND_THRESHOLD)
+    assertThat(TellomiReactionStrip.pullProgress(67f, unit)).isGreaterThan(TellomiReactionStrip.PULL_EXPAND_THRESHOLD)
+  }
+
+  @Test
+  fun `pulling crowds the emoji toward the start, the far ones most, 46 dp at most per unit of progress`() {
+    assertThat(TellomiReactionStrip.pullShiftDp(0, 0f)).isEqualTo(0f)
+    assertThat(TellomiReactionStrip.pullShiftDp(0, 1f)).isCloseTo(46f * 8f / 270f, 1e-4f)
+    assertThat(TellomiReactionStrip.pullShiftDp(6, 1f)).isCloseTo(46f * 224f / 270f, 1e-4f)
+    assertThat(TellomiReactionStrip.pullShiftDp(6, 1f)).isGreaterThan(TellomiReactionStrip.pullShiftDp(5, 1f))
+    assertThat(TellomiReactionStrip.pullShiftDp(6, 5f)).isCloseTo(2f * 46f * 224f / 270f, 1e-4f)
+  }
+
+  @Test
+  fun `the strip's emoji are gone a fifth of the way into the panel`() {
+    assertThat(TellomiReactionStrip.stripAlphaWhileExpanding(0f)).isEqualTo(1f)
+    assertThat(TellomiReactionStrip.stripAlphaWhileExpanding(0.1f)).isCloseTo(0.5f, 1e-4f)
+    assertThat(TellomiReactionStrip.stripAlphaWhileExpanding(0.2f)).isEqualTo(0f)
+    assertThat(TellomiReactionStrip.stripAlphaWhileExpanding(1f)).isEqualTo(0f)
+  }
+
+  @Test
+  fun `the panel is 300 dp tall and 96 dp above the strip where there is room`() {
+    val (top, height) = TellomiReactionStrip.panelVerticalFrame(stripTop = 400f, top = 0f, bottom = 800f, density = 1f)
+    assertThat(height).isEqualTo(300f)
+    assertThat(top).isEqualTo(304f)
+  }
+
+  @Test
+  fun `near the top it stays 16 dp clear of the edge`() {
+    val (top, _) = TellomiReactionStrip.panelVerticalFrame(stripTop = 60f, top = 0f, bottom = 800f, density = 2f)
+    assertThat(top).isEqualTo(32f)
+  }
+
+  @Test
+  fun `near the bottom it stays 32 dp above the keyboard or navigation bar`() {
+    val (top, height) = TellomiReactionStrip.panelVerticalFrame(stripTop = 700f, top = 0f, bottom = 760f, density = 1f)
+    assertThat(top + height).isEqualTo(728f)
+  }
+
+  @Test
+  fun `in a short window it shrinks to what fits, but not below the minimum`() {
+    val (top, height) = TellomiReactionStrip.panelVerticalFrame(stripTop = 150f, top = 0f, bottom = 200f, density = 1f)
+    assertThat(height).isEqualTo(TellomiReactionStrip.PANEL_MIN_HEIGHT_DP)
+    assertThat(top).isEqualTo(16f)
+
+    val (_, roomy) = TellomiReactionStrip.panelVerticalFrame(stripTop = 150f, top = 0f, bottom = 300f, density = 1f)
+    assertThat(roomy).isEqualTo(300f - 16f - 32f)
   }
 }

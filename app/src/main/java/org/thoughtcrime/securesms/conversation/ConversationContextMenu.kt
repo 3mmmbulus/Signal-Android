@@ -53,6 +53,14 @@ class ConversationContextMenu(private val anchor: View, items: List<ActionItem>)
     )
   }
 
+  /**
+   * Tellomi (interaction audit A-06): Telegram fades the menu out while the reaction strip grows into the emoji panel.
+   * Set on the view that carries the menu's background, not the root, whose own alpha the grow-in spring may still own.
+   */
+  fun setContentAlpha(alpha: Float) {
+    ((contentView.parent as? View) ?: contentView).alpha = alpha
+  }
+
   fun getMaxWidth(): Int = contentView.measuredWidth
   fun getMaxHeight(): Int = contentView.measuredHeight
 

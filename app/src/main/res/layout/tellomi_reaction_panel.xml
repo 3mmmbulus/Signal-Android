@@ -1,0 +1,75 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Copyright 2026 重庆半格智能科技有限公司
+  SPDX-License-Identifier: AGPL-3.0-only
+
+  Tellomi (interaction audit A-06): what the long-press reaction strip grows into, in place of the "react with any"
+  sheet. The same search, grid and category row as react_with_any_emoji_bottom_sheet_dialog_fragment, without the
+  sheet's handle and shadows, on the strip's own background.
+-->
+<merge xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    tools:orientation="vertical"
+    tools:parentTag="android.widget.LinearLayout"
+    tools:viewBindingIgnore="true">
+
+    <org.thoughtcrime.securesms.keyboard.emoji.KeyboardPageSearchView
+        android:id="@+id/tellomi_reaction_panel_search"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:paddingTop="4dp"
+        android:paddingBottom="4dp"
+        app:search_bar_tint="@color/react_with_any_search_background"
+        app:search_hint="@string/KeyboardPagerFragment_search_emoji"
+        app:search_icon_tint="@color/react_with_any_search_hint"
+        app:show_always="true" />
+
+    <org.thoughtcrime.securesms.reactions.any.TellomiReactionPanelGrid
+        android:id="@+id/tellomi_reaction_panel_grid"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:clipToPadding="false"
+        android:paddingStart="5dp"
+        android:paddingEnd="5dp" />
+
+    <LinearLayout
+        android:id="@+id/tellomi_reaction_panel_tabs"
+        android:layout_width="match_parent"
+        android:layout_height="@dimen/keyboard_toolbar_height"
+        android:gravity="center_vertical"
+        android:orientation="horizontal">
+
+        <FrameLayout
+            android:id="@+id/tellomi_reaction_panel_customize"
+            android:layout_width="32dp"
+            android:layout_height="32dp"
+            android:layout_marginStart="8dp"
+            android:layout_marginEnd="4dp"
+            android:background="@drawable/circle_tintable"
+            android:backgroundTint="@color/react_with_any_customize_background">
+
+            <androidx.appcompat.widget.AppCompatImageView
+                android:layout_width="32dp"
+                android:layout_height="32dp"
+                android:background="?attr/selectableItemBackgroundBorderless"
+                android:contentDescription="@string/EditReactionsFragment__customize_reactions"
+                android:padding="5dp"
+                app:srcCompat="@drawable/ic_settings_24"
+                app:tint="@color/signal_icon_tint_tab_unselected" />
+
+        </FrameLayout>
+
+        <androidx.recyclerview.widget.RecyclerView
+            android:id="@+id/tellomi_reaction_panel_categories"
+            android:layout_width="0dp"
+            android:layout_height="@dimen/keyboard_toolbar_height"
+            android:layout_weight="1"
+            android:orientation="horizontal"
+            app:layoutManager="androidx.recyclerview.widget.LinearLayoutManager"
+            tools:itemCount="10"
+            tools:listitem="@layout/keyboard_pager_category_icon" />
+    </LinearLayout>
+
+</merge>
