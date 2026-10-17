@@ -216,7 +216,8 @@ public class ConversationListFragment extends MainFragment implements Conversati
 
   private static final String TAG = Log.tag(ConversationListFragment.class);
 
-  private static final long SEARCH_LOADING_SHOW_DELAY_MS = 150L;
+  // Tellomi（交互审计 A-27）：搜索中的转圈延迟 400 ms 才出（动效标准第二节），快的搜索不闪一下转圈。
+  private static final long SEARCH_LOADING_SHOW_DELAY_MS = 400L;
 
   private static final int MAX_CHATS_ABOVE_FOLD             = 7;
   private static final int MAX_CONTACTS_ABOVE_FOLD          = 5;
@@ -231,6 +232,7 @@ public class ConversationListFragment extends MainFragment implements Conversati
   private AppBarLayout                           pullViewAppBarLayout;
   private ConversationListViewModel              viewModel;
   private RecyclerView.Adapter                   activeAdapter;
+  private Runnable                               cancelPendingSearchFade;
   private ConversationListAdapter                defaultAdapter;
   private PagingMappingAdapter<ContactSearchKey> searchAdapter;
   private final Runnable                         showSearchLoadingRunnable = () -> {
@@ -552,6 +554,7 @@ public class ConversationListFragment extends MainFragment implements Conversati
       searchLoading = null;
     }
 
+    cancelPendingSearchFade();
     dismissProgressDialog();
 
     super.onDestroyView();
@@ -705,7 +708,7 @@ public class ConversationListFragment extends MainFragment implements Conversati
 
   private void closeSearchIfOpen() {
     if (isSearchOpen()) {
-      setAdapter(defaultAdapter);
+      setAdapter(defaultAdapter, true);
       mainToolbarViewModel.setToolbarMode(MainToolbarMode.FULL);
       chatListBackHandler.setEnabled(false);
     }
@@ -967,6 +970,15 @@ public class ConversationListFragment extends MainFragment implements Conversati
 
   @SuppressWarnings("rawtypes")
   private void setAdapter(@NonNull RecyclerView.Adapter adapter) {
+    setAdapter(adapter, false);
+  }
+
+  /**
+   * @param animate Tellomi（交互审计 A-27）：用户在会话列表和搜索结果之间切换时传 true，换上的内容按
+   *                {@link TellomiSearchResultsTransition} 淡入；初始化、回到前台时不播。
+   */
+  @SuppressWarnings("rawtypes")
+  private void setAdapter(@NonNull RecyclerView.Adapter adapter, boolean animate) {
     RecyclerView.Adapter oldAdapter = activeAdapter;
 
     activeAdapter = adapter;
@@ -981,6 +993,11 @@ public class ConversationListFragment extends MainFragment implements Conversati
 
     list.setAdapter(adapter);
 
+    cancelPendingSearchFade();
+    if (animate && oldAdapter != null) {
+      cancelPendingSearchFade = TellomiSearchResultsTransition.playWhenFilled(list, adapter, adapter == searchAdapter, SEARCH_LOADING_SHOW_DELAY_MS);
+    }
+
     if (adapter == defaultAdapter) {
       defaultAdapter.registerAdapterDataObserver(snapToTopDataObserver);
     } else {
@@ -988,6 +1005,13 @@ public class ConversationListFragment extends MainFragment implements Conversati
     }
 
     updateSearchLoadingVisibility();
+  }
+
+  private void cancelPendingSearchFade() {
+    if (cancelPendingSearchFade != null) {
+      cancelPendingSearchFade.run();
+      cancelPendingSearchFade = null;
+    }
   }
 
   private void updateSearchLoadingVisibility() {
@@ -1823,7 +1847,7 @@ public class ConversationListFragment extends MainFragment implements Conversati
 
   private void onSearchClose() {
     if (list != null) {
-      setAdapter(defaultAdapter);
+      setAdapter(defaultAdapter, true);
     }
 
     activeSearchFilter = SearchFilter.EMPTY;
@@ -1840,12 +1864,12 @@ public class ConversationListFragment extends MainFragment implements Conversati
 
     if (!trimmed.isEmpty()) {
       if (activeAdapter != searchAdapter && list != null) {
-        setAdapter(searchAdapter);
+        setAdapter(searchAdapter, true);
       }
     } else {
       if (activeAdapter != defaultAdapter) {
         if (list != null) {
-          setAdapter(defaultAdapter);
+          setAdapter(defaultAdapter, true);
         }
       }
     }
