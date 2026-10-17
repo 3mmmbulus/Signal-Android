@@ -17,9 +17,9 @@ import org.thoughtcrime.securesms.database.SignalDatabase
 import org.thoughtcrime.securesms.dependencies.AppDependencies
 import org.thoughtcrime.securesms.feed.FeedSources
 import org.thoughtcrime.securesms.feed.TellomiFeed
-import org.thoughtcrime.securesms.feed.net.FeedApiException
 import org.thoughtcrime.securesms.feed.net.FeedAuthApi
 import org.thoughtcrime.securesms.feed.net.FeedJson
+import org.thoughtcrime.securesms.feed.net.FeedServerErrors
 import org.thoughtcrime.securesms.keyvalue.SignalStore
 import org.thoughtcrime.securesms.recipients.Recipient
 import org.thoughtcrime.securesms.region.TellomiRegions
@@ -68,7 +68,18 @@ object FeedFriends {
     return withContext(Dispatchers.IO) {
       when (val result = FeedAuthApi(AppDependencies.authWebSocket).friendAssertion(peerAci, add)) {
         is NetworkResult.Success -> result.result.assertion
-        is NetworkResult.StatusCodeError -> if (add && result.code == 404) null else throw FeedApiException(result.code, code = "assertion_unavailable")
+        // 404 只有带 `{"error":"account_not_found"}`（JSON）才是「对方没有账号」（null：跳过这个人）；别的 404 是这台服务器没有这个接口，抛出来，
+        // 不能当成已处理。429 / 503 带上 Retry-After。规则见 FRIEND-ASSERTION-404-MARKER.md，逻辑在 FeedServerErrors.friendAssertion
+        is NetworkResult.StatusCodeError -> {
+          val error = FeedServerErrors.friendAssertion(
+            status = result.code,
+            contentType = result.header("content-type"),
+            body = result.stringBody ?: result.binaryBody?.decodeToString(),
+            retryAfterHeader = result.header("retry-after"),
+            add = add
+          )
+          if (error == null) null else throw error
+        }
         is NetworkResult.NetworkError -> throw result.exception
         is NetworkResult.ApplicationError -> throw IOException("friend assertion failed", result.throwable)
       }

@@ -17,7 +17,6 @@ import org.thoughtcrime.securesms.feed.compose.FeedDraftKind
 import org.thoughtcrime.securesms.feed.compose.FeedReplyPolicy
 import org.thoughtcrime.securesms.feed.net.CachingFeedTokenSource
 import org.thoughtcrime.securesms.feed.net.FeedApi
-import org.thoughtcrime.securesms.feed.net.FeedApiException
 import org.thoughtcrime.securesms.feed.net.FeedAudienceToken
 import org.thoughtcrime.securesms.feed.net.FeedAuthApi
 import org.thoughtcrime.securesms.feed.net.FeedBlockEntry
@@ -53,9 +52,12 @@ import org.thoughtcrime.securesms.feed.net.FeedQuotedCard
 import org.thoughtcrime.securesms.feed.net.FeedReportRequest
 import org.thoughtcrime.securesms.feed.net.FeedRepostedBy
 import org.thoughtcrime.securesms.feed.net.FeedSearchPage
+import org.thoughtcrime.securesms.feed.net.FeedServerErrors
 import org.thoughtcrime.securesms.feed.net.FeedServerKeyword
 import org.thoughtcrime.securesms.feed.net.FeedTimelinePage
 import org.thoughtcrime.securesms.feed.net.FeedTopicPage
+import org.thoughtcrime.securesms.feed.net.NotDeployedBackoffTokenSource
+import org.thoughtcrime.securesms.feed.net.ThrottleBackoffTokenSource
 import org.thoughtcrime.securesms.region.TellomiRegionProfile
 import org.thoughtcrime.securesms.region.TellomiRegions
 import java.io.File
@@ -550,12 +552,19 @@ object FeedSources {
   private fun remoteFor(region: TellomiRegionProfile): FeedSource {
     val baseUrl = region.feed.toHttpUrlOrNull() ?: return EmptyFeedSource
     return remote.getOrCreate("${region.id.id} ${region.feed}") {
-      val tokens = CachingFeedTokenSource.fromSignalServer(FeedAuthApi(AppDependencies.authWebSocket))
+      val caching = CachingFeedTokenSource.fromSignalServer(FeedAuthApi(AppDependencies.authWebSocket))
+      // 里层：接口没部署 10 分钟内不再问；外层：被限流（429 / 带 Retry-After 的 503）按 Retry-After 或指数退避加抖动冷却
+      val notDeployed = NotDeployedBackoffTokenSource(caching)
+      val tokens = ThrottleBackoffTokenSource(notDeployed)
       val source = RemoteFeedSource(
         api = FeedApi(baseUrl, AppDependencies.okHttpClient, tokens),
         signAudience = { kind, acis -> signAudienceList(kind, acis) }
       )
-      val clearTokens: suspend () -> Unit = { tokens.clear() }
+      val clearTokens: suspend () -> Unit = {
+        caching.clear()
+        notDeployed.resetBackoff()
+        tokens.reset()
+      }
       source to clearTokens
     }
   }
@@ -572,7 +581,7 @@ object FeedSources {
     return withContext(Dispatchers.IO) {
       when (val result = FeedAuthApi(AppDependencies.authWebSocket).audienceList(kind, peerAcis)) {
         is NetworkResult.Success -> result.result.audienceToken
-        is NetworkResult.StatusCodeError -> throw FeedApiException(result.code, code = "invalid_audience")
+        is NetworkResult.StatusCodeError -> throw FeedServerErrors.audienceList(result.code, result.header("retry-after"))
         is NetworkResult.NetworkError -> throw result.exception
         is NetworkResult.ApplicationError -> throw IOException("audience list failed", result.throwable)
       }

@@ -6,6 +6,9 @@
 package org.thoughtcrime.securesms.feed.friends
 
 import org.signal.core.util.logging.Log
+import org.thoughtcrime.securesms.feed.net.FeedApiException
+import org.thoughtcrime.securesms.feed.net.FeedRetryAfter
+import org.thoughtcrime.securesms.feed.net.FeedServerErrors
 
 /**
  * 把「我把谁当好友」报给内容引擎（数据模型 2.4、Q-16；需求第三节第 19 条）。
@@ -41,7 +44,13 @@ class FeedFriendSync(
     fun save(engineKey: String, acis: Set<String>)
   }
 
-  enum class Outcome { SKIPPED, UNCHANGED, DONE, MORE_LEFT, FAILED }
+  /**
+   * - [THROTTLED]：Signal-Server 或引擎回了 429（或带 `Retry-After` 的 503）：停在这里，已做完的记下了；等够 `Retry-After`（1…3600 秒，
+   *   本进程内记着，超过 [INTERVAL_MILLIS] 的也等够）再做，没给就按平常的 [INTERVAL_MILLIS]。
+   * - [UNAVAILABLE]：加好友的 404 **不带** `{"error":"account_not_found"}` 标记（空正文 / HTML / 别的 JSON……）：这台服务器没有这个接口。
+   *   不把这个人记为已报，后面的人也不再问，等下一个 [INTERVAL_MILLIS]（和 `/auth` 没部署同一个思路，比它的 10 分钟还长）。
+   */
+  enum class Outcome { SKIPPED, UNCHANGED, DONE, MORE_LEFT, FAILED, THROTTLED, UNAVAILABLE }
 
   companion object {
     private val TAG = Log.tag(FeedFriendSync::class)
@@ -50,10 +59,15 @@ class FeedFriendSync(
     const val MAX_CHANGES_PER_RUN = 50
   }
 
+  // 限流要求等得比 INTERVAL_MILLIS 还久时用（只在本进程里记着）
+  private var blockedFromMillis = 0L
+  private var blockedUntilMillis = 0L
+
   /** 会走网络，别在主线程调。 */
   suspend fun syncIfStale(): Outcome {
     if (!enabled()) return Outcome.SKIPPED
     val now = clock()
+    if (now >= blockedFromMillis && now < blockedUntilMillis) return Outcome.SKIPPED // 时钟往回拨过就不算
     if (state.checkedAt != 0L && now - state.checkedAt in 0 until INTERVAL_MILLIS) return Outcome.SKIPPED
     state.checkedAt = now
 
@@ -74,6 +88,17 @@ class FeedFriendSync(
         if (add) reported += aci else reported -= aci
         state.save(key, reported)
       }
+    } catch (e: FeedApiException) {
+      Log.w(TAG, "friend sync stopped: ${e.status} ${e.code}")
+      if (e.isThrottled) {
+        val wait = (e.retryAfterSeconds?.let { FeedRetryAfter.clamp(it) * 1000 } ?: 0L)
+        if (wait > INTERVAL_MILLIS) {
+          blockedFromMillis = now
+          blockedUntilMillis = now + wait
+        }
+        return Outcome.THROTTLED
+      }
+      return if (e.status == 404 && e.code == FeedServerErrors.CODE_FRIEND_ROUTE_UNAVAILABLE) Outcome.UNAVAILABLE else Outcome.FAILED
     } catch (e: Exception) {
       Log.w(TAG, "friend sync stopped", e)
       return Outcome.FAILED

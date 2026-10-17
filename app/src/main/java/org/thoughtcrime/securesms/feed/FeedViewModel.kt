@@ -113,16 +113,13 @@ class FeedViewModel(
   }
 
   private fun flushEvents() {
-    val batches = events.drain()
-    if (batches.isEmpty()) return
+    if (events.size == 0 || events.isThrottled()) return
     viewModelScope.launch {
-      for (batch in batches) {
-        try {
-          withContext(ioDispatcher) { source.reportEvents(batch) }
-        } catch (e: Exception) {
-          Log.w(TAG, "events dropped: ${batch.size}", e)
-        }
-      }
+      // 被限流（429 / 带 Retry-After 的 503）就停在那一批，没发的留在队列里，等够了再发；别的失败丢掉那一批
+      events.flush(
+        send = { batch -> withContext(ioDispatcher) { source.reportEvents(batch) } },
+        onDropped = { batch, e -> Log.w(TAG, "events dropped: ${batch.size}", e) }
+      )
     }
   }
 
