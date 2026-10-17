@@ -297,8 +297,9 @@ public final class MicrophoneRecorderView extends FrameLayout implements View.On
       lockDropTarget.setAlpha(0);
       lockDropTarget.setTranslationY(0);
       lockDropTarget.setVisibility(VISIBLE);
+      // Tellomi（交互审计 A-12）：锁一开始录就出来，不再等 400 ms（Telegram 两端都是录音圆一出来就画着锁；iOS 同改，Signal-iOS#300）
       lockDropTarget.animate()
-                    .setStartDelay(ANIMATION_DURATION * 2)
+                    .setStartDelay(0)
                     .setDuration(ANIMATION_DURATION)
                     .setInterpolator(new DecelerateInterpolator())
                     .translationY(dropTargetPosition)
@@ -308,7 +309,7 @@ public final class MicrophoneRecorderView extends FrameLayout implements View.On
 
     void setLockProgress(float progress) {
       if (lockDropTarget.getAlpha() < 1f) return; // still appearing
-      float scale = 1f + TellomiRecordingGesture.LOCK_GROWTH * progress;
+      float scale = TellomiRecordingGesture.lockScale(progress);
       lockDropTarget.setScaleX(scale);
       lockDropTarget.setScaleY(scale);
     }

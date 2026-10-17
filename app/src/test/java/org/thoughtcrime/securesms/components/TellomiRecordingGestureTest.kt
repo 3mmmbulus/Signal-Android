@@ -36,6 +36,15 @@ class TellomiRecordingGestureTest {
     assertThat(TellomiRecordingGesture.lockProgress(offsetY = -200f, lockOffsetY = -150f)).isEqualTo(1f)
   }
 
+  /** Telegram 两端的锁都随上滑收小（Android 50 → 36 dp）；不是放大。 */
+  @Test
+  fun `the lock gathers as the finger moves up, like Telegram`() {
+    assertThat(TellomiRecordingGesture.lockScale(0f)).isEqualTo(1f)
+    assertThat(TellomiRecordingGesture.lockScale(0.5f)).isCloseTo(0.86f, 0.001f)
+    assertThat(TellomiRecordingGesture.lockScale(1f)).isCloseTo(0.72f, 0.001f)
+    assertThat(TellomiRecordingGesture.lockScale(2f)).isCloseTo(0.72f, 0.001f)
+  }
+
   @Test
   fun `lerp goes from the first value to the second`() {
     assertThat(TellomiRecordingGesture.lerp(1f, 0.5f, 0f)).isEqualTo(1f)
