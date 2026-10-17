@@ -82,18 +82,29 @@ abstract class FixedRoundedCornerBottomSheetDialogFragment : BottomSheetDialogFr
     dialogBackground.fillColor = ColorStateList.valueOf(backgroundColor)
 
     dialog.behavior.addBottomSheetCallback(object : BottomSheetBehavior.BottomSheetCallback() {
+      // Tellomi（交互审计 A-29 / Q-07，照 Telegram 两端）：拖着的时候遮罩不变；松手往下关掉时从松手的位置起跟着淡。
+      private var lastOffset = 0f
+      private var settleStartOffset: Float? = null
+
       override fun onStateChanged(bottomSheet: View, newState: Int) {
         if (bottomSheet.background !== dialogBackground) {
           bottomSheet.background = dialogBackground
         }
+        settleStartOffset = if (newState == BottomSheetBehavior.STATE_SETTLING) lastOffset else null
+        if (newState != BottomSheetBehavior.STATE_SETTLING && newState != BottomSheetBehavior.STATE_HIDDEN) {
+          applyDim(1f)
+        }
       }
 
-      // Tellomi（交互审计 A-29「遮罩不随拖动变化」）：往下拖到收起位置以下时，遮罩按离「关掉」还有多远变淡；
-      // 松手后滑下去关掉时也跟着淡。在收起和展开之间拖不改遮罩（也就不更新窗口属性）。
       override fun onSlide(bottomSheet: View, slideOffset: Float) {
+        lastOffset = slideOffset
+        applyDim(TellomiSheetScrim.dimFraction(slideOffset, settleStartOffset))
+      }
+
+      private fun applyDim(fraction: Float) {
         val window = dialog.window ?: return
         val base = baseDimAmount ?: window.attributes.dimAmount.also { baseDimAmount = it }
-        val dim = base * TellomiSheetScrim.dimFraction(slideOffset)
+        val dim = base * fraction
         if (window.attributes.dimAmount != dim) {
           window.setDimAmount(dim)
         }

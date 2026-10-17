@@ -110,6 +110,10 @@ internal class AttachmentSheetState {
   var expandedTop by mutableFloatStateOf(0f)
     private set
 
+  /** 第一次从屏幕底下滑上来、还没停稳（手一碰就算结束）。 */
+  var entering by mutableStateOf(true)
+    private set
+
   private val mutex = MutatorMutex()
 
   val collapsedTop: Float
@@ -122,9 +126,17 @@ internal class AttachmentSheetState {
   val isBetweenAnchors: Boolean
     get() = !top.isNaN() && top > expandedTop + 0.5f && kotlin.math.abs(top - collapsedTop) > 0.5f
 
+  /**
+   * 压暗的聊天有多暗（0–1），照 Telegram 两端（交互审计 A-29 / Q-07）：进场时跟着 Sheet 淡入；之后手指拖着、松手弹回都不变，
+   * 拖到收起位置以下也不变（Telegram Android `BottomSheet` 拖动中不改遮罩，iOS `SheetComponent` 的 `dimView` 不跟手）。
+   * 关掉时整个窗口往下滑着淡出（`tellomi_attachment_sheet_exit`），压暗那层一起淡掉。
+   */
+  fun scrimShown(height: Float): Float = scrimShown(height, sheetTop = if (top.isNaN()) height else top, collapsedTop = collapsedTop, entering = entering)
+
   /** 跟手：返回 Sheet 实际挪动的距离（到了全屏 / 屏幕底就不再挪）。 */
   fun dragBy(delta: Float): Float {
     if (top.isNaN()) return 0f
+    entering = false
     val old = top
     top = (top + delta).coerceIn(expandedTop, containerHeight)
     return top - old
@@ -147,6 +159,7 @@ internal class AttachmentSheetState {
       first -> {
         snapTo(height)
         animateTo(collapsedTop, EnterSpec)
+        entering = false
       }
       wasExpanded -> snapTo(expandedTop)
       else -> snapTo(collapsedTop)
@@ -164,6 +177,12 @@ internal class AttachmentSheetState {
   companion object {
     /** 收起时 Sheet 占全屏高度的比例（同 iOS 端）。 */
     const val COLLAPSED_FRACTION = 0.73f
+
+    /** [scrimShown] 的换算本身（[sheetTop]：Sheet 顶边离容器顶部多远）。 */
+    fun scrimShown(height: Float, sheetTop: Float, collapsedTop: Float, entering: Boolean): Float {
+      val scrimTop = if (entering) sheetTop else minOf(sheetTop, collapsedTop)
+      return ((height - scrimTop) / (height - collapsedTop).coerceAtLeast(1f)).coerceIn(0f, 1f)
+    }
     const val SCRIM_ALPHA = 0.2f
     private val EnterSpec: AnimationSpec<Float> = spring(dampingRatio = Spring.DampingRatioNoBouncy, stiffness = Spring.StiffnessMediumLow)
     private val SettleSpec: AnimationSpec<Float> = spring(dampingRatio = Spring.DampingRatioNoBouncy, stiffness = Spring.StiffnessMedium)
@@ -249,14 +268,12 @@ internal fun AttachmentSheet(
       state.onContainerMeasured(height, statusBarTop)
     }
 
-    // 压暗的聊天：跟着 Sheet 露出来的多少淡入淡出；点它关闭
+    // 压暗的聊天：进场时跟着 Sheet 淡入，之后拖动不变（[AttachmentSheetState.scrimShown]）；点它关闭
     Box(
       modifier = Modifier
         .fillMaxSize()
         .drawBehind {
-          val top = if (state.top.isNaN()) size.height else state.top
-          val shown = ((size.height - top) / (size.height - state.collapsedTop).coerceAtLeast(1f)).coerceIn(0f, 1f)
-          drawRect(Color.Black.copy(alpha = AttachmentSheetState.SCRIM_ALPHA * shown))
+          drawRect(Color.Black.copy(alpha = AttachmentSheetState.SCRIM_ALPHA * state.scrimShown(size.height)))
         }
         .pointerInput(Unit) {
           detectTapGestures { scope.launch { dismiss() } }
