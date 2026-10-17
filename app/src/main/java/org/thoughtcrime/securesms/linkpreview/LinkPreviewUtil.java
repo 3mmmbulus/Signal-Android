@@ -56,7 +56,8 @@ public final class LinkPreviewUtil {
     }
 
     return new Links(detected.stream()
-                             .map(d -> new Link(d.getUrl(), d.getStart()))
+                             // Tellomi: text glued after the link is not part of it (LinkUtil.trimTextGluedAfterUrl)
+                             .map(d -> new Link(LinkUtil.trimTextGluedAfterUrl(d.getUrl()), d.getStart()))
                              .filter(link -> LinkUtil.isValidPreviewUrl(link.url))
                              .collect(Collectors.toList()));
   }

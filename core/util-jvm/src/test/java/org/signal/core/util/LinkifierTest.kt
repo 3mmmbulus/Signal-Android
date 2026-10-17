@@ -147,6 +147,10 @@ class LinkifierTest(private val case: Case) {
 
       // ----- boundary handling -----
       Case("explicit-scheme url glued to a leading word is rejected", "foohttps://signal.org", emptyList()),
+      // Tellomi: Chinese / Japanese text has no spaces
+      Case("explicit-scheme url glued to a leading CJK word is matched", "看这个https://b23.tv/abc 很好", listOf(web("https://b23.tv/abc"))),
+      Case("CJK text glued after the url stays in the span", "看这个https://b23.tv/abc很好", listOf(web("https://b23.tv/abc很好"))),
+      Case("explicit-scheme url glued to a leading kana word is matched", "これhttps://signal.org", listOf(web("https://signal.org"))),
       Case("url after newline is matched", "first line\nhttps://signal.org", listOf(web("https://signal.org"))),
       Case("url after open paren is matched", "(https://signal.org", listOf(web("https://signal.org"))),
       Case("url after digit-only token keeps boundary", "12345 https://signal.org", listOf(web("https://signal.org"))),

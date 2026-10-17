@@ -97,7 +97,7 @@ object Linkifier {
       val start = matcher.start()
       val rawEnd = matcher.end()
 
-      if (!isAtLeadingBoundary(text, start)) {
+      if (!isAtLeadingBoundary(text, start, hasExplicitScheme(text, start))) {
         continue
       }
 
@@ -123,12 +123,23 @@ object Linkifier {
     return out
   }
 
-  private fun isAtLeadingBoundary(text: CharSequence, start: Int): Boolean {
+  private fun hasExplicitScheme(text: CharSequence, start: Int): Boolean {
+    return text.startsWith("https://", start, ignoreCase = true) || text.startsWith("http://", start, ignoreCase = true)
+  }
+
+  private fun isAtLeadingBoundary(text: CharSequence, start: Int, explicitScheme: Boolean): Boolean {
     if (start == 0) {
       return true
     }
 
     val prev = text[start - 1]
+
+    // Tellomi (2026-10-17, TestFlight feedback "links don't become cards"): Chinese / Japanese text has no spaces, so
+    // "看这个https://b23.tv/abc" is a link right after the word. Only for an explicit scheme and a non-ASCII letter before
+    // it; an ASCII word glued to a scheme ("foohttps://…") is still rejected, as upstream.
+    if (explicitScheme && prev.code > 0x7F && prev.isLetter()) {
+      return true
+    }
 
     // Check @ so that we don't pick up the host of an email address
     if (prev.isLetterOrDigit() || prev == '_' || prev == '@') {

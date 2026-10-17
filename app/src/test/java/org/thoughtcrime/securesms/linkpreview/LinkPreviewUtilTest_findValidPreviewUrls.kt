@@ -82,4 +82,23 @@ class LinkPreviewUtilTest_findValidPreviewUrls {
     Assert.assertTrue(links.containsUrl("https://android.com/"))
     Assert.assertFalse(links.containsUrl("https://android.com//"))
   }
+
+  /** Tellomi (2026-10-17): text glued around the link is not part of the preview URL. */
+  @Test
+  fun cjk_text_glued_around_the_link_is_not_part_of_the_preview_url() {
+    val links = LinkPreviewUtil.findValidPreviewUrls("看这个https://b23.tv/abc很好")
+
+    Assert.assertEquals(1, links.size().toLong())
+    Assert.assertTrue(links.containsUrl("https://b23.tv/abc"))
+    Assert.assertFalse(links.containsUrl("https://b23.tv/abc很好"))
+  }
+
+  /** Tellomi (2026-10-17): a CJK path segment right after a delimiter is the link's own, kept as upstream. */
+  @Test
+  fun cjk_path_segment_after_a_slash_is_kept() {
+    val links = LinkPreviewUtil.findValidPreviewUrls("https://zh.wikipedia.org/wiki/中国")
+
+    Assert.assertEquals(1, links.size().toLong())
+    Assert.assertTrue(links.containsUrl("https://zh.wikipedia.org/wiki/中国"))
+  }
 }

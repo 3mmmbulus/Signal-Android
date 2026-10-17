@@ -143,5 +143,35 @@ object LinkUtil {
     return bytes.size == 16 && (bytes[0].toInt() and 0xfe) == 0xfc
   }
 
+  /**
+   * Tellomi (2026-10-17, TestFlight feedback "many links don't become info cards"): text glued right after a link with no
+   * space, e.g. "看这个https://b23.tv/abc很好", gets taken into the link, and the preview then fetches a path that doesn't
+   * exist. Cut at the first non-ASCII character, the same rule as iOS `LinkValidator.tellomiUrlTrimmedBeforeGluedText`:
+   * - only inside path / query / fragment, never in the host (a mixed-script host is a spoofing risk);
+   * - only right after an ASCII letter or digit ("abc很好", ".html网易新闻"); never after `/ ? = & #`, because
+   *   "/wiki/中国" cut to "/wiki/" is another page, so such links are left as they are.
+   * The receiver's libsignal `url_appears_in_body` already treats a non-ASCII character as the end of a link.
+   */
+  @JvmStatic
+  fun trimTextGluedAfterUrl(url: String): String {
+    val cut = url.indexOfFirst { it.code > 0x7F }
+    if (cut <= 0) {
+      return url
+    }
+    val schemeEnd = url.indexOf("://")
+    if (schemeEnd < 0) {
+      return url
+    }
+    val authorityEnd = url.indexOfAny(charArrayOf('/', '?', '#'), schemeEnd + 3)
+    if (authorityEnd < 0 || authorityEnd >= cut) {
+      return url
+    }
+    val last = url[cut - 1]
+    if (!(last in '0'..'9' || last in 'a'..'z' || last in 'A'..'Z')) {
+      return url
+    }
+    return url.substring(0, cut)
+  }
+
   private data class LegalCharactersResult(val isLegal: Boolean, val domain: String? = null)
 }
