@@ -18,6 +18,7 @@ import kotlinx.coroutines.flow.updateAndGet
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import org.signal.core.util.logging.Log
+import org.thoughtcrime.securesms.feed.FeedInputLimit
 import org.thoughtcrime.securesms.feed.FeedSource
 import org.thoughtcrime.securesms.feed.FeedSources
 import org.thoughtcrime.securesms.feed.net.FeedApiException
@@ -84,7 +85,15 @@ class FeedComposeViewModel(
     if (internalState.value.editing == null && internalState.value.draft.quote == null) updateDraft { it.copy(kind = kind) }
   }
 
-  fun onTitleChanged(title: String) = updateDraft { it.copy(title = title) }
+  /**
+   * 长文标题（上限 [FeedInputLimit.ARTICLE_TITLE] 个码点）：到上限就不让再输入（文本不变，[FeedComposeState.titleLimitHit] 亮一下），
+   * 粘贴超长时按码点截到上限；[composing]（输入法组字中）一律放行，这时可以暂时超限，发布不可用，组字结束后再调一次就截一次。
+   */
+  fun onTitleChanged(title: String, composing: Boolean = false) {
+    val edit = FeedInputLimit.change(internalState.value.draft.title, title, FeedInputLimit.ARTICLE_TITLE, composing)
+    updateDraft { it.copy(title = edit.text) }
+    internalState.update { it.copy(titleLimitHit = edit.limitHit) }
+  }
 
   fun onTextChanged(text: String) = updateDraft { it.copy(text = text) }
 
@@ -235,8 +244,14 @@ data class FeedComposeState(
   /** 打开时恢复了上次没写完的长文，提示一句。 */
   val restoredArticle: Boolean = false,
   /** 发出去之后服务端给的 `state`（`pending` / `published`）；非空表示可以关页面了。 */
-  val publishedState: String? = null
+  val publishedState: String? = null,
+  /** 标题刚才碰到了上限（拦下或截了），计数可以抖一下；下一次正常输入清掉。 */
+  val titleLimitHit: Boolean = false
 ) {
+  /** 标题还能再输入几个码点；超了（组字中）是负数。 */
+  val titleRemaining: Int
+    get() = FeedInputLimit.remaining(draft.title, FeedInputLimit.ARTICLE_TITLE)
+
   /** 编辑时可见范围不动，所以不查可见范围那两项；没改动也不能保存。 */
   val problem: FeedDraft.Problem?
     get() {
