@@ -121,12 +121,11 @@ class PredictiveBackOptInTest {
     /**
      * 有意退出预测性返回的 Activity，按清单里 `android:name` 的写法，每一项都要带理由。
      *
-     * 下面三个都是从缩略图 / 头像用共享元素展开、返回时 `finishAfterTransition()` 缩回去的页面：打开预测性返回后，
-     * Android 15 起系统先放跨页预览，松手后应用自己的返回动画又放一遍。等返回动画能跟手（查看器是 A-20 / #1257）再打开。
+     * 下面两个都是从缩略图 / 头像用共享元素展开、返回时 `finishAfterTransition()` 缩回去的页面：打开预测性返回后，
+     * Android 15 起系统先放跨页预览，松手后应用自己的返回动画又放一遍。等返回动画能跟手再打开。
+     * 媒体查看器（`.mediapreview.MediaPreviewActivity`）原来也在这里，返回手势跟手缩小做好后已经打开（A-20，Signal-Android#281）。
      */
     private val INTENTIONAL_OPT_OUTS: Set<String> = setOf(
-      // 查看器：从聊天、媒体总览的缩略图展开
-      ".mediapreview.MediaPreviewActivity",
       // 头像大图：从会话设置、编辑资料展开
       ".AvatarPreviewActivity",
       // 聊天里的联系人卡片：从卡片头像展开

@@ -792,7 +792,7 @@
             android:exported="false"
             android:windowSoftInputMode="stateHidden" />
 
-        <!-- Tellomi（交互审计 A-22）：共享元素返回，暂不接预测性返回（系统先放跨页预览，松手后又放一遍返回动画）；返回动画能跟手后再打开 -->
+        <!-- Tellomi（交互审计 A-20 / A-22）：接预测性返回——返回手势跟手缩小媒体、松手缩回缩略图（Signal-Android#281） -->
         <activity
             android:name=".mediapreview.MediaPreviewActivity"
             android:configChanges="touchscreen|keyboard|keyboardHidden|orientation|screenLayout|screenSize"
