@@ -31,21 +31,26 @@ class ConversationHeaderPositionDecoration : RecyclerView.ItemDecoration() {
   }
 
   override fun onDraw(c: Canvas, parent: RecyclerView, state: RecyclerView.State) {
+    parent.translationY = targetTranslationY(parent)
+  }
+
+  /**
+   * The translationY [onDraw] gives the list for its current layout. Tellomi (interaction audit A-05): the item animator
+   * reads it before the frame is drawn, so in a conversation too short to scroll the rows can start their slides from
+   * where they were on screen — the list's translation changes in the same frame as their layout.
+   */
+  fun targetTranslationY(parent: RecyclerView): Float {
     if (parent.canScrollVertically(1)) {
-      parent.translationY = 0f
-      return
+      return 0f
     }
 
     val threadHeaderView: ConversationHeaderView = parent.children
       .filterIsInstance<ConversationHeaderView>()
-      .firstOrNull() ?: run {
-      parent.translationY = 0f
-      return
-    }
+      .firstOrNull() ?: return 0f
 
     parent.getDecoratedBoundsWithMargins(threadHeaderView, bounds)
     val margin = bounds.bottom - bounds.top - threadHeaderView.height
     val childTop: Int = threadHeaderView.top - margin
-    parent.translationY = min(0, -childTop).toFloat()
+    return min(0, -childTop).toFloat()
   }
 }

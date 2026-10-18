@@ -2654,6 +2654,15 @@ class ConversationFragment :
       },
       shouldUseSlideAnimation = { viewHolder ->
         true
+      },
+      // Tellomi (interaction audit A-05): in a short conversation the list moves itself to keep the header pinned; rows
+      // slide from where they were on screen instead of jumping.
+      parentTranslationDelta = {
+        if (::conversationHeaderPositionDecoration.isInitialized) {
+          conversationHeaderPositionDecoration.targetTranslationY(binding.conversationItemRecycler) - binding.conversationItemRecycler.translationY
+        } else {
+          0f
+        }
       }
     )
 

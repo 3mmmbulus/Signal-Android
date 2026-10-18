@@ -23,7 +23,14 @@ class ConversationItemAnimator(
   private val isInMultiSelectMode: () -> Boolean,
   private val shouldPlayMessageAnimations: () -> Boolean,
   private val isParentFilled: () -> Boolean,
-  private val shouldUseSlideAnimation: (RecyclerView.ViewHolder) -> Boolean
+  private val shouldUseSlideAnimation: (RecyclerView.ViewHolder) -> Boolean,
+  /**
+   * Tellomi (interaction audit A-05): how much the list's own translationY is about to change in the frame that draws this
+   * layout. In a conversation too short to scroll, [org.thoughtcrime.securesms.conversation.v2.ConversationHeaderPositionDecoration]
+   * moves the whole list to pin the header under the toolbar, so when a row grows (a reaction pill) or one is added or
+   * removed, the list's translation changes together with the rows' layout. Slides start from where a row was on screen.
+   */
+  private val parentTranslationDelta: () -> Float = { 0f }
 ) : RecyclerView.ItemAnimator() {
 
   private data class TweeningInfo(
@@ -64,11 +71,11 @@ class ConversationItemAnimator(
       viewHolder !in pendingFadeOuts &&
       !isInMultiSelectMode() &&
       shouldPlayMessageAnimations() &&
-      // Only when the others slide into its place too: in a list that does not fill the screen they jump, and a message
-      // fading out on top of the one that jumped into its spot reads as a glitch rather than a removal.
-      isParentFilled() &&
       TellomiMotion.tier(viewHolder.itemView.context) != TellomiMotion.Tier.MINIMAL
     ) {
+      // A short list moves itself in the same frame (header pinned under the toolbar): keep the fading row where it was on
+      // screen, while the others slide into its place (they start from their old on-screen positions too).
+      viewHolder.itemView.translationY = -parentTranslationDelta()
       pendingFadeOuts += viewHolder
       dispatchAnimationStarted(viewHolder)
       return true
@@ -99,10 +106,11 @@ class ConversationItemAnimator(
     }
 
     val translationY = if (preLayoutInfo == null) {
-      postLayoutInfo.bottom - postLayoutInfo.top
+      // A new row comes up from just below its final place.
+      (postLayoutInfo.bottom - postLayoutInfo.top).toFloat()
     } else {
-      preLayoutInfo.top - postLayoutInfo.top
-    }.toFloat()
+      slideStart(preLayoutInfo.top, postLayoutInfo.top, parentTranslationDelta())
+    }
 
     if (translationY == 0f) {
       viewHolder.itemView.translationY = 0f
@@ -120,7 +128,10 @@ class ConversationItemAnimator(
   }
 
   override fun animatePersistence(viewHolder: RecyclerView.ViewHolder, preLayoutInfo: ItemHolderInfo, postLayoutInfo: ItemHolderInfo): Boolean {
-    return if (!isInMultiSelectMode() && shouldPlayMessageAnimations() && isParentFilled()) {
+    // Tellomi (A-05): also when the list does not fill the screen (Telegram moves its rows either way). Upstream skipped
+    // that case: the list's own translation changed in the same frame, so slides measured in list coordinates jumped.
+    // [slideStart] now accounts for it.
+    return if (!isInMultiSelectMode() && shouldPlayMessageAnimations()) {
       if (pendingSlideAnimations.contains(viewHolder) || slideAnimations.containsKey(viewHolder) || !shouldUseSlideAnimation(viewHolder)) {
         dispatchAnimationFinished(viewHolder)
         false
@@ -155,6 +166,7 @@ class ConversationItemAnimator(
       animator.duration = FADE_OUT_DURATION_MS
       animator.doOnEnd {
         view.alpha = 1f
+        view.translationY = 0f
         if (fadeOutAnimations.remove(viewHolder) != null) {
           dispatchAnimationFinished(viewHolder)
           dispatchFinishedWhenDone()
@@ -208,6 +220,7 @@ class ConversationItemAnimator(
     endSlideAnimation(item)
     if (pendingFadeOuts.remove(item)) {
       item.itemView.alpha = 1f
+      item.itemView.translationY = 0f
       dispatchAnimationFinished(item)
     }
     fadeOutAnimations[item]?.end()
@@ -217,6 +230,7 @@ class ConversationItemAnimator(
     endSlideAnimations()
     pendingFadeOuts.forEach {
       it.itemView.alpha = 1f
+      it.itemView.translationY = 0f
       dispatchAnimationFinished(it)
     }
     pendingFadeOuts.clear()
@@ -266,6 +280,16 @@ class ConversationItemAnimator(
     @VisibleForTesting
     fun isRemoval(postLayoutInfo: RecyclerView.ItemAnimator.ItemHolderInfo?, adapterPosition: Int): Boolean {
       return postLayoutInfo == null && adapterPosition == RecyclerView.NO_POSITION
+    }
+
+    /**
+     * Tellomi (A-05): the translationY a moved row starts its slide from, so that the first frame shows it exactly where it
+     * was on screen: its layout moved by `preTop - postTop`, and the whole list's translation moves by [parentDelta] in the
+     * same frame (a conversation too short to scroll keeps its header pinned under the toolbar).
+     */
+    @VisibleForTesting
+    fun slideStart(preTop: Int, postTop: Int, parentDelta: Float): Float {
+      return (preTop - postTop) - parentDelta
     }
   }
 }
