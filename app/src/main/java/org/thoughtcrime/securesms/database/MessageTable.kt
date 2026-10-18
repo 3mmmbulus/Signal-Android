@@ -151,6 +151,7 @@ import org.thoughtcrime.securesms.util.MessageConstraintsUtil
 import org.thoughtcrime.securesms.util.RemoteConfig
 import org.thoughtcrime.securesms.util.SignalTrace
 import org.thoughtcrime.securesms.util.TellomiCaptionAbove
+import org.thoughtcrime.securesms.util.TellomiPinNotice
 import org.thoughtcrime.securesms.util.TextSecurePreferences
 import org.thoughtcrime.securesms.util.isStory
 import org.whispersystems.signalservice.internal.push.SyncMessage
@@ -2935,13 +2936,13 @@ open class MessageTable(context: Context?, databaseHelper: SignalDatabase) : Dat
    * is a separate query from the unread count and is not expected to select an identical row set.
    */
   fun getOldestUnread(threadId: Long): OldestUnread? {
-    val pinnedMessageClause = "($TYPE & ${MessageTypes.SPECIAL_TYPES_MASK}) != ${MessageTypes.SPECIAL_TYPE_PINNED_MESSAGE}"
+    // Tellomi (ADR-0081 §4.4): "×× pinned «…»" counts as unread, as in Telegram, so it can anchor the divider too.
     // The redundant "($READ = 0 OR $REACTIONS_UNREAD = 1 OR $VOTES_UNREAD = 1)" term lets the planner use the partial
     // index to satisfy ORDER BY $DATE_RECEIVED without a sort (same trick as setMessagesReadSince).
     return readableDatabase
       .select(ID, DATE_RECEIVED)
       .from("$TABLE_NAME INDEXED BY $INDEX_THREAD_DATE_RECEIVED_UNREAD")
-      .where("$THREAD_ID = ? AND $STORY_TYPE = 0 AND $PARENT_STORY_ID <= 0 AND ($READ = 0 OR $REACTIONS_UNREAD = 1 OR $VOTES_UNREAD = 1) AND $READ = 0 AND $SCHEDULED_DATE = -1 AND $LATEST_REVISION_ID IS NULL AND $COLLAPSED_STATE != ${CollapsedState.COLLAPSED.id} AND $pinnedMessageClause", threadId)
+      .where("$THREAD_ID = ? AND $STORY_TYPE = 0 AND $PARENT_STORY_ID <= 0 AND ($READ = 0 OR $REACTIONS_UNREAD = 1 OR $VOTES_UNREAD = 1) AND $READ = 0 AND $SCHEDULED_DATE = -1 AND $LATEST_REVISION_ID IS NULL AND $COLLAPSED_STATE != ${CollapsedState.COLLAPSED.id}", threadId)
       .orderBy("$DATE_RECEIVED ASC")
       .limit(1)
       .run()
@@ -3311,7 +3312,8 @@ open class MessageTable(context: Context?, databaseHelper: SignalDatabase) : Dat
       contentValues.put(NOTIFIED, notified.toInt())
       contentValues.put(STARRED, if (editedMessage.isStarred) 1 else 0)
     } else if (MessageTypes.isPinnedMessageUpdate(type)) {
-      contentValues.put(NOTIFIED, 1)
+      // Tellomi (ADR-0081 §4.4): someone else's pin notifies in a group unless pinned without notifying; never in a 1:1 chat.
+      contentValues.put(NOTIFIED, if (TellomiPinNotice.notifies(retrieved.messageExtras, isGroup = retrieved.groupId != null)) 0 else 1)
     }
 
     val updateThread = retrieved.storyType === StoryType.NONE && !silent
@@ -5544,11 +5546,11 @@ open class MessageTable(context: Context?, databaseHelper: SignalDatabase) : Dat
   }
 
   fun getUnreadCount(threadId: Long): Int {
-    val pinnedMessageClause = "($TYPE & ${MessageTypes.SPECIAL_TYPES_MASK}) != ${MessageTypes.SPECIAL_TYPE_PINNED_MESSAGE}"
+    // Tellomi (ADR-0081 §4.4): "×× pinned «…»" counts as unread, as in Telegram.
     return readableDatabase
       .select("COUNT(*)")
       .from("$TABLE_NAME INDEXED BY $INDEX_THREAD_UNREAD_COUNT")
-      .where("$THREAD_ID = $threadId AND $STORY_TYPE = 0 AND $PARENT_STORY_ID <= 0 AND $ORIGINAL_MESSAGE_ID IS NULL AND $SCHEDULED_DATE = -1 AND $READ = 0 AND $pinnedMessageClause")
+      .where("$THREAD_ID = $threadId AND $STORY_TYPE = 0 AND $PARENT_STORY_ID <= 0 AND $ORIGINAL_MESSAGE_ID IS NULL AND $SCHEDULED_DATE = -1 AND $READ = 0")
       .run()
       .readToSingleInt()
   }
@@ -5557,6 +5559,7 @@ open class MessageTable(context: Context?, databaseHelper: SignalDatabase) : Dat
    * Returns the number of unread messages (based on the [ReminderType]) and up to three distinct authors from [threadId]
    */
   fun getUnreadContentForReminderNotification(threadId: Long, type: ReminderType, now: Long = System.currentTimeMillis()): Pair<Int, List<RecipientId>> {
+    // Tellomi (ADR-0081 §4.4): "×× pinned «…»" counts as unread, as in Telegram.
     val categoryClause = when (type) {
       ReminderType.MENTIONS -> "AND $MENTIONS_SELF = 1"
       ReminderType.REPLIES -> "AND $QUOTE_AUTHOR = ${Recipient.self().id.serialize()}"
@@ -5574,7 +5577,6 @@ open class MessageTable(context: Context?, databaseHelper: SignalDatabase) : Dat
           $SCHEDULED_DATE = -1 AND 
           $ORIGINAL_MESSAGE_ID IS NULL AND 
           $READ = 0 AND 
-          ($TYPE & ${MessageTypes.SPECIAL_TYPES_MASK}) != ${MessageTypes.SPECIAL_TYPE_PINNED_MESSAGE} AND
           $DATE_RECEIVED > ${now - UnreadReminderManager.MAX_UNREAD_MESSAGE_AGE.inWholeMilliseconds}
           $categoryClause
         """
@@ -5590,6 +5592,7 @@ open class MessageTable(context: Context?, databaseHelper: SignalDatabase) : Dat
    * Returns true if [threadId] has an unread message that arrived after [since].
    */
   fun hasUnreadMessagesSince(threadId: Long, since: Long): Boolean {
+    // Tellomi (ADR-0081 §4.4): "×× pinned «…»" counts as unread, as in Telegram.
     return readableDatabase
       .exists(TABLE_NAME)
       .where(
@@ -5600,7 +5603,6 @@ open class MessageTable(context: Context?, databaseHelper: SignalDatabase) : Dat
           $SCHEDULED_DATE = -1 AND
           $ORIGINAL_MESSAGE_ID IS NULL AND
           $READ = 0 AND
-          ($TYPE & ${MessageTypes.SPECIAL_TYPES_MASK}) != ${MessageTypes.SPECIAL_TYPE_PINNED_MESSAGE} AND
           $DATE_RECEIVED > $since
         """
       )
@@ -5612,6 +5614,7 @@ open class MessageTable(context: Context?, databaseHelper: SignalDatabase) : Dat
    * If there is none, it returns -1 for thread id and Long.MAX_VALUE for timestamp.
    */
   fun getOldestUnreadMessage(threadIds: List<Long>): Pair<Long, Long> {
+    // Tellomi (ADR-0081 §4.4): "×× pinned «…»" counts as unread, as in Telegram.
     if (threadIds.isEmpty()) {
       return Pair(-1, Long.MAX_VALUE)
     }
@@ -5629,7 +5632,6 @@ open class MessageTable(context: Context?, databaseHelper: SignalDatabase) : Dat
           $SCHEDULED_DATE = -1 AND
           $ORIGINAL_MESSAGE_ID IS NULL AND
           $READ = 0 AND
-          ($TYPE & ${MessageTypes.SPECIAL_TYPES_MASK}) != ${MessageTypes.SPECIAL_TYPE_PINNED_MESSAGE} AND
           $DATE_RECEIVED > ${System.currentTimeMillis() - UnreadReminderManager.MAX_UNREAD_MESSAGE_AGE.inWholeMilliseconds}
         """,
         query.whereArgs

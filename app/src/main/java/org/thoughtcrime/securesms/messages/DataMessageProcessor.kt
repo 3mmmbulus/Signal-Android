@@ -104,6 +104,7 @@ import org.thoughtcrime.securesms.util.RemoteConfig
 import org.thoughtcrime.securesms.util.SignalLocalMetrics
 import org.thoughtcrime.securesms.util.SignalTrace
 import org.thoughtcrime.securesms.util.TellomiCaptionAbove
+import org.thoughtcrime.securesms.util.TellomiPinNotice
 import org.thoughtcrime.securesms.util.TextSecurePreferences
 import org.thoughtcrime.securesms.util.hasGiftBadge
 import org.thoughtcrime.securesms.util.isStory
@@ -1354,13 +1355,17 @@ object DataMessageProcessor {
       groupId = groupId,
       isUnidentified = metadata.sealedSender,
       serverGuid = UuidUtil.getStringUUID(envelope.serverGuid, envelope.serverGuidBinary),
-      messageExtras = MessageExtras(pinnedMessage = PinnedMessage(pinnedMessageId = targetMessageId, targetAuthorAci = pinMessage.targetAuthorAciBinary!!, targetTimestamp = pinMessage.targetSentTimestamp!!, pinDurationInSeconds = duration))
+      messageExtras = MessageExtras(pinnedMessage = PinnedMessage(pinnedMessageId = targetMessageId, targetAuthorAci = pinMessage.targetAuthorAciBinary!!, targetTimestamp = pinMessage.targetSentTimestamp!!, pinDurationInSeconds = duration, tellomiSilent = message.tellomi?.pinSilent == true))
     )
 
     val insertResult: InsertResult? = SignalDatabase.messages.insertMessageInbox(pinnedMessage).orNull()
 
     return if (insertResult != null) {
       log(envelope.clientTimestamp!!, "Inserted a pinned message update at ${insertResult.messageId}")
+      // Tellomi (ADR-0081 §4.4): "×× pinned «…»" is pushed in a group unless pinned without notifying; never in a 1:1 chat.
+      if (TellomiPinNotice.notifies(pinnedMessage.messageExtras, isGroup = groupId != null)) {
+        AppDependencies.messageNotifier.updateNotification(AppDependencies.application, ConversationId.forConversation(insertResult.threadId))
+      }
       if (duration != MessageTable.PIN_FOREVER) {
         AppDependencies.pinnedMessageManager.scheduleIfNecessary()
       }

@@ -584,6 +584,8 @@ message PinnedMessage {
     bytes targetAuthorAci = 2;
     uint64 targetTimestamp = 3;
     uint64 pinDurationInSeconds = 4; // Long.MAX_VALUE if pin is forever
+    // Tellomi (ADR-0081 §4.4): pinned in a group without notifying (`TellomiDataMessage.pinSilent`); local only.
+    bool tellomiSilent = 1000;
 }
 
 message LocalRegistrationMetadata {

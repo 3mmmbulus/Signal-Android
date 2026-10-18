@@ -688,6 +688,20 @@
     <string name="TellomiPin__notify_all">置顶并通知所有成员</string>
     <string name="TellomiPin__without_notifying">置顶但不通知</string>
     <string name="TellomiPin__duration">时长：%1$s ›</string>
+    <string name="TellomiPinNotice__s_pinned_s">%1$s置顶了%2$s</string>
+    <string name="TellomiPinNotice__you_pinned_s">你置顶了%1$s</string>
+    <string name="TellomiPinNotice__quote">«%1$s»</string>
+    <string name="TellomiPinNotice__a_message">一条消息</string>
+    <string name="TellomiPinNotice__a_photo">一张图片</string>
+    <string name="TellomiPinNotice__a_video">一段视频</string>
+    <string name="TellomiPinNotice__a_gif">一个 GIF</string>
+    <string name="TellomiPinNotice__a_voice_message">一条语音</string>
+    <string name="TellomiPinNotice__an_audio_file">一段音频</string>
+    <string name="TellomiPinNotice__a_file">一个文件</string>
+    <string name="TellomiPinNotice__a_sticker">一个贴纸</string>
+    <string name="TellomiPinNotice__a_location">一个位置</string>
+    <string name="TellomiPinNotice__a_contact">一个联系人</string>
+    <string name="TellomiPinNotice__a_poll">一个投票</string>
     <!-- Dialog option to keep message pin for 24 hours -->
     <string name="ConversationFragment__24_hours">24 小时</string>
     <!-- Dialog option to keep message pin for 7 days -->

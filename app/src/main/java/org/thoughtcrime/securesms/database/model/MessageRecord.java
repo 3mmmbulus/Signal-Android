@@ -72,6 +72,7 @@ import org.thoughtcrime.securesms.util.ExpirationUtil;
 import org.thoughtcrime.securesms.util.GroupUtil;
 import org.thoughtcrime.securesms.util.MessageRecordUtil;
 import org.thoughtcrime.securesms.util.SignalE164Util;
+import org.thoughtcrime.securesms.util.TellomiPinNotice;
 import org.whispersystems.signalservice.api.groupsv2.DecryptedGroupUtil;
 
 import java.io.IOException;
@@ -318,8 +319,9 @@ public abstract class MessageRecord extends DisplayRecord {
       return getFromRecipient().isSelf() ? staticUpdateDescriptionWithExpiration(context.getString(R.string.MessageRecord_you_ended_the_poll, messageExtras.pollTerminate.question), Glyph.POLL)
                                          : staticUpdateDescriptionWithExpiration(context.getString(R.string.MessageRecord_ended_the_poll, getFromRecipient().getDisplayName(context), messageExtras.pollTerminate.question), Glyph.POLL);
     } else if (MessageRecordUtil.hasPinnedMessageUpdate(this)) {
-     return getFromRecipient().isSelf() ? staticUpdateDescriptionWithExpiration(context.getString(R.string.PinnedMessage__you_pinned_a_message), Glyph.PIN)
-                                        : staticUpdateDescriptionWithExpiration(context.getString(R.string.PinnedMessage__s_pinned_a_message, getFromRecipient().getDisplayName(context)), Glyph.PIN);
+      // Tellomi (ADR-0081 §4.4): "×× pinned «…»" reads the pinned message, so the text is made in the background.
+      List<ServiceId> pinner = getFromRecipient().getServiceId().map(Collections::singletonList).orElse(Collections.emptyList());
+      return UpdateDescription.mentioning(pinner, () -> new SpannableString(TellomiPinNotice.describe(context, this)), Glyph.PIN);
     }
 
     return null;

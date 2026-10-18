@@ -732,6 +732,21 @@
     <string name="TellomiPin__without_notifying">Pin without notifying</string>
     <!-- Tellomi (pinned-messages.md 3.1): last row of the pin prompt; opens the duration choices. %1$s is e.g. "Forever". -->
     <string name="TellomiPin__duration">Duration: %1$s ›</string>
+    <!-- Tellomi (ADR-0081 §4.4, pinned-messages.md 3.2): the pinned-message update, its chat-list preview and notification. %1$s is who pinned, %2$s what (a quote of the first 15 characters, or "a photo" etc.) -->
+    <string name="TellomiPinNotice__s_pinned_s">%1$s pinned %2$s</string>
+    <string name="TellomiPinNotice__you_pinned_s">You pinned %1$s</string>
+    <string name="TellomiPinNotice__quote">“%1$s”</string>
+    <string name="TellomiPinNotice__a_message">a message</string>
+    <string name="TellomiPinNotice__a_photo">a photo</string>
+    <string name="TellomiPinNotice__a_video">a video</string>
+    <string name="TellomiPinNotice__a_gif">a GIF</string>
+    <string name="TellomiPinNotice__a_voice_message">a voice message</string>
+    <string name="TellomiPinNotice__an_audio_file">an audio file</string>
+    <string name="TellomiPinNotice__a_file">a file</string>
+    <string name="TellomiPinNotice__a_sticker">a sticker</string>
+    <string name="TellomiPinNotice__a_location">a location</string>
+    <string name="TellomiPinNotice__a_contact">a contact</string>
+    <string name="TellomiPinNotice__a_poll">a poll</string>
     <!-- Dialog option to keep message pin for 24 hours -->
     <string name="ConversationFragment__24_hours">24 hours</string>
     <!-- Dialog option to keep message pin for 7 days -->

@@ -21,6 +21,7 @@ import org.thoughtcrime.securesms.mms.Slide;
 import org.thoughtcrime.securesms.mms.StickerSlide;
 import org.thoughtcrime.securesms.util.MessageRecordUtil;
 import org.thoughtcrime.securesms.util.TellomiLivePhoto;
+import org.thoughtcrime.securesms.util.TellomiPinNotice;
 import org.signal.core.util.Util;
 
 import java.util.ArrayList;
@@ -79,8 +80,8 @@ public final class ThreadBodyUtil {
       return record.getFromRecipient().isSelf() ? new ThreadBody(context.getString(R.string.Poll__you_poll_end, record.getMessageExtras().pollTerminate.question))
                                                 : new ThreadBody(context.getString(R.string.Poll__poll_end, record.getFromRecipient().getDisplayName(context), record.getMessageExtras().pollTerminate.question));
     } else if (MessageRecordUtil.hasPinnedMessageUpdate(record)) {
-      return record.getFromRecipient().isSelf() ? new ThreadBody(context.getString(R.string.PinnedMessage__you_pinned_a_message))
-                                                : new ThreadBody(context.getString(R.string.PinnedMessage__s_pinned_a_message, record.getFromRecipient().getDisplayName(context)));
+      // Tellomi (ADR-0081 §4.4): the chat list says the same "×× pinned «…»".
+      return new ThreadBody(TellomiPinNotice.describe(context, record));
     } else if (TellomiLocationBubble.recognize(record) != null) {
       // Tellomi (spec attachment-files-location §3.3.1): "📍 Location", not the name, address and maps link (Telegram: AttachLocation)
       return format(TellomiLocationBubble.PREVIEW_EMOJI, context.getString(R.string.AttachmentKeyboard_location), null);

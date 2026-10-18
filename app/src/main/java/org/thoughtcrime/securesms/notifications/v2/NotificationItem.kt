@@ -33,8 +33,10 @@ import org.thoughtcrime.securesms.service.KeyCachingService
 import org.thoughtcrime.securesms.util.AvatarUtil
 import org.thoughtcrime.securesms.util.MediaUtil
 import org.thoughtcrime.securesms.util.SpanUtil
+import org.thoughtcrime.securesms.util.TellomiPinNotice
 import org.thoughtcrime.securesms.util.TellomiSpoiler
 import org.thoughtcrime.securesms.util.hasGiftBadge
+import org.thoughtcrime.securesms.util.hasPinnedMessageUpdate
 import org.thoughtcrime.securesms.util.hasPoll
 import org.thoughtcrime.securesms.util.hasPollTerminate
 import org.thoughtcrime.securesms.util.hasSharedContact
@@ -252,6 +254,9 @@ class MessageNotification(threadRecipient: Recipient, record: MessageRecord, val
       SpanUtil.italic(context.getString(getViewOnceDescription(record as MmsMessageRecord)))
     } else if (record.isRemoteDelete) {
       SpanUtil.italic(context.getString(R.string.MessageNotifier_this_message_was_deleted))
+    } else if (record.hasPinnedMessageUpdate()) {
+      // Tellomi (ADR-0081 §4.4): "×× pinned «…»".
+      TellomiPinNotice.describe(context, record)
     } else if (record.isMms && !record.isMmsNotification && (record as MmsMessageRecord).slideDeck.slides.isNotEmpty()) {
       ThreadBodyUtil.getFormattedBodyForNotification(context, record, getBodyWithMentionsAndStyles(context, record))
     } else if (record.isGroupCall) {

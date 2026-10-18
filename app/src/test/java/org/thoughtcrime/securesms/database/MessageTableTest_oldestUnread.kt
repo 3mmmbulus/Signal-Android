@@ -90,14 +90,15 @@ class MessageTableTest_oldestUnread {
     assertThat(messages.getOldestUnread(threadId)?.id).isEqualTo(incoming)
   }
 
+  /** Tellomi (ADR-0081 §4.4): "×× pinned «…»" counts as unread, as in Telegram — in the count and for the divider alike. */
   @Test
-  fun excludesPinnedMessagesToMatchUnreadCount() {
+  fun countsPinnedMessagesAsUnread() {
     val pinned = insertIncoming(time = 1000)
-    val normal = insertIncoming(time = 1001)
+    insertIncoming(time = 1001)
     setPinned(pinned)
 
-    assertThat(messages.getUnreadCount(threadId)).isEqualTo(1)
-    assertThat(messages.getOldestUnread(threadId)?.id).isEqualTo(normal)
+    assertThat(messages.getUnreadCount(threadId)).isEqualTo(2)
+    assertThat(messages.getOldestUnread(threadId)?.id).isEqualTo(pinned)
   }
 
   @Test
