@@ -41,4 +41,14 @@ class ConversationItemAnimatorSlideTest {
     // The removed row was 120 px tall: rows below keep their layout, the list moves up 120 px.
     assertEquals(120f, ConversationItemAnimator.slideStart(preTop = 1400, postTop = 1400, parentDelta = -120f), 0f)
   }
+
+  @Test
+  fun `a list moving down jumps in the same frame`() {
+    assertEquals(57f, ConversationItemAnimator.jumpingDelta(57f), 0f)
+  }
+
+  @Test
+  fun `a list moving up does not jump - it is eased with the rows`() {
+    assertEquals(0f, ConversationItemAnimator.jumpingDelta(-97f), 0f)
+  }
 }

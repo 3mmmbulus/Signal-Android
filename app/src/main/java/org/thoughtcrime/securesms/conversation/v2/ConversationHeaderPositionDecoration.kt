@@ -23,6 +23,12 @@ class ConversationHeaderPositionDecoration : RecyclerView.ItemDecoration() {
 
   var toolbarMargin: Int = 0
 
+  /**
+   * Tellomi (interaction audit A-05): held on top of the pinned translation while the list eases into place after the content
+   * of a short conversation shrank ([org.thoughtcrime.securesms.conversation.mutiselect.ConversationItemAnimator.ListTranslation]).
+   */
+  var easingOffset: Float = 0f
+
   override fun getItemOffsets(outRect: Rect, view: View, parent: RecyclerView, state: RecyclerView.State) {
     super.getItemOffsets(outRect, view, parent, state)
     if (view is ConversationHeaderView && !parent.canScrollVertically(1)) {
@@ -31,13 +37,13 @@ class ConversationHeaderPositionDecoration : RecyclerView.ItemDecoration() {
   }
 
   override fun onDraw(c: Canvas, parent: RecyclerView, state: RecyclerView.State) {
-    parent.translationY = targetTranslationY(parent)
+    parent.translationY = targetTranslationY(parent) + easingOffset
   }
 
   /**
-   * The translationY [onDraw] gives the list for its current layout. Tellomi (interaction audit A-05): the item animator
-   * reads it before the frame is drawn, so in a conversation too short to scroll the rows can start their slides from
-   * where they were on screen — the list's translation changes in the same frame as their layout.
+   * The translationY that pins the header for the list's current layout ([onDraw] adds [easingOffset]). Tellomi (interaction
+   * audit A-05): the item animator reads it before the frame is drawn, so in a conversation too short to scroll every row
+   * can move from where it was on screen — the list's translation changes together with the rows' layout.
    */
   fun targetTranslationY(parent: RecyclerView): Float {
     if (parent.canScrollVertically(1)) {

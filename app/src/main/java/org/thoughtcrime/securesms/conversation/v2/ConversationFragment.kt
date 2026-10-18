@@ -2655,13 +2655,24 @@ class ConversationFragment :
       shouldUseSlideAnimation = { viewHolder ->
         true
       },
-      // Tellomi (interaction audit A-05): in a short conversation the list moves itself to keep the header pinned; rows
-      // slide from where they were on screen instead of jumping.
-      parentTranslationDelta = {
-        if (::conversationHeaderPositionDecoration.isInitialized) {
-          conversationHeaderPositionDecoration.targetTranslationY(binding.conversationItemRecycler) - binding.conversationItemRecycler.translationY
-        } else {
-          0f
+      // Tellomi (interaction audit A-05): in a short conversation the list moves itself to keep the header pinned; every row
+      // moves from where it was on screen instead of jumping.
+      listTranslation = object : ConversationItemAnimator.ListTranslation {
+        private val recycler = binding.conversationItemRecycler
+
+        override fun pendingDelta(): Float {
+          return if (::conversationHeaderPositionDecoration.isInitialized) {
+            conversationHeaderPositionDecoration.targetTranslationY(recycler) - recycler.translationY
+          } else {
+            0f
+          }
+        }
+
+        override fun setEasingOffset(offset: Float) {
+          if (::conversationHeaderPositionDecoration.isInitialized) {
+            conversationHeaderPositionDecoration.easingOffset = offset
+            recycler.invalidate()
+          }
         }
       }
     )
