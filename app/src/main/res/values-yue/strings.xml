@@ -708,6 +708,20 @@
     <string name="TellomiPinnedBar__unpin_question">取消置頂呢條訊息？</string>
     <string name="TellomiPinnedBar__unpinned">已取消置頂</string>
     <string name="TellomiPinnedBar__hide">隱藏置頂訊息</string>
+    <!-- Tellomi (pinned-messages.md 3.5): title of the pinned messages list -->
+    <plurals name="TellomiPinnedList__n_pinned_messages">
+        <item quantity="other">%d 條置頂訊息</item>
+    </plurals>
+    <!-- Tellomi (pinned-messages.md 3.5): notice after "Unpin all" in the pinned list; has Undo for 5 seconds -->
+    <plurals name="TellomiPinnedList__n_messages_unpinned">
+        <item quantity="other">%d 條訊息已取消置頂</item>
+    </plurals>
+    <!-- Tellomi (pinned-messages.md 3.5): notice after "Hide pinned messages" in the pinned list; has Undo -->
+    <string name="TellomiPinnedList__hidden">置頂訊息已經隱藏，有新嘅置頂時會再顯示</string>
+    <!-- Tellomi (ADR-0081 §4.3, pinned-messages.md 3.5): under a message pinned for me only, in the pinned list -->
+    <string name="TellomiPinnedList__only_you_can_see">淨係自己睇到</string>
+    <!-- Tellomi (pinned-messages.md 3.5): button at the bottom of the pinned list -->
+    <string name="TellomiPinnedList__unpin_all">取消所有置頂</string>
     <!-- Dialog option to keep message pin for 24 hours -->
     <string name="ConversationFragment__24_hours">24 個鐘</string>
     <!-- Dialog option to keep message pin for 7 days -->

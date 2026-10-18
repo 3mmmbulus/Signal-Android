@@ -51,4 +51,12 @@ class TellomiPinChoiceTest {
     assertFalse(TellomiPinChoice.canUnpin(isPinnedForMe = false, canPinForEveryone = false, isInactiveGroup = false))
     assertFalse(TellomiPinChoice.canUnpin(isPinnedForMe = false, canPinForEveryone = true, isInactiveGroup = true))
   }
+
+  @Test
+  fun `the list unpins all only when every pin can be unpinned, otherwise it hides them here`() {
+    assertTrue(TellomiPinChoice.canUnpinAll(listOf(false, true), canPinForEveryone = true, isInactiveGroup = false))
+    assertTrue("all of them mine only", TellomiPinChoice.canUnpinAll(listOf(true, true), canPinForEveryone = false, isInactiveGroup = false))
+    assertFalse("someone else's pin without permission", TellomiPinChoice.canUnpinAll(listOf(true, false), canPinForEveryone = false, isInactiveGroup = false))
+    assertFalse(TellomiPinChoice.canUnpinAll(listOf(false), canPinForEveryone = true, isInactiveGroup = true))
+  }
 }

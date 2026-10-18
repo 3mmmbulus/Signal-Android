@@ -49,7 +49,10 @@ class PinnedMessagesRepository {
   }
 
   private fun getPinnedMessages(application: Application, threadId: Long): List<ConversationMessage> {
+    // Tellomi (pinned-messages.md 3.5): in the order the messages are in the chat (newest first for the upside-down list), the same
+    // order as the pinned bar.
     var records: List<MessageRecord> = getPinnedMessageRecords(threadId)
+      .sortedWith(compareByDescending<MessageRecord> { it.dateReceived }.thenByDescending { it.id })
 
     val reactionHelper = ReactionHelper()
     val attachmentHelper = AttachmentHelper()

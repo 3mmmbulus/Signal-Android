@@ -754,6 +754,22 @@
     <string name="TellomiPinnedBar__unpin_question">Unpin this message?</string>
     <string name="TellomiPinnedBar__unpinned">Message unpinned</string>
     <string name="TellomiPinnedBar__hide">Hide pinned messages</string>
+    <!-- Tellomi (pinned-messages.md 3.5): title of the pinned messages list -->
+    <plurals name="TellomiPinnedList__n_pinned_messages">
+        <item quantity="one">%d pinned message</item>
+        <item quantity="other">%d pinned messages</item>
+    </plurals>
+    <!-- Tellomi (pinned-messages.md 3.5): notice after "Unpin all" in the pinned list; has Undo for 5 seconds -->
+    <plurals name="TellomiPinnedList__n_messages_unpinned">
+        <item quantity="one">%d message unpinned</item>
+        <item quantity="other">%d messages unpinned</item>
+    </plurals>
+    <!-- Tellomi (pinned-messages.md 3.5): notice after "Hide pinned messages" in the pinned list; has Undo -->
+    <string name="TellomiPinnedList__hidden">Pinned messages hidden until a new message is pinned</string>
+    <!-- Tellomi (ADR-0081 §4.3, pinned-messages.md 3.5): under a message pinned for me only, in the pinned list -->
+    <string name="TellomiPinnedList__only_you_can_see">Only visible to you</string>
+    <!-- Tellomi (pinned-messages.md 3.5): button at the bottom of the pinned list -->
+    <string name="TellomiPinnedList__unpin_all">Unpin all messages</string>
     <!-- Dialog option to keep message pin for 24 hours -->
     <string name="ConversationFragment__24_hours">24 hours</string>
     <!-- Dialog option to keep message pin for 7 days -->

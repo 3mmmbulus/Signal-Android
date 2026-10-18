@@ -227,10 +227,11 @@ class ConversationViewModel(
   val tellomiPinnedForMeIds: StateFlow<Set<Long>> = internalTellomiPinnedForMeIds
 
   /**
-   * Tellomi (pinned-messages.md 3.6): unpins waiting out their 5 s "Message unpinned · Undo" — the bar leaves them out meanwhile,
-   * and the unpin only goes out once it wasn't undone (both Telegram apps defer it the same way). Any still waiting when this
-   * chat closes go out then.
+   * Tellomi (pinned-messages.md 3.5 / 3.6): unpins waiting out their 5 s "Undo", and the ones sent but not done yet — the bar
+   * leaves them out ([TellomiHeldUnpins]). The unpin only goes out once it wasn't undone (both Telegram apps defer it the same
+   * way); any still waiting when this chat closes go out then.
    */
+  private val tellomiHeld = TellomiHeldUnpins()
   private val internalTellomiHeldUnpins = MutableStateFlow<Set<Long>>(emptySet())
   val tellomiHeldUnpins: StateFlow<Set<Long>> = internalTellomiHeldUnpins
 
@@ -401,7 +402,11 @@ class ConversationViewModel(
       val threadRecipient = SignalDatabase.threads.getRecipientForThreadId(threadId)
       internalTellomiPinnedForMeIds.value = SignalDatabase.messages.tellomiPinnedForMeIds(threadId)
       // Tellomi (pinned-messages.md 3.4): in the order the messages are in the chat, oldest first, as in Telegram — not by pin time.
-      internalPinnedMessages.value = repository.getPinnedMessages(threadId)
+      val records = repository.getPinnedMessages(threadId)
+      // Tellomi (pinned-messages.md 3.6): an unpin that went out and is done no longer needs holding (a new pin of it shows again).
+      tellomiHeld.prune(records.mapTo(HashSet()) { it.id })
+      internalTellomiHeldUnpins.value = tellomiHeld.held
+      internalPinnedMessages.value = records
         .sortedWith(compareBy({ it.dateReceived }, { it.id }))
         .map {
           ConversationMessage.ConversationMessageFactory.createWithUnresolvedData(AppDependencies.application, it, threadRecipient!!)
@@ -420,13 +425,17 @@ class ConversationViewModel(
   }
 
   fun unpinMessage(messageId: Long): Completable {
-    return if (!NetworkUtil.isConnected(AppDependencies.application)) {
-      Completable.error(Exception("Connection required to unpin message"))
-    } else {
-      repository
-        .unpinMessage(messageId)
-        .observeOn(AndroidSchedulers.mainThread())
+    // Tellomi (ADR-0081 §4.3): a pin for me only is taken back on my own devices — without linked devices nothing is sent, so it
+    // needs no connection (with them, the send itself fails when offline).
+    return Completable.defer {
+      if (!NetworkUtil.isConnected(AppDependencies.application) && !SignalDatabase.messages.tellomiIsPinnedForMe(messageId)) {
+        Completable.error(Exception("Connection required to unpin message"))
+      } else {
+        repository.unpinMessage(messageId)
+      }
     }
+      .subscribeOn(Schedulers.io())
+      .observeOn(AndroidSchedulers.mainThread())
   }
 
   fun setMessageStarred(messageId: Long, starred: Boolean): Completable {
@@ -512,25 +521,36 @@ class ConversationViewModel(
   override fun onCleared() {
     disposables.clear()
     startExpiration.onComplete()
-    // Tellomi (pinned-messages.md 3.6): an unpin still waiting on its "Undo" goes out now that the chat is closed.
-    internalTellomiHeldUnpins.value.forEach { messageId ->
+    // Tellomi (pinned-messages.md 3.6): unpins still waiting on their "Undo" go out now that the chat is closed.
+    tellomiHeld.commitAll().forEach { messageId ->
       repository.unpinMessage(messageId).subscribe({}, { Log.w(TAG, "Couldn't unpin $messageId on leaving the chat.", it) })
     }
   }
 
-  /** Tellomi (pinned-messages.md 3.6): hold an unpin through its "Undo". */
-  fun tellomiHoldUnpin(messageId: Long) {
-    internalTellomiHeldUnpins.update { it + messageId }
+  /** Tellomi (pinned-messages.md 3.5 / 3.6): hold unpins through their "Undo" — off the bar meanwhile. */
+  fun tellomiHoldUnpins(messageIds: Collection<Long>) {
+    tellomiHeld.hold(messageIds)
+    internalTellomiHeldUnpins.value = tellomiHeld.held
   }
 
-  /** Tellomi (pinned-messages.md 3.6): let go of a held unpin; false if it wasn't held (already let go). */
-  fun tellomiReleaseUnpin(messageId: Long): Boolean {
-    val held = messageId in internalTellomiHeldUnpins.value
-    internalTellomiHeldUnpins.update { it - messageId }
-    return held
+  /** Tellomi (pinned-messages.md 3.5 / 3.6): "Undo" — the ones still waiting go back on the bar. */
+  fun tellomiUndoUnpins(messageIds: Collection<Long>) {
+    tellomiHeld.undo(messageIds)
+    internalTellomiHeldUnpins.value = tellomiHeld.held
   }
 
-  /** Tellomi (pinned-messages.md 3.4): hide the bar here until there's a newer pin than [newestPinId]. */
+  /** Tellomi (pinned-messages.md 3.5 / 3.6): the "Undo" ran out — returns the ones to send now (each only once). */
+  fun tellomiCommitUnpins(messageIds: Collection<Long>): Set<Long> {
+    return tellomiHeld.commit(messageIds)
+  }
+
+  /** Tellomi (pinned-messages.md 3.6): these couldn't be unpinned — back on the bar. */
+  fun tellomiUnpinsFailed(messageIds: Collection<Long>) {
+    tellomiHeld.failed(messageIds)
+    internalTellomiHeldUnpins.value = tellomiHeld.held
+  }
+
+  /** Tellomi (pinned-messages.md 3.4): hide the bar here until there's a newer pin than [newestPinId]; 0 shows it again. */
   fun tellomiHidePinnedBar(newestPinId: Long) {
     SignalStore.tellomiPinnedBar.hide(threadId, newestPinId)
     internalTellomiHiddenPin.value = newestPinId

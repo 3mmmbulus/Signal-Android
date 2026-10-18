@@ -12,7 +12,6 @@ import androidx.fragment.app.FragmentManager
 import androidx.fragment.app.viewModels
 import androidx.recyclerview.widget.RecyclerView
 import com.bumptech.glide.Glide
-import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import org.signal.core.ui.BottomSheetUtil
 import org.signal.core.ui.FixedRoundedCornerBottomSheetDialogFragment
 import org.signal.core.util.concurrent.LifecycleDisposable
@@ -22,6 +21,7 @@ import org.thoughtcrime.securesms.components.recyclerview.SmoothScrollingLinearL
 import org.thoughtcrime.securesms.conversation.colors.ColorizerV1
 import org.thoughtcrime.securesms.conversation.colors.RecyclerViewColorizer
 import org.thoughtcrime.securesms.conversation.mutiselect.MultiselectPart
+import org.thoughtcrime.securesms.conversation.v2.TellomiPinChoice
 import org.thoughtcrime.securesms.database.model.MessageRecord
 import org.thoughtcrime.securesms.database.model.MmsMessageRecord
 import org.thoughtcrime.securesms.dependencies.AppDependencies
@@ -37,10 +37,8 @@ import org.thoughtcrime.securesms.polls.PollOption
 import org.thoughtcrime.securesms.polls.PollRecord
 import org.thoughtcrime.securesms.recipients.Recipient
 import org.thoughtcrime.securesms.recipients.RecipientId
-import org.thoughtcrime.securesms.util.NetworkUtil
 import org.thoughtcrime.securesms.util.StickyHeaderDecoration
 import org.thoughtcrime.securesms.util.fragments.findListener
-import org.thoughtcrime.securesms.util.visible
 import java.util.Locale
 
 /**
@@ -65,6 +63,7 @@ class PinnedMessagesBottomSheet : FixedRoundedCornerBottomSheetDialogFragment() 
 
   /** Tellomi (ADR-0081 §4.3): pins for me only — those can be unpinned here without group permission. */
   private var tellomiPinnedForMeIds: Set<Long> = emptySet()
+  private var tellomiMessages: List<ConversationMessage> = emptyList()
 
   override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View {
     val view = inflater.inflate(R.layout.pinned_messages_bottom_sheet, container, false)
@@ -94,12 +93,22 @@ class PinnedMessagesBottomSheet : FixedRoundedCornerBottomSheetDialogFragment() 
       }
     }
 
+    // Tellomi (pinned-messages.md 3.5): "Only visible to you" under the pins for me only.
+    list.addItemDecoration(TellomiPinnedForMeLabelDecoration(requireContext(), messageAdapter::getConversationMessage) { it in tellomiPinnedForMeIds })
+
     val recyclerViewColorizer = RecyclerViewColorizer(list)
+    val header = view.findViewById<TextView>(R.id.pinned_message_header)
+    val unpinAll = view.findViewById<TextView>(R.id.unpin_all)
 
     disposables += viewModel.getMessages().subscribe { messages ->
       if (messages.isEmpty()) {
         dismiss()
       }
+
+      // Tellomi (pinned-messages.md 3.5): "N pinned messages", as in both Telegram apps.
+      tellomiMessages = messages
+      header.text = resources.getQuantityString(R.plurals.TellomiPinnedList__n_pinned_messages, messages.size, messages.size)
+      tellomiUpdateUnpinAll(unpinAll)
 
       val currentMessages = messageAdapter.currentList
       if (currentMessages != messages) {
@@ -112,7 +121,11 @@ class PinnedMessagesBottomSheet : FixedRoundedCornerBottomSheetDialogFragment() 
       recyclerViewColorizer.setChatColors(conversationRecipient.chatColors)
     }
 
-    disposables += viewModel.getPinnedForMeIds().subscribe { tellomiPinnedForMeIds = it }
+    disposables += viewModel.getPinnedForMeIds().subscribe {
+      tellomiPinnedForMeIds = it
+      tellomiUpdateUnpinAll(unpinAll)
+      list.invalidateItemDecorations()
+    }
 
     disposables += viewModel.getNameColorsMap().subscribe { map ->
       colorizer.onNameColorsChanged(map)
@@ -121,31 +134,31 @@ class PinnedMessagesBottomSheet : FixedRoundedCornerBottomSheetDialogFragment() 
 
     initializeGiphyMp4(view.findViewById(R.id.video_container)!!, list)
 
-    val unpinAll = view.findViewById<TextView>(R.id.unpin_all)
+    // Tellomi (pinned-messages.md 3.5, as in both Telegram apps): no question — the list closes and the chat shows
+    // "N messages unpinned · Undo" for 5 s before the unpins go out; someone who may not unpin them hides them here instead.
     unpinAll.setOnClickListener {
-      MaterialAlertDialogBuilder(requireContext())
-        .setTitle(R.string.PinnedMessage__unpin_title)
-        .setMessage(getString(R.string.PinnedMessage__unpin_body))
-        .setPositiveButton(R.string.PinnedMessage__unpin) { dialog, which ->
-          if (NetworkUtil.isConnected(requireContext())) {
-            viewModel.unpinMessage()
-            dismissAllowingStateLoss()
-          } else {
-            showNetworkErrorDialog()
-          }
-        }
-        .setNegativeButton(android.R.string.cancel) { dialog, which -> dialog.dismiss() }
-        .show()
+      val messageIds = tellomiMessages.map { it.messageRecord.id }
+      val canUnpinAll = tellomiCanUnpinAll()
+      dismissAllowingStateLoss()
+      if (canUnpinAll) {
+        getCallback().tellomiUnpinAll(messageIds)
+      } else {
+        getCallback().tellomiHidePinnedMessages()
+      }
     }
-    unpinAll.visible = requireArguments().getBoolean(KEY_CAN_UNPIN)
   }
 
-  private fun showNetworkErrorDialog() {
-    MaterialAlertDialogBuilder(requireContext())
-      .setTitle(R.string.PinnedMessage__couldnt_unpin_all)
-      .setMessage(getString(R.string.PinnedMessage__check_connection))
-      .setPositiveButton(android.R.string.ok, null)
-      .show()
+  /** Tellomi (pinned-messages.md 3.5): every pin here can be unpinned — otherwise the button hides them on this device. */
+  private fun tellomiCanUnpinAll(): Boolean {
+    return TellomiPinChoice.canUnpinAll(
+      pinnedForMe = tellomiMessages.map { it.messageRecord.id in tellomiPinnedForMeIds },
+      canPinForEveryone = requireArguments().getBoolean(KEY_CAN_UNPIN),
+      isInactiveGroup = false
+    )
+  }
+
+  private fun tellomiUpdateUnpinAll(unpinAll: TextView) {
+    unpinAll.setText(if (tellomiCanUnpinAll()) R.string.TellomiPinnedList__unpin_all else R.string.TellomiPinnedBar__hide)
   }
 
   private fun initializeGiphyMp4(videoContainer: ViewGroup, list: RecyclerView): GiphyMp4ProjectionRecycler {

@@ -4,19 +4,12 @@ import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
-import androidx.lifecycle.viewModelScope
 import io.reactivex.rxjava3.android.schedulers.AndroidSchedulers
 import io.reactivex.rxjava3.core.Observable
 import io.reactivex.rxjava3.schedulers.Schedulers
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.launch
 import org.signal.core.util.logging.Log
 import org.thoughtcrime.securesms.conversation.colors.GroupAuthorNameColorHelper
 import org.thoughtcrime.securesms.conversation.colors.NameColor
-import org.thoughtcrime.securesms.conversation.v2.TellomiPinForMe
-import org.thoughtcrime.securesms.database.SignalDatabase
-import org.thoughtcrime.securesms.dependencies.AppDependencies
-import org.thoughtcrime.securesms.jobs.UnpinMessageJob
 import org.thoughtcrime.securesms.recipients.Recipient
 import org.thoughtcrime.securesms.recipients.RecipientId
 
@@ -62,29 +55,6 @@ class PinnedMessagesViewModel(
       }
       .subscribeOn(Schedulers.io())
       .observeOn(AndroidSchedulers.mainThread())
-  }
-
-  fun unpinMessage() {
-    viewModelScope.launch(Dispatchers.Default) {
-      repository.getPinnedMessageRecords(threadId).map {
-        // Tellomi (ADR-0081 §4.3): a pin for me only is taken back on my own devices; only ordinary pins go out as unpins.
-        if (SignalDatabase.messages.tellomiIsPinnedForMe(it.id)) {
-          try {
-            TellomiPinForMe.unpin(it.id)
-          } catch (e: Exception) {
-            Log.w(TAG, "Unable to unpin message ${it.id} for me.", e)
-          }
-          return@map
-        }
-
-        val unpinJob = UnpinMessageJob.create(messageId = it.id)
-        if (unpinJob != null) {
-          AppDependencies.jobManager.add(unpinJob)
-        } else {
-          Log.w(TAG, "Unable to create unpin job for message ${it.id}, ignoring.")
-        }
-      }
-    }
   }
 
   class Factory(private val application: Application, private val threadId: Long, private val conversationRecipientId: RecipientId) : ViewModelProvider.NewInstanceFactory() {

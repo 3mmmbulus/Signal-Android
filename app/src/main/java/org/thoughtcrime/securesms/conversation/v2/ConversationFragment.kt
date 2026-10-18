@@ -1238,6 +1238,28 @@ class ConversationFragment :
     tellomiUnpinWithUndo(conversationMessage.messageRecord.id)
   }
 
+  /** Tellomi (pinned-messages.md 3.5): "Unpin all" in the pinned list — no question, then "N messages unpinned · Undo" here. */
+  override fun tellomiUnpinAll(messageIds: List<Long>) {
+    if (messageIds.isEmpty()) {
+      return
+    }
+    tellomiUnpinWithUndo(messageIds, resources.getQuantityString(R.plurals.TellomiPinnedList__n_messages_unpinned, messageIds.size, messageIds.size))
+  }
+
+  /**
+   * Tellomi (pinned-messages.md 3.5): "Hide pinned messages" in the pinned list, for someone who may not unpin them — the bar is
+   * hidden here until there's a newer pin, with Undo (both Telegram apps: Android `onUnpin(true, hide)`, iOS
+   * `performUpdatedClosedPinnedMessageId`).
+   */
+  override fun tellomiHidePinnedMessages() {
+    val newestPinId = tellomiPinnedBarPins.lastOrNull()?.messageRecord?.id ?: return
+    val hiddenBefore = viewModel.tellomiHiddenPin.value
+    viewModel.tellomiHidePinnedBar(newestPinId)
+    TellomiBulletin.show(binding.tellomiBulletinHost, getString(R.string.TellomiPinnedList__hidden), TELLOMI_UNPIN_UNDO_MS, getString(R.string.ConversationListFragment_undo)) {
+      viewModel.tellomiHidePinnedBar(hiddenBefore)
+    }
+  }
+
   override fun copy(conversationMessage: ConversationMessage) {
     handleCopyMessage(conversationMessage.multiselectCollection.toSet())
   }
@@ -1952,23 +1974,53 @@ class ConversationFragment :
     tellomiNewestVisibleDate = newest
   }
 
-  /**
-   * Tellomi (pinned-messages.md 3.6): unpin with "Message unpinned · Undo" for 5 s; the unpin goes out when it isn't undone
-   * (both Telegram apps defer it the same way). If this chat closes first, the view model sends it.
-   */
   private fun tellomiUnpinWithUndo(messageId: Long) {
-    viewModel.tellomiHoldUnpin(messageId)
-    Snackbar.make(binding.conversationItemRecycler, R.string.TellomiPinnedBar__unpinned, TELLOMI_UNPIN_UNDO_MS)
-      .setAnchorView(binding.conversationInputPanel.root)
-      .setAction(R.string.ConversationListFragment_undo) { viewModel.tellomiReleaseUnpin(messageId) }
-      .addCallback(object : BaseTransientBottomBar.BaseCallback<Snackbar>() {
-        override fun onDismissed(transientBottomBar: Snackbar?, event: Int) {
-          if (event != DISMISS_EVENT_ACTION && isAdded && viewModel.tellomiReleaseUnpin(messageId)) {
-            handleUnpinMessage(messageId)
-          }
+    tellomiUnpinWithUndo(listOf(messageId), getString(R.string.TellomiPinnedBar__unpinned))
+  }
+
+  /**
+   * Tellomi (pinned-messages.md 3.5 / 3.6): unpin with "[text] · Undo" for 5 s in the chat's notice above the composer (A-30); the
+   * unpins go out when they aren't undone (both Telegram apps defer them the same way) and stay off the bar until they're done
+   * ([TellomiHeldUnpins]). If this chat closes first, the view model sends them.
+   */
+  private fun tellomiUnpinWithUndo(messageIds: List<Long>, text: String) {
+    viewModel.tellomiHoldUnpins(messageIds)
+    TellomiBulletin.show(binding.tellomiBulletinHost, text, TELLOMI_UNPIN_UNDO_MS, getString(R.string.ConversationListFragment_undo)) {
+      viewModel.tellomiUndoUnpins(messageIds)
+    }.addCallback(object : BaseTransientBottomBar.BaseCallback<Snackbar>() {
+      override fun onDismissed(transientBottomBar: Snackbar?, event: Int) {
+        if (event == DISMISS_EVENT_ACTION || !isAdded) {
+          return
+        }
+        val toSend = viewModel.tellomiCommitUnpins(messageIds)
+        if (toSend.isNotEmpty()) {
+          tellomiSendUnpins(toSend)
+        }
+      }
+    })
+  }
+
+  /**
+   * Tellomi (pinned-messages.md 3.6): send the unpins without holding up the chat (the bar already left them out); one that
+   * doesn't go out comes back on the bar, with Signal's "couldn't unpin" once. Not tied to this screen, so leaving the chat
+   * doesn't cut them off.
+   */
+  private fun tellomiSendUnpins(messageIds: Set<Long>) {
+    var toldUser = false
+    messageIds.forEach { messageId ->
+      viewModel.unpinMessage(messageId).subscribe({}, {
+        Log.w(TAG, "Error received during unpin message!", it)
+        viewModel.tellomiUnpinsFailed(listOf(messageId))
+        if (!toldUser && isAdded) {
+          toldUser = true
+          MaterialAlertDialogBuilder(requireContext())
+            .setTitle(if (messageIds.size == 1) R.string.PinnedMessage__couldnt_unpin else R.string.PinnedMessage__couldnt_unpin_all)
+            .setMessage(getString(R.string.PinnedMessage__check_connection))
+            .setPositiveButton(android.R.string.ok, null)
+            .show()
         }
       })
-      .show()
+    }
   }
 
   private fun presentTypingIndicator() {
@@ -6343,7 +6395,8 @@ class ConversationFragment :
         childFragmentManager,
         threadId = args.threadId,
         conversationRecipientId = viewModel.recipientSnapshot?.id!!,
-        canUnpin = conversationGroupViewModel.canEditGroupInfo()
+        // Tellomi (ADR-0081 §4.3): permission for everyone's pins; pins for me only can always be unpinned (the sheet checks those).
+        canUnpin = conversationGroupViewModel.canEditGroupInfo() && viewModel.recipientSnapshot?.isInactiveGroup != true
       )
     }
   }
