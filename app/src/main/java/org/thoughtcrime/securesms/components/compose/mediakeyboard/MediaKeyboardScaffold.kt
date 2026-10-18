@@ -6,6 +6,7 @@
 package org.thoughtcrime.securesms.components.compose.mediakeyboard
 
 import androidx.activity.compose.PredictiveBackHandler
+import androidx.annotation.VisibleForTesting
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.FastOutLinearInEasing
 import androidx.compose.animation.core.Spring
@@ -43,11 +44,13 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.MotionDurationScale
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.takeOrElse
 import androidx.compose.ui.layout.layout
+import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalResources
@@ -58,7 +61,9 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.dropWhile
 import kotlinx.coroutines.flow.filter
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import org.signal.core.ui.compose.navigationBarsCompat
 import org.signal.core.ui.compose.safeDrawingCompat
 import org.signal.core.ui.compose.systemBarsCompat
@@ -131,6 +136,12 @@ fun MediaKeyboardScaffold(
   // the live inset walks through are not each a recomposition.
   val systemKeyboardAnimating by remember(imeInsets, imeAnimationTarget, density) {
     derivedStateOf { imeInsets.getBottom(density) != imeAnimationTarget.getBottom(density) }
+  }
+
+  // Tellomi (interaction audit A-35): whether the system keyboard takes any of the screen right now, coming, going or up.
+  // Derived, like the above, so the frames the live inset walks through are not each a recomposition.
+  val systemKeyboardOnScreen by remember(imeInsets, density) {
+    derivedStateOf { imeInsets.getBottom(density) > 0 }
   }
 
   SideEffect {
@@ -213,19 +224,39 @@ fun MediaKeyboardScaffold(
   // This just makes sure the previously visible state doesn't go away too early while we're mid swap.
   var visibleKey by remember { mutableStateOf<MediaKeyboardKey?>(null) }
 
+  // Tellomi (interaction audit A-35): set while a keyboard of ours opens from nothing, see [claimedKeyboardSpacePx].
+  var followSheet by remember { mutableStateOf(false) }
+
   LaunchedEffect(activeKey) {
     if (activeKey != null) {
       if (visibleKey != null && visibleKey != activeKey) {
         onEvent(MediaKeyboardEvents.KeyboardHidden)
       }
 
+      // Taking over from the system keyboard: in place at once, for the keyboard to slide away over it (both Telegram apps show
+      // the panel without animating it when the keyboard is up). From nothing on screen, the space opens with the sheet.
+      val swappingInForSystemKeyboard = visibleKey == null && (systemKeyboardOnScreen || controller.awaitingSystemKeyboard)
+      followSheet = visibleKey == null && !swappingInForSystemKeyboard
       visibleKey = activeKey
       backProgress.snapTo(0f)
-      sheetState.expand()
+      if (swappingInForSystemKeyboard) {
+        withContext(InstantMotion) { sheetState.expand() }
+      } else {
+        sheetState.expand()
+      }
+      followSheet = false
       onEvent(MediaKeyboardEvents.KeyboardShown(activeKey))
     } else if (visibleKey != null) {
-      // A gesture may already have carried it off screen; hold that until the hide completes.
-      sheetState.hide()
+      if (controller.awaitingSystemKeyboard) {
+        // Tellomi (A-35): put away for the system keyboard, it stays where it is until the keyboard is up over it, then goes at
+        // once; sliding away first left the space empty until the keyboard arrived (Telegram Android keeps its panel for the
+        // keyboard to open over, `showPopup(2, …)`).
+        snapshotFlow { controller.awaitingSystemKeyboard }.first { awaiting -> !awaiting }
+        withContext(InstantMotion) { sheetState.hide() }
+      } else {
+        // A gesture may already have carried it off screen; hold that until the hide completes.
+        sheetState.hide()
+      }
       backProgress.snapTo(0f)
       visibleKey = null
       onEvent(MediaKeyboardEvents.KeyboardHidden)
@@ -249,14 +280,26 @@ fun MediaKeyboardScaffold(
   val systemKeyboardTakingOverSpace = activeKey == null &&
     (controller.awaitingSystemKeyboard || (systemKeyboardVisible && systemKeyboardAnimating))
 
+  // Tellomi (interaction audit A-35): how much of our keyboard's sheet is on screen while it slides; null before it has been
+  // laid out. The sheet's offset is from the top of the scaffold.
+  var scaffoldHeightPx by remember { mutableIntStateOf(0) }
+  val sheetShowingPx: () -> Int? = {
+    val offset = if (scaffoldHeightPx > 0) runCatching { sheetState.requireOffset() }.getOrNull() else null
+    offset?.let { (scaffoldHeightPx - it).roundToInt().coerceIn(0, heightPx) }
+  }
+
   val claimedBottomPx = {
-    if (activeKey != null) {
-      (heightPx * (1f - backProgress.value)).roundToInt().coerceAtLeast(0)
-    } else if (systemKeyboardTakingOverSpace) {
-      heightPx
-    } else {
-      0
-    }
+    // Also before the effect above has run, so the first frame of an opening from nothing already follows the sheet.
+    val openingFromNothing = activeKey != null && visibleKey == null && !systemKeyboardOnScreen && !controller.awaitingSystemKeyboard
+    claimedKeyboardSpacePx(
+      requested = activeKey != null,
+      showing = visibleKey != null,
+      followSheet = followSheet || openingFromNothing,
+      systemKeyboardTakingOverSpace = systemKeyboardTakingOverSpace,
+      heightPx = heightPx,
+      sheetShowingPx = sheetShowingPx,
+      backProgress = backProgress.value
+    )
   }
 
   var ancestorConsumedBottomPx by remember { mutableIntStateOf(0) }
@@ -268,7 +311,7 @@ fun MediaKeyboardScaffold(
     WindowInsets.systemBarsCompat.add(WindowInsets.displayCutout)
   }
 
-  Box(modifier = modifier.fillMaxSize()) {
+  Box(modifier = modifier.fillMaxSize().onSizeChanged { scaffoldHeightPx = it.height }) {
     BottomSheetScaffold(
       scaffoldState = scaffoldState,
       sheetPeekHeight = 0.dp,
@@ -313,6 +356,45 @@ fun MediaKeyboardScaffold(
       }
     }
   }
+}
+
+/** Tellomi (interaction audit A-35): runs Compose animations in its context straight to their end. */
+private object InstantMotion : MotionDurationScale {
+  override val scaleFactor: Float = 0f
+}
+
+/**
+ * How much of the bottom of the window our keyboard takes from the content.
+ *
+ * Tellomi (interaction audit A-35): opening from nothing or closing to nothing, the space follows the sheet as it slides, so the
+ * input bar rides on its top edge, as both Telegram apps move the input panel together with the emoji panel. Claimed all at once,
+ * the bar jumped up and left a gap for the sheet to fill (and dropped over a sheet still sliding away). Swapping with the system
+ * keyboard still claims the whole height at once: the keyboard going away holds that space meanwhile.
+ *
+ * @param requested A keyboard of ours is asked for.
+ * @param showing A keyboard of ours is still on screen (it may be sliding away).
+ * @param followSheet The requested keyboard is opening from nothing.
+ * @param sheetShowingPx How much of the sheet is on screen; null before it has been laid out.
+ * @param backProgress How far a back gesture has carried the keyboard off.
+ */
+@VisibleForTesting
+internal fun claimedKeyboardSpacePx(
+  requested: Boolean,
+  showing: Boolean,
+  followSheet: Boolean,
+  systemKeyboardTakingOverSpace: Boolean,
+  heightPx: Int,
+  sheetShowingPx: () -> Int?,
+  backProgress: Float
+): Int {
+  val claimedPx = when {
+    requested -> if (followSheet) sheetShowingPx() ?: heightPx else heightPx
+    systemKeyboardTakingOverSpace -> return heightPx
+    showing -> sheetShowingPx() ?: 0
+    else -> 0
+  }
+
+  return (claimedPx * (1f - backProgress)).roundToInt().coerceAtLeast(0)
 }
 
 /**
