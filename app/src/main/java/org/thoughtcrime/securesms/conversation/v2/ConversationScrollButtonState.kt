@@ -13,8 +13,12 @@ data class ConversationScrollButtonState(
   val showScrollButtonsForScrollPosition: Boolean = false,
   val willScrollToBottomOnNewMessage: Boolean = true,
   val unreadCount: Int = 0,
-  val hasMentions: Boolean = false
+  /** Tellomi (chat-telegram-parity F02): unread @mentions, shown on the mention button like both Telegram apps. */
+  val mentionCount: Int = 0
 ) {
+  val hasMentions: Boolean
+    get() = mentionCount > 0
+
   val showScrollButtons: Boolean
     get() = !hideScrollButtonsForReactionOverlay && (showScrollButtonsForScrollPosition || (!willScrollToBottomOnNewMessage && unreadCount > 0))
 }

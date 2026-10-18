@@ -298,7 +298,7 @@ class ConversationViewModel(
     ) { counts, state ->
       state.copy(
         unreadCount = counts.unread,
-        hasMentions = counts.mentions != 0
+        mentionCount = counts.mentions
       )
     }
 
