@@ -13,6 +13,8 @@ import android.graphics.ColorFilter
 import android.graphics.Paint
 import android.graphics.PixelFormat
 import android.graphics.drawable.Drawable
+import android.os.SystemClock
+import android.view.Choreographer
 import android.view.View
 import android.view.animation.LinearInterpolator
 import kotlin.math.PI
@@ -110,6 +112,50 @@ object TellomiReactionBurst {
       })
       start()
     }
+  }
+
+  /**
+   * Tellomi（C-01 双击回应，owner 2026-10-18）：等 [findTarget]（胶囊里那个表情）画出来，在它中心播一次；每帧找一次，
+   * [waitMs] 内没找到就算了（写失败、消息滚走）。双击回应不飞：Telegram 两端也是等回应加到消息上再在回应按钮上播
+   * （iOS `awaitingAppliedReaction` → `StandaloneReactionAnimation`，安卓发出后 `ReactionsEffectOverlay.SHORT_ANIMATION`）。
+   */
+  @JvmStatic
+  fun playWhenShown(host: View, emoji: Drawable, ringColor: Int, waitMs: Long, findTarget: () -> View?) {
+    val startedAt = SystemClock.uptimeMillis()
+    Choreographer.getInstance().postFrameCallback(object : Choreographer.FrameCallback {
+      override fun doFrame(frameTimeNanos: Long) {
+        if (!host.isAttachedToWindow || SystemClock.uptimeMillis() - startedAt > waitMs) {
+          return
+        }
+        val target = findTarget()?.takeIf { it.isAttachedToWindow && it.isLaidOut && it.width > 0 && it.height > 0 && it.isShown }
+        if (target == null) {
+          Choreographer.getInstance().postFrameCallback(this)
+          return
+        }
+        val hostOrigin = IntArray(2).also { host.getLocationInWindow(it) }
+        val location = IntArray(2).also { target.getLocationInWindow(it) }
+        // 胶囊刚弹出时整颗在缩放：getLocationInWindow 给的是缩放后的左上角，中心要按缩放算；大小取它停下来的大小。
+        val scale = target.matrixScale()
+        play(
+          host = host,
+          emoji = emoji,
+          centerX = location[0] - hostOrigin[0] + target.width * scale / 2f,
+          centerY = location[1] - hostOrigin[1] + target.height * scale / 2f,
+          emojiSize = minOf(target.width, target.height).toFloat(),
+          ringColor = ringColor
+        )
+      }
+    })
+  }
+
+  private fun View.matrixScale(): Float {
+    var scale = scaleX
+    var parent = parent
+    while (parent is View) {
+      scale *= parent.scaleX
+      parent = parent.parent
+    }
+    return scale
   }
 
   /** 0–1 段内的线性插值，[keyTimes] 递增。 */

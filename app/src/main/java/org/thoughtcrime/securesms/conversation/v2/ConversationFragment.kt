@@ -131,6 +131,7 @@ import org.signal.core.ui.compose.theme.SignalTheme
 import org.signal.core.ui.getWindowSizeClass
 import org.signal.core.ui.isSplitPane
 import org.signal.core.ui.logging.LoggingFragment
+import org.signal.core.ui.motion.TellomiHaptics
 import org.signal.core.ui.motion.TellomiMotion
 import org.signal.core.ui.permissions.Permissions
 import org.signal.core.ui.view.Stub
@@ -235,6 +236,7 @@ import org.thoughtcrime.securesms.conversation.MessageSendType
 import org.thoughtcrime.securesms.conversation.MessageStyler.getStyling
 import org.thoughtcrime.securesms.conversation.PinnedMessagesBottomSheet
 import org.thoughtcrime.securesms.conversation.ReactionAction
+import org.thoughtcrime.securesms.conversation.ReactionMenu
 import org.thoughtcrime.securesms.conversation.ReenableScheduledMessagesDialogFragment
 import org.thoughtcrime.securesms.conversation.ScheduleMessageContextMenu
 import org.thoughtcrime.securesms.conversation.ScheduleMessageDialogCallback
@@ -319,6 +321,7 @@ import org.thoughtcrime.securesms.keyboard.emoji.search.EmojiSearchFragment
 import org.thoughtcrime.securesms.keyboard.gif.GifKeyboardPageFragment
 import org.thoughtcrime.securesms.keyboard.sticker.StickerKeyboardPageFragment
 import org.thoughtcrime.securesms.keyboard.sticker.StickerSearchDialogFragment
+import org.thoughtcrime.securesms.keyvalue.EmojiValues
 import org.thoughtcrime.securesms.keyvalue.SignalStore
 import org.thoughtcrime.securesms.linkpreview.LinkPreview
 import org.thoughtcrime.securesms.linkpreview.LinkPreviewViewModelV2
@@ -364,6 +367,7 @@ import org.thoughtcrime.securesms.ratelimit.RecaptchaProofBottomSheetFragment
 import org.thoughtcrime.securesms.ratelimit.RecaptchaRequiredEvent
 import org.thoughtcrime.securesms.reactions.ReactionsBottomSheetDialogFragment
 import org.thoughtcrime.securesms.reactions.ReactionsConversationView
+import org.thoughtcrime.securesms.reactions.TellomiReactionBurst
 import org.thoughtcrime.securesms.reactions.TellomiReactionFlyIn
 import org.thoughtcrime.securesms.reactions.any.ReactWithAnyEmojiBottomSheetDialogFragment
 import org.thoughtcrime.securesms.recipients.Recipient
@@ -4247,7 +4251,49 @@ class ConversationFragment :
 
     override fun onItemDoubleClick(item: MultiselectPart) {
       Log.d(TAG, "onItemDoubleClick")
-      onDoubleTapToEdit(item.conversationMessage)
+      // Tellomi（owner 2026-09-24 C-01；10-18 真机「双击对方消息也无法回复表情」）：双击别人的消息 = 快速回应，
+      // 双击自己的消息照旧是上游的编辑。见 [TellomiQuickReaction]。
+      if (TellomiQuickReaction.reactsOnDoubleTap(isOutgoing = item.conversationMessage.messageRecord.isOutgoing)) {
+        onDoubleTapToReact(item.conversationMessage)
+      } else {
+        onDoubleTapToEdit(item.conversationMessage)
+      }
+    }
+
+    /**
+     * Tellomi（C-01）：用回应条上第一个表情回应，已经是它就撤回。能不能回应和长按出回应条同一套条件
+     * （[onItemLongClick] 和 [MenuState] 的 `shouldShowReactions`）。
+     */
+    private fun onDoubleTapToReact(conversationMessage: ConversationMessage) {
+      val messageRecord = conversationMessage.messageRecord
+      if (!canQuickReact(messageRecord)) {
+        return
+      }
+
+      val quickEmoji = TellomiQuickReaction.quickEmoji(
+        saved = SignalStore.emoji.reactions,
+        defaults = EmojiValues.DEFAULT_REACTIONS_LIST,
+        preferredVariation = SignalStore.emoji::getPreferredVariation
+      ) ?: return
+      val choice = TellomiQuickReaction.choose(quickEmoji, ReactionMenu.appliedEmoji(messageRecord), EmojiUtil::isCanonicallyEqual)
+
+      if (!choice.isRemoving) {
+        TellomiHaptics.perform(binding.root, TellomiHaptics.Event.SELECTION_TICK)
+        startQuickReactionBurst(messageRecord.id, choice.emoji)
+      }
+      announceReaction(messageRecord, choice.emoji)
+      disposables += viewModel.updateReaction(messageRecord, choice.emoji).subscribe()
+    }
+
+    private fun canQuickReact(messageRecord: MessageRecord): Boolean {
+      val recipient = viewModel.recipientSnapshot ?: return false
+      return !messageRecord.isInMemoryMessageRecord &&
+        messageRecord.isValidReactionTarget() &&
+        !recipient.isBlocked &&
+        !recipient.isReleaseNotes &&
+        !viewModel.hasMessageRequestState &&
+        (!recipient.isGroup || recipient.isActiveGroup) &&
+        adapter.selectedItems.isEmpty()
     }
 
     private fun onDoubleTapToEdit(conversationMessage: ConversationMessage) {
@@ -5158,6 +5204,25 @@ class ConversationFragment :
       drawable = EmojiProvider.getEmojiDrawable(requireContext(), emoji, true),
       sourceInWindow = source,
       isReadyToLand = { !reactionOverlay.isShowing },
+      findTarget = { findReactionPillEmoji(messageId, emoji) }
+    )
+  }
+
+  /**
+   * Tellomi（C-01 双击回应）：不飞，回应在胶囊里画出来时在那个表情上爆开一下，和从条上选时落地那一下同一个
+   * [TellomiReactionBurst]。只在完整档（和飞入一样）。
+   */
+  private fun startQuickReactionBurst(messageId: Long, emoji: String) {
+    if (!TellomiMotion.allowsFlourish(TellomiMotion.tier(requireContext()))) {
+      return
+    }
+
+    val particle = EmojiProvider.getEmojiDrawable(requireContext(), EmojiUtil.getCanonicalRepresentation(emoji), true) ?: return
+    TellomiReactionBurst.playWhenShown(
+      host = requireActivity().window.decorView,
+      emoji = particle,
+      ringColor = ContextCompat.getColor(requireContext(), CoreUiR.color.signal_colorOnSurfaceVariant),
+      waitMs = TellomiQuickReaction.BURST_WAIT_MS,
       findTarget = { findReactionPillEmoji(messageId, emoji) }
     )
   }
