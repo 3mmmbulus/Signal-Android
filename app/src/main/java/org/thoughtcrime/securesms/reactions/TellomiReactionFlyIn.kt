@@ -10,6 +10,7 @@ import android.graphics.drawable.Drawable
 import android.os.SystemClock
 import android.view.Choreographer
 import android.view.View
+import androidx.compose.animation.core.CubicBezierEasing
 import androidx.core.content.ContextCompat
 import androidx.dynamicanimation.animation.FloatValueHolder
 import androidx.dynamicanimation.animation.SpringAnimation
@@ -18,24 +19,28 @@ import org.signal.core.ui.motion.TellomiHaptics
 import org.signal.core.ui.motion.TellomiMotion
 import org.signal.emoji.EmojiProvider
 import java.lang.ref.WeakReference
-import kotlin.math.abs
-import kotlin.math.hypot
 import kotlin.math.roundToInt
 import org.signal.core.ui.R as CoreUiR
 
 /**
- * Tellomi（交互审计 A-07 Android 半边；owner 2026-09-26 定「两端都飞」）：回应条上选中的表情飞到消息下方胶囊里的同一个表情上。
+ * Tellomi（交互审计 A-07 Android 半边；owner 2026-09-26 定「两端都飞」，10-18「一比一复刻 Telegram 的这个动效」）：
+ * 回应条上选中的表情飞到消息下方胶囊里的同一个表情上。
  *
- * 和 iOS `ReactionFlyIn`（Signal-iOS#79）同一套手感：
- * - 选中时表情在原处「拿起来」（放大到 [LIFT_SCALE]）；
- * - 等长按菜单收完（[isReadyToLand]）、胶囊画出来（[findTarget] 找得到）再起飞：横向临界阻尼的 Snap，纵向 Large，目标在下面够远时
- *   带一点向上的初速 [TOSS_SPEED_DP]——横向先到、纵向后落，就是一道弧线；
- * - 落到比胶囊里的字大 [LANDING_OVERSHOOT] 倍，再用 Emphasis 弹回原大小，换成胶囊里真的那个字，轻触一下；
- * - 飞行期间胶囊里的那个字一直藏着（[ReactionsConversationView] 问 [isAwaitingLanding]），一帧都不先露；
- * - 等不到落点（写失败、消息滚走、表情并进了「+N」）就原地淡出，藏着的字放回来。
+ * 飞法照 Telegram 安卓 `ReactionsEffectOverlay` 的 `ONLY_MOVE_ANIMATION`（从条上选回应时用的那一种；只取数，没搬代码）：
+ * - 按帧推进：每帧进度 + 16 / 350（[FRAME_STEP]），60 Hz 屏上 350 ms、120 Hz 屏上约 180 ms——Telegram 就是这样按帧加的，
+ *   而且把那一层的刷新率设成屏幕最高，所以同一台手机上和它一样快；
+ * - 进度先过一道 `DEFAULT`（cubic-bezier 0.25, 0.1, 0.25, 1），横向再过 `EASE_OUT_QUINT`（0.23, 1, 0.32, 1），
+ *   纵向再过一道 `DEFAULT`——横向先到、纵向后落，就是那道弧线；
+ * - 表情的左上角从起点线性插到落点（横用横向进度、纵用纵向进度），大小随横向进度从条上的大小变到胶囊里的大小，落地不回弹；
+ * - 进度过 0.7 在落点爆开（Telegram 这时开始播回应周围的效果），同时轻触一下（Telegram 这时 `KEYBOARD_TAP`）；
+ * - 进度到 1 换成胶囊里真的那个字。
  *
- * 飞的字是 decorView 的 [android.view.ViewOverlay] 上的一个 Drawable，不进布局；每帧重新量落点，列表在动也跟得上。
- * 只在 [TellomiMotion.allowsFlourish] 时由调用方创建。
+ * 等起飞的那一会儿（长按菜单收完、胶囊画出来）表情在原处「拿起来」（放大到 [LIFT_SCALE]）。飞行期间胶囊里的那个字一直藏着
+ * （[ReactionsConversationView] 问 [isAwaitingLanding]），一帧都不先露；等不到落点（写失败、消息滚走、表情并进了「+N」）
+ * 就原地淡出，藏着的字放回来。
+ *
+ * 飞的字是 decorView 的 [android.view.ViewOverlay] 上的一个 Drawable，不进布局；每帧重新量落点，列表在动也跟得上
+ * （Telegram 也是每帧重新取落点）。只在 [TellomiMotion.allowsFlourish] 时由调用方创建。
  */
 class TellomiReactionFlyIn private constructor(
   private val host: View,
@@ -48,40 +53,44 @@ class TellomiReactionFlyIn private constructor(
 
   data class Key(val messageId: Long, val baseEmoji: String)
 
+  /** 飞到某一时刻时横、纵两个方向各走了多少（0–1）。 */
+  data class Progress(val x: Float, val y: Float)
+
   private enum class Phase { WAITING, FLYING, SETTLING, DONE }
 
-  private val density = host.resources.displayMetrics.density
   private val hostOrigin = IntArray(2).also { host.getLocationInWindow(it) }
   private val startedAt = SystemClock.uptimeMillis()
   private var readySince = 0L
   private var phase = Phase.WAITING
 
-  private val centerX = FloatValueHolder(sourceInWindow.centerX() - hostOrigin[0])
-  private val centerY = FloatValueHolder(sourceInWindow.centerY() - hostOrigin[1])
+  private var centerX = sourceInWindow.centerX() - hostOrigin[0]
+  private var centerY = sourceInWindow.centerY() - hostOrigin[1]
   private val size = FloatValueHolder(sourceInWindow.width())
   private var alpha = 1f
-
-  private var xSpring: SpringAnimation? = null
-  private var ySpring: SpringAnimation? = null
   private var sizeSpring: SpringAnimation? = null
-  private var targetSize = 0f
-  private var flightTargetX = 0f
-  private var flightTargetY = 0f
 
-  /** Tellomi（A-07 爆开）：起飞时离落点多远；飞过 70% 就在落点爆开一次。 */
-  private var startDistance = 0f
+  /** 飞行进度（按帧加，0–1）。 */
+  private var linearProgress = 0f
+  private var fromLeft = 0f
+  private var fromTop = 0f
+  private var fromSize = 0f
   private var burstPlayed = false
 
   init {
     awaiting = key
     host.overlay.add(drawable)
     applyBounds()
-    sizeSpring = spring(size, TellomiMotion.Snap).apply { animateToFinalPosition(sourceInWindow.width() * LIFT_SCALE) }
+    sizeSpring = SpringAnimation(size).apply {
+      spring = SpringForce(size.value * LIFT_SCALE).setStiffness(TellomiMotion.Snap.stiffness).setDampingRatio(TellomiMotion.Snap.dampingRatio)
+      setMinimumVisibleChange(MIN_VISIBLE_CHANGE_PX)
+      addUpdateListener { _, _, _ -> applyBounds() }
+      start()
+    }
     Choreographer.getInstance().postFrameCallback(this)
   }
 
   override fun doFrame(frameTimeNanos: Long) {
-    if (phase == Phase.DONE) {
+    if (phase == Phase.DONE || phase == Phase.SETTLING) {
       return
     }
 
@@ -98,7 +107,7 @@ class TellomiReactionFlyIn private constructor(
           }
           val target = findTarget()?.takeIf { it.isLaidOutOnScreen() }
           if (target != null) {
-            takeOff(target)
+            takeOff()
           } else if (now - readySince > TARGET_WAIT_AFTER_READY_MS) {
             cancel()
             return
@@ -113,24 +122,22 @@ class TellomiReactionFlyIn private constructor(
           return
         }
         val (tx, ty, ts) = measure(target)
-        // 只在落点真的挪了时改终点：对停下的弹簧再设同一个终点会让它重新跑起来，就永远落不了地。
-        if (abs(tx - flightTargetX) >= MIN_VISIBLE_CHANGE_PX) {
-          flightTargetX = tx
-          xSpring?.animateToFinalPosition(tx)
-        }
-        if (abs(ty - flightTargetY) >= MIN_VISIBLE_CHANGE_PX) {
-          flightTargetY = ty
-          ySpring?.animateToFinalPosition(ty)
-        }
-        if (abs(ts - targetSize) >= MIN_VISIBLE_CHANGE_PX) {
-          targetSize = ts
-          sizeSpring?.animateToFinalPosition(ts * LANDING_OVERSHOOT)
-        }
-        if (!burstPlayed && TellomiReactionBurst.shouldTrigger(startDistance, hypot(tx - centerX.value, ty - centerY.value))) {
+        val progress = flightProgress(linearProgress)
+        val currentSize = lerp(fromSize, ts, progress.x)
+        val left = lerp(fromLeft, tx - ts / 2f, progress.x)
+        val top = lerp(fromTop, ty - ts / 2f, progress.y)
+        size.value = currentSize
+        centerX = left + currentSize / 2f
+        centerY = top + currentSize / 2f
+
+        linearProgress = (linearProgress + FRAME_STEP).coerceAtMost(1f)
+        if (!burstPlayed && linearProgress > TellomiReactionBurst.TRIGGER_PROGRESS) {
           playBurst(tx, ty, ts)
         }
-        if (xSpring?.isRunning != true && ySpring?.isRunning != true) {
-          settle()
+        if (linearProgress >= 1f) {
+          applyBounds()
+          land(tx, ty, ts)
+          return
         }
       }
       Phase.SETTLING, Phase.DONE -> Unit
@@ -142,41 +149,29 @@ class TellomiReactionFlyIn private constructor(
     }
   }
 
-  private fun takeOff(target: View) {
+  /** 从此刻的位置和大小（拿起来之后）起飞。 */
+  private fun takeOff() {
     phase = Phase.FLYING
-    val (tx, ty, ts) = measure(target)
-    targetSize = ts
-    flightTargetX = tx
-    flightTargetY = ty
-
-    startDistance = hypot(tx - centerX.value, ty - centerY.value)
-    xSpring = spring(centerX, HORIZONTAL).apply { animateToFinalPosition(tx) }
-    ySpring = spring(centerY, VERTICAL).apply {
-      setStartVelocity(verticalStartVelocity(ty - centerY.value, density))
-      animateToFinalPosition(ty)
-    }
     sizeSpring?.cancel()
-    sizeSpring = spring(size, VERTICAL).apply { animateToFinalPosition(ts * LANDING_OVERSHOOT) }
+    sizeSpring = null
+    linearProgress = 0f
+    fromSize = size.value
+    fromLeft = centerX - fromSize / 2f
+    fromTop = centerY - fromSize / 2f
   }
 
-  /** 落定：大一点的飞行字弹回胶囊里那个字的大小，然后换成真的那个字。 */
-  private fun settle() {
-    phase = Phase.SETTLING
+  /** 落地：换成胶囊里真的那个字。还没爆开（帧掉得厉害）就在这里补上。 */
+  private fun land(x: Float, y: Float, emojiSize: Float) {
     if (!burstPlayed) {
-      playBurst(flightTargetX, flightTargetY, targetSize)
+      playBurst(x, y, emojiSize)
     }
-    TellomiHaptics.perform(host, TellomiHaptics.Event.SELECTION_TICK)
-    sizeSpring?.cancel()
-    sizeSpring = spring(size, TellomiMotion.Emphasis).apply {
-      addUpdateListener { _, _, _ -> applyBounds() }
-      addEndListener { _, _, _, _ -> finish() }
-      animateToFinalPosition(targetSize)
-    }
+    finish()
   }
 
-  /** Tellomi（A-07）：在落点（host 坐标）播一次爆开，用一份新的表情图画粒子。 */
+  /** Tellomi（A-07）：在落点（host 坐标）播一次爆开，用一份新的表情图画粒子；同时轻触一下。 */
   private fun playBurst(x: Float, y: Float, emojiSize: Float) {
     burstPlayed = true
+    TellomiHaptics.perform(host, TellomiHaptics.Event.SELECTION_TICK)
     val emoji = EmojiProvider.getEmojiDrawable(host.context, key.baseEmoji, true) ?: return
     val ringColor = ContextCompat.getColor(host.context, CoreUiR.color.signal_colorOnSurfaceVariant)
     TellomiReactionBurst.play(host, emoji, x, y, emojiSize, ringColor)
@@ -188,8 +183,6 @@ class TellomiReactionFlyIn private constructor(
       return
     }
     phase = Phase.SETTLING
-    xSpring?.cancel()
-    ySpring?.cancel()
     sizeSpring?.cancel()
     revealTarget()
     SpringAnimation(FloatValueHolder(1f)).apply {
@@ -210,8 +203,10 @@ class TellomiReactionFlyIn private constructor(
     }
     phase = Phase.DONE
     Choreographer.getInstance().removeFrameCallback(this)
+    sizeSpring?.cancel()
     revealTarget()
     host.overlay.remove(drawable)
+    host.invalidate()
   }
 
   /** 放回藏着的字：落点自己藏起来的那些都放回（不靠 [findTarget] 找得到），再加上此刻找得到的落点。 */
@@ -224,7 +219,10 @@ class TellomiReactionFlyIn private constructor(
     findTarget()?.alpha = 1f
   }
 
-  /** 落点（胶囊里那个字）的中心和大小，换算到 host 坐标。 */
+  /**
+   * 落点（胶囊里那个字）的中心和大小，换算到 host 坐标。中心按此刻的缩放算（胶囊正在弹出时整颗在缩放）；
+   * 大小取它停下来的大小（Telegram 的落点大小也是固定的），免得跟着弹出先缩小再变大。
+   */
   private fun measure(target: View): Triple<Float, Float, Float> {
     // getLocationInWindow 给的是缩放之后的左上角，宽高要自己乘上缩放。
     val location = IntArray(2).also { target.getLocationInWindow(it) }
@@ -232,41 +230,28 @@ class TellomiReactionFlyIn private constructor(
     return Triple(
       location[0] - hostOrigin[0] + target.width * scale / 2f,
       location[1] - hostOrigin[1] + target.height * scale / 2f,
-      minOf(target.width, target.height) * scale
+      minOf(target.width, target.height).toFloat()
     )
   }
 
   private fun applyBounds() {
     val half = size.value / 2f
     drawable.setBounds(
-      (centerX.value - half).roundToInt(),
-      (centerY.value - half).roundToInt(),
-      (centerX.value + half).roundToInt(),
-      (centerY.value + half).roundToInt()
+      (centerX - half).roundToInt(),
+      (centerY - half).roundToInt(),
+      (centerX + half).roundToInt(),
+      (centerY + half).roundToInt()
     )
     drawable.alpha = (alpha * 255).roundToInt()
     host.invalidate()
   }
 
-  private fun spring(holder: FloatValueHolder, token: TellomiMotion.SpringToken): SpringAnimation {
-    return SpringAnimation(holder).apply {
-      spring = SpringForce(holder.value).setStiffness(token.stiffness).setDampingRatio(token.dampingRatio)
-      setMinimumVisibleChange(MIN_VISIBLE_CHANGE_PX)
-    }
-  }
-
   companion object {
-    /** 选中后放大一点，表示「拿起来了」。 */
+    /** 选中后放大一点，表示「拿起来了」（等菜单收完、胶囊画出来的那一会儿）。 */
     const val LIFT_SCALE = 1.15f
 
-    /** 落到胶囊上时比胶囊里的字大这么多，再用 Emphasis 弹回原大小。 */
-    const val LANDING_OVERSHOOT = 1.25f
-
-    /** 纵向向上的初速（dp / 秒），让路线先轻轻抬起再落下。 */
-    const val TOSS_SPEED_DP = 700f
-
-    /** 纵向距离小于这个值（dp）就不抬，免得原地上下抖。 */
-    const val MIN_TOSS_DISTANCE_DP = 24f
+    /** 每帧加的进度（Telegram 安卓 `ONLY_MOVE_ANIMATION`：`animateOutProgress += 16f / 350`）。 */
+    const val FRAME_STEP = 16f / 350f
 
     /** 等落点的最长时间。 */
     const val LANDING_TIMEOUT_MS = 2000L
@@ -276,16 +261,26 @@ class TellomiReactionFlyIn private constructor(
 
     private const val MIN_VISIBLE_CHANGE_PX = 0.5f
 
-    /** 横向：临界阻尼，先到。 */
-    private val HORIZONTAL = TellomiMotion.SpringToken(stiffness = TellomiMotion.Snap.stiffness, dampingRatio = 1f)
+    /** Telegram 安卓 `CubicBezierInterpolator.DEFAULT` 的控制点。 */
+    private val DEFAULT_EASING = CubicBezierEasing(0.25f, 0.1f, 0.25f, 1f)
 
-    /** 纵向：比横向慢、带一点回弹，后落；和横向的时间差就是弧线。 */
-    private val VERTICAL = TellomiMotion.Large
+    /** Telegram 安卓 `CubicBezierInterpolator.EASE_OUT_QUINT` 的控制点。 */
+    private val EASE_OUT_QUINT = CubicBezierEasing(0.23f, 1f, 0.32f, 1f)
 
     private var awaiting: Key? = null
 
     /** 因为 [awaiting] 藏起来的字（行被重新绑定时会换新的），落地或取消时一起放回。 */
     private val held = mutableListOf<WeakReference<View>>()
+
+    /**
+     * 飞行进度 [linear]（0–1）时横、纵各走了多少：先过 `DEFAULT`，横向再过 `EASE_OUT_QUINT`、纵向再过 `DEFAULT`
+     * （Telegram 安卓 `ReactionsEffectOverlay` 的 `ONLY_MOVE_ANIMATION` 就是这样叠的）。
+     */
+    @JvmStatic
+    fun flightProgress(linear: Float): Progress {
+      val eased = DEFAULT_EASING.transform(linear.coerceIn(0f, 1f))
+      return Progress(x = EASE_OUT_QUINT.transform(eased), y = DEFAULT_EASING.transform(eased))
+    }
 
     /**
      * 这条消息的这个表情正等着飞进来：胶囊里的字先藏着。[baseEmoji] 是规范化之后的表情（胶囊按它分组），
@@ -305,11 +300,6 @@ class TellomiReactionFlyIn private constructor(
         held.removeAll { it.get() == null }
         held += WeakReference(emojiView)
       }
-    }
-
-    /** 目标在下面够远：向上抛（负的初速）；在上面或几乎平齐：不抛。 */
-    fun verticalStartVelocity(verticalDistancePx: Float, density: Float): Float {
-      return if (verticalDistancePx >= MIN_TOSS_DISTANCE_DP * density) -TOSS_SPEED_DP * density else 0f
     }
 
     /**
@@ -337,6 +327,8 @@ class TellomiReactionFlyIn private constructor(
         findTarget = findTarget
       )
     }
+
+    private fun lerp(from: Float, to: Float, fraction: Float): Float = from + (to - from) * fraction
 
     private fun View.isLaidOutOnScreen(): Boolean = isAttachedToWindow && isLaidOut && width > 0 && height > 0 && isShown
 

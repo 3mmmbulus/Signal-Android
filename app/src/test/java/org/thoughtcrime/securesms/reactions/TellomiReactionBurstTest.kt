@@ -7,7 +7,6 @@ package org.thoughtcrime.securesms.reactions
 
 import assertk.assertThat
 import assertk.assertions.isEqualTo
-import assertk.assertions.isFalse
 import assertk.assertions.isLessThanOrEqualTo
 import assertk.assertions.isTrue
 import org.junit.Test
@@ -35,10 +34,8 @@ class TellomiReactionBurstTest {
   }
 
   @Test
-  fun `the burst starts once 70 percent of the flight is covered`() {
-    assertThat(TellomiReactionBurst.shouldTrigger(startDistance = 300f, remainingDistance = 100f)).isFalse()
-    assertThat(TellomiReactionBurst.shouldTrigger(startDistance = 300f, remainingDistance = 90f)).isTrue()
-    assertThat(TellomiReactionBurst.shouldTrigger(startDistance = 0f, remainingDistance = 0f)).isTrue()
+  fun `the burst starts once the flight is 70 percent through`() {
+    assertThat(TellomiReactionBurst.TRIGGER_PROGRESS).isEqualTo(0.7f)
     assertThat(TellomiReactionBurst.DURATION_MS).isEqualTo(700L)
     assertThat(TellomiReactionBurst.RING_DURATION_MS).isEqualTo(350L)
   }

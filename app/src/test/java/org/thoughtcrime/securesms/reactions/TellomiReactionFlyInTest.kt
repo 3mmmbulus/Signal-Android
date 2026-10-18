@@ -22,22 +22,33 @@ import org.robolectric.RobolectricTestRunner
 import org.robolectric.RuntimeEnvironment
 import org.robolectric.annotation.Config
 
-/** Tellomi (interaction audit A-07): the reaction fly-in's arc and its hold on the pill it is flying to. */
+/** Tellomi (interaction audit A-07): the reaction fly-in's curves (Telegram Android's) and its hold on the pill it is flying to. */
 @RunWith(RobolectricTestRunner::class)
 @Config(manifest = Config.NONE, application = Application::class)
 class TellomiReactionFlyInTest {
 
-  private val density = 2f
-
   @Test
-  fun `a target well below is reached with an upward toss`() {
-    assertEquals(-TellomiReactionFlyIn.TOSS_SPEED_DP * density, TellomiReactionFlyIn.verticalStartVelocity(200f * density, density), 0f)
+  fun `the flight starts on the source, ends on the target, and goes sideways before it comes down`() {
+    val start = TellomiReactionFlyIn.flightProgress(0f)
+    val end = TellomiReactionFlyIn.flightProgress(1f)
+    assertEquals(0f, start.x, 1e-4f)
+    assertEquals(0f, start.y, 1e-4f)
+    assertEquals(1f, end.x, 1e-4f)
+    assertEquals(1f, end.y, 1e-4f)
+    for (step in 1 until 20) {
+      val progress = TellomiReactionFlyIn.flightProgress(step / 20f)
+      assertTrue("horizontal leads at ${step / 20f}", progress.x > progress.y)
+    }
   }
 
+  /** Telegram Android `ReactionsEffectOverlay` (`ONLY_MOVE_ANIMATION`): 16 / 350 a frame, DEFAULT then EASE_OUT_QUINT / DEFAULT. */
   @Test
-  fun `a target above or level is flown to without a toss`() {
-    assertEquals(0f, TellomiReactionFlyIn.verticalStartVelocity(-150f * density, density), 0f)
-    assertEquals(0f, TellomiReactionFlyIn.verticalStartVelocity(10f * density, density), 0f)
+  fun `it advances by Telegram's step each frame along Telegram's curves`() {
+    assertEquals(16f / 350f, TellomiReactionFlyIn.FRAME_STEP, 0f)
+    // 100 ms into a 60 Hz flight.
+    val progress = TellomiReactionFlyIn.flightProgress(100f / 350f)
+    assertEquals(0.961f, progress.x, 0.005f)
+    assertEquals(0.787f, progress.y, 0.005f)
   }
 
   @Test

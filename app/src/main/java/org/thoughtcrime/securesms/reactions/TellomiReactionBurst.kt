@@ -56,15 +56,8 @@ object TellomiReactionBurst {
   /** 散开的同时整体往上飘这么多（dp）。 */
   const val FLOAT_UP_DP = 14f
 
-  /** 回应飞到全程的这么多时开始爆开（Telegram 安卓 70%）。 */
+  /** 回应飞行进度过了这么多时开始爆开（Telegram 安卓：`animateOutProgress > 0.7f` 时 `startShortAnimation`）。 */
   const val TRIGGER_PROGRESS = 0.7f
-
-  /** 飞了 [startDistance] 里的多少、还剩 [remainingDistance] 时，该不该开始爆开（走过 [TRIGGER_PROGRESS]）。 */
-  @JvmStatic
-  fun shouldTrigger(startDistance: Float, remainingDistance: Float): Boolean {
-    if (startDistance <= 0f) return true
-    return 1f - remainingDistance / startDistance >= TRIGGER_PROGRESS
-  }
 
   /** 粒子的方向和远近：黄金角错开，看起来随机但每次一样（和 iOS 同一个公式）。 */
   @JvmStatic
