@@ -514,6 +514,12 @@ interface ReactionOverlayHideListener {
   fun startHide(focusedView: View?)
 
   fun onHide()
+
+  /**
+   * Tellomi (interaction audit A-07, take-off): a reaction was picked and the overlay is about to hide. Called before
+   * [startHide] so the list can let the new pill be laid out while the overlay is still closing.
+   */
+  fun onReactionChosen() = Unit
 }
 
 /**

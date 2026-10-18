@@ -35,7 +35,8 @@ import org.signal.core.ui.R as CoreUiR
  * - 进度过 0.7 在落点爆开（Telegram 这时开始播回应周围的效果），同时轻触一下（Telegram 这时 `KEYBOARD_TAP`）；
  * - 进度到 1 换成胶囊里真的那个字。
  *
- * 等起飞的那一会儿（长按菜单收完、胶囊画出来）表情在原处「拿起来」（放大到 [LIFT_SCALE]）。飞行期间胶囊里的那个字一直藏着
+ * 胶囊一画出来就起飞，长按菜单还在收也飞（Telegram 两端都是一选中就飞、和菜单收起同时）；在那之前表情在原处「拿起来」
+ * （放大到 [LIFT_SCALE]）。飞行期间胶囊里的那个字一直藏着
  * （[ReactionsConversationView] 问 [isAwaitingLanding]），一帧都不先露；等不到落点（写失败、消息滚走、表情并进了「+N」）
  * 就原地淡出，藏着的字放回来。
  *
@@ -105,7 +106,7 @@ class TellomiReactionFlyIn private constructor(
           if (readySince == 0L) {
             readySince = now
           }
-          val target = findTarget()?.takeIf { it.isLaidOutOnScreen() }
+          val target = findTarget()?.takeIf { it.isLaidOutInWindow() }
           if (target != null) {
             takeOff()
           } else if (now - readySince > TARGET_WAIT_AFTER_READY_MS) {
@@ -116,7 +117,7 @@ class TellomiReactionFlyIn private constructor(
       }
       Phase.FLYING -> {
         // 列表还在动（补位、胶囊撑高气泡）：落点每帧重新量。
-        val target = findTarget()?.takeIf { it.isLaidOutOnScreen() }
+        val target = findTarget()?.takeIf { it.isLaidOutInWindow() }
         if (target == null) {
           cancel()
           return
@@ -247,7 +248,7 @@ class TellomiReactionFlyIn private constructor(
   }
 
   companion object {
-    /** 选中后放大一点，表示「拿起来了」（等菜单收完、胶囊画出来的那一会儿）。 */
+    /** 选中后放大一点，表示「拿起来了」（等胶囊画出来的那一会儿）。 */
     const val LIFT_SCALE = 1.15f
 
     /** 每帧加的进度（Telegram 安卓 `ONLY_MOVE_ANIMATION`：`animateOutProgress += 16f / 350`）。 */
@@ -256,7 +257,7 @@ class TellomiReactionFlyIn private constructor(
     /** 等落点的最长时间。 */
     const val LANDING_TIMEOUT_MS = 2000L
 
-    /** 菜单收完以后最多再等胶囊这么久（表情并进了「+N」时不用等满 [LANDING_TIMEOUT_MS]）。 */
+    /** 可以起飞以后最多再等胶囊这么久（表情并进了「+N」时不用等满 [LANDING_TIMEOUT_MS]）。 */
     const val TARGET_WAIT_AFTER_READY_MS = 800L
 
     private const val MIN_VISIBLE_CHANGE_PX = 0.5f
@@ -330,7 +331,23 @@ class TellomiReactionFlyIn private constructor(
 
     private fun lerp(from: Float, to: Float, fraction: Float): Float = from + (to - from) * fraction
 
-    private fun View.isLaidOutOnScreen(): Boolean = isAttachedToWindow && isLaidOut && width > 0 && height > 0 && isShown
+    /**
+     * 落点能用了：在窗口里、量好了、自己和各级父 View 都不是 GONE。可以是 INVISIBLE——选了回应以后长按菜单还在收，消息的气泡和
+     * 胶囊还藏在菜单的快照底下（列表已经放开，见 `ReactionOverlayHideListener.onReactionChosen`），飞的就是它们露出来的地方。
+     */
+    private fun View.isLaidOutInWindow(): Boolean {
+      if (!isAttachedToWindow || !isLaidOut || width <= 0 || height <= 0) {
+        return false
+      }
+      var view: View? = this
+      while (view != null) {
+        if (view.visibility == View.GONE) {
+          return false
+        }
+        view = view.parent as? View
+      }
+      return true
+    }
 
     /** 胶囊弹出时整颗在缩放：取落点自己加上各级父 View 的缩放。 */
     private fun View.matrixScale(): Float {

@@ -734,6 +734,8 @@ class ConversationFragment :
       hapticView = { chatHost },
       menuAnchor = { reactionMenuAnchor },
       onReactionSelected = { messageRecord, emoji, flyInSource ->
+        // Tellomi (A-07, take-off): let the list lay the new pill out now, so the reaction can fly while the overlay closes.
+        reactionHideListener?.onReactionChosen()
         if (flyInSource != null) {
           startReactionFlyIn(messageRecord.id, emoji, flyInSource)
         }
@@ -4818,6 +4820,16 @@ class ConversationFragment :
 
       reactionActionListener = ReactionsToolbarListener(item.conversationMessage)
       reactionHideListener = object : ReactionOverlayHideListener {
+        /**
+         * Tellomi (interaction audit A-07, take-off, like both Telegram apps: they fly the moment a reaction is picked,
+         * while the menu closes, to the message's real reaction button). The list stops being frozen now, so the pill shows
+         * up in the row as soon as the reaction is written; the bubble and the pills stay hidden under the overlay until
+         * [onHide], and the overlay's picture follows the row back if the new pill moves it.
+         */
+        override fun onReactionChosen() {
+          recycler.suppressLayout(false)
+        }
+
         override fun startHide(focusedView: View?) {
           // Ahead of the started check: a dismiss while stopped would leave the chat dimmed.
           multiselectItemDecoration.hideShade(recycler)
@@ -5190,7 +5202,8 @@ class ConversationFragment :
 
   /**
    * Tellomi (interaction audit A-07, Android half of Signal-iOS#79): the chosen emoji flies from the reaction strip onto
-   * its pill under the message once the overlay has closed and the pill is on screen. See [TellomiReactionFlyIn].
+   * its pill under the message as soon as the pill is laid out — while the overlay is still closing, as both Telegram apps
+   * do (the list is let go in [ReactionOverlayHideListener.onReactionChosen]). See [TellomiReactionFlyIn].
    */
   private fun startReactionFlyIn(messageId: Long, emoji: String, source: RectF) {
     if (!TellomiMotion.allowsFlourish(TellomiMotion.tier(requireContext()))) {
@@ -5203,7 +5216,7 @@ class ConversationFragment :
       baseEmoji = EmojiUtil.getCanonicalRepresentation(emoji),
       drawable = EmojiProvider.getEmojiDrawable(requireContext(), emoji, true),
       sourceInWindow = source,
-      isReadyToLand = { !reactionOverlay.isShowing },
+      isReadyToLand = { true },
       findTarget = { findReactionPillEmoji(messageId, emoji) }
     )
   }

@@ -34,6 +34,7 @@ import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
@@ -291,6 +292,10 @@ fun ChatReactionOverlay(
     val snapshotX = remember(selection) { Animatable(selection.bubbleX) }
     val snapshotY = remember(selection) { Animatable(selection.bubbleY) }
     val snapshotScale = remember(selection) { Animatable(ConversationItem.LONG_PRESS_SCALE_FACTOR) }
+    // Tellomi (A-07, take-off): on the way back the picture lands where the row is in each frame, not where it was when
+    // the hide began — after a reaction the list is no longer frozen, and the new pill can move the row.
+    val hideFrom = remember(selection) { mutableStateOf<Offset?>(null) }
+    val hideProgress = remember(selection) { Animatable(0f) }
 
     DisposableEffect(Unit) {
       onDispose { controller.onHideFinished() }
@@ -335,6 +340,14 @@ fun ChatReactionOverlay(
 
     LaunchedEffect(selection, isRevealed) {
       if (isRevealed) {
+        // A hide turned back halfway: carry on from where the picture is now.
+        hideFrom.value?.let { from ->
+          val to = selection.returnPosition() ?: Offset(selection.bubbleX, selection.bubbleY)
+          snapshotX.snapTo(lerp(from.x, to.x, hideProgress.value))
+          snapshotY.snapTo(lerp(from.y, to.y, hideProgress.value))
+          hideFrom.value = null
+          hideProgress.snapTo(0f)
+        }
         coroutineScope {
           launch { shade.animateTo(1f, tween(hideDuration, easing = Decelerate)) }
           launch { snapshotX.animateTo(placement.snapshotX, tween(revealDuration, easing = AccelerateDecelerate)) }
@@ -376,12 +389,12 @@ fun ChatReactionOverlay(
           }
         }
       } else {
-        val returned = selection.returnPosition()
+        hideFrom.value = Offset(snapshotX.value, snapshotY.value)
+        hideProgress.snapTo(0f)
 
         coroutineScope {
           launch { shade.animateTo(0f, tween(hideDuration, easing = Decelerate)) }
-          launch { snapshotX.animateTo(returned?.x ?: selection.bubbleX, tween(hideDuration, easing = Decelerate)) }
-          launch { snapshotY.animateTo(returned?.y ?: selection.bubbleY, tween(hideDuration, easing = Decelerate)) }
+          launch { hideProgress.animateTo(1f, tween(hideDuration, easing = Decelerate)) }
           launch { snapshotScale.animateTo(1f, tween(hideDuration, easing = Decelerate)) }
           launch { indicatorReveal.animateTo(0f, tween(hideDuration, easing = Decelerate)) }
           // Tellomi (A-06): the strip, its tail and the emoji fade out together, as Telegram's strip does.
@@ -405,7 +418,16 @@ fun ChatReactionOverlay(
       bitmap = selection.snapshot,
       contentDescription = null,
       modifier = Modifier
-        .absoluteOffset { IntOffset(snapshotX.value.roundToInt(), snapshotY.value.roundToInt()) }
+        .absoluteOffset {
+          val from = hideFrom.value
+          if (from == null) {
+            IntOffset(snapshotX.value.roundToInt(), snapshotY.value.roundToInt())
+          } else {
+            val to = selection.returnPosition() ?: Offset(selection.bubbleX, selection.bubbleY)
+            val progress = hideProgress.value
+            IntOffset(lerp(from.x, to.x, progress).roundToInt(), lerp(from.y, to.y, progress).roundToInt())
+          }
+        }
         .size(
           width = with(density) { selection.snapshot.width.toDp() },
           height = with(density) { selection.snapshot.height.toDp() }
