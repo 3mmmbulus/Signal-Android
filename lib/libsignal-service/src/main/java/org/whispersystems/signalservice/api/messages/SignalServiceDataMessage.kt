@@ -58,7 +58,11 @@ class SignalServiceDataMessage private constructor(
   /** Tellomi（ADR-0068 §4.7）：`DataMessage.tellomi.captionAboveMedia`，说明文字画在媒体上方。只在为真时写。 */
   val tellomiCaptionAboveMedia: Boolean = false,
   /** Tellomi（ADR-0079）：`DataMessage.tellomi.viewOnceSeconds`，计时的一次性查看打开后看几秒（3 / 10 / 30）。只和一次性查看一起写。 */
-  val tellomiViewOnceSeconds: Int? = null
+  val tellomiViewOnceSeconds: Int? = null,
+  /** Tellomi（ADR-0081）：`DataMessage.tellomi.pinForSelfOnly`，置顶 / 取消置顶只给自己的设备（只放在发给自己的「已发送」同步里）。 */
+  val tellomiPinForSelfOnly: Boolean = false,
+  /** Tellomi（ADR-0081）：`DataMessage.tellomi.pinSilent`，群里为所有人置顶但不通知。 */
+  val tellomiPinSilent: Boolean = false
 ) {
   val isActivatePaymentsRequest: Boolean = payment.map { it.isActivationRequest }.orElse(false)
   val isPaymentsActivated: Boolean = payment.map { it.isActivation }.orElse(false)
@@ -89,6 +93,8 @@ class SignalServiceDataMessage private constructor(
   class Builder {
     private var tellomiCaptionAboveMedia: Boolean = false
     private var tellomiViewOnceSeconds: Int? = null
+    private var tellomiPinForSelfOnly: Boolean = false
+    private var tellomiPinSilent: Boolean = false
     private var timestamp: Long = 0
     private var groupV2: SignalServiceGroupV2? = null
     private val attachments: MutableList<SignalServiceAttachment> = LinkedList<SignalServiceAttachment>()
@@ -266,6 +272,18 @@ class SignalServiceDataMessage private constructor(
       return this
     }
 
+    /** Tellomi（ADR-0081）：仅为我置顶 / 取消置顶。 */
+    fun withTellomiPinForSelfOnly(selfOnly: Boolean): Builder {
+      this.tellomiPinForSelfOnly = selfOnly
+      return this
+    }
+
+    /** Tellomi（ADR-0081）：群里为所有人置顶但不通知。 */
+    fun withTellomiPinSilent(silent: Boolean): Builder {
+      this.tellomiPinSilent = silent
+      return this
+    }
+
     fun withUnpinnedMessage(unpinnedMessage: UnpinnedMessage?): Builder {
       this.unpinnedMessage = unpinnedMessage
       return this
@@ -311,7 +329,9 @@ class SignalServiceDataMessage private constructor(
         unpinnedMessage = unpinnedMessage.asOptional(),
         adminDelete = adminDelete.asOptional(),
         tellomiCaptionAboveMedia = tellomiCaptionAboveMedia,
-        tellomiViewOnceSeconds = tellomiViewOnceSeconds
+        tellomiViewOnceSeconds = tellomiViewOnceSeconds,
+        tellomiPinForSelfOnly = tellomiPinForSelfOnly,
+        tellomiPinSilent = tellomiPinSilent
       )
     }
   }

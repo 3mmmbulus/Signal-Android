@@ -9,8 +9,8 @@ import org.whispersystems.signalservice.api.messages.SignalServiceDataMessage
 import org.whispersystems.signalservice.internal.push.TellomiDataMessage
 
 /**
- * Tellomi（ADR-0068 §4.7）：要发的消息里的 `DataMessage.tellomi = 1000`。只有说明在上方、或是计时的一次性查看（ADR-0079）时才有，
- * 别的消息不写这个字段，字节和上游一样；都不提协议版本。
+ * Tellomi（ADR-0068 §4.7）：要发的消息里的 `DataMessage.tellomi = 1000`。只有说明在上方、计时的一次性查看（ADR-0079）、
+ * 仅为我 / 静默置顶（ADR-0081）时才有，别的消息不写这个字段，字节和上游一样；都不提协议版本。
  */
 object TellomiDataMessages {
 
@@ -21,12 +21,17 @@ object TellomiDataMessages {
   @JvmStatic
   fun tellomiFor(message: SignalServiceDataMessage): TellomiDataMessage? {
     val seconds = message.tellomiViewOnceSeconds?.takeIf { message.isViewOnce && it in VIEW_ONCE_SECONDS }
-    if (!message.tellomiCaptionAboveMedia && seconds == null) {
+    // ADR-0081 §4.1：只和置顶 / 取消置顶一起写；静默只对群里的置顶有意义。
+    val pinForSelfOnly = message.tellomiPinForSelfOnly && (message.pinnedMessage.isPresent || message.unpinnedMessage.isPresent)
+    val pinSilent = message.tellomiPinSilent && message.pinnedMessage.isPresent && message.isGroupV2Message
+    if (!message.tellomiCaptionAboveMedia && seconds == null && !pinForSelfOnly && !pinSilent) {
       return null
     }
     return TellomiDataMessage(
       captionAboveMedia = if (message.tellomiCaptionAboveMedia) true else null,
-      viewOnceSeconds = seconds
+      viewOnceSeconds = seconds,
+      pinForSelfOnly = if (pinForSelfOnly) true else null,
+      pinSilent = if (pinSilent) true else null
     )
   }
 }

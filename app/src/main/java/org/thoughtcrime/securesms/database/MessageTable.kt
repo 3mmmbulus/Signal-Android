@@ -245,6 +245,12 @@ open class MessageTable(context: Context?, databaseHelper: SignalDatabase) : Dat
 
     const val PIN_FOREVER = Long.MAX_VALUE
 
+    /**
+     * Tellomi (ADR-0081 §4.3): [PINNING_MESSAGE_ID] of a pin "for me only" — there is no "pinned a message" update behind it.
+     * Negative, so it never matches a row; an ordinary pin of the same message later overwrites it with the update's id.
+     */
+    const val TELLOMI_PIN_FOR_ME = -2L
+
     const val CREATE_TABLE = """
       CREATE TABLE $TABLE_NAME (
         $ID INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -4138,6 +4144,52 @@ open class MessageTable(context: Context?, databaseHelper: SignalDatabase) : Dat
     notifyConversationListeners(threadIds)
     notifyConversationListListeners()
     return rowsDeleted
+  }
+
+  /**
+   * Tellomi (ADR-0081 §4.3): pin [messageId] on this device only — no update message, no unread, no notification — sharing
+   * the pin limit with ordinary pins (the oldest goes, as for any pin). Pinned "at" [pinnedAt], like a received pin.
+   */
+  fun tellomiPinForMe(messageId: Long, threadId: Long, pinDurationInSeconds: Long, pinnedAt: Long) {
+    val pinnedUntil = if (pinDurationInSeconds == PIN_FOREVER) PIN_FOREVER else pinnedAt + pinDurationInSeconds.seconds.inWholeMilliseconds
+    writableDatabase.withinTransaction { db ->
+      val rows = db
+        .update(TABLE_NAME)
+        .values(
+          PINNED_UNTIL to pinnedUntil,
+          PINNING_MESSAGE_ID to TELLOMI_PIN_FOR_ME,
+          PINNED_AT to pinnedAt
+        )
+        .where("$ID = ?", messageId)
+        .run()
+
+      if (rows > 0) {
+        enforcePinSizeLimit(threadId, RemoteConfig.pinLimit)
+      } else {
+        Log.w(TAG, "Failed to pin a message for me.")
+      }
+    }
+
+    AppDependencies.databaseObserver.notifyConversationListeners(threadId)
+  }
+
+  /** Tellomi (ADR-0081 §4.3): whether [messageId] is pinned for me only (on my devices, not the other side's). */
+  fun tellomiIsPinnedForMe(messageId: Long): Boolean {
+    return readableDatabase
+      .exists(TABLE_NAME)
+      .where("$ID = ? AND $PINNED_UNTIL > 0 AND $PINNING_MESSAGE_ID = ?", messageId, TELLOMI_PIN_FOR_ME)
+      .run()
+  }
+
+  /** Tellomi (ADR-0081 §4.3): the messages in [threadId] pinned for me only — I may always unpin those, group permission or not. */
+  fun tellomiPinnedForMeIds(threadId: Long): Set<Long> {
+    return readableDatabase
+      .select(ID)
+      .from(TABLE_NAME)
+      .where("$THREAD_ID = ? AND $PINNED_UNTIL > 0 AND $PINNING_MESSAGE_ID = ?", threadId, TELLOMI_PIN_FOR_ME)
+      .run()
+      .readToList { cursor -> cursor.requireLong(ID) }
+      .toSet()
   }
 
   /**

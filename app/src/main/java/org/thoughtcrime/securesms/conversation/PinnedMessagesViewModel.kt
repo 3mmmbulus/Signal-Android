@@ -13,6 +13,8 @@ import kotlinx.coroutines.launch
 import org.signal.core.util.logging.Log
 import org.thoughtcrime.securesms.conversation.colors.GroupAuthorNameColorHelper
 import org.thoughtcrime.securesms.conversation.colors.NameColor
+import org.thoughtcrime.securesms.conversation.v2.TellomiPinForMe
+import org.thoughtcrime.securesms.database.SignalDatabase
 import org.thoughtcrime.securesms.dependencies.AppDependencies
 import org.thoughtcrime.securesms.jobs.UnpinMessageJob
 import org.thoughtcrime.securesms.recipients.Recipient
@@ -40,6 +42,13 @@ class PinnedMessagesViewModel(
       .observeOn(AndroidSchedulers.mainThread())
   }
 
+  /** Tellomi (ADR-0081 §4.3): pins for me only, which I may unpin without group permission. */
+  fun getPinnedForMeIds(): Observable<Set<Long>> {
+    return repository
+      .getPinnedForMeIds(threadId)
+      .observeOn(AndroidSchedulers.mainThread())
+  }
+
   fun getNameColorsMap(): Observable<Map<RecipientId, NameColor>> {
     return Observable.just(conversationRecipientId)
       .map { conversationRecipientId ->
@@ -58,6 +67,16 @@ class PinnedMessagesViewModel(
   fun unpinMessage() {
     viewModelScope.launch(Dispatchers.Default) {
       repository.getPinnedMessageRecords(threadId).map {
+        // Tellomi (ADR-0081 §4.3): a pin for me only is taken back on my own devices; only ordinary pins go out as unpins.
+        if (SignalDatabase.messages.tellomiIsPinnedForMe(it.id)) {
+          try {
+            TellomiPinForMe.unpin(it.id)
+          } catch (e: Exception) {
+            Log.w(TAG, "Unable to unpin message ${it.id} for me.", e)
+          }
+          return@map
+        }
+
         val unpinJob = UnpinMessageJob.create(messageId = it.id)
         if (unpinJob != null) {
           AppDependencies.jobManager.add(unpinJob)

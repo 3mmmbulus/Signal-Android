@@ -32,6 +32,18 @@ class PinnedMessagesRepository {
     }.subscribeOn(Schedulers.io())
   }
 
+  /** Tellomi (ADR-0081 §4.3): which of the pinned messages are pinned for me only, kept current like [getPinnedMessage]. */
+  fun getPinnedForMeIds(threadId: Long): Observable<Set<Long>> {
+    return Observable.create { emitter ->
+      val databaseObserver: DatabaseObserver = AppDependencies.databaseObserver
+      val observer = DatabaseObserver.Observer { emitter.onNext(SignalDatabase.messages.tellomiPinnedForMeIds(threadId)) }
+      databaseObserver.registerConversationObserver(threadId, observer)
+      emitter.setCancellable { databaseObserver.unregisterObserver(observer) }
+
+      emitter.onNext(SignalDatabase.messages.tellomiPinnedForMeIds(threadId))
+    }.subscribeOn(Schedulers.io())
+  }
+
   fun getPinnedMessageRecords(threadId: Long): List<MessageRecord> {
     return SignalDatabase.messages.getPinnedMessages(threadId = threadId, orderByPinned = false)
   }

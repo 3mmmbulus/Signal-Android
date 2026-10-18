@@ -188,6 +188,8 @@ object DataMessageProcessor {
       message.pollCreate != null -> insertResult = handlePollCreate(context, envelope, metadata, message, senderRecipient, threadRecipient, groupId, receivedTime)
       message.pollTerminate != null -> insertResult = handlePollTerminate(context, envelope, metadata, message, senderRecipient, earlyMessageCacheEntry, threadRecipient, groupId, receivedTime, batchCache)
       message.pollVote != null -> messageId = handlePollVote(context, envelope, message, senderRecipient, threadRecipient, earlyMessageCacheEntry, batchCache)
+      // Tellomi (ADR-0081 §4.1): a pin "for me only" only ever goes to the sender's own devices; one from anyone else is dropped whole.
+      message.tellomi?.pinForSelfOnly == true && (message.pinMessage != null || message.unpinMessage != null) -> warn(envelope.clientTimestamp!!, "Dropping a pin for the sender only that reached someone else.")
       message.pinMessage != null -> insertResult = handlePinMessage(envelope, metadata, message, senderRecipient, threadRecipient, groupId, receivedTime, earlyMessageCacheEntry, batchCache)
       message.unpinMessage != null -> messageId = handleUnpinMessage(envelope, message, senderRecipient, threadRecipient, earlyMessageCacheEntry, batchCache)
       message.adminDelete != null -> messageId = handleAdminRemoteDelete(context, envelope, message, senderRecipient, threadRecipient, earlyMessageCacheEntry, batchCache)
@@ -1434,6 +1436,11 @@ object DataMessageProcessor {
     }
 
     val targetMessageId = targetMessage.latestRevisionId?.id ?: targetMessage.id
+    // Tellomi (ADR-0081 §4.3): my pin "for me only" is mine; someone else's unpin doesn't take it away.
+    if (senderRecipient.id != Recipient.self().id && SignalDatabase.messages.tellomiIsPinnedForMe(targetMessageId)) {
+      log(envelope.clientTimestamp!!, "[handleUnpinMessage] Target is pinned for me only. Keeping it.")
+      return null
+    }
     SignalDatabase.messages.unpinMessage(targetMessageId, targetMessage.threadId)
 
     return MessageId(targetMessageId)

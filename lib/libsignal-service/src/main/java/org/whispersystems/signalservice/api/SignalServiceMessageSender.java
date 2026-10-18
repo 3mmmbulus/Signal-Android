@@ -717,6 +717,34 @@ public class SignalServiceMessageSender {
     return sendSyncMessage(createSelfSendSyncMessage(dataMessage));
   }
 
+  /**
+   * Tellomi (ADR-0081 §4.3): a pin / unpin "for me only" goes to my own linked devices as a sent transcript, and nowhere else.
+   * In a 1:1 chat {@code destination} is the other side, so my devices file it under that chat; in a group it is empty and the
+   * chat comes from the message's group context. Nothing is recorded as sent to anyone.
+   */
+  public SendMessageResult sendTellomiSelfOnlyTranscript(Optional<SignalServiceAddress> destination, SignalServiceDataMessage dataMessage)
+      throws IOException, UntrustedIdentityException, NoSessionException
+  {
+    Log.d(TAG, "[" + dataMessage.getTimestamp() + "] Sending a self-only transcript.");
+    return sendSyncMessage(SignalServiceSyncMessage.forSentTranscript(tellomiSelfOnlyTranscript(destination, localAddress, dataMessage)));
+  }
+
+  /**
+   * The transcript always names someone: the content builder reads {@code getDestination().get()}. A group's goes to me, as
+   * {@link #createSelfSendSyncMessage} does — the receiving device files it by the group context first.
+   */
+  static SentTranscriptMessage tellomiSelfOnlyTranscript(Optional<SignalServiceAddress> destination, SignalServiceAddress localAddress, SignalServiceDataMessage dataMessage) {
+    return new SentTranscriptMessage(destination.isPresent() ? destination : Optional.of(localAddress),
+                                     dataMessage.getTimestamp(),
+                                     Optional.of(dataMessage),
+                                     0,
+                                     Collections.emptyMap(),
+                                     false,
+                                     Optional.empty(),
+                                     Collections.emptySet(),
+                                     Optional.empty());
+  }
+
   public SendMessageResult sendSelfSyncEditMessage(SignalServiceEditMessage editMessage)
       throws IOException, UntrustedIdentityException, NoSessionException
   {

@@ -682,6 +682,12 @@
     <string name="ConversationFragment_attachment_backfill_not_found">你部手機已經睇唔到呢個媒體，亦都冇得下載。</string>
     <!-- Dialog for how to long to keep a messaged pinned for -->
     <string name="ConversationFragment__keep_pinned">置頂有效期…</string>
+    <string name="TellomiPin__title">置頂訊息</string>
+    <string name="TellomiPin__for_me_and">為我同%1$s置頂</string>
+    <string name="TellomiPin__for_me">淨係為我置頂</string>
+    <string name="TellomiPin__notify_all">置頂並通知所有成員</string>
+    <string name="TellomiPin__without_notifying">置頂但唔通知</string>
+    <string name="TellomiPin__duration">時長：%1$s ›</string>
     <!-- Dialog option to keep message pin for 24 hours -->
     <string name="ConversationFragment__24_hours">24 個鐘</string>
     <!-- Dialog option to keep message pin for 7 days -->

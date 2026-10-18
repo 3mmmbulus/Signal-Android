@@ -330,7 +330,11 @@ class ConversationRepository(
     return SignalDatabase.messages.getPinnedMessages(threadId = threadId, orderByPinned = true)
   }
 
-  fun pinMessage(messageRecord: MessageRecord, duration: Duration, threadRecipient: Recipient): Completable {
+  fun pinMessage(messageRecord: MessageRecord, duration: Duration, threadRecipient: Recipient, choice: TellomiPinChoice = TellomiPinChoice.FOR_BOTH): Completable {
+    if (choice == TellomiPinChoice.FOR_ME) {
+      return pinMessageForMe(messageRecord, duration, threadRecipient)
+    }
+
     return Completable.create { emitter ->
       val isGroup = threadRecipient.isPushV2Group
       if (isGroup && threadRecipient.groupId.getOrNull()?.isV2 != true) {
@@ -361,7 +365,7 @@ class ConversationRepository(
 
       val includeSelf = threadRecipient.isSelf
       val eligibleTargets = RecipientUtil.getEligibleForSending(possibleTargets)
-      val results = PinSendUtil.sendPinMessage(applicationContext, threadRecipient, message, eligibleTargets, includeSelf, messageRecord.id)
+      val results = PinSendUtil.sendPinMessage(applicationContext, threadRecipient, message, eligibleTargets, includeSelf, messageRecord.id, silent = choice == TellomiPinChoice.FOR_EVERYONE_SILENT)
 
       val sendResults = GroupSendJobHelper.getCompletedSends(eligibleTargets, results)
 
@@ -392,7 +396,27 @@ class ConversationRepository(
     }.subscribeOn(Schedulers.io())
   }
 
+  /**
+   * Tellomi (ADR-0081 §4.3): pin for me only — tell my own linked devices (a sent transcript with `pinForSelfOnly`), then pin
+   * here with no "pinned a message" update. Nothing goes to the other side, so no group permission is needed.
+   */
+  private fun pinMessageForMe(messageRecord: MessageRecord, duration: Duration, threadRecipient: Recipient): Completable {
+    return Completable.fromAction {
+      val pinnedAt = System.currentTimeMillis()
+      val seconds = if (duration.isInfinite()) MessageTable.PIN_FOREVER else duration.inWholeSeconds
+      Log.i(TAG, "Pinning for me in ${threadRecipient.id}, thread: ${messageRecord.threadId}")
+      PinSendUtil.sendSelfOnlyPin(threadRecipient, messageRecord.fromRecipient.requireAci(), messageRecord.dateSent, seconds, pinnedAt)
+      SignalDatabase.messages.tellomiPinForMe(messageRecord.id, messageRecord.threadId, seconds, pinnedAt)
+    }.subscribeOn(Schedulers.io())
+  }
+
   fun unpinMessage(messageId: Long): Completable {
+    return Completable.defer {
+      if (SignalDatabase.messages.tellomiIsPinnedForMe(messageId)) unpinMessageForMe(messageId) else unpinMessageForEveryone(messageId)
+    }.subscribeOn(Schedulers.io())
+  }
+
+  private fun unpinMessageForEveryone(messageId: Long): Completable {
     return Completable.create { emitter ->
       val message = SignalDatabase.messages.getMessageRecordOrNull(messageId)
       if (message == null) {
@@ -438,6 +462,14 @@ class ConversationRepository(
       } else {
         emitter.tryOnError(Exception("Unpin message failed"))
       }
+    }.subscribeOn(Schedulers.io())
+  }
+
+  /** Tellomi (ADR-0081 §4.3): a pin for me only is taken back on my own devices only. */
+  private fun unpinMessageForMe(messageId: Long): Completable {
+    return Completable.fromAction {
+      Log.i(TAG, "Unpinning for me: $messageId")
+      TellomiPinForMe.unpin(messageId)
     }.subscribeOn(Schedulers.io())
   }
 

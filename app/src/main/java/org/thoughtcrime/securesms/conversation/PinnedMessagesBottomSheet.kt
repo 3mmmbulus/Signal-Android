@@ -63,6 +63,9 @@ class PinnedMessagesBottomSheet : FixedRoundedCornerBottomSheetDialogFragment() 
 
   private val disposables: LifecycleDisposable = LifecycleDisposable()
 
+  /** Tellomi (ADR-0081 §4.3): pins for me only — those can be unpinned here without group permission. */
+  private var tellomiPinnedForMeIds: Set<Long> = emptySet()
+
   override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View {
     val view = inflater.inflate(R.layout.pinned_messages_bottom_sheet, container, false)
     disposables.bindTo(viewLifecycleOwner)
@@ -108,6 +111,8 @@ class PinnedMessagesBottomSheet : FixedRoundedCornerBottomSheetDialogFragment() 
       }
       recyclerViewColorizer.setChatColors(conversationRecipient.chatColors)
     }
+
+    disposables += viewModel.getPinnedForMeIds().subscribe { tellomiPinnedForMeIds = it }
 
     disposables += viewModel.getNameColorsMap().subscribe { map ->
       colorizer.onNameColorsChanged(map)
@@ -180,7 +185,7 @@ class PinnedMessagesBottomSheet : FixedRoundedCornerBottomSheetDialogFragment() 
         rootView = itemView.rootView as ViewGroup,
         message = item.conversationMessage.messageRecord as MmsMessageRecord,
         isGroup = item.conversationMessage.threadRecipient.isPushV2Group,
-        canUnpin = requireArguments().getBoolean(KEY_CAN_UNPIN),
+        canUnpin = requireArguments().getBoolean(KEY_CAN_UNPIN) || item.getMessageRecord().id in tellomiPinnedForMeIds,
         onUnpin = {
           dismiss()
           getCallback().unpin(item.conversationMessage)

@@ -720,6 +720,18 @@
     <string name="ConversationFragment_attachment_backfill_not_found">This media is no longer available on your phone and can\'t be downloaded.</string>
     <!-- Dialog for how to long to keep a messaged pinned for -->
     <string name="ConversationFragment__keep_pinned">Keep pinned for…</string>
+    <!-- Tellomi (ADR-0081, pinned-messages.md 3.1): title of the prompt asking who a pin is for. -->
+    <string name="TellomiPin__title">Pin message</string>
+    <!-- Tellomi (ADR-0081): pin in a 1:1 chat for both sides, as Telegram's "Pin for me and %@". -->
+    <string name="TellomiPin__for_me_and">Pin for me and %1$s</string>
+    <!-- Tellomi (ADR-0081): pin only on my own devices; the other side sees nothing. -->
+    <string name="TellomiPin__for_me">Pin for me</string>
+    <!-- Tellomi (ADR-0081): group pin for everyone that notifies the members. -->
+    <string name="TellomiPin__notify_all">Pin and notify all members</string>
+    <!-- Tellomi (ADR-0081): group pin for everyone without notifying. -->
+    <string name="TellomiPin__without_notifying">Pin without notifying</string>
+    <!-- Tellomi (pinned-messages.md 3.1): last row of the pin prompt; opens the duration choices. %1$s is e.g. "Forever". -->
+    <string name="TellomiPin__duration">Duration: %1$s ›</string>
     <!-- Dialog option to keep message pin for 24 hours -->
     <string name="ConversationFragment__24_hours">24 hours</string>
     <!-- Dialog option to keep message pin for 7 days -->

@@ -274,6 +274,9 @@ object SyncMessageProcessor {
           threadId = SignalDatabase.threads.getOrCreateThreadIdFor(getSyncMessageDestination(sent))
         }
         dataMessage.pollTerminate != null -> threadId = handleSynchronizedPollEnd(envelope, dataMessage, sent, senderRecipient, earlyMessageCacheEntry, batchCache)
+        // Tellomi (ADR-0081 §4.3): a pin / unpin for me only from my other device: on this device too, with no update message.
+        dataMessage.pinMessage != null && dataMessage.tellomi?.pinForSelfOnly == true -> threadId = handleSynchronizedSelfOnlyPin(envelope, dataMessage, sent, senderRecipient, earlyMessageCacheEntry, batchCache)
+        dataMessage.unpinMessage != null && dataMessage.tellomi?.pinForSelfOnly == true -> threadId = handleSynchronizedSelfOnlyUnpin(envelope, dataMessage, sent, senderRecipient, earlyMessageCacheEntry, batchCache)
         dataMessage.pinMessage != null -> threadId = handleSynchronizedPinMessage(envelope, dataMessage, sent, senderRecipient, earlyMessageCacheEntry, batchCache)
         dataMessage.unpinMessage != null -> {
           val destination = getSyncMessageDestination(sent)
@@ -2135,6 +2138,87 @@ object SyncMessageProcessor {
     }
 
     return threadId
+  }
+
+  /**
+   * Tellomi (ADR-0081 §4.3): my other device pinned a message for me only. Pin it here too — no update message, no group
+   * permission check (it never went to anyone else) — and leave the chat's timer alone.
+   */
+  private fun handleSynchronizedSelfOnlyPin(
+    envelope: Envelope,
+    message: DataMessage,
+    sent: Sent,
+    senderRecipient: Recipient,
+    earlyMessageCacheEntry: EarlyMessageCacheEntry?,
+    batchCache: BatchCache
+  ): Long {
+    log(envelope.clientTimestamp!!, "Synchronize a pin for me only")
+
+    val pinMessage = message.pinMessage!!
+    val target = findSelfOnlyPinTarget(envelope, sent, senderRecipient, ACI.parseOrNull(pinMessage.targetAuthorAciBinary), pinMessage.targetSentTimestamp, earlyMessageCacheEntry, batchCache) ?: return -1
+    val duration = if (pinMessage.pinDurationForever == true) MessageTable.PIN_FOREVER else (pinMessage.pinDurationSeconds ?: return -1).toLong()
+    SignalDatabase.messages.tellomiPinForMe(target.second, target.first, duration, sent.timestamp!!)
+    return target.first
+  }
+
+  /** Tellomi (ADR-0081 §4.3): my other device took back a pin for me only. */
+  private fun handleSynchronizedSelfOnlyUnpin(
+    envelope: Envelope,
+    message: DataMessage,
+    sent: Sent,
+    senderRecipient: Recipient,
+    earlyMessageCacheEntry: EarlyMessageCacheEntry?,
+    batchCache: BatchCache
+  ): Long {
+    log(envelope.clientTimestamp!!, "Synchronize an unpin for me only")
+
+    val unpinMessage = message.unpinMessage!!
+    val target = findSelfOnlyPinTarget(envelope, sent, senderRecipient, ACI.parseOrNull(unpinMessage.targetAuthorAciBinary), unpinMessage.targetSentTimestamp, earlyMessageCacheEntry, batchCache) ?: return -1
+    if (SignalDatabase.messages.tellomiIsPinnedForMe(target.second)) {
+      SignalDatabase.messages.unpinMessage(target.second, target.first)
+    }
+    return target.first
+  }
+
+  /** (thread id, message id) of the pin's target in the transcript's chat, or null (maybe into the early message cache). */
+  private fun findSelfOnlyPinTarget(
+    envelope: Envelope,
+    sent: Sent,
+    senderRecipient: Recipient,
+    targetAuthorServiceId: ServiceId?,
+    targetSentTimestamp: Long?,
+    earlyMessageCacheEntry: EarlyMessageCacheEntry?,
+    batchCache: BatchCache
+  ): Pair<Long, Long>? {
+    if (targetAuthorServiceId == null || targetAuthorServiceId.isUnknown || targetSentTimestamp == null) {
+      warn(envelope.clientTimestamp!!, "Pin for me only without a valid target")
+      return null
+    }
+
+    val targetAuthor = Recipient.externalPush(targetAuthorServiceId)
+    val targetMessage = SignalDatabase.messages.getMessageFor(targetSentTimestamp, targetAuthor.id)
+    if (targetMessage == null) {
+      warn(envelope.clientTimestamp!!, "Unable to find the target of a pin for me only. Putting in early message cache.")
+      if (earlyMessageCacheEntry != null) {
+        // Keyed by the target's author: that's whose message, when it arrives, replays this entry.
+        AppDependencies.earlyMessageCache.store(targetAuthor.id, targetSentTimestamp, earlyMessageCacheEntry)
+        batchCache.requiresEarlyMessageProcessing()
+      }
+      return null
+    }
+
+    if (targetMessage.isRemoteDelete || targetMessage.hasGiftBadge()) {
+      warn(envelope.clientTimestamp!!, "Cannot pin this message for me")
+      return null
+    }
+
+    val threadId = SignalDatabase.threads.getOrCreateThreadIdFor(getSyncMessageDestination(sent))
+    if (targetMessage.threadId != threadId) {
+      warn(envelope.clientTimestamp!!, "Target of a pin for me only is in another chat")
+      return null
+    }
+
+    return threadId to ((targetMessage as? MmsMessageRecord)?.latestRevisionId?.id ?: targetMessage.id)
   }
 
   private fun handleSynchronizedPinMessage(

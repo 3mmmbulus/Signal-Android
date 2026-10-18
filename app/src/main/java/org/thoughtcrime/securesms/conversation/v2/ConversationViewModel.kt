@@ -219,6 +219,13 @@ class ConversationViewModel(
   private val internalPinnedMessages = MutableStateFlow<List<ConversationMessage>>(emptyList())
   val pinnedMessages: StateFlow<List<ConversationMessage>> = internalPinnedMessages
 
+  /**
+   * Tellomi (ADR-0081 §4.3): which of [pinnedMessages] are pinned for me only — those I may unpin without group permission.
+   * Kept apart because [ConversationMessage] equality is by id, so a pin turning from mine-only into everyone's wouldn't re-emit the list.
+   */
+  private val internalTellomiPinnedForMeIds = MutableStateFlow<Set<Long>>(emptySet())
+  val tellomiPinnedForMeIds: StateFlow<Set<Long>> = internalTellomiPinnedForMeIds
+
   private val _plaintextExportState = MutableStateFlow<PlaintextExportState>(PlaintextExportState.None)
   val plaintextExportState: StateFlow<PlaintextExportState> = _plaintextExportState
 
@@ -380,18 +387,19 @@ class ConversationViewModel(
   private fun getPinnedMessages() {
     viewModelScope.launch(Dispatchers.Default) {
       val threadRecipient = SignalDatabase.threads.getRecipientForThreadId(threadId)
+      internalTellomiPinnedForMeIds.value = SignalDatabase.messages.tellomiPinnedForMeIds(threadId)
       internalPinnedMessages.value = repository.getPinnedMessages(threadId).map {
         ConversationMessage.ConversationMessageFactory.createWithUnresolvedData(AppDependencies.application, it, threadRecipient!!)
       }
     }
   }
 
-  fun pinMessage(messageRecord: MessageRecord, duration: Duration, threadRecipient: Recipient): Completable {
+  fun pinMessage(messageRecord: MessageRecord, duration: Duration, threadRecipient: Recipient, choice: TellomiPinChoice = TellomiPinChoice.FOR_BOTH): Completable {
     return if (!NetworkUtil.isConnected(AppDependencies.application)) {
       Completable.error(Exception("Connection required to pin message"))
     } else {
       repository
-        .pinMessage(messageRecord, duration, threadRecipient)
+        .pinMessage(messageRecord, duration, threadRecipient, choice)
         .observeOn(AndroidSchedulers.mainThread())
     }
   }

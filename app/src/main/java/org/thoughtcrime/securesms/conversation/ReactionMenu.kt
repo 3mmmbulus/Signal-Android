@@ -34,6 +34,7 @@ object ReactionMenu {
     conversationMessage: ConversationMessage,
     isNonAdminInAnnouncementGroup: Boolean,
     canEditGroupInfo: Boolean,
+    tellomiPinnedForMeIds: Set<Long> = emptySet(),
     onAction: (ReactionAction) -> Unit
   ): Menu {
     val menuState = MenuState.getMenuState(
@@ -41,7 +42,8 @@ object ReactionMenu {
       conversationMessage.multiselectCollection.toSet(),
       false,
       isNonAdminInAnnouncementGroup,
-      canEditGroupInfo
+      canEditGroupInfo,
+      tellomiPinnedForMeIds
     )
 
     val items = mutableListOf<ActionItem>()

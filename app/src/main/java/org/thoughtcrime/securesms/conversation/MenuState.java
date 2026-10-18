@@ -4,6 +4,7 @@ import androidx.annotation.NonNull;
 
 import org.thoughtcrime.securesms.conversation.mutiselect.MultiselectCollection;
 import org.thoughtcrime.securesms.conversation.mutiselect.MultiselectPart;
+import org.thoughtcrime.securesms.conversation.v2.TellomiPinChoice;
 import org.thoughtcrime.securesms.database.model.MmsMessageRecord;
 import org.thoughtcrime.securesms.database.model.MessageRecord;
 import org.thoughtcrime.securesms.recipients.Recipient;
@@ -11,6 +12,7 @@ import org.thoughtcrime.securesms.keyvalue.SignalStore;
 import org.thoughtcrime.securesms.util.MessageRecordUtil;
 import org.thoughtcrime.securesms.util.MessageConstraintsUtil;
 
+import java.util.Collections;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -118,6 +120,20 @@ public final class MenuState {
                                        boolean isNonAdminInAnnouncementGroup,
                                        boolean canEditGroupInfo)
   {
+    return getMenuState(conversationRecipient, selectedParts, shouldShowMessageRequest, isNonAdminInAnnouncementGroup, canEditGroupInfo, Collections.emptySet());
+  }
+
+  /**
+   * Tellomi (ADR-0081 §4.6, pinned-messages.md 3.1): anyone may pin — without group permission the prompt only offers
+   * "pin for me" — and a pin for me only (one of {@code tellomiPinnedForMeIds}) can always be taken back.
+   */
+  public static MenuState getMenuState(@NonNull Recipient conversationRecipient,
+                                       @NonNull Set<MultiselectPart> selectedParts,
+                                       boolean shouldShowMessageRequest,
+                                       boolean isNonAdminInAnnouncementGroup,
+                                       boolean canEditGroupInfo,
+                                       @NonNull Set<Long> tellomiPinnedForMeIds)
+  {
     
     Builder builder          = new Builder();
     boolean actionMessage    = false;
@@ -186,11 +202,13 @@ public final class MenuState {
         hasPollTerminate = true;
       }
 
-      if (!messageRecord.isPending() && messageRecord.getPinnedUntil() == 0 && !conversationRecipient.isReleaseNotes() && canEditGroupInfo && !hasGift && !conversationRecipient.isInactiveGroup()) {
+      if (!messageRecord.isPending() && messageRecord.getPinnedUntil() == 0 && !conversationRecipient.isReleaseNotes() && !hasGift && !conversationRecipient.isInactiveGroup()) {
         canPinMessage = true;
       }
 
-      if (messageRecord.getPinnedUntil() != 0 && !conversationRecipient.isReleaseNotes() && canEditGroupInfo && !hasGift && !conversationRecipient.isInactiveGroup()) {
+      if (messageRecord.getPinnedUntil() != 0 && !conversationRecipient.isReleaseNotes() && !hasGift &&
+          TellomiPinChoice.canUnpin(tellomiPinnedForMeIds.contains(messageRecord.getId()), canEditGroupInfo, conversationRecipient.isInactiveGroup()))
+      {
         canUnpinMessage = true;
       }
 

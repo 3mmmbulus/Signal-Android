@@ -144,7 +144,8 @@ class ChatReactionOverlayController(
     snapshot: ReactionOverlaySnapshot,
     isNonAdminInAnnouncementGroup: Boolean,
     canEditGroupInfo: Boolean,
-    focusedView: View?
+    focusedView: View?,
+    tellomiPinnedForMeIds: Set<Long> = emptySet()
   ) {
     if (isShowing) {
       return
@@ -157,6 +158,7 @@ class ChatReactionOverlayController(
       conversationMessage = conversationMessage,
       isNonAdminInAnnouncementGroup = isNonAdminInAnnouncementGroup,
       canEditGroupInfo = canEditGroupInfo,
+      tellomiPinnedForMeIds = tellomiPinnedForMeIds,
       onAction = ::onMenuAction
     )
 

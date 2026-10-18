@@ -1722,10 +1722,11 @@ class ConversationFragment :
       viewModel
         .pinnedMessages
         .combine(viewModel.wallpaper) { messages, wallpaper -> messages to wallpaper }
+        .combine(viewModel.tellomiPinnedForMeIds) { (messages, wallpaper), pinnedForMeIds -> Triple(messages, wallpaper, pinnedForMeIds) }
         .flowWithLifecycle(viewLifecycleOwner.lifecycle)
         .flowOn(Dispatchers.Main)
-        .collect { (messages, wallpaper) ->
-          presentPinnedMessage(pinnedMessages = messages, hasWallpaper = wallpaper != null)
+        .collect { (messages, wallpaper, pinnedForMeIds) ->
+          presentPinnedMessage(pinnedMessages = messages, hasWallpaper = wallpaper != null, tellomiPinnedForMeIds = pinnedForMeIds)
         }
     }
 
@@ -1882,9 +1883,9 @@ class ConversationFragment :
       .addTo(disposables)
   }
 
-  private fun presentPinnedMessage(pinnedMessages: List<ConversationMessage>, hasWallpaper: Boolean) {
+  private fun presentPinnedMessage(pinnedMessages: List<ConversationMessage>, hasWallpaper: Boolean, tellomiPinnedForMeIds: Set<Long> = emptySet()) {
     if (pinnedMessages.isNotEmpty()) {
-      binding.conversationBanner.showPinnedMessageStub(messages = pinnedMessages, canUnpin = conversationGroupViewModel.canEditGroupInfo(), hasWallpaper = hasWallpaper, shouldAnimate = !firstPinRender)
+      binding.conversationBanner.showPinnedMessageStub(messages = pinnedMessages, canUnpin = conversationGroupViewModel.canEditGroupInfo(), hasWallpaper = hasWallpaper, shouldAnimate = !firstPinRender, tellomiPinnedForMeIds = tellomiPinnedForMeIds)
     } else {
       binding.conversationBanner.hidePinnedMessageStub()
     }
@@ -2399,60 +2400,108 @@ class ConversationFragment :
         .setTitle(resources.getString(R.string.ConversationFragment__replace_title))
         .setMessage(resources.getString(R.string.ConversationFragment__replace_body))
         .setPositiveButton(R.string.ConversationFragment__replace) { _, _ ->
-          showPinForDialog(conversationMessage)
+          showPinChoiceDialog(conversationMessage)
         }
         .setNegativeButton(R.string.ConversationFragment__cancel) { dialog, _ -> dialog.dismiss() }
         .show()
     } else {
-      showPinForDialog(conversationMessage)
+      showPinChoiceDialog(conversationMessage)
     }
   }
 
-  private fun showPinForDialog(conversationMessage: ConversationMessage) {
+  /**
+   * Tellomi (ADR-0081 §4.6, pinned-messages.md 3.1): who the pin is for ([TellomiPinChoice]), with how long on the last row —
+   * forever by default, 24 hours / 7 days / 30 days behind it. Saved Messages pins straight away.
+   */
+  private fun showPinChoiceDialog(conversationMessage: ConversationMessage, durationIndex: Int? = null) {
     val threadRecipient = viewModel.recipientSnapshot ?: return
-    var selection = 1
     val labels = resources.getStringArray(R.array.ConversationFragment__pinned_for_labels)
     val values = resources.getIntArray(R.array.ConversationFragment__pinned_for_values)
+    val duration = durationIndex ?: values.indexOf(-1).coerceAtLeast(0)
+
+    val choices = TellomiPinChoice.choicesFor(
+      isNoteToSelf = threadRecipient.isSelf,
+      isGroup = threadRecipient.isGroup,
+      canPinForEveryone = conversationGroupViewModel.canEditGroupInfo()
+    )
+    if (choices == null) {
+      pinMessage(conversationMessage, threadRecipient, TellomiPinChoice.FOR_BOTH, values[duration])
+      return
+    }
+
+    val items = choices.map { pinChoiceLabel(it, threadRecipient) } + getString(R.string.TellomiPin__duration, labels[duration])
+    MaterialAlertDialogBuilder(requireContext())
+      .setTitle(R.string.TellomiPin__title)
+      .setItems(items.toTypedArray()) { _, which ->
+        if (which < choices.size) {
+          pinMessage(conversationMessage, threadRecipient, choices[which], values[duration])
+        } else {
+          showPinDurationDialog(conversationMessage, duration)
+        }
+      }
+      .setNegativeButton(android.R.string.cancel, null)
+      .show()
+  }
+
+  private fun pinChoiceLabel(choice: TellomiPinChoice, threadRecipient: Recipient): String {
+    return when (choice) {
+      TellomiPinChoice.FOR_BOTH -> getString(R.string.TellomiPin__for_me_and, threadRecipient.getShortDisplayName(requireContext()))
+      TellomiPinChoice.FOR_EVERYONE -> getString(R.string.TellomiPin__notify_all)
+      TellomiPinChoice.FOR_EVERYONE_SILENT -> getString(R.string.TellomiPin__without_notifying)
+      TellomiPinChoice.FOR_ME -> getString(R.string.TellomiPin__for_me)
+    }
+  }
+
+  /** Tellomi (pinned-messages.md 3.1): Signal's own "Keep pinned for…" choices, back to [showPinChoiceDialog] when picked. */
+  private fun showPinDurationDialog(conversationMessage: ConversationMessage, durationIndex: Int) {
+    var selection = durationIndex
+    val labels = resources.getStringArray(R.array.ConversationFragment__pinned_for_labels)
 
     MaterialAlertDialogBuilder(requireContext())
       .setTitle(resources.getString(R.string.ConversationFragment__keep_pinned))
-      .setSingleChoiceItems(labels, selection) { dialog, which ->
+      .setSingleChoiceItems(labels, selection) { _, which ->
         selection = which
       }
       .setPositiveButton(android.R.string.ok) { dialog, _ ->
-        if (conversationMessage.messageRecord.expiresIn > 0 && SignalStore.uiHints.shouldDisplayPinnedSheet()) {
-          PinDisappearingMessageBottomSheet.show(childFragmentManager)
-          SignalStore.uiHints.incrementSeenPinnedSheetCount()
-        }
-        disposables += viewModel
-          .pinMessage(
-            messageRecord = conversationMessage.messageRecord,
-            duration = if (values[selection] == -1) kotlin.time.Duration.INFINITE else values[selection].days,
-            threadRecipient = threadRecipient
-          )
-          .doOnSubscribe {
-            handler.postDelayed({ showSpinner() }, PIN_SPINNER_DELAY.inWholeMilliseconds)
-          }
-          .doFinally {
-            handler.removeCallbacksAndMessages(null)
-            hideSpinner()
-          }
-          .subscribeBy(
-            onError = {
-              Log.w(TAG, "Error received during pin message!", it)
-              MaterialAlertDialogBuilder(requireContext())
-                .setTitle(R.string.PinnedMessage__couldnt_pin)
-                .setMessage(getString(R.string.PinnedMessage__check_connection))
-                .setPositiveButton(android.R.string.ok) { dialog: DialogInterface?, which: Int -> dialog!!.dismiss() }
-                .show()
-            }
-          )
         dialog.dismiss()
+        showPinChoiceDialog(conversationMessage, selection)
       }
       .setNegativeButton(android.R.string.cancel) { dialog, _ ->
         dialog.dismiss()
+        showPinChoiceDialog(conversationMessage, durationIndex)
       }
       .show()
+  }
+
+  private fun pinMessage(conversationMessage: ConversationMessage, threadRecipient: Recipient, choice: TellomiPinChoice, durationDays: Int) {
+    if (conversationMessage.messageRecord.expiresIn > 0 && SignalStore.uiHints.shouldDisplayPinnedSheet()) {
+      PinDisappearingMessageBottomSheet.show(childFragmentManager)
+      SignalStore.uiHints.incrementSeenPinnedSheetCount()
+    }
+    disposables += viewModel
+      .pinMessage(
+        messageRecord = conversationMessage.messageRecord,
+        duration = if (durationDays == -1) kotlin.time.Duration.INFINITE else durationDays.days,
+        threadRecipient = threadRecipient,
+        choice = choice
+      )
+      .doOnSubscribe {
+        handler.postDelayed({ showSpinner() }, PIN_SPINNER_DELAY.inWholeMilliseconds)
+      }
+      .doFinally {
+        handler.removeCallbacksAndMessages(null)
+        hideSpinner()
+      }
+      .subscribeBy(
+        onError = {
+          Log.w(TAG, "Error received during pin message!", it)
+          MaterialAlertDialogBuilder(requireContext())
+            .setTitle(R.string.PinnedMessage__couldnt_pin)
+            .setMessage(getString(R.string.PinnedMessage__check_connection))
+            .setPositiveButton(android.R.string.ok) { dialog: DialogInterface?, which: Int -> dialog!!.dismiss() }
+            .show()
+        }
+      )
   }
 
   private fun handleUnpinMessage(messageId: Long) {
@@ -3200,7 +3249,8 @@ class ConversationFragment :
       selectedParts,
       viewModel.hasMessageRequestState,
       conversationGroupViewModel.isNonAdminInAnnouncementGroup(),
-      conversationGroupViewModel.canEditGroupInfo()
+      conversationGroupViewModel.canEditGroupInfo(),
+      viewModel.tellomiPinnedForMeIds.value
     )
 
     val items = arrayListOf<ActionItem>()
@@ -3495,7 +3545,8 @@ class ConversationFragment :
       snapshot = snapshot,
       isNonAdminInAnnouncementGroup = conversationGroupViewModel.isNonAdminInAnnouncementGroup(),
       canEditGroupInfo = conversationGroupViewModel.canEditGroupInfo(),
-      focusedView = focusedView
+      focusedView = focusedView,
+      tellomiPinnedForMeIds = viewModel.tellomiPinnedForMeIds.value
     )
     viewModel.setIsReactionDelegateShowing(true)
     // Tellomi (A-06): the field keeps focus while the keyboard stays up, or the keyboard would be left typing into nothing.

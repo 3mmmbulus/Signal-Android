@@ -79,6 +79,7 @@ fun PinnedMessagesBanner(
   messages: List<ConversationMessage> = emptyList(),
   canUnpin: Boolean,
   hasWallpaper: Boolean,
+  tellomiPinnedForMeIds: Set<Long> = emptySet(),
   onUnpinMessage: (Long) -> Unit = {},
   onGoToMessage: (Long) -> Unit = {},
   onViewAllMessages: () -> Unit = {}
@@ -224,7 +225,8 @@ fun PinnedMessagesBanner(
 
         DropdownMenus.Menu(controller = menuController, offsetX = 2.dp, offsetY = 16.dp) { menuController ->
           Column {
-            if (canUnpin) {
+            // Tellomi (ADR-0081 §4.3): a pin for me only can always be taken back.
+            if (canUnpin || message.id in tellomiPinnedForMeIds) {
               DropdownMenus.ItemWithIcon(menuController, R.drawable.symbol_pin_slash_24, R.string.PinnedMessage__unpin_message) { onUnpinMessage(message.id) }
             }
             DropdownMenus.ItemWithIcon(menuController, R.drawable.symbol_chat_arrow_24, R.string.PinnedMessage__go_to_message) { onGoToMessage(message.id) }

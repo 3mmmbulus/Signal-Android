@@ -138,7 +138,7 @@ class ConversationBannerView @JvmOverloads constructor(
     hide(voiceNotePlayerStub)
   }
 
-  fun showPinnedMessageStub(messages: List<ConversationMessage>, canUnpin: Boolean, hasWallpaper: Boolean, shouldAnimate: Boolean) {
+  fun showPinnedMessageStub(messages: List<ConversationMessage>, canUnpin: Boolean, hasWallpaper: Boolean, shouldAnimate: Boolean, tellomiPinnedForMeIds: Set<Long> = emptySet()) {
     val firstRender = !pinnedMessageStub.isVisible
 
     val view = pinnedMessageStub.get()
@@ -148,6 +148,7 @@ class ConversationBannerView @JvmOverloads constructor(
           PinnedMessagesBanner(
             messages = messages,
             canUnpin = canUnpin,
+            tellomiPinnedForMeIds = tellomiPinnedForMeIds,
             hasWallpaper = hasWallpaper,
             onUnpinMessage = { messageId -> listener?.onUnpinMessage(messageId) },
             onGoToMessage = { messageId -> listener?.onGoToMessage(messageId) },
