@@ -556,6 +556,8 @@
     <!-- Toast text when contacts activity is not found -->
     <string name="ConversationFragment__tellomi_reacted_with">已回應 %1$s</string>
     <string name="ConversationFragment__tellomi_reaction_removed">已取消回應</string>
+    <string name="ConversationFragment__tellomi_next_unseen_reaction">下一則新回應</string>
+    <string name="ConversationFragment__tellomi_read_all_reactions">所有回應標為已讀</string>
     <string name="ConversationFragment__contacts_app_not_found">找不到聯絡人 App。</string>
     <plurals name="ConversationFragment_delete_selected_messages">
         <item quantity="other">刪除已選訊息？</item>

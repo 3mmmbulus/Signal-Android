@@ -585,6 +585,10 @@
     <string name="ConversationFragment__tellomi_reacted_with">Reacted with %1$s</string>
     <!-- Tellomi (interaction audit A-07): read out by TalkBack after taking a reaction back. -->
     <string name="ConversationFragment__tellomi_reaction_removed">Reaction removed</string>
+    <!-- Tellomi (chat-telegram-parity F01): read out by TalkBack on the button that jumps to my messages with reactions I haven't seen yet. -->
+    <string name="ConversationFragment__tellomi_next_unseen_reaction">Next new reaction</string>
+    <!-- Tellomi (chat-telegram-parity F01): long press on that button, as in Telegram ("Read all reactions"). -->
+    <string name="ConversationFragment__tellomi_read_all_reactions">Read all reactions</string>
     <string name="ConversationFragment__contacts_app_not_found">Contacts app not found.</string>
     <plurals name="ConversationFragment_delete_selected_messages">
         <item quantity="one">Delete selected message?</item>

@@ -18,6 +18,7 @@ import com.bumptech.glide.RequestManager
 import com.bumptech.glide.request.target.CustomTarget
 import com.bumptech.glide.request.transition.Transition
 import io.reactivex.rxjava3.android.schedulers.AndroidSchedulers
+import io.reactivex.rxjava3.core.BackpressureStrategy
 import io.reactivex.rxjava3.core.Completable
 import io.reactivex.rxjava3.core.Flowable
 import io.reactivex.rxjava3.core.Maybe
@@ -86,6 +87,7 @@ import org.thoughtcrime.securesms.mms.Slide
 import org.thoughtcrime.securesms.mms.SlideDeck
 import org.thoughtcrime.securesms.polls.Poll
 import org.thoughtcrime.securesms.profiles.spoofing.ReviewRecipient
+import org.thoughtcrime.securesms.reactions.TellomiUnseenReactions
 import org.thoughtcrime.securesms.recipients.Recipient
 import org.thoughtcrime.securesms.recipients.RecipientId
 import org.thoughtcrime.securesms.recipients.RecipientUtil
@@ -578,6 +580,21 @@ class ConversationRepository(
         SignalDatabase.messages.getMessagePositionInConversation(threadId, details.second, details.first)
       }
     }.subscribeOn(Schedulers.io())
+  }
+
+  /**
+   * Tellomi (chat-telegram-parity F01): my messages in this thread with reactions not yet seen in the chat, oldest first.
+   * Recomputed when one is recorded or crossed off, and when the conversation changes (a message deleted, a reaction taken back).
+   */
+  fun getUnseenReactions(threadId: Long): Flowable<List<Long>> {
+    return Flowable.merge(
+      TellomiUnseenReactions.changes(threadId).toFlowable(BackpressureStrategy.LATEST),
+      RxDatabaseObserver.conversation(threadId)
+    )
+      .onBackpressureLatest()
+      .observeOn(Schedulers.io())
+      .map { TellomiUnseenReactions.unseen(threadId) }
+      .distinctUntilChanged()
   }
 
   fun getMessagePosition(threadId: Long, messageId: Long): Single<Int> {

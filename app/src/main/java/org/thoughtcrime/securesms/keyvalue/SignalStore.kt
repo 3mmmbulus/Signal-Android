@@ -43,6 +43,7 @@ class SignalStore(context: Application, private val store: KeyValueStore) {
   val tellomiLinkValues = TellomiLinkValues(store)
   val tellomiFeedValues = TellomiFeedValues(store)
   val tellomiRestrictionValues = TellomiRestrictionValues(store)
+  val tellomiReactionValues = TellomiReactionValues(store)
 
   companion object {
 
@@ -298,6 +299,12 @@ class SignalStore(context: Application, private val store: KeyValueStore) {
     @get:JvmName("tellomiFeed")
     val tellomiFeed: TellomiFeedValues
       get() = instance!!.tellomiFeedValues
+
+    /** Tellomi（chat-telegram-parity F01）：还没在聊天里看到的回应。 */
+    @JvmStatic
+    @get:JvmName("tellomiReactions")
+    val tellomiReactions: TellomiReactionValues
+      get() = instance!!.tellomiReactionValues
 
     @JvmStatic
     @get:JvmName("backup")

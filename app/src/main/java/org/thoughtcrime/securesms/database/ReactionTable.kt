@@ -13,6 +13,7 @@ import org.signal.core.util.update
 import org.thoughtcrime.securesms.database.model.MessageId
 import org.thoughtcrime.securesms.database.model.ReactionRecord
 import org.thoughtcrime.securesms.dependencies.AppDependencies
+import org.thoughtcrime.securesms.reactions.TellomiUnseenReactions
 import org.thoughtcrime.securesms.recipients.RecipientId
 
 /**
@@ -125,6 +126,8 @@ class ReactionTable(context: Context, databaseHelper: SignalDatabase) : Database
     }
 
     AppDependencies.databaseObserver.notifyMessageUpdateObservers(messageId)
+    // Tellomi (chat-telegram-parity F01): remembered until seen in the chat, separately from REACTIONS_UNREAD.
+    TellomiUnseenReactions.onReactionAdded(messageId.id, reaction.author)
   }
 
   fun deleteReaction(messageId: MessageId, recipientId: RecipientId) {
@@ -143,6 +146,7 @@ class ReactionTable(context: Context, databaseHelper: SignalDatabase) : Database
     }
 
     AppDependencies.databaseObserver.notifyMessageUpdateObservers(messageId)
+    TellomiUnseenReactions.onReactionRemoved(messageId.id)
   }
 
   fun deleteReactions(messageId: MessageId) {

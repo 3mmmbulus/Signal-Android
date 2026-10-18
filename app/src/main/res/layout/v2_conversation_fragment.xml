@@ -191,17 +191,30 @@
 
     </FrameLayout>
 
+    <!-- Tellomi (chat-telegram-parity F01/F02): the mention and reaction buttons sit where the scroll-to-bottom button is and are
+         stacked above whatever is showing below them in ConversationFragment.restackScrollButtons(), as both Telegram apps do. -->
+    <org.thoughtcrime.securesms.components.ConversationScrollToView
+        android:id="@+id/scroll_to_reaction"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginEnd="10dp"
+        android:layout_marginBottom="16dp"
+        android:visibility="invisible"
+        app:cstv_scroll_button_src="@drawable/tellomi_heart_20"
+        app:layout_constraintBottom_toTopOf="@id/conversation_bottom_panel_barrier"
+        app:layout_constraintEnd_toEndOf="parent"
+        tools:visibility="visible" />
+
     <org.thoughtcrime.securesms.components.ConversationScrollToView
         android:id="@+id/scroll_to_mention"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_marginEnd="10dp"
-        android:layout_marginBottom="12dp"
+        android:layout_marginBottom="16dp"
         android:visibility="invisible"
         app:cstv_scroll_button_src="@drawable/ic_at_20"
-        app:layout_constraintBottom_toTopOf="@id/scroll_to_bottom"
+        app:layout_constraintBottom_toTopOf="@id/conversation_bottom_panel_barrier"
         app:layout_constraintEnd_toEndOf="parent"
-        app:layout_goneMarginBottom="20dp"
         tools:visibility="visible" />
 
     <org.thoughtcrime.securesms.components.ConversationScrollToView

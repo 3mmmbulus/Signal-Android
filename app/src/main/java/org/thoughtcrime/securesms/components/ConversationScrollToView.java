@@ -41,6 +41,10 @@ public final class ConversationScrollToView extends FrameLayout {
   private boolean shown;
   private int     lastUnreadCount;
 
+  // Tellomi（chat-telegram-parity F01 / F02）：几颗按钮叠成一列，下面那颗出场 / 退场时上面的跟着挪（见 setStackOffsetY）。
+  private float    stackOffsetY;
+  private Runnable onShownProgressChanged;
+
   public ConversationScrollToView(@NonNull Context context) {
     this(context, null);
   }
@@ -72,6 +76,9 @@ public final class ConversationScrollToView extends FrameLayout {
     visibilityAnimator.addUpdateListener(animation -> {
       visibility = (float) animation.getAnimatedValue();
       applyVisibility();
+      if (onShownProgressChanged != null) {
+        onShownProgressChanged.run();
+      }
     });
     visibilityAnimator.addListener(new AnimatorListenerAdapter() {
       private boolean canceled;
@@ -125,7 +132,34 @@ public final class ConversationScrollToView extends FrameLayout {
     setAlpha(visibility);
     setScaleX(scale);
     setScaleY(scale);
-    setTranslationY(hiddenOffsetY * (1f - visibility));
+    setTranslationY(stackOffsetY + hiddenOffsetY * (1f - visibility));
+  }
+
+  /** Tellomi: how far in the button is, 0 (gone) to 1 (fully shown); follows the show / hide animation. */
+  public float getShownProgress() {
+    return getVisibility() == VISIBLE ? visibility : 0f;
+  }
+
+  /** Tellomi: called on every frame of the show / hide animation, so the buttons stacked above can follow. */
+  public void setOnShownProgressChanged(@Nullable Runnable listener) {
+    onShownProgressChanged = listener;
+  }
+
+  /**
+   * Tellomi（chat-telegram-parity F01 / F02）：叠在下面的按钮让出来的位置（px，往上为负）。Telegram 两端的按钮一列叠着、
+   * 下面的不在时上面的落下来：安卓 `ChatActivitySideControlsButtonsLayout.checkButtonsPositionsAndVisibility` 按下面每颗的
+   * 出场进度累加高度，iOS `ChatHistoryNavigationButtons.updateLayout` 按下面在不在排位置。
+   */
+  public void setStackOffsetY(float offsetY) {
+    if (stackOffsetY != offsetY) {
+      stackOffsetY = offsetY;
+      applyVisibility();
+    }
+  }
+
+  /** Tellomi：按钮自己的读屏说明（布局里默认是「滚到底部」，提及 / 回应按钮各自换掉）。 */
+  public void setButtonContentDescription(@Nullable CharSequence description) {
+    scrollButton.setContentDescription(description);
   }
 
   public void setWallpaperEnabled(boolean hasWallpaper) {
@@ -143,6 +177,11 @@ public final class ConversationScrollToView extends FrameLayout {
   @Override
   public void setOnClickListener(@Nullable OnClickListener l) {
     scrollButton.setOnClickListener(l);
+  }
+
+  @Override
+  public void setOnLongClickListener(@Nullable OnLongClickListener l) {
+    scrollButton.setOnLongClickListener(l);
   }
 
   public void setUnreadCount(int unreadCount) {

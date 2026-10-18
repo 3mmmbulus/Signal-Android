@@ -32,6 +32,7 @@ import android.os.Build
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
+import android.os.SystemClock
 import android.provider.ContactsContract
 import android.provider.Settings
 import android.text.Editable
@@ -481,6 +482,12 @@ class ConversationFragment :
     private const val SCROLL_HEADER_CLOSE_DELAY: Long = SCROLL_HEADER_ANIMATION_DURATION * 4
     private const val IS_SCROLLED_TO_BOTTOM_THRESHOLD: Int = 2
 
+    /** Tellomi (chat-telegram-parity F01): how long a jump from the reactions button waits for its message to come on screen. */
+    private const val UNSEEN_REACTION_BURST_WAIT_MS = 3_000L
+
+    /** Tellomi (chat-telegram-parity F01): look again this soon while rows are animating or a jump is gliding. */
+    private const val UNSEEN_REACTION_RECHECK_MS = 120L
+
     private val RECEIVE_CONTENT_MIME_TYPES = arrayOf(
       "image/jpeg",
       "image/png",
@@ -627,6 +634,13 @@ class ConversationFragment :
   private lateinit var mainNavigationEventSink: MainNavigationEventSink
 
   private var animationsAllowed = false
+    set(value) {
+      field = value
+      // Tellomi (chat-telegram-parity F01): unseen reactions already on screen when the chat settles count as seen.
+      if (value) {
+        view?.post { markVisibleUnseenReactions() }
+      }
+    }
   private var pinnedShortcutReceiver: BroadcastReceiver? = null
   private var searchMenuItem: MenuItem? = null
 
@@ -1647,6 +1661,19 @@ class ConversationFragment :
       scrollToNextMention()
     }
 
+    binding.scrollToReaction.setButtonContentDescription(getString(R.string.ConversationFragment__tellomi_next_unseen_reaction))
+    binding.scrollToReaction.setOnClickListener {
+      binding.conversationItemRecycler.stopScroll()
+      scrollToNextUnseenReaction()
+    }
+    binding.scrollToReaction.setOnLongClickListener {
+      showReadAllReactionsMenu(it)
+      true
+    }
+
+    binding.scrollToBottom.setOnShownProgressChanged(::restackScrollButtons)
+    binding.scrollToMention.setOnShownProgressChanged(::restackScrollButtons)
+
     dataObserver = DataObserver()
     adapter.registerAdapterDataObserver(dataObserver!!)
 
@@ -2241,6 +2268,7 @@ class ConversationFragment :
     backgroundBinding.conversationWallpaper.visible = wallpaperEnabled
     binding.scrollToBottom.setWallpaperEnabled(wallpaperEnabled)
     binding.scrollToMention.setWallpaperEnabled(wallpaperEnabled)
+    binding.scrollToReaction.setWallpaperEnabled(wallpaperEnabled)
     binding.conversationDisabledInput.setWallpaperEnabled(wallpaperEnabled)
     inputPanel.setWallpaperEnabled(wallpaperEnabled)
 
@@ -2307,6 +2335,7 @@ class ConversationFragment :
   private fun presentChatColors(chatColors: ChatColors) {
     recyclerViewColorizer.setChatColors(chatColors)
     binding.scrollToMention.setUnreadCountBackgroundTint(chatColors.asSingleColor())
+    binding.scrollToReaction.setUnreadCountBackgroundTint(chatColors.asSingleColor())
     binding.scrollToBottom.setUnreadCountBackgroundTint(chatColors.asSingleColor())
     binding.conversationInputPanel.buttonToggle.background.apply {
       colorFilter = PorterDuffColorFilter(chatColors.asSingleColor(), PorterDuff.Mode.MULTIPLY)
@@ -2318,8 +2347,34 @@ class ConversationFragment :
     Log.d(TAG, "Update scroll state $scrollButtonState")
     binding.scrollToBottom.setUnreadCount(scrollButtonState.unreadCount)
     binding.scrollToMention.setUnreadCount(scrollButtonState.mentionCount)
-    binding.scrollToMention.isShown = scrollButtonState.hasMentions && scrollButtonState.showScrollButtons
+    binding.scrollToMention.isShown = scrollButtonState.showMentionButton
     binding.scrollToBottom.isShown = scrollButtonState.showScrollButtons
+    binding.scrollToReaction.setUnreadCount(scrollButtonState.unseenReactionCount)
+    binding.scrollToReaction.isShown = scrollButtonState.showReactionButton
+    restackScrollButtons()
+
+    // Seen here but not yet crossed off in the state: keep them out until the state catches up, so they don't burst twice.
+    val unseen = scrollButtonState.unseenReactionMessageIds.toSet()
+    unseenReactionsSeenHere.retainAll(unseen)
+    unseenReactionMessageIds = unseen - unseenReactionsSeenHere
+    markVisibleUnseenReactions()
+  }
+
+  /**
+   * Tellomi (chat-telegram-parity F01/F02): bottom to top — scroll to bottom, mentions, reactions — each sitting on whatever
+   * is showing below it, and following it in and out frame by frame. Same order and behaviour as both Telegram apps
+   * (Android `ChatActivitySideControlsButtonsLayout.checkButtonsPositionsAndVisibility`, iOS
+   * `ChatHistoryNavigationButtons.updateLayout`); the 12dp gap is Signal's own spacing between its two buttons.
+   */
+  private fun restackScrollButtons() {
+    if (view == null) {
+      return
+    }
+
+    val gap = 12.dp
+    val mentionOffset = -(binding.scrollToBottom.height + gap) * binding.scrollToBottom.shownProgress
+    binding.scrollToMention.setStackOffsetY(mentionOffset)
+    binding.scrollToReaction.setStackOffsetY(mentionOffset - (binding.scrollToMention.height + gap) * binding.scrollToMention.shownProgress)
   }
 
   private fun presentGroupCallJoinButton() {
@@ -3922,6 +3977,141 @@ class ConversationFragment :
   }
 
   /**
+   * Tellomi (chat-telegram-parity F01): jump to the oldest of my messages with reactions not yet seen (Android
+   * `getNextReactionMention`, iOS `earliestUnseenPersonalReactionMessage`); its reaction bursts once it's on screen, as both
+   * Telegram apps play the reaction when you get there.
+   */
+  private fun scrollToNextUnseenReaction() {
+    disposables += viewModel.takeNextUnseenReaction().subscribeBy { (messageId, position) ->
+      if (messageId < 0) {
+        return@subscribeBy
+      }
+
+      unseenReactionBurstsPending[messageId] = SystemClock.uptimeMillis()
+      if (position >= 0) {
+        moveToPosition(position)
+      }
+    }
+  }
+
+  /** Tellomi (chat-telegram-parity F01): "Read all reactions" on long press, like both Telegram apps. */
+  private fun showReadAllReactionsMenu(anchor: View) {
+    SignalContextMenu.Builder(anchor, binding.root)
+      .preferredHorizontalPosition(SignalContextMenu.HorizontalPosition.END)
+      .preferredVerticalPosition(SignalContextMenu.VerticalPosition.ABOVE)
+      .show(
+        listOf(
+          ActionItem(CoreUiR.drawable.symbol_check_circle_24, getString(R.string.ConversationFragment__tellomi_read_all_reactions)) {
+            viewModel.markAllReactionsSeen()
+          }
+        )
+      )
+  }
+
+  /** Tellomi (chat-telegram-parity F01): my messages in this chat with reactions not yet seen, from the latest state. */
+  private var unseenReactionMessageIds: Set<Long> = emptySet()
+
+  /** Tellomi (chat-telegram-parity F01): seen on screen, still waiting for the state to cross them off. */
+  private val unseenReactionsSeenHere = mutableSetOf<Long>()
+
+  /** Tellomi (chat-telegram-parity F01): jumped to from the reactions button, burst still to play (message id → when). */
+  private val unseenReactionBurstsPending = mutableMapOf<Long, Long>()
+
+  private val unseenReactionRecheck = Runnable { markVisibleUnseenReactions() }
+
+  /** Tellomi (chat-telegram-parity F01): seen while the list was moving; their burst plays once it stops (message id → emoji). */
+  private val unseenReactionBurstsWhenIdle = mutableMapOf<Long, String>()
+
+  /**
+   * Tellomi (chat-telegram-parity F01): a message with reactions not yet seen counts as seen once its reactions row is on screen
+   * — between the toolbar (and any banner under it) and the composer, allowing the bottom 16dp to be cut off — as Telegram
+   * Android's `ChatMessageCell.checkUnreadReactions` does; not while the chat is still settling, rows are animating or a jump is
+   * on its way (Telegram iOS holds reading reactions with `suspendReadingReactions` until navigation completes).
+   *
+   * The reaction from someone else that came in last then bursts on its pill — Telegram plays the reaction there (Android
+   * `ReactionsEffectOverlay.show`, iOS `displayUnseenReactionAnimations`); here it's Tellomi's own burst. The burst is drawn where
+   * the pill is when it starts, so it waits for the list to stop and only plays if the pill is still on screen.
+   */
+  private fun markVisibleUnseenReactions() {
+    if (view == null || !animationsAllowed || !isResumed) {
+      return
+    }
+
+    unseenReactionBurstsPending.entries.removeAll { SystemClock.uptimeMillis() - it.value > UNSEEN_REACTION_BURST_WAIT_MS }
+    if (unseenReactionMessageIds.isEmpty() && unseenReactionBurstsPending.isEmpty()) {
+      return
+    }
+
+    val recycler = binding.conversationItemRecycler
+    recycler.removeCallbacks(unseenReactionRecheck)
+    if (recycler.itemAnimator?.isRunning == true || isJumpInFlight) {
+      recycler.postDelayed(unseenReactionRecheck, UNSEEN_REACTION_RECHECK_MS)
+      return
+    }
+
+    val seen = reactionRowsOnScreen().filter { it.id in unseenReactionMessageIds || it.id in unseenReactionBurstsPending }
+    if (seen.isEmpty()) {
+      return
+    }
+
+    val newlySeen = seen.map { it.id }.filter { it in unseenReactionMessageIds }
+    unseenReactionsSeenHere += newlySeen
+    unseenReactionMessageIds = unseenReactionMessageIds - newlySeen.toSet()
+    viewModel.markReactionsSeen(newlySeen)
+
+    val self = Recipient.self().id
+    seen.forEach { record ->
+      unseenReactionBurstsPending.remove(record.id)
+      val latest = record.reactions.filter { it.author != self }.maxByOrNull { it.dateReceived } ?: return@forEach
+      unseenReactionBurstsWhenIdle[record.id] = latest.emoji
+    }
+    playUnseenReactionBurstsWhenIdle()
+  }
+
+  /** Tellomi (chat-telegram-parity F01): bursts waiting for the list to stop; the ones whose pill scrolled away are dropped. */
+  private fun playUnseenReactionBurstsWhenIdle() {
+    if (view == null || unseenReactionBurstsWhenIdle.isEmpty() || binding.conversationItemRecycler.scrollState != RecyclerView.SCROLL_STATE_IDLE) {
+      return
+    }
+
+    val onScreen = reactionRowsOnScreen().map { it.id }.toSet()
+    unseenReactionBurstsWhenIdle.forEach { (messageId, emoji) ->
+      if (messageId in onScreen) {
+        startQuickReactionBurst(messageId, emoji)
+      }
+    }
+    unseenReactionBurstsWhenIdle.clear()
+  }
+
+  /** Tellomi (chat-telegram-parity F01): messages whose reactions row (or the whole row, if it has none) is on screen. */
+  private fun reactionRowsOnScreen(): List<MessageRecord> {
+    val recycler = binding.conversationItemRecycler
+    val clipTop = maxOf(binding.toolbarBackground.bottomInWindow(), binding.conversationBannerFrame.takeIf { it.isShown && it.height > 0 }?.bottomInWindow() ?: 0)
+    val clipBottom = binding.conversationItemRecyclerFrame.bottomInWindow()
+    val allowance = 16.dp
+
+    val onScreen = mutableListOf<MessageRecord>()
+    for (index in 0 until recycler.childCount) {
+      val child = recycler.getChildAt(index)
+      val item = recycler.getChildViewHolder(child) as? Multiselectable ?: child as? Multiselectable
+      val record = item?.conversationMessage?.messageRecord ?: continue
+      val target = child.findReactionsView()?.takeIf { it.isShown && it.height > 0 } ?: child
+      val location = IntArray(2).also { target.getLocationInWindow(it) }
+      val top = location[1]
+      val bottom = top + target.height
+      if (top > clipTop && bottom - allowance < clipBottom) {
+        onScreen += record
+      }
+    }
+    return onScreen
+  }
+
+  private fun View.bottomInWindow(): Int {
+    val location = IntArray(2).also { getLocationInWindow(it) }
+    return location[1] + height
+  }
+
+  /**
    * The methods used in this method are taken directly from View.canScrollVertically(-1)'s code path.
    */
   private fun isScrolledToBottom(): Boolean {
@@ -4045,6 +4235,8 @@ class ConversationFragment :
 
       val timestamp = MarkReadHelper.getLatestTimestamp(adapter, layoutManager)
       timestamp.ifPresent(markReadHelper::onViewsRevealed)
+
+      markVisibleUnseenReactions()
     }
 
     override fun onScrollStateChanged(recyclerView: RecyclerView, newState: Int) {
@@ -4052,6 +4244,7 @@ class ConversationFragment :
         scrollDateHeaderHelper.show()
       } else {
         scrollDateHeaderHelper.hide()
+        playUnseenReactionBurstsWhenIdle()
       }
     }
 

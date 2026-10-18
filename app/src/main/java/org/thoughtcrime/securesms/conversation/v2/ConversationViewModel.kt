@@ -46,6 +46,7 @@ import kotlinx.coroutines.rx3.asFlow
 import org.signal.core.models.ServiceId
 import org.signal.core.models.database.StickerRecord
 import org.signal.core.util.concurrent.SignalDispatchers
+import org.signal.core.util.concurrent.SignalExecutors
 import org.signal.core.util.logging.Log
 import org.signal.core.util.orNull
 import org.signal.paging.ProxyPagingController
@@ -92,6 +93,7 @@ import org.thoughtcrime.securesms.mms.SlideDeck
 import org.thoughtcrime.securesms.polls.Poll
 import org.thoughtcrime.securesms.polls.PollOption
 import org.thoughtcrime.securesms.polls.PollRecord
+import org.thoughtcrime.securesms.reactions.TellomiUnseenReactions
 import org.thoughtcrime.securesms.recipients.Recipient
 import org.thoughtcrime.securesms.recipients.RecipientId
 import org.thoughtcrime.securesms.sms.MessageSender
@@ -302,6 +304,12 @@ class ConversationViewModel(
       )
     }
 
+    disposables += scrollButtonStateStore.update(
+      repository.getUnseenReactions(threadId)
+    ) { unseen, state ->
+      state.copy(unseenReactionMessageIds = unseen)
+    }
+
     disposables += recipientRepository
       .groupRecord
       .filter { it.isPresent && it.get().isV2Group }
@@ -508,6 +516,31 @@ class ConversationViewModel(
 
   fun getNextMentionPosition(): Single<Int> {
     return repository.getNextMentionPosition(threadId)
+  }
+
+  /**
+   * Tellomi (chat-telegram-parity F01): the oldest of my messages with reactions not yet seen, and where it is in the list
+   * (-1 when there is none). It counts as seen from here on, as Telegram Android's `getNextReactionMention` marks it before
+   * jumping — otherwise a message too tall to show its reactions row would keep the button pointing at itself.
+   */
+  fun takeNextUnseenReaction(): Single<Pair<Long, Int>> {
+    val messageId = scrollButtonStateStore.state.unseenReactionMessageIds.firstOrNull() ?: return Single.just(-1L to -1)
+    markReactionsSeen(listOf(messageId))
+    return repository.getMessagePosition(threadId, messageId)
+      .map { messageId to it }
+      .onErrorReturnItem(messageId to -1)
+      .observeOn(AndroidSchedulers.mainThread())
+  }
+
+  /** Tellomi (chat-telegram-parity F01): these messages' reactions were seen in the chat. */
+  fun markReactionsSeen(messageIds: Collection<Long>) {
+    val ids = messageIds.toList()
+    SignalExecutors.BOUNDED_IO.execute { TellomiUnseenReactions.markSeen(threadId, ids) }
+  }
+
+  /** Tellomi (chat-telegram-parity F01): long press on the reactions button, "Read all reactions" in both Telegram apps. */
+  fun markAllReactionsSeen() {
+    SignalExecutors.BOUNDED_IO.execute { TellomiUnseenReactions.markAllSeen(threadId) }
   }
 
   fun moveToMessage(messageId: Long): Single<Int> {
