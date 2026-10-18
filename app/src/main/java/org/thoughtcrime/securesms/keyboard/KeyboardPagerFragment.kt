@@ -4,6 +4,7 @@ import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import androidx.annotation.VisibleForTesting
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.ViewModelProvider
 import org.thoughtcrime.securesms.R
@@ -27,6 +28,7 @@ class KeyboardPagerFragment : Fragment() {
 
   private val fragments: MutableMap<KClass<*>, Fragment> = mutableMapOf()
   private var currentFragment: Fragment? = null
+  private var currentPage: KeyboardPage? = null
 
   override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View? {
     return themedInflate(R.layout.keyboard_pager_fragment, inflater, container)
@@ -71,19 +73,23 @@ class KeyboardPagerFragment : Fragment() {
     findListener<MediaKeyboard.MediaKeyboardListener>()?.onKeyboardChanged(page)
   }
 
-  private fun displayEmojiPage() = displayPage(::EmojiKeyboardPageFragment)
+  private fun displayEmojiPage() = displayPage(KeyboardPage.EMOJI, ::EmojiKeyboardPageFragment)
 
-  private fun displayGifPage() = displayPage(::GifKeyboardPageFragment)
+  private fun displayGifPage() = displayPage(KeyboardPage.GIF, ::GifKeyboardPageFragment)
 
-  private fun displayStickerPage() = displayPage(::StickerKeyboardPageFragment)
+  private fun displayStickerPage() = displayPage(KeyboardPage.STICKER, ::StickerKeyboardPageFragment)
 
-  private inline fun <reified F : Fragment> displayPage(fragmentFactory: () -> F) {
+  private inline fun <reified F : Fragment> displayPage(page: KeyboardPage, fragmentFactory: () -> F) {
     if (currentFragment is F) {
       (currentFragment as? KeyboardPageSelected)?.onPageSelected()
       return
     }
 
     val transaction = childFragmentManager.beginTransaction()
+
+    if (currentFragment != null) {
+      pageSlide(from = currentPage, to = page)?.let { (enter, exit) -> transaction.setCustomAnimations(enter, exit) }
+    }
 
     currentFragment?.let { transaction.hide(it) }
 
@@ -98,6 +104,7 @@ class KeyboardPagerFragment : Fragment() {
     }
 
     currentFragment = fragment
+    currentPage = page
     transaction.commitAllowingStateLoss()
   }
 
@@ -113,6 +120,23 @@ class KeyboardPagerFragment : Fragment() {
     }
   }
 
+  companion object {
+    /**
+     * Tellomi (interaction audit A-35): switching pages, the two slide past each other in the order of their tabs (emoji,
+     * sticker, GIF, as [KeyboardPage] lists them) instead of swapping in place, like the paged emoji panel of both Telegram apps.
+     *
+     * @return the enter and exit animations, or null when there is no page to slide away from.
+     */
+    @VisibleForTesting
+    fun pageSlide(from: KeyboardPage?, to: KeyboardPage): Pair<Int, Int>? {
+      return when {
+        from == null || from == to -> null
+        to.ordinal > from.ordinal -> R.anim.tellomi_keyboard_page_from_end to R.anim.tellomi_keyboard_page_to_start
+        else -> R.anim.tellomi_keyboard_page_from_start to R.anim.tellomi_keyboard_page_to_end
+      }
+    }
+  }
+
   fun hide() {
     findListener<MediaKeyboard.MediaKeyboardListener>()?.onHidden()
     if (isAdded && view != null) {
@@ -120,6 +144,7 @@ class KeyboardPagerFragment : Fragment() {
       fragments.values.forEach { transaction.remove(it) }
       transaction.commitAllowingStateLoss()
       currentFragment = null
+      currentPage = null
       fragments.clear()
     }
   }

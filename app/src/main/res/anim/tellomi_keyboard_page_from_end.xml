@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Copyright 2026 重庆半格智能科技有限公司
+  SPDX-License-Identifier: AGPL-3.0-only
+
+  Tellomi（交互审计 A-35）：表情 / 贴纸 / GIF 面板换页时，往后翻：新的一页从末端滑进来。两页同时滑、时长一样，接缝处不留空也不重叠。
+  照 Telegram 两端的表情面板（安卓 EmojiView 是 androidx ViewPager，点相邻的标签平滑翻一页：(页数 + 1) × 100 ms，
+  插值 (t − 1)^5 + 1；decelerate_quint 正是 1 − (1 − t)^5）。右到左排版的方向在 anim-ldrtl 里。
+-->
+<translate xmlns:android="http://schemas.android.com/apk/res/android"
+    android:duration="200"
+    android:fromXDelta="100%"
+    android:interpolator="@android:interpolator/decelerate_quint"
+    android:toXDelta="0%" />
