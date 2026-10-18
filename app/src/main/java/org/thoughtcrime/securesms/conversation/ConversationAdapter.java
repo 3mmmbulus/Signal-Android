@@ -55,6 +55,7 @@ import org.thoughtcrime.securesms.giph.mp4.GiphyMp4PlaybackPolicyEnforcer;
 import org.thoughtcrime.securesms.recipients.RecipientId;
 import org.thoughtcrime.securesms.util.CachedInflater;
 import org.thoughtcrime.securesms.util.DateUtils;
+import org.thoughtcrime.securesms.util.MessageRecordUtil;
 import org.thoughtcrime.securesms.util.Projection;
 import org.thoughtcrime.securesms.util.ProjectionList;
 import org.thoughtcrime.securesms.util.StickyHeaderDecoration;
@@ -541,7 +542,7 @@ public class ConversationAdapter
       int correctedPosition = isHeaderPosition(position) ? position + 1 : position;
 
       recordToPulse = getItem(correctedPosition);
-      pulseRequest = new PulseRequest(position, recordToPulse.getMessageRecord().isOutgoing());
+      pulseRequest = new PulseRequest(position, MessageRecordUtil.pulsesAsOutgoing(recordToPulse.getMessageRecord()));
       notifyItemChanged(correctedPosition);
     }
   }

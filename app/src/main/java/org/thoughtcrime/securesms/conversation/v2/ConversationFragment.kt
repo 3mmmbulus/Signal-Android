@@ -425,6 +425,7 @@ import org.thoughtcrime.securesms.util.hasAudio
 import org.thoughtcrime.securesms.util.hasGiftBadge
 import org.thoughtcrime.securesms.util.hasLinkPreview
 import org.thoughtcrime.securesms.util.hasNonTextSlide
+import org.thoughtcrime.securesms.util.hasPinnedMessageUpdate
 import org.thoughtcrime.securesms.util.isValidReactionTarget
 import org.thoughtcrime.securesms.util.padding
 import org.thoughtcrime.securesms.util.setIncognitoKeyboardEnabled
@@ -5243,6 +5244,9 @@ class ConversationFragment :
         }
       } else if (item.conversationMessage.isActiveCollapsedHead) {
         viewModel.onExpandEvents(item.conversationMessage.messageRecord.id)
+      } else if (messageRecord.hasPinnedMessageUpdate()) {
+        // Tellomi (pinned-messages.md 3.7): "×× pinned «…»" is never multi-selected (as in both Telegram apps).
+        Log.d(TAG, "Long press on a pin notice that can't be reacted to now.")
       } else {
         clearFocusedItem()
         adapter.toggleSelection(item)

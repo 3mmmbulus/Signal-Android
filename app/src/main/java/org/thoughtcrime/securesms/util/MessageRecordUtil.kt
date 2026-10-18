@@ -94,6 +94,18 @@ fun MessageRecord.hasPollTerminate(): Boolean = this.isPollTerminate && this.mes
 
 fun MessageRecord.hasPinnedMessageUpdate(): Boolean = this.isPinnedMessageUpdate && this.messageExtras != null && this.messageExtras!!.pinnedMessage != null
 
+/**
+ * Tellomi (pinned-messages.md 3.7): whether a jump here pulses as over an outgoing bubble. An update ("×× pinned «…»", which a
+ * quote can jump to) sits on the chat's background, so it pulses as lightly as an incoming bubble, whoever it is from.
+ */
+fun MessageRecord.pulsesAsOutgoing(): Boolean = this.isOutgoing && !this.isUpdate
+
+/**
+ * Tellomi (pinned-messages.md 3.7): my "×× pinned «…»" deleted for everyone, the delete not out yet. It leaves the chat at once, as
+ * a message deleted for everyone turns into "You deleted this message" at once; the row itself goes once the delete is out.
+ */
+fun MessageRecord.isPinNoticeDeletedForEveryone(): Boolean = hasPinnedMessageUpdate() && this.isRemoteDelete
+
 fun MessageRecord.hasBigImageLinkPreview(context: Context): Boolean {
   if (!hasLinkPreview()) {
     return false
@@ -169,5 +181,6 @@ fun MessageRecord.isEditMessage(): Boolean {
  * Returns whether or not the given message record can be reacted to.
  */
 fun MessageRecord.isValidReactionTarget(): Boolean {
-  return isSecure && !isPending && !isFailed && !isRemoteDelete && !isUpdate
+  // Tellomi (ADR-0081 §4.2, pinned-messages.md 3.7): "×× pinned «…»" takes reactions like a message (both Telegram apps).
+  return isSecure && !isPending && !isFailed && !isRemoteDelete && (!isUpdate || hasPinnedMessageUpdate())
 }

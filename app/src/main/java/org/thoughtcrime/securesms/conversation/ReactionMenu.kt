@@ -10,6 +10,7 @@ import org.thoughtcrime.securesms.R
 import org.thoughtcrime.securesms.components.menu.ActionItem
 import org.thoughtcrime.securesms.database.model.MessageRecord
 import org.thoughtcrime.securesms.recipients.Recipient
+import org.thoughtcrime.securesms.util.hasPinnedMessageUpdate
 import org.signal.core.ui.R as CoreUiR
 
 /**
@@ -50,6 +51,18 @@ object ReactionMenu {
 
     fun add(iconRes: Int, titleRes: Int, action: ReactionAction) {
       items += ActionItem(iconRes = iconRes, title = context.getString(titleRes), action = { onAction(action) })
+    }
+
+    // Tellomi (ADR-0081 §4.2, pinned-messages.md 3.7): "×× pinned «…»" takes a reaction, a reply and a delete — no copy, forward,
+    // pin, edit or select, as in both Telegram apps (Android `ChatActivity` long-press options for a service message, iOS
+    // `ChatInterfaceStateContextMenus`).
+    val messageRecord = conversationMessage.messageRecord
+    if (messageRecord.hasPinnedMessageUpdate()) {
+      if (MenuState.canReplyToMessage(conversationRecipient, false, messageRecord, false, isNonAdminInAnnouncementGroup)) {
+        add(R.drawable.symbol_reply_24, R.string.conversation_selection__menu_reply, ReactionAction.REPLY)
+      }
+      add(CoreUiR.drawable.symbol_trash_24, R.string.conversation_selection__menu_delete, ReactionAction.DELETE)
+      return Menu(items = items, canReact = menuState.shouldShowReactions())
     }
 
     if (menuState.shouldShowReplyAction()) {

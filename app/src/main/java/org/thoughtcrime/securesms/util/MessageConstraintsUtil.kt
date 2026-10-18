@@ -100,7 +100,8 @@ object MessageConstraintsUtil {
   }
 
   fun isValidRemoteDeleteSend(message: MessageRecord, currentTime: Long): Boolean {
-    return !message.isUpdate &&
+    // Tellomi (ADR-0081 §4.2): my own "I pinned «…»" can be deleted for everyone like a message; the pin itself stays.
+    return (!message.isUpdate || message.hasPinnedMessageUpdate()) &&
       message.isOutgoing &&
       message.isPush &&
       (!message.toRecipient.isGroup || message.toRecipient.isActiveGroup) &&

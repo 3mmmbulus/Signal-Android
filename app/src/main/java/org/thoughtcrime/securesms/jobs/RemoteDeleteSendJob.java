@@ -31,6 +31,7 @@ import org.thoughtcrime.securesms.recipients.RecipientUtil;
 import org.thoughtcrime.securesms.transport.RetryLaterException;
 import org.thoughtcrime.securesms.transport.UndeliverableMessageException;
 import org.thoughtcrime.securesms.util.GroupUtil;
+import org.thoughtcrime.securesms.util.MessageRecordUtil;
 import org.whispersystems.signalservice.api.crypto.ContentHint;
 import org.whispersystems.signalservice.api.crypto.UntrustedIdentityException;
 import org.whispersystems.signalservice.api.messages.SendMessageResult;
@@ -200,7 +201,13 @@ public class RemoteDeleteSendJob extends BaseJob {
     }
 
     if (recipients.isEmpty()) {
-      db.markAsSent(messageId);
+      if (MessageRecordUtil.hasPinnedMessageUpdate(message)) {
+        // Tellomi (ADR-0081 §4.2, pinned-messages.md 3.7): "I pinned «…»" deleted for everyone goes away here once the delete
+        // is out (as it does on the other side); the pin itself stays.
+        db.deleteMessage(messageId);
+      } else {
+        db.markAsSent(messageId);
+      }
     } else {
       Log.w(TAG, "Still need to send to " + recipients.size() + " recipients. Retrying.");
       throw new RetryLaterException();

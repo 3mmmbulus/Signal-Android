@@ -39,6 +39,7 @@ import org.thoughtcrime.securesms.conversation.ConversationAdapterBridge.PulseRe
 import org.thoughtcrime.securesms.conversation.v2.items.InteractiveConversationElement
 import org.thoughtcrime.securesms.database.model.InMemoryMessageRecord
 import org.thoughtcrime.securesms.util.ViewUtil
+import org.thoughtcrime.securesms.util.pulsesAsOutgoing
 import org.thoughtcrime.securesms.wallpaper.ChatWallpaper
 import java.lang.Integer.max
 
@@ -442,7 +443,7 @@ class MultiselectItemDecoration(
       val adapterPosition = child.getAdapterPosition(parent)
 
       val request = pulseRequestAnimators.keys.firstOrNull {
-        it.position == adapterPosition && it.isOutgoing == child.conversationMessage.messageRecord.isOutgoing
+        it.position == adapterPosition && it.isOutgoing == child.conversationMessage.messageRecord.pulsesAsOutgoing()
       } ?: continue
 
       val animator = pulseRequestAnimators[request] ?: continue

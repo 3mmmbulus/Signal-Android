@@ -65,6 +65,7 @@ import org.thoughtcrime.securesms.util.Projection
 import org.thoughtcrime.securesms.util.ProjectionList
 import org.thoughtcrime.securesms.util.adapter.mapping.MappingViewHolder
 import org.thoughtcrime.securesms.util.adapter.mapping.PagingMappingAdapter
+import org.thoughtcrime.securesms.util.pulsesAsOutgoing
 import java.util.Locale
 import java.util.Optional
 
@@ -292,7 +293,7 @@ class ConversationAdapterV2(
     if (position in 0 until itemCount) {
       recordToPulse = getConversationMessage(position)
       if (recordToPulse != null) {
-        pulseRequest = ConversationAdapterBridge.PulseRequest(position, recordToPulse!!.messageRecord.isOutgoing)
+        pulseRequest = ConversationAdapterBridge.PulseRequest(position, recordToPulse!!.messageRecord.pulsesAsOutgoing())
       }
       notifyItemChanged(position)
     }

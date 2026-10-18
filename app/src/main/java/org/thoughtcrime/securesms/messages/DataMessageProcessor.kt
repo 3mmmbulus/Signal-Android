@@ -107,6 +107,7 @@ import org.thoughtcrime.securesms.util.TellomiCaptionAbove
 import org.thoughtcrime.securesms.util.TellomiPinNotice
 import org.thoughtcrime.securesms.util.TextSecurePreferences
 import org.thoughtcrime.securesms.util.hasGiftBadge
+import org.thoughtcrime.securesms.util.hasPinnedMessageUpdate
 import org.thoughtcrime.securesms.util.isStory
 import org.whispersystems.signalservice.api.crypto.EnvelopeMetadata
 import org.whispersystems.signalservice.api.messages.TellomiRichContent
@@ -599,7 +600,11 @@ object DataMessageProcessor {
     val targetSentTimestamp: Long = delete.targetSentTimestamp!!
     val targetMessage: MessageRecord? = SignalDatabase.messages.getMessageFor(targetSentTimestamp, senderRecipientId)
 
-    return if (targetMessage != null && MessageConstraintsUtil.isValidRemoteDeleteReceive(targetMessage, senderRecipientId, envelope.serverTimestamp!!)) {
+    return if (targetMessage != null && targetMessage.hasPinnedMessageUpdate() && MessageConstraintsUtil.isValidRemoteDeleteReceive(targetMessage, senderRecipientId, envelope.serverTimestamp!!)) {
+      // Tellomi (ADR-0081 §4.2, pinned-messages.md 3.7): deleting "×× pinned «…»" for everyone removes the notice; the pin stays.
+      SignalDatabase.messages.deleteMessage(targetMessage.id)
+      MessageId(targetMessage.id)
+    } else if (targetMessage != null && MessageConstraintsUtil.isValidRemoteDeleteReceive(targetMessage, senderRecipientId, envelope.serverTimestamp!!)) {
       SignalDatabase.messages.markAsRemoteDelete(targetMessage, senderRecipientId)
       if (targetMessage.isStory()) {
         SignalDatabase.messages.deleteRemotelyDeletedStory(targetMessage.id)
@@ -1584,7 +1589,14 @@ object DataMessageProcessor {
         quotedMessage = SignalDatabase.payments.updateMessageWithPayment(quotedMessage) as MmsMessageRecord
       }
 
-      val body = if (quotedMessage.isPaymentNotification) quotedMessage.getDisplayBody(context).toString() else quotedMessage.body
+      val body = if (quotedMessage.isPaymentNotification) {
+        quotedMessage.getDisplayBody(context).toString()
+      } else if (quotedMessage.hasPinnedMessageUpdate()) {
+        // Tellomi (ADR-0081 §4.2): a reply to "×× pinned «…»" quotes this app's own line for it (its body is empty).
+        TellomiPinNotice.describe(context, quotedMessage)
+      } else {
+        quotedMessage.body
+      }
 
       return QuoteModel(
         id = quote.id!!,

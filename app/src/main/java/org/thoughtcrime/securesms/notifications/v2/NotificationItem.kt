@@ -380,7 +380,10 @@ class ReactionNotification(threadRecipient: Recipient, record: MessageRecord, va
     val body: CharSequence = getBodyWithMentionsAndStyles(context, record)
     val bodyIsEmpty: Boolean = TextUtils.isEmpty(body)
 
-    return if (record.hasSharedContact()) {
+    return if (record.hasPinnedMessageUpdate()) {
+      // Tellomi (ADR-0081 §4.2, pinned-messages.md 3.7): a reaction to my "I pinned «…»" names that line (its body is empty).
+      context.getString(R.string.MessageNotifier_reacted_s_to_s, EMOJI_REPLACEMENT_STRING, TellomiPinNotice.describe(context, record))
+    } else if (record.hasSharedContact()) {
       val contact: Contact = (record as MmsMessageRecord).sharedContacts[0]
       val summary: CharSequence = ContactUtil.getStringSummary(context, contact)
       context.getString(R.string.MessageNotifier_reacted_s_to_s, EMOJI_REPLACEMENT_STRING, summary)

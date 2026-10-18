@@ -65,6 +65,13 @@
 
         </LinearLayout>
 
+        <!-- Tellomi (ADR-0081 §4.2, pinned-messages.md 3.7): reactions on "×× pinned «…»". -->
+        <org.thoughtcrime.securesms.reactions.ReactionsConversationView
+            android:id="@+id/conversation_update_reactions"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="center_horizontal" />
+
     </LinearLayout>
 
 </org.thoughtcrime.securesms.conversation.ConversationUpdateItem>

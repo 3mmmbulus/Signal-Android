@@ -47,6 +47,17 @@ object TellomiPinNotice {
   }
 
   /**
+   * 回复这条系统消息时引用里的那句（ADR-0081 §4.2）：总是第三人称「××置顶了«…»」。它跟着回复发出去，给找不到这条系统消息的 App 显示，
+   * 「你」到了对方那边就不对了；找得到的 App 用自己的 [describe]。要读被置顶的那条，放后台线程。
+   */
+  @WorkerThread
+  @JvmStatic
+  fun describeForQuote(context: Context, pinUpdate: MessageRecord): String {
+    val subject = subject(context, pinUpdate.messageExtras?.pinnedMessage)
+    return context.getString(R.string.TellomiPinNotice__s_pinned_s, pinUpdate.fromRecipient.getDisplayName(context), subject)
+  }
+
+  /**
    * 别人的「为双方」置顶要不要推送：只有群里、而且没选「置顶但不通知」（`pinSilent`）时推；未读、聊天列表照样算。
    * 单聊不推：Telegram iOS 单聊置顶会推，安卓单聊是静默的（`ChatActivity` 单聊 `checks = {false, false}`，`notify = false`），
    * 只有一端有，按 owner 10-14 的规则不做；「置顶消息」通知开关只有 Telegram 安卓有（`NotificationsSettingsActivity` 的

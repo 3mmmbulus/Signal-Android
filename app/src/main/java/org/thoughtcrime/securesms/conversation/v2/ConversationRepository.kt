@@ -100,7 +100,9 @@ import org.thoughtcrime.securesms.util.MediaUtil
 import org.thoughtcrime.securesms.util.MessageUtil
 import org.thoughtcrime.securesms.util.SignalLocalMetrics
 import org.thoughtcrime.securesms.util.TellomiCaptionAbove
+import org.thoughtcrime.securesms.util.TellomiPinNotice
 import org.thoughtcrime.securesms.util.hasLinkPreview
+import org.thoughtcrime.securesms.util.hasPinnedMessageUpdate
 import org.thoughtcrime.securesms.util.hasSharedContact
 import org.thoughtcrime.securesms.util.hasTextSlide
 import org.thoughtcrime.securesms.util.isViewOnceMessage
@@ -842,7 +844,11 @@ class ConversationRepository(
   fun getSlideDeckAndBodyForReply(context: Context, conversationMessage: ConversationMessage): Pair<SlideDeck, CharSequence> {
     val messageRecord = conversationMessage.messageRecord
 
-    return if (messageRecord.isMms && messageRecord.hasSharedContact()) {
+    // Tellomi (ADR-0081 §4.2, pinned-messages.md 3.7): replying to "×× pinned «…»" quotes that line, in the third person since
+    // it goes out with the reply (an app that can't find the notice shows it as is).
+    return if (messageRecord.hasPinnedMessageUpdate()) {
+      SlideDeck() to TellomiPinNotice.describeForQuote(context, messageRecord)
+    } else if (messageRecord.isMms && messageRecord.hasSharedContact()) {
       val contact: Contact = (messageRecord as MmsMessageRecord).sharedContacts.first()
       val displayName: String = ContactUtil.getDisplayName(contact)
       val body: String = context.getString(R.string.ConversationActivity_quoted_contact_message, EmojiStrings.BUST_IN_SILHOUETTE, displayName)
