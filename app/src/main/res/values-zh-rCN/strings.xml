@@ -702,6 +702,12 @@
     <string name="TellomiPinNotice__a_location">一个位置</string>
     <string name="TellomiPinNotice__a_contact">一个联系人</string>
     <string name="TellomiPinNotice__a_poll">一个投票</string>
+    <string name="TellomiPinnedBar__pinned_message">置顶消息</string>
+    <string name="TellomiPinnedBar__previous_message">上一条置顶</string>
+    <string name="TellomiPinnedBar__pinned_message_n">置顶消息 #%1$d</string>
+    <string name="TellomiPinnedBar__unpin_question">取消置顶这条消息？</string>
+    <string name="TellomiPinnedBar__unpinned">已取消置顶</string>
+    <string name="TellomiPinnedBar__hide">隐藏置顶消息</string>
     <!-- Dialog option to keep message pin for 24 hours -->
     <string name="ConversationFragment__24_hours">24 小时</string>
     <!-- Dialog option to keep message pin for 7 days -->

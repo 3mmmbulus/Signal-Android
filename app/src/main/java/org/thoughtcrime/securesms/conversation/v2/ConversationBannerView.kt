@@ -14,9 +14,12 @@ import android.util.AttributeSet
 import android.view.Gravity
 import android.view.View
 import androidx.appcompat.widget.LinearLayoutCompat
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.platform.ComposeView
 import androidx.core.transition.addListener
 import androidx.interpolator.view.animation.FastOutSlowInInterpolator
+import kotlinx.coroutines.flow.StateFlow
 import org.signal.core.ui.compose.theme.SignalTheme
 import org.signal.core.ui.view.Stub
 import org.thoughtcrime.securesms.R
@@ -138,20 +141,25 @@ class ConversationBannerView @JvmOverloads constructor(
     hide(voiceNotePlayerStub)
   }
 
-  fun showPinnedMessageStub(messages: List<ConversationMessage>, canUnpin: Boolean, hasWallpaper: Boolean, shouldAnimate: Boolean, tellomiPinnedForMeIds: Set<Long> = emptySet()) {
+  /**
+   * Tellomi (pinned-messages.md 3.4): [messages] oldest first; [selectedIndex] is the one shown, moved as the chat scrolls;
+   * [closeUnpins] says whether × unpins or only hides the bar here.
+   */
+  fun showPinnedMessageStub(messages: List<ConversationMessage>, selectedIndex: StateFlow<Int>, closeUnpins: Boolean, hasWallpaper: Boolean, shouldAnimate: Boolean) {
     val firstRender = !pinnedMessageStub.isVisible
 
     val view = pinnedMessageStub.get()
     view.apply {
       setContent {
         SignalTheme {
+          val index by selectedIndex.collectAsState()
           PinnedMessagesBanner(
             messages = messages,
-            canUnpin = canUnpin,
-            tellomiPinnedForMeIds = tellomiPinnedForMeIds,
+            selectedIndex = index,
             hasWallpaper = hasWallpaper,
-            onUnpinMessage = { messageId -> listener?.onUnpinMessage(messageId) },
-            onGoToMessage = { messageId -> listener?.onGoToMessage(messageId) },
+            closeUnpins = closeUnpins,
+            onTap = { messageId -> listener?.onGoToMessage(messageId) },
+            onClose = { messageId -> listener?.onTellomiPinnedBarClose(messageId) },
             onViewAllMessages = { listener?.onViewAllMessages() }
           )
         }
@@ -232,5 +240,8 @@ class ConversationBannerView @JvmOverloads constructor(
     fun onUnpinMessage(messageId: Long)
     fun onGoToMessage(messageId: Long)
     fun onViewAllMessages()
+
+    /** Tellomi (pinned-messages.md 3.4): × on the pinned bar (only one pin). */
+    fun onTellomiPinnedBarClose(messageId: Long)
   }
 }

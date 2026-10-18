@@ -747,6 +747,13 @@
     <string name="TellomiPinNotice__a_location">a location</string>
     <string name="TellomiPinNotice__a_contact">a contact</string>
     <string name="TellomiPinNotice__a_poll">a poll</string>
+    <!-- Tellomi (pinned-messages.md 3.4 / 3.6): the pinned bar at the top of a chat. -->
+    <string name="TellomiPinnedBar__pinned_message">Pinned message</string>
+    <string name="TellomiPinnedBar__previous_message">Previous message</string>
+    <string name="TellomiPinnedBar__pinned_message_n">Pinned message #%1$d</string>
+    <string name="TellomiPinnedBar__unpin_question">Unpin this message?</string>
+    <string name="TellomiPinnedBar__unpinned">Message unpinned</string>
+    <string name="TellomiPinnedBar__hide">Hide pinned messages</string>
     <!-- Dialog option to keep message pin for 24 hours -->
     <string name="ConversationFragment__24_hours">24 hours</string>
     <!-- Dialog option to keep message pin for 7 days -->

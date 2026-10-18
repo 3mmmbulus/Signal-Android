@@ -702,6 +702,12 @@
     <string name="TellomiPinNotice__a_location">一個位置</string>
     <string name="TellomiPinNotice__a_contact">一個聯絡人</string>
     <string name="TellomiPinNotice__a_poll">一個投票</string>
+    <string name="TellomiPinnedBar__pinned_message">釘選訊息</string>
+    <string name="TellomiPinnedBar__previous_message">上一則釘選</string>
+    <string name="TellomiPinnedBar__pinned_message_n">釘選訊息 #%1$d</string>
+    <string name="TellomiPinnedBar__unpin_question">取消釘選這則訊息？</string>
+    <string name="TellomiPinnedBar__unpinned">已取消釘選</string>
+    <string name="TellomiPinnedBar__hide">隱藏釘選訊息</string>
     <!-- Dialog option to keep message pin for 24 hours -->
     <string name="ConversationFragment__24_hours">24 小時</string>
     <!-- Dialog option to keep message pin for 7 days -->

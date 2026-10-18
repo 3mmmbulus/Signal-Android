@@ -44,6 +44,7 @@ class SignalStore(context: Application, private val store: KeyValueStore) {
   val tellomiFeedValues = TellomiFeedValues(store)
   val tellomiRestrictionValues = TellomiRestrictionValues(store)
   val tellomiReactionValues = TellomiReactionValues(store)
+  val tellomiPinnedBarValues = TellomiPinnedBarValues(store)
 
   companion object {
 
@@ -305,6 +306,12 @@ class SignalStore(context: Application, private val store: KeyValueStore) {
     @get:JvmName("tellomiReactions")
     val tellomiReactions: TellomiReactionValues
       get() = instance!!.tellomiReactionValues
+
+    /** Tellomi（pinned-messages.md 3.4）：本机藏起来的置顶栏。 */
+    @JvmStatic
+    @get:JvmName("tellomiPinnedBar")
+    val tellomiPinnedBar: TellomiPinnedBarValues
+      get() = instance!!.tellomiPinnedBarValues
 
     @JvmStatic
     @get:JvmName("backup")

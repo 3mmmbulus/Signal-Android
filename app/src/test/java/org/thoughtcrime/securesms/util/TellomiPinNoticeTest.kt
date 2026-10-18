@@ -7,6 +7,7 @@ package org.thoughtcrime.securesms.util
 
 import android.app.Application
 import androidx.test.core.app.ApplicationProvider
+import io.mockk.every
 import okio.ByteString
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -50,6 +51,8 @@ class TellomiPinNoticeTest {
 
   @Before
   fun setUp() {
+    // A pin keeps to the pin limit, which comes from remote config; the rule only spies on RemoteConfig.
+    every { RemoteConfig.pinLimit } returns 3
     alice = recipients.createRecipient("Alice")
     threadId = SignalDatabase.threads.getOrCreateThreadIdFor(alice, false, ThreadTable.DistributionTypes.DEFAULT)
   }

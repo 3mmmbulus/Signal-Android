@@ -49,7 +49,8 @@ object TellomiPinNotice {
   /**
    * 别人的「为双方」置顶要不要推送：只有群里、而且没选「置顶但不通知」（`pinSilent`）时推；未读、聊天列表照样算。
    * 单聊不推：Telegram iOS 单聊置顶会推，安卓单聊是静默的（`ChatActivity` 单聊 `checks = {false, false}`，`notify = false`），
-   * 只有一端有，按 owner 10-14 的规则不做；「置顶消息」通知开关两端都没有，也不加。自己的、「仅为我」的置顶都没有通知。
+   * 只有一端有，按 owner 10-14 的规则不做；「置顶消息」通知开关只有 Telegram 安卓有（`NotificationsSettingsActivity` 的
+   * `PinnedMessages`），iOS 没有，也不加。自己的、「仅为我」的置顶都没有通知。
    */
   @JvmStatic
   fun notifies(extras: MessageExtras?, isGroup: Boolean): Boolean {

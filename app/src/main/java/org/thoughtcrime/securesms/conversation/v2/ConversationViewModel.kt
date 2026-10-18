@@ -226,6 +226,18 @@ class ConversationViewModel(
   private val internalTellomiPinnedForMeIds = MutableStateFlow<Set<Long>>(emptySet())
   val tellomiPinnedForMeIds: StateFlow<Set<Long>> = internalTellomiPinnedForMeIds
 
+  /**
+   * Tellomi (pinned-messages.md 3.6): unpins waiting out their 5 s "Message unpinned · Undo" — the bar leaves them out meanwhile,
+   * and the unpin only goes out once it wasn't undone (both Telegram apps defer it the same way). Any still waiting when this
+   * chat closes go out then.
+   */
+  private val internalTellomiHeldUnpins = MutableStateFlow<Set<Long>>(emptySet())
+  val tellomiHeldUnpins: StateFlow<Set<Long>> = internalTellomiHeldUnpins
+
+  /** Tellomi (pinned-messages.md 3.4): the newest pin when the bar was hidden here, 0 if it isn't. */
+  private val internalTellomiHiddenPin = MutableStateFlow(SignalStore.tellomiPinnedBar.hiddenPin(threadId))
+  val tellomiHiddenPin: StateFlow<Long> = internalTellomiHiddenPin
+
   private val _plaintextExportState = MutableStateFlow<PlaintextExportState>(PlaintextExportState.None)
   val plaintextExportState: StateFlow<PlaintextExportState> = _plaintextExportState
 
@@ -388,9 +400,12 @@ class ConversationViewModel(
     viewModelScope.launch(Dispatchers.Default) {
       val threadRecipient = SignalDatabase.threads.getRecipientForThreadId(threadId)
       internalTellomiPinnedForMeIds.value = SignalDatabase.messages.tellomiPinnedForMeIds(threadId)
-      internalPinnedMessages.value = repository.getPinnedMessages(threadId).map {
-        ConversationMessage.ConversationMessageFactory.createWithUnresolvedData(AppDependencies.application, it, threadRecipient!!)
-      }
+      // Tellomi (pinned-messages.md 3.4): in the order the messages are in the chat, oldest first, as in Telegram — not by pin time.
+      internalPinnedMessages.value = repository.getPinnedMessages(threadId)
+        .sortedWith(compareBy({ it.dateReceived }, { it.id }))
+        .map {
+          ConversationMessage.ConversationMessageFactory.createWithUnresolvedData(AppDependencies.application, it, threadRecipient!!)
+        }
     }
   }
 
@@ -497,6 +512,28 @@ class ConversationViewModel(
   override fun onCleared() {
     disposables.clear()
     startExpiration.onComplete()
+    // Tellomi (pinned-messages.md 3.6): an unpin still waiting on its "Undo" goes out now that the chat is closed.
+    internalTellomiHeldUnpins.value.forEach { messageId ->
+      repository.unpinMessage(messageId).subscribe({}, { Log.w(TAG, "Couldn't unpin $messageId on leaving the chat.", it) })
+    }
+  }
+
+  /** Tellomi (pinned-messages.md 3.6): hold an unpin through its "Undo". */
+  fun tellomiHoldUnpin(messageId: Long) {
+    internalTellomiHeldUnpins.update { it + messageId }
+  }
+
+  /** Tellomi (pinned-messages.md 3.6): let go of a held unpin; false if it wasn't held (already let go). */
+  fun tellomiReleaseUnpin(messageId: Long): Boolean {
+    val held = messageId in internalTellomiHeldUnpins.value
+    internalTellomiHeldUnpins.update { it - messageId }
+    return held
+  }
+
+  /** Tellomi (pinned-messages.md 3.4): hide the bar here until there's a newer pin than [newestPinId]. */
+  fun tellomiHidePinnedBar(newestPinId: Long) {
+    SignalStore.tellomiPinnedBar.hide(threadId, newestPinId)
+    internalTellomiHiddenPin.value = newestPinId
   }
 
   fun setShowScrollButtonsForScrollPosition(showScrollButtons: Boolean, willScrollToBottomOnNewMessage: Boolean) {

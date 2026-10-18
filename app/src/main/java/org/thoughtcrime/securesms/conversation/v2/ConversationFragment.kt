@@ -102,6 +102,7 @@ import com.bumptech.glide.Glide
 import com.google.android.material.datepicker.CalendarConstraints
 import com.google.android.material.datepicker.MaterialDatePicker
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
+import com.google.android.material.snackbar.BaseTransientBottomBar
 import com.google.android.material.snackbar.BaseTransientBottomBar.Duration
 import com.google.android.material.snackbar.Snackbar
 import io.reactivex.rxjava3.android.schedulers.AndroidSchedulers
@@ -471,6 +472,9 @@ class ConversationFragment :
     private val POLL_SPINNER_DELAY = 500.milliseconds
     private val PIN_SPINNER_DELAY = 500.milliseconds
 
+    /** Tellomi (pinned-messages.md 3.6): how long "Message unpinned · Undo" stays (both Telegram apps: 5 s). */
+    private const val TELLOMI_UNPIN_UNDO_MS = 5000
+
     private const val ACTION_PINNED_SHORTCUT = "action_pinned_shortcut"
     private const val SAVED_STATE_IS_SEARCH_REQUESTED = "is_search_requested"
     private const val EMOJI_SEARCH_FRAGMENT_TAG = "EmojiSearchFragment"
@@ -661,6 +665,16 @@ class ConversationFragment :
   private var keyboardEvents: KeyboardEvents? = null
   private var progressDialog: ProgressCardDialogFragment? = null
   private var firstPinRender: Boolean = true
+
+  /**
+   * Tellomi (pinned-messages.md 3.4): the pins on the bar (oldest first) and the one it shows — the newest pin at or before the
+   * newest message on screen, unless a tap chose one, which holds until the user scrolls it away ([TellomiPinnedBar]).
+   */
+  private var tellomiPinnedBarPins: List<ConversationMessage> = emptyList()
+  private val tellomiPinnedBarIndex = MutableStateFlow(0)
+  private var tellomiForcedPinId: Long? = null
+  private var tellomiNewestVisibleDate = Long.MAX_VALUE
+  private var tellomiUserScrolling = false
   private var skipNextBackPressHandling: Boolean = false
   private var collapsibleEventScrollPosition: CollapsibleEventScrollPosition? = null
   private var releaseNotesLayoutApplied: Boolean = false
@@ -1221,7 +1235,7 @@ class ConversationFragment :
   }
 
   override fun unpin(conversationMessage: ConversationMessage) {
-    handleUnpinMessage(conversationMessage.messageRecord.id)
+    tellomiUnpinWithUndo(conversationMessage.messageRecord.id)
   }
 
   override fun copy(conversationMessage: ConversationMessage) {
@@ -1719,15 +1733,12 @@ class ConversationFragment :
     }
 
     lifecycleScope.launch {
-      viewModel
-        .pinnedMessages
-        .combine(viewModel.wallpaper) { messages, wallpaper -> messages to wallpaper }
-        .combine(viewModel.tellomiPinnedForMeIds) { (messages, wallpaper), pinnedForMeIds -> Triple(messages, wallpaper, pinnedForMeIds) }
+      combine(viewModel.pinnedMessages, viewModel.wallpaper, viewModel.tellomiHeldUnpins, viewModel.tellomiHiddenPin) { messages, wallpaper, heldUnpins, hiddenPin ->
+        { presentPinnedMessage(pinnedMessages = messages, hasWallpaper = wallpaper != null, heldUnpins = heldUnpins, hiddenPin = hiddenPin) }
+      }
         .flowWithLifecycle(viewLifecycleOwner.lifecycle)
         .flowOn(Dispatchers.Main)
-        .collect { (messages, wallpaper, pinnedForMeIds) ->
-          presentPinnedMessage(pinnedMessages = messages, hasWallpaper = wallpaper != null, tellomiPinnedForMeIds = pinnedForMeIds)
-        }
+        .collect { present -> present() }
     }
 
     lifecycleScope.launch {
@@ -1883,13 +1894,81 @@ class ConversationFragment :
       .addTo(disposables)
   }
 
-  private fun presentPinnedMessage(pinnedMessages: List<ConversationMessage>, hasWallpaper: Boolean, tellomiPinnedForMeIds: Set<Long> = emptySet()) {
-    if (pinnedMessages.isNotEmpty()) {
-      binding.conversationBanner.showPinnedMessageStub(messages = pinnedMessages, canUnpin = conversationGroupViewModel.canEditGroupInfo(), hasWallpaper = hasWallpaper, shouldAnimate = !firstPinRender, tellomiPinnedForMeIds = tellomiPinnedForMeIds)
+  private fun presentPinnedMessage(pinnedMessages: List<ConversationMessage>, hasWallpaper: Boolean, heldUnpins: Set<Long> = emptySet(), hiddenPin: Long = 0) {
+    // Tellomi (pinned-messages.md 3.4 / 3.6): an unpin waiting on its "Undo" is already off the bar; × without permission hides
+    // the bar here until there's a newer pin.
+    val pins = pinnedMessages.filter { it.messageRecord.id !in heldUnpins }
+    tellomiPinnedBarPins = pins
+    if (pins.isNotEmpty() && pins.last().messageRecord.id != hiddenPin) {
+      tellomiTrackPinnedBar()
+      binding.conversationBanner.showPinnedMessageStub(
+        messages = pins,
+        selectedIndex = tellomiPinnedBarIndex,
+        closeUnpins = tellomiCanUnpin(pins.last().messageRecord.id),
+        hasWallpaper = hasWallpaper,
+        shouldAnimate = !firstPinRender
+      )
     } else {
       binding.conversationBanner.hidePinnedMessageStub()
     }
     firstPinRender = false
+  }
+
+  /** Tellomi (ADR-0081 §4.3): a pin for me only can always be taken back; others need the group's permission. */
+  private fun tellomiCanUnpin(messageId: Long): Boolean {
+    return TellomiPinChoice.canUnpin(
+      isPinnedForMe = messageId in viewModel.tellomiPinnedForMeIds.value,
+      canPinForEveryone = conversationGroupViewModel.canEditGroupInfo(),
+      isInactiveGroup = viewModel.recipientSnapshot?.isInactiveGroup == true
+    )
+  }
+
+  /** Tellomi (pinned-messages.md 3.4): the newest message on screen (the list is upside down: its first visible item). */
+  private fun tellomiNewestVisibleDate(): Long? {
+    val first = layoutManager.findFirstVisibleItemPosition()
+    if (first == RecyclerView.NO_POSITION) {
+      return null
+    }
+    for (position in first..layoutManager.findLastVisibleItemPosition()) {
+      adapter.getConversationMessage(position)?.let { return it.messageRecord.dateReceived }
+    }
+    return null
+  }
+
+  /** Tellomi (pinned-messages.md 3.4): keep the bar on the pin that goes with what's on screen. */
+  private fun tellomiTrackPinnedBar() {
+    val pins = tellomiPinnedBarPins
+    if (pins.isEmpty()) {
+      return
+    }
+    val newest = tellomiNewestVisibleDate() ?: Long.MAX_VALUE
+    val forced = tellomiForcedPinId?.let { id -> pins.firstOrNull { it.messageRecord.id == id } }
+    if (forced == null || TellomiPinnedBar.releasesForcedPin(tellomiUserScrolling, tellomiNewestVisibleDate, newest, forced.messageRecord.dateReceived)) {
+      tellomiForcedPinId = null
+      tellomiPinnedBarIndex.value = TellomiPinnedBar.pinFor(pins.map { it.messageRecord.dateReceived }, newest)
+    } else {
+      tellomiPinnedBarIndex.value = pins.indexOf(forced)
+    }
+    tellomiNewestVisibleDate = newest
+  }
+
+  /**
+   * Tellomi (pinned-messages.md 3.6): unpin with "Message unpinned · Undo" for 5 s; the unpin goes out when it isn't undone
+   * (both Telegram apps defer it the same way). If this chat closes first, the view model sends it.
+   */
+  private fun tellomiUnpinWithUndo(messageId: Long) {
+    viewModel.tellomiHoldUnpin(messageId)
+    Snackbar.make(binding.conversationItemRecycler, R.string.TellomiPinnedBar__unpinned, TELLOMI_UNPIN_UNDO_MS)
+      .setAnchorView(binding.conversationInputPanel.root)
+      .setAction(R.string.ConversationListFragment_undo) { viewModel.tellomiReleaseUnpin(messageId) }
+      .addCallback(object : BaseTransientBottomBar.BaseCallback<Snackbar>() {
+        override fun onDismissed(transientBottomBar: Snackbar?, event: Int) {
+          if (event != DISMISS_EVENT_ACTION && isAdded && viewModel.tellomiReleaseUnpin(messageId)) {
+            handleUnpinMessage(messageId)
+          }
+        }
+      })
+      .show()
   }
 
   private fun presentTypingIndicator() {
@@ -4400,9 +4479,12 @@ class ConversationFragment :
       timestamp.ifPresent(markReadHelper::onViewsRevealed)
 
       markVisibleUnseenReactions()
+      tellomiTrackPinnedBar()
     }
 
     override fun onScrollStateChanged(recyclerView: RecyclerView, newState: Int) {
+      // Tellomi (pinned-messages.md 3.4): only the user's own scrolling (a drag and its fling) lets go of a pin chosen by a tap.
+      tellomiUserScrolling = newState == RecyclerView.SCROLL_STATE_DRAGGING || (tellomiUserScrolling && newState == RecyclerView.SCROLL_STATE_SETTLING)
       if (newState != RecyclerView.SCROLL_STATE_IDLE) {
         scrollDateHeaderHelper.show()
       } else {
@@ -5757,7 +5839,7 @@ class ConversationFragment :
         ReactionAction.DELETE -> handleDeleteMessages(conversationMessage.multiselectCollection.toSet())
         ReactionAction.END_POLL -> handleEndPoll(conversationMessage.messageRecord.getPoll()?.id)
         ReactionAction.PIN_MESSAGE -> handlePinMessage(conversationMessage)
-        ReactionAction.UNPIN_MESSAGE -> handleUnpinMessage(conversationMessage.messageRecord.id)
+        ReactionAction.UNPIN_MESSAGE -> tellomiUnpinWithUndo(conversationMessage.messageRecord.id)
         ReactionAction.STAR_MESSAGE -> handleStarMessages(setOf(conversationMessage.messageRecord.id))
         ReactionAction.UNSTAR_MESSAGE -> handleUnstarMessages(setOf(conversationMessage.messageRecord.id))
       }
@@ -6234,6 +6316,26 @@ class ConversationFragment :
 
     override fun onGoToMessage(messageId: Long) {
       viewPinnedMessage(messageId)
+      // Tellomi (pinned-messages.md 3.4): then the bar shows the pin before it — after the oldest, the newest.
+      val pins = tellomiPinnedBarPins
+      val index = pins.indexOfFirst { it.messageRecord.id == messageId }
+      if (index >= 0 && pins.size > 1) {
+        val next = TellomiPinnedBar.nextAfterTap(index, pins.size)
+        tellomiForcedPinId = pins[next].messageRecord.id
+        tellomiPinnedBarIndex.value = next
+      }
+    }
+
+    override fun onTellomiPinnedBarClose(messageId: Long) {
+      if (tellomiCanUnpin(messageId)) {
+        MaterialAlertDialogBuilder(requireContext())
+          .setMessage(R.string.TellomiPinnedBar__unpin_question)
+          .setPositiveButton(R.string.PinnedMessage__unpin) { _, _ -> tellomiUnpinWithUndo(messageId) }
+          .setNegativeButton(android.R.string.cancel, null)
+          .show()
+      } else {
+        tellomiPinnedBarPins.lastOrNull()?.let { viewModel.tellomiHidePinnedBar(it.messageRecord.id) }
+      }
     }
 
     override fun onViewAllMessages() {

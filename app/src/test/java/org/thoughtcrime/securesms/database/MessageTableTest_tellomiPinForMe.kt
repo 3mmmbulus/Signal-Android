@@ -12,6 +12,7 @@ import assertk.assertions.isEmpty
 import assertk.assertions.isEqualTo
 import assertk.assertions.isFalse
 import assertk.assertions.isTrue
+import io.mockk.every
 import okio.ByteString
 import org.junit.Before
 import org.junit.Rule
@@ -26,6 +27,7 @@ import org.thoughtcrime.securesms.mms.OutgoingMessage
 import org.thoughtcrime.securesms.recipients.Recipient
 import org.thoughtcrime.securesms.recipients.RecipientId
 import org.thoughtcrime.securesms.testutil.RecipientTestRule
+import org.thoughtcrime.securesms.util.RemoteConfig
 
 /**
  * Tellomi (ADR-0081 §4.3): a pin "for me only" lives in the ordinary pin columns, told apart by
@@ -47,6 +49,8 @@ class MessageTableTest_tellomiPinForMe {
 
   @Before
   fun setUp() {
+    // A pin keeps to the pin limit, which comes from remote config; the rule only spies on RemoteConfig.
+    every { RemoteConfig.pinLimit } returns 3
     senderId = recipients.createRecipient("Sender Name")
     threadId = SignalDatabase.threads.getOrCreateThreadIdFor(senderId, false, ThreadTable.DistributionTypes.DEFAULT)
   }
