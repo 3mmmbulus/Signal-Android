@@ -37,6 +37,7 @@ import android.provider.ContactsContract
 import android.provider.Settings
 import android.text.Editable
 import android.text.TextWatcher
+import android.view.GestureDetector
 import android.view.KeyEvent
 import android.view.LayoutInflater
 import android.view.Menu
@@ -2740,6 +2741,7 @@ class ConversationFragment :
 
     conversationItemDecorations = ConversationItemDecorations(hasWallpaper = args.hasWallpaper)
     binding.conversationItemRecycler.addItemDecoration(conversationItemDecorations, 0)
+    binding.conversationItemRecycler.addOnItemTouchListener(DateHeaderTapListener())
   }
 
   private fun initializeGiphyMp4(): GiphyMp4ProjectionRecycler {
@@ -3977,6 +3979,104 @@ class ConversationFragment :
   }
 
   /**
+   * Signal's jump-to-date picker (days without messages here are greyed out), from the search bar and — Tellomi
+   * (chat-telegram-parity F03) — from a date between messages, opening on that day ([selectionTimestamp], null = today).
+   */
+  private fun showJumpToDatePicker(selectionTimestamp: Long?, onJumped: () -> Unit = {}) {
+    disposables += viewModel.getEarliestMessageSentDate().subscribe { earliestDate ->
+      val local = LocalDateTime.now()
+        .atMidnight()
+        .atUTC()
+        .toMillis()
+      val selection = selectionTimestamp?.let {
+        Instant.ofEpochMilli(it).atZone(ZoneId.systemDefault()).toLocalDate().atStartOfDay(ZoneOffset.UTC).toInstant().toEpochMilli()
+      } ?: local
+      val datePicker =
+        MaterialDatePicker.Builder
+          .datePicker()
+          .setTitleText(getString(R.string.ScheduleMessageTimePickerBottomSheet__select_date_title))
+          .setSelection(selection)
+          .setCalendarConstraints(
+            CalendarConstraints.Builder()
+              .setValidator(viewModel.jumpToDateValidator)
+              .setStart(earliestDate)
+              .setEnd(local)
+              .setOpenAt(selection)
+              .build()
+          )
+          .build()
+
+      datePicker.addOnDismissListener {
+        datePicker.clearOnDismissListeners()
+        datePicker.clearOnPositiveButtonClickListeners()
+      }
+
+      datePicker.addOnPositiveButtonClickListener { selectedDate ->
+        if (selectedDate != null) {
+          val localMidnightTimestamp = Instant.ofEpochMilli(selectedDate)
+            .atZone(ZoneOffset.UTC)
+            .toLocalDate()
+            .atStartOfDay(ZoneId.systemDefault())
+            .toInstant()
+            .toEpochMilli()
+
+          disposables += viewModel
+            .moveToDate(localMidnightTimestamp)
+            .observeOn(AndroidSchedulers.mainThread())
+            .subscribeBy { position ->
+              moveToPosition(position - 1)
+              onJumped()
+            }
+        }
+      }
+
+      datePicker.show(childFragmentManager, "DATE_PICKER")
+    }
+  }
+
+  /**
+   * Tellomi (chat-telegram-parity F03): to the first message of the day [timestamp] falls on, as both Telegram apps do when the
+   * floating date is tapped (Android `floatingDateView` → `jumpToDate`, iOS a stuck date header → `navigateToFirstDateMessage`).
+   */
+  private fun jumpToStartOfDay(timestamp: Long) {
+    val localMidnight = Instant.ofEpochMilli(timestamp).atZone(ZoneId.systemDefault()).toLocalDate().atStartOfDay(ZoneId.systemDefault()).toInstant().toEpochMilli()
+    disposables += viewModel
+      .moveToDate(localMidnight)
+      .observeOn(AndroidSchedulers.mainThread())
+      .subscribeBy { position ->
+        if (position > 0) {
+          moveToPosition(position - 1)
+        }
+      }
+  }
+
+  /**
+   * Tellomi (chat-telegram-parity F03): tapping a date between messages opens the calendar on that day, as both Telegram apps do
+   * (Android `ChatActivity.onItemClick` on a date cell → `CalendarActivity`; iOS a date header in its place → `openCalendarSearch`).
+   * The dates are drawn by [ConversationItemDecorations], not views, so the tap is found from the pill's position.
+   */
+  private inner class DateHeaderTapListener : RecyclerView.SimpleOnItemTouchListener() {
+    private val detector = GestureDetector(
+      requireContext(),
+      object : GestureDetector.SimpleOnGestureListener() {
+        override fun onSingleTapUp(e: MotionEvent): Boolean {
+          if (adapter.selectedItems.isNotEmpty() || !::conversationItemDecorations.isInitialized) {
+            return false
+          }
+          val timestamp = conversationItemDecorations.dateHeaderAt(binding.conversationItemRecycler, e.x, e.y) ?: return false
+          showJumpToDatePicker(timestamp)
+          return true
+        }
+      }
+    )
+
+    override fun onInterceptTouchEvent(rv: RecyclerView, e: MotionEvent): Boolean {
+      detector.onTouchEvent(e)
+      return false
+    }
+  }
+
+  /**
    * Tellomi (chat-telegram-parity F01): jump to the oldest of my messages with reactions not yet seen (Android
    * `getNextReactionMention`, iOS `earliestUnseenPersonalReactionMessage`); its reaction bursts once it's on screen, as both
    * Telegram apps play the reaction when you get there.
@@ -4179,6 +4279,17 @@ class ConversationFragment :
 
     private var pendingHide = false
 
+    /** Tellomi (chat-telegram-parity F03): when the day shown on the floating date starts; tapping it goes there. */
+    private var boundTimestamp: Long? = null
+
+    init {
+      binding.scrollDateHeader.setOnClickListener {
+        if (adapter.selectedItems.isEmpty()) {
+          boundTimestamp?.let(::jumpToStartOfDay)
+        }
+      }
+    }
+
     fun show() {
       if (binding.scrollDateHeader.text.isNullOrEmpty()) {
         return
@@ -4194,6 +4305,7 @@ class ConversationFragment :
     fun bind(message: ConversationMessage?) {
       if (message != null) {
         binding.scrollDateHeader.text = DateUtils.getConversationDateHeaderString(requireContext(), Locale.getDefault(), message.conversationTimestamp)
+        boundTimestamp = message.conversationTimestamp
       }
     }
 
@@ -6689,51 +6801,7 @@ class ConversationFragment :
     }
 
     override fun onDatePickerSelected() {
-      disposables += viewModel.getEarliestMessageSentDate().subscribe { earliestDate ->
-        val local = LocalDateTime.now()
-          .atMidnight()
-          .atUTC()
-          .toMillis()
-        val datePicker =
-          MaterialDatePicker.Builder
-            .datePicker()
-            .setTitleText(getString(R.string.ScheduleMessageTimePickerBottomSheet__select_date_title))
-            .setSelection(local)
-            .setCalendarConstraints(
-              CalendarConstraints.Builder()
-                .setValidator(viewModel.jumpToDateValidator)
-                .setStart(earliestDate)
-                .setEnd(local)
-                .build()
-            )
-            .build()
-
-        datePicker.addOnDismissListener {
-          datePicker.clearOnDismissListeners()
-          datePicker.clearOnPositiveButtonClickListeners()
-        }
-
-        datePicker.addOnPositiveButtonClickListener { selectedDate ->
-          if (selectedDate != null) {
-            val localMidnightTimestamp = Instant.ofEpochMilli(selectedDate)
-              .atZone(ZoneOffset.UTC)
-              .toLocalDate()
-              .atStartOfDay(ZoneId.systemDefault())
-              .toInstant()
-              .toEpochMilli()
-
-            disposables += viewModel
-              .moveToDate(localMidnightTimestamp)
-              .observeOn(AndroidSchedulers.mainThread())
-              .subscribeBy { position ->
-                moveToPosition(position - 1)
-                closeChatSearch()
-              }
-          }
-        }
-
-        datePicker.show(childFragmentManager, "DATE_PICKER")
-      }
+      showJumpToDatePicker(selectionTimestamp = null) { closeChatSearch() }
     }
   }
 

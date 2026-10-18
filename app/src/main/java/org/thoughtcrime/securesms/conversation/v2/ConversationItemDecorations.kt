@@ -37,6 +37,11 @@ private typealias ConversationElement = MappingModel<*>
  */
 class ConversationItemDecorations(hasWallpaper: Boolean = false, private val scheduleMessageMode: Boolean = false) : RecyclerView.ItemDecoration() {
   private val hasHeaderByPosition: MutableMap<Int, Boolean> = mutableMapOf()
+  companion object {
+    /** Tellomi (chat-telegram-parity F03): how far around the date pill a tap still counts. */
+    private const val DATE_HEADER_TAP_SLOP_DP = 8f
+  }
+
   private val headerCache: MutableMap<Long, DateHeaderViewHolder> = hashMapOf()
   private var unreadViewHolder: UnreadViewHolder? = null
 
@@ -130,6 +135,41 @@ class ConversationItemDecorations(hasWallpaper: Boolean = false, private val sch
         headerView.drawAsTopItemDecoration(c, parent, child, unreadOffset)
       }
     }
+  }
+
+  /**
+   * Tellomi (chat-telegram-parity F03): the day whose date header pill is at [x], [y] (in [parent]'s coordinates, with a little
+   * slop around the pill), as the timestamp of that day's first message here; null when no date header is there.
+   * Uses the same geometry as [onDrawOver]: the header sits right above its message, above the unread divider if there is one.
+   */
+  fun dateHeaderAt(parent: RecyclerView, x: Float, y: Float): Long? {
+    val slop = DATE_HEADER_TAP_SLOP_DP * parent.resources.displayMetrics.density
+    for (index in 0 until parent.childCount) {
+      val child = parent.getChildAt(index)
+      val viewHolder = parent.getChildViewHolder(child)
+      if (viewHolder is ConversationTypingIndicatorAdapter.ViewHolder) {
+        continue
+      }
+
+      val position = viewHolder.bindingAdapterPosition
+      if (position == RecyclerView.NO_POSITION || !hasHeader(position)) {
+        continue
+      }
+
+      val model = currentItems[position] as ConversationMessageElement
+      val header = getHeader(parent, model)
+      val unreadOffset = if (isFirstUnread(position)) getUnreadViewHolder(parent).height else 0
+      val top = child.y - header.height - unreadOffset
+      val pill = header.pill
+      val withinPill = x >= parent.left + pill.left - slop &&
+        x <= parent.left + pill.right + slop &&
+        y >= top + pill.top - slop &&
+        y <= top + pill.bottom + slop
+      if (withinPill) {
+        return model.timestamp()
+      }
+    }
+    return null
   }
 
   /**
@@ -286,6 +326,10 @@ class ConversationItemDecorations(hasWallpaper: Boolean = false, private val sch
 
   private inner class DateHeaderViewHolder(val itemView: View) {
     private val date = itemView.findViewById<TextView>(R.id.text)
+
+    /** Tellomi (chat-telegram-parity F03): the date pill, laid out inside [itemView]. */
+    val pill: View
+      get() = date
 
     val height: Int
       get() = itemView.height
