@@ -104,6 +104,34 @@ class LinkPreviewUtilTest_findValidPreviewUrls {
     Assert.assertTrue(links.containsUrl("https://zh.wikipedia.org/wiki/中国"))
   }
 
+  /** Tellomi (PM 2026-10-19, ADR-0063 §5.6): Chinese in the path or query gets a preview; the raw IRI is the preview URL. */
+  @Test
+  fun cjk_in_path_or_query_gets_a_preview() {
+    val cases = mapOf(
+      "看 https://www.baidu.com/s?wd=天气 吧" to "https://www.baidu.com/s?wd=天气",
+      "https://zh.wikipedia.org/wiki/中国，很好" to "https://zh.wikipedia.org/wiki/中国",
+      "https://zh.wikipedia.org/wiki/中国。" to "https://zh.wikipedia.org/wiki/中国",
+      "https://zh.wikipedia.org/wiki/中国\u3000很好" to "https://zh.wikipedia.org/wiki/中国",
+      "看这个https://b23.tv/abc，很好" to "https://b23.tv/abc",
+      "https://signal.org/a/中文#第二节" to "https://signal.org/a/中文#第二节"
+    )
+    for ((text, url) in cases) {
+      val links = LinkPreviewUtil.findValidPreviewUrls(text)
+      Assert.assertEquals(text, 1, links.size().toLong())
+      Assert.assertTrue(text, links.containsUrl(url))
+    }
+  }
+
+  /** Hidden characters around / inside the link end it or reject it (Linkifier), so they are never in a preview URL. */
+  @Test
+  fun hidden_characters_never_reach_a_preview_url() {
+    for (text in listOf("https://signal.org/a/中\u200B文", "https://signal.org/a/中\u2066文")) {
+      val links = LinkPreviewUtil.findValidPreviewUrls(text)
+      Assert.assertFalse(text, links.containsUrl("https://signal.org/a/中\u200B文"))
+      Assert.assertFalse(text, links.containsUrl("https://signal.org/a/中\u2066文"))
+    }
+  }
+
   @After
   fun tearDown() {
     TellomiLinkRegistry.setForTesting(null)

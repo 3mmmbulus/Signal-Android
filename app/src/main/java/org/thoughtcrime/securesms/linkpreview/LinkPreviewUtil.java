@@ -63,8 +63,9 @@ public final class LinkPreviewUtil {
   }
 
   private static @Nullable Link previewLink(@NonNull Linkifier.DetectedLink detected) {
-    // Tellomi: text glued after the link is not part of it (LinkUtil.trimTextGluedAfterUrl)
-    String url = LinkUtil.trimTextGluedAfterUrl(detected.getUrl());
+    // Tellomi: text glued after the link is not part of it (LinkUtil.trimTextGluedAfterUrl); a link with Chinese in the path
+    // ends at Chinese sentence punctuation (LinkUtil.cutAtCjkSentencePunctuation, PM 2026-10-19)
+    String url = LinkUtil.trimTextGluedAfterUrl(LinkUtil.cutAtCjkSentencePunctuation(detected.getUrl()));
     if (LinkUtil.isValidPreviewUrl(url)) {
       return new Link(url, detected.getStart());
     }

@@ -173,5 +173,29 @@ object LinkUtil {
     return url.substring(0, cut)
   }
 
+  /** Chinese sentence punctuation and closing brackets / quotes: the same table as iOS `LinkValidator.isIriTerminator`. */
+  private const val CJK_URL_TERMINATORS = "，。！？；：、）」』】》〉”’"
+
+  /**
+   * Tellomi (PM 2026-10-19, ADR-0063 §5.6): a link with Chinese in its path / query / fragment gets a preview (as Telegram,
+   * behaviour only). [Linkifier] already ends the link at whitespace (full-width and no-break spaces included) and at
+   * bidi / zero-width characters, and the raw IRI is sent as the preview URL (old receivers accept it too). This only adds
+   * what iOS does on top: the link also ends at Chinese sentence punctuation, so "…/wiki/中国，很好" previews "…/wiki/中国".
+   * Only in path / query / fragment; the host is never touched.
+   */
+  @JvmStatic
+  fun cutAtCjkSentencePunctuation(url: String): String {
+    val schemeEnd = url.indexOf("://")
+    if (schemeEnd < 0) {
+      return url
+    }
+    val authorityEnd = url.indexOfAny(charArrayOf('/', '?', '#'), schemeEnd + 3)
+    if (authorityEnd < 0) {
+      return url
+    }
+    val cut = url.indexOfAny(CJK_URL_TERMINATORS.toCharArray(), authorityEnd)
+    return if (cut < 0) url else url.substring(0, cut)
+  }
+
   private data class LegalCharactersResult(val isLegal: Boolean, val domain: String? = null)
 }
