@@ -129,8 +129,9 @@ object TellomiLinkVisual {
   @WorkerThread
   fun forMessage(record: MessageRecord, decision: TellomiLinkOnly.Decision): Visual {
     val card = decision.card ?: return Visual.NONE
-    if (card.level == TellomiLinkCard.Level.BRAND && !card.showImage) {
+    if ((card.level == TellomiLinkCard.Level.BRAND && !card.showImage) || usesBundledIcon(card)) {
       // A brand shell never shows the sender's image (show_image is false); it shows the icon that ships with the app.
+      // So does a claimed-tier page card whose page gave no image (registry 2026-10-19): the platform's bundled icon.
       return decideBrand(Native, TellomiBrandIcons.bundled, card)
     }
     val preview = decision.localPreview ?: (record as? MmsMessageRecord)?.linkPreviews?.firstOrNull()
@@ -197,7 +198,7 @@ object TellomiLinkVisual {
   @JvmStatic
   @WorkerThread
   fun decideBrand(bridge: Bridge, icons: TellomiBrandIcons, card: TellomiLinkCard): Visual {
-    val icon = if (card.level == TellomiLinkCard.Level.BRAND) icons.resolve(card.icon) else null
+    val icon = if (usesBundledIcon(card)) icons.resolve(card.icon) else null
     if (icon == null) {
       return decide(bridge, card, 0, 0, null) { null }
     }
@@ -220,6 +221,23 @@ object TellomiLinkVisual {
       tints.put(key, tint)
     }
     return Visual(layout, tint?.takeIf { it.tinted }, icon)
+  }
+
+  /**
+   * Whether the card's image is the icon bundled with the app: a brand shell with an `icon`, or a claimed-tier page card
+   * (`generic` with an `icon`, registry links-2026101901, PM 2026-10-19) whose page gave no image (show_image false).
+   * rust/links gives `icon` on those two only. The no-image card (link icon) is left for a card with nothing at all.
+   */
+  @JvmStatic
+  fun usesBundledIcon(card: TellomiLinkCard): Boolean {
+    if (card.icon == null) {
+      return false
+    }
+    return when (card.level) {
+      TellomiLinkCard.Level.BRAND -> true
+      TellomiLinkCard.Level.GENERIC -> !card.showImage
+      else -> false
+    }
   }
 
   /** Null is "no decision": the card shows the way it did before layout existed. */

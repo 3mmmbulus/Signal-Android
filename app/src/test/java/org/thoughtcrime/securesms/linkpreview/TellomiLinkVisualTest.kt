@@ -347,6 +347,32 @@ class TellomiLinkVisualTest {
   }
 
   @Test
+  fun `a claimed-tier card whose page gave no image takes the platform's bundled icon and its colours`() {
+    // links-2026101901 (PM 2026-10-19): Taobao and the others are `claimed`; rust/links gives their page card `icon`.
+    val claimed = TellomiLinkCard(level = TellomiLinkCard.Level.GENERIC, title = "淘宝", domain = "taobao.com", showImage = false, icon = "brand-10.png", tintable = true, reason = "claimed")
+    val bridge = RecordingBridge(tintJson = orange)
+    val (icons, opened) = iconsOf("brand-10.png" to solidPng(Color.rgb(254, 117, 0), width = 114, height = 114))
+
+    assertTrue(TellomiLinkVisual.usesBundledIcon(claimed))
+    val visual = TellomiLinkVisual.decideBrand(bridge, icons, claimed)
+
+    assertEquals("the icon's size, not 0 x 0 (the no-image card)", listOf(listOf<Any>(114, 114, "", "generic")), bridge.layouts)
+    assertEquals(listOf("links/icons/brand-10.png"), opened)
+    assertEquals(TellomiLinkVisual.Layout.ICON, visual.layout)
+    assertEquals(Color.parseColor("#FE7500"), visual.tint?.colors(isDark = false)?.background)
+    assertNotNull(visual.icon)
+  }
+
+  @Test
+  fun `a claimed-tier card with a page image uses the page image, and a card with nothing has no icon`() {
+    val claimed = TellomiLinkCard(level = TellomiLinkCard.Level.GENERIC, domain = "taobao.com", showImage = true, icon = "taobao.png", tintable = true)
+    assertFalse(TellomiLinkVisual.usesBundledIcon(claimed))
+    assertFalse(TellomiLinkVisual.usesBundledIcon(claimed.copy(showImage = false, icon = null)))
+    assertFalse(TellomiLinkVisual.usesBundledIcon(claimed.copy(level = TellomiLinkCard.Level.STRUCTURED, showImage = false)))
+    assertTrue(TellomiLinkVisual.usesBundledIcon(brand))
+  }
+
+  @Test
   fun `a neutral icon gives the shape and no colours, and each icon is tinted once`() {
     val bridge = RecordingBridge(tintJson = """{"tinted":false,"source":"#808082"}""")
     val (icons, _) = iconsOf("brand-6.png" to solidPng(Color.GRAY))
