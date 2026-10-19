@@ -5,6 +5,7 @@
 
 package org.thoughtcrime.securesms.linkpreview
 
+import okhttp3.HttpUrl.Companion.toHttpUrl
 import okhttp3.mockwebserver.MockResponse
 import okhttp3.mockwebserver.SocketPolicy
 import okio.Buffer
@@ -434,6 +435,24 @@ class TellomiLinkFetcherTest {
     assertFailure(Reason.IO, fetch("https://a.$d/drop"))
     assertFailure(Reason.IO, fetch("https://a.$d/drop"))
     assertEquals(2, fixture.server.requestCount)
+  }
+
+  // ---- 公众号 Safari UA（产品经理 2026-10-19 批准） ----
+
+  @Test
+  fun `only mp_weixin_qq_com page requests use the Safari UA, exact match`() {
+    val safari = TellomiLinkFetcher.BROWSER_USER_AGENT
+    assertEquals(setOf("mp.weixin.qq.com"), TellomiLinkFetcher.BROWSER_USER_AGENT_HOSTS)
+    fun ua(url: String, step: Step) = TellomiLinkFetcher.userAgentFor(url.toHttpUrl(), step)
+
+    assertEquals(safari, ua("https://mp.weixin.qq.com/s/_chjr0XiTqoDg3Qg6JzU_g", Step.HTML))
+    assertEquals(safari, ua("https://MP.WEIXIN.QQ.COM/s?__biz=x", Step.HTML))
+    for (step in listOf(Step.JSON, Step.IMAGE, Step.SHORT_LINK)) {
+      assertEquals("WhatsApp/2", ua("https://mp.weixin.qq.com/s/abc", step))
+    }
+    for (other in listOf("https://weixin.qq.com/", "https://qq.com/", "https://x.mp.weixin.qq.com/s/abc", "https://mp.weixin.qq.com.evil.cn/s/abc", "https://mmbiz.qpic.cn/a.jpg")) {
+      assertEquals(other, "WhatsApp/2", ua(other, Step.HTML))
+    }
   }
 
   // ---- 生产参数 ----

@@ -49,7 +49,7 @@ import kotlin.math.min
 /**
  * 第三方链接预览的抓取器，按 ADR-0063 §4.4 的抓取契约（tellomi/tellomi#1422；§8.1 第 5 行）。
  *
- * - 请求头只有 `User-Agent: WhatsApp/2`、`Accept`、`Accept-Encoding: gzip`（外加 HTTP/1.1 必须的 `Host`）；不存、不带 cookie。
+ * - 请求头只有 `User-Agent: WhatsApp/2`（公众号文章页例外，见 [BROWSER_USER_AGENT_HOSTS]）、`Accept`、`Accept-Encoding: gzip`（外加 HTTP/1.1 必须的 `Host`）；不存、不带 cookie。
  * - 只抓 https。重定向自己跟：每个请求最多 5 跳，每一跳重做 https / 域名（[LinkUtil.isValidPreviewUrl]）/ 私网校验；
  *   私网按 [TellomiLinkAddressPolicy]：IP 字面量在发请求前查，域名在自定义 [Dns] 里查——解析结果直接用来连接，查和用之间没有时间差。
  * - 连接 5 s、单个请求（含全部跳转和读正文）10 s；每条链接（一个 [Session]）总共 10 s、最多 3 个元数据请求（短链展开算 1 个）+ 1 个图片请求。
@@ -75,6 +75,27 @@ class TellomiLinkFetcher(
     private val TAG = Log.tag(TellomiLinkFetcher::class.java)
 
     const val USER_AGENT = "WhatsApp/2"
+
+    /**
+     * The one exception (PM 2026-10-19, ADR-0063 §3.4.1 / §4.4): WeChat Official Account articles answer `WhatsApp/2` with a
+     * captcha page and give OG only to Safari. A fixed string, the same for every user and every client (iOS / Desktop use
+     * the same one); it is not this device's real OS or version.
+     */
+    const val BROWSER_USER_AGENT = "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1"
+
+    /**
+     * Hosts that get [BROWSER_USER_AGENT]: **exact** match, no subdomains, no wildcards. Only in code, so the registry or a
+     * hot update can never add one; adding a domain needs approval first (ask the PM), and iOS `TellomiLinkFetchContract` and
+     * Desktop `linkFetcher.node.ts` change together.
+     */
+    @JvmField
+    val BROWSER_USER_AGENT_HOSTS: Set<String> = setOf("mp.weixin.qq.com")
+
+    /** The UA for one hop: [BROWSER_USER_AGENT] only for a page step on an exact [BROWSER_USER_AGENT_HOSTS] host, per hop. */
+    @JvmStatic
+    fun userAgentFor(url: HttpUrl, step: Step): String {
+      return if (step == Step.HTML && url.host.lowercase(Locale.ROOT) in BROWSER_USER_AGENT_HOSTS) BROWSER_USER_AGENT else USER_AGENT
+    }
 
     /** 整个进程一份：可达性记录要跨链接共享。 */
     @JvmStatic
@@ -342,7 +363,7 @@ class TellomiLinkFetcher(
       val state = HopState()
       val request = Request.Builder()
         .url(url.newBuilder().fragment(null).build())
-        .header("User-Agent", USER_AGENT)
+        .header("User-Agent", userAgentFor(url, spec.step))
         .header("Accept", spec.accept)
         .header("Accept-Encoding", "gzip")
         .tag(HopState::class.java, state)
