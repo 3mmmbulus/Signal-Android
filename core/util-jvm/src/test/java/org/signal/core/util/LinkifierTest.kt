@@ -195,7 +195,11 @@ class LinkifierTest(private val case: Case) {
       Case("leading bidi override rejects url", "‬moc.diordna.com next", emptyList()),
       Case("trailing bidi override rejects url", "moc.diordna.com‭ next", emptyList()),
       Case("internal bidi override rejects both halves", "moc.diordna.com‮moc.diordna.com", emptyList()),
-      Case("zero-width space adjacent to url rejects it", "see signal.org​ next", emptyList())
+      Case("zero-width space adjacent to url rejects it", "see signal.org​ next", emptyList()),
+      // Tellomi (PM 2026-10-19): after Chinese sentence punctuation the link has already ended
+      Case("zero-width space after CJK sentence punctuation ends the url at the punctuation", "https://zh.wikipedia.org/wiki/中国，\u200B很好", listOf(web("https://zh.wikipedia.org/wiki/中国"))),
+      Case("bidi isolate after CJK closing quote ends the url at the quote", "「https://signal.org/a」\u2066", listOf(web("https://signal.org/a"))),
+      Case("zero-width space glued to CJK text still rejects the url", "https://signal.org/a/中\u200B文", emptyList())
     ).map { arrayOf<Any>(it) }
   }
 }

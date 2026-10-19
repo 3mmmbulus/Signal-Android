@@ -101,7 +101,7 @@ object Linkifier {
         continue
       }
 
-      val end = trimTrailingNonUrlChars(text, start, rawEnd)
+      var end = trimTrailingNonUrlChars(text, start, rawEnd)
       if (end <= start) {
         continue
       }
@@ -109,7 +109,17 @@ object Linkifier {
       // Reject if the URL is butted up against a bidi/format/zero-width char on either side —
       // those are used for visual spoofing and shouldn't appear adjacent to a real URL.
       if (end < text.length && isFormatOrZeroWidth(text[end])) {
-        continue
+        // Tellomi (PM 2026-10-19, ADR-0063 §5.6): a hidden char right after Chinese sentence punctuation is not part of the
+        // link; the link ended at that punctuation ("…/wiki/中国，\u200B很好" is "…/wiki/中国"), as on iOS. Anything else
+        // glued to a hidden char is still rejected.
+        val beforePunctuation = trimTrailingCjkSentencePunctuation(text, start, end)
+        if (beforePunctuation == end) {
+          continue
+        }
+        end = trimTrailingNonUrlChars(text, start, beforePunctuation)
+        if (end <= start) {
+          continue
+        }
       }
 
       val raw = text.subSequence(start, end).toString()
@@ -190,6 +200,20 @@ object Linkifier {
     }
     return end
   }
+
+  /**
+   * Tellomi: steps back over Chinese sentence punctuation and closing brackets / quotes at the end of a candidate. The same
+   * table as `LinkUtil.cutAtCjkSentencePunctuation` (app) and iOS `LinkValidator.isIriTerminator`.
+   */
+  private fun trimTrailingCjkSentencePunctuation(text: CharSequence, start: Int, initialEnd: Int): Int {
+    var end = initialEnd
+    while (end > start && text[end - 1] in CJK_SENTENCE_PUNCTUATION) {
+      end--
+    }
+    return end
+  }
+
+  private const val CJK_SENTENCE_PUNCTUATION = "，。！？；：、）」』】》〉”’"
 
   private fun countChar(text: CharSequence, start: Int, end: Int, target: Char): Int {
     var count = 0

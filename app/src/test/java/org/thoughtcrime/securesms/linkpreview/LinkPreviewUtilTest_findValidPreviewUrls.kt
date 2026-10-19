@@ -122,13 +122,50 @@ class LinkPreviewUtilTest_findValidPreviewUrls {
     }
   }
 
-  /** Hidden characters around / inside the link end it or reject it (Linkifier), so they are never in a preview URL. */
+  /**
+   * Tellomi (PM 2026-10-19, ADR-0063 §5.6): a link with a zero-width or direction-control character in it, or running straight
+   * into one, gets no preview at all: not one cut short before the character ("…/a/中"), not one with the character in it.
+   */
   @Test
-  fun hidden_characters_never_reach_a_preview_url() {
-    for (text in listOf("https://signal.org/a/中\u200B文", "https://signal.org/a/中\u2066文")) {
+  fun hidden_characters_mean_no_preview_at_all() {
+    val texts = listOf(
+      "https://signal.org/a/中\u200B文",
+      "https://signal.org/a/中\u2066文",
+      // in a sentence
+      "看 https://signal.org/a/中\u200B文 吧",
+      // at the end of the message
+      "https://zh.wikipedia.org/wiki/中国\u200B",
+      // right-to-left override
+      "https://signal.org/a/中\u202E文",
+      // hidden characters the linkifier keeps inside the link
+      "https://signal.org/a/中\u2060文",
+      "https://signal.org/a/中\u200E文",
+      "https://signal.org/a/中\u200F文",
+      "https://signal.org/a/中\uFEFF文",
+      "https://signal.org/a\u2060b",
+      "看这个https://signal.org/abc\u200E很好"
+    )
+    for (text in texts) {
       val links = LinkPreviewUtil.findValidPreviewUrls(text)
-      Assert.assertFalse(text, links.containsUrl("https://signal.org/a/中\u200B文"))
-      Assert.assertFalse(text, links.containsUrl("https://signal.org/a/中\u2066文"))
+      Assert.assertEquals(text, 0, links.size().toLong())
+    }
+  }
+
+  /** A hidden character after a normal end of the link (whitespace, sentence punctuation) is not part of it. */
+  @Test
+  fun hidden_character_after_a_normal_end_is_not_part_of_the_link() {
+    val cases = mapOf(
+      "https://zh.wikipedia.org/wiki/中国 \u200B" to "https://zh.wikipedia.org/wiki/中国",
+      "https://zh.wikipedia.org/wiki/中国，\u200B很好" to "https://zh.wikipedia.org/wiki/中国",
+      "https://zh.wikipedia.org/wiki/中国。\u200B" to "https://zh.wikipedia.org/wiki/中国",
+      "https://zh.wikipedia.org/wiki/中国，\u2060很好" to "https://zh.wikipedia.org/wiki/中国",
+      "https://signal.org/abc.\u200B" to "https://signal.org/abc",
+      "https://signal.org/abc\n\u200B下一行" to "https://signal.org/abc"
+    )
+    for ((text, url) in cases) {
+      val links = LinkPreviewUtil.findValidPreviewUrls(text)
+      Assert.assertEquals(text, 1, links.size().toLong())
+      Assert.assertTrue(text, links.containsUrl(url))
     }
   }
 
