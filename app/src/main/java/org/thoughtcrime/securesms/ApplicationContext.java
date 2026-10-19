@@ -107,6 +107,7 @@ import org.thoughtcrime.securesms.messages.IncomingMessageObserver;
 import org.thoughtcrime.securesms.migrations.ApplicationMigrations;
 import org.thoughtcrime.securesms.mms.SignalGlideModule;
 import org.thoughtcrime.securesms.net.TellomiCrossBorderNetworkGate;
+import org.thoughtcrime.securesms.region.TellomiRegionAutoSwitchRunner;
 import org.thoughtcrime.securesms.ratelimit.RateLimitUtil;
 import org.thoughtcrime.securesms.recipients.Recipient;
 import org.thoughtcrime.securesms.registration.util.RegistrationUtil;
@@ -291,6 +292,7 @@ public class ApplicationContext extends Application implements AppForegroundObse
       BackupRefreshJob.enqueueIfNecessary();
       InAppPaymentAuthCheckJob.enqueueIfNeeded();
       RemoteConfig.refreshIfNecessary();
+      TellomiRegionAutoSwitchRunner.evaluateAsync("foreground"); // Tellomi（REGION_PROFILE 第六节之二）：键不存在且在 global 时不碰网络
       RetrieveProfileJob.enqueueRoutineFetchIfNecessary();
       executePendingContactSync();
       KeyCachingService.onAppForegrounded(this);

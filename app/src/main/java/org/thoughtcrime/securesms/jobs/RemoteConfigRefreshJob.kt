@@ -7,6 +7,7 @@ import org.thoughtcrime.securesms.jobmanager.Job
 import org.thoughtcrime.securesms.jobmanager.impl.NetworkConstraint
 import org.thoughtcrime.securesms.keyvalue.SignalStore
 import org.thoughtcrime.securesms.net.SignalNetwork
+import org.thoughtcrime.securesms.region.TellomiRegionAutoSwitchRunner
 import org.thoughtcrime.securesms.util.RemoteConfig
 import org.thoughtcrime.securesms.util.TextSecurePreferences
 import org.whispersystems.signalservice.api.websocket.SignalWebSocket
@@ -53,6 +54,7 @@ class RemoteConfigRefreshJob private constructor(parameters: Parameters) : Job(p
     return when (val result = SignalNetwork.remoteConfigApi.getRemoteConfig(SignalStore.remoteConfig.eTag)) {
       is NetworkResult.Success -> {
         RemoteConfig.update(result.result.config)
+        TellomiRegionAutoSwitchRunner.evaluateAsync("remote config")
         SignalStore.misc.setLastKnownServerTime(result.result.serverEpochTimeMilliseconds, System.currentTimeMillis())
         if (result.result.eTag.isNotNullOrBlank()) {
           SignalStore.remoteConfig.eTag = result.result.eTag

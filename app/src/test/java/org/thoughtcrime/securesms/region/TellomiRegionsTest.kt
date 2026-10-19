@@ -56,7 +56,8 @@ class TellomiRegionsTest {
 
   @Test
   fun `cn region only swaps the host into tellomi cn`() {
-    assertThat(cn.enabled).isFalse()
+    // 2026-10-19：已备案，编进包里可用；默认仍 global（TellomiRegionAutoSwitch）
+    assertThat(cn.enabled).isTrue()
     assertThat(cn.chat).isEqualTo("https://chat.tellomi.cn")
     assertThat(cn.grpcChatHost).isEqualTo("grpc.chat.tellomi.cn")
     assertThat(cn.captchaRegistration).isEqualTo("https://chat.tellomi.cn/captcha-tellomi/registration/generate.html")
@@ -98,8 +99,9 @@ class TellomiRegionsTest {
   fun `current region falls back to global for anything unusable`() {
     assertThat(TellomiRegions.resolve(null)).isEqualTo(global)
     assertThat(TellomiRegions.resolve("global")).isEqualTo(global)
-    // CN 关着：就算记住的是 cn，也回落 global
-    assertThat(TellomiRegions.resolve("cn")).isEqualTo(global)
+    // CN 可用（enabled = true），记住的 cn 就用 cn；表里的 cn 关着时才回落 global
+    assertThat(TellomiRegions.resolve("cn")).isEqualTo(cn)
+    assertThat(TellomiRegions.resolve("cn", listOf(global, cn.copy(enabled = false)))).isEqualTo(global)
     assertThat(TellomiRegions.resolve("mars")).isEqualTo(global)
     assertThat(TellomiRegions.resolve("")).isEqualTo(global)
   }
@@ -121,7 +123,7 @@ class TellomiRegionsTest {
   fun `invariant check catches a broken table`() {
     assertThat(TellomiRegions.problems(listOf(global.copy(enabled = false), cn))).any { it.contains("global region must be enabled") }
     assertThat(TellomiRegions.problems(listOf(cn))).any { it.contains("missing the global region") }
-    assertThat(TellomiRegions.problems(listOf(global, cn.copy(enabled = true)))).any { it.contains("must stay disabled") }
+    assertThat(TellomiRegions.problems(listOf(global, cn))).isEmpty()
     assertThat(TellomiRegions.problems(listOf(global, cn.copy(uptimeHost = "uptime.tellomi.app")))).any { it.contains("uptime.tellomi.app") }
     assertThat(TellomiRegions.problems(listOf(global, global))).any { it.contains("duplicate") }
   }

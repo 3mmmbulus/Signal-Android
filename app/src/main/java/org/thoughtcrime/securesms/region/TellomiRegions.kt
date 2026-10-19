@@ -147,9 +147,12 @@ object TellomiRegions {
     )
   )
 
-  /** CN 档：`enabled = false`，直到备案完成（契约第五节第 2 条）。 */
+  /**
+   * CN 档：2026-10-19 起编进包里可用（tellomi.cn 已备案）。**默认仍是 global**：只有远程配置
+   * `global.tellomi.region.target = cn` 且探测通过才切过去（[TellomiRegionAutoSwitch]，REGION_PROFILE 第六节之二）。
+   */
   @JvmField
-  val CN = cnOf(GLOBAL)
+  val CN = cnOf(GLOBAL, enabled = true)
 
   @JvmField
   val ALL: List<TellomiRegionProfile> = listOf(GLOBAL, CN)
@@ -271,6 +274,25 @@ object TellomiRegions {
     return urlOrHost.substring(start, end)
   }
 
+  /**
+   * 主机所在的 Tellomi 根域（`tellomi.app` / `tellomi.cn`），都不是就 null。
+   */
+  @JvmStatic
+  fun tellomiRootOf(host: String): String? {
+    val h = host.lowercase().removeSuffix(".")
+    return listOf(GLOBAL_DOMAIN, CN_DOMAIN).map { it.removePrefix(".") }.firstOrNull { h == it || h.endsWith(".$it") }
+  }
+
+  /**
+   * 服务端下发的地址（例如 `global.gif.proxyUrl`）能不能在 [region] 里用：同一个 Tellomi 根域才行
+   * （下发值按账号、不按区，REGION_PROFILE 第八节）。区的 chat 不在 Tellomi 根域下（测试区）时不拦。
+   */
+  @JvmStatic
+  fun isHostInRegion(host: String, region: TellomiRegionProfile): Boolean {
+    val regionRoot = tellomiRootOf(hostOf(region.chat)) ?: return true
+    return tellomiRootOf(host) == regionRoot
+  }
+
   /** 只换主机部分；主机不在 `tellomi.app` 下的原样返回，由 [problems] 挑出来。 */
   fun toCnHost(urlOrHost: String, domain: String = CN_DOMAIN): String {
     val host = hostOf(urlOrHost)
@@ -308,9 +330,6 @@ object TellomiRegions {
     }
 
     profiles.firstOrNull { it.id == TellomiRegionId.CN }?.let { cn ->
-      if (cn.enabled) {
-        problems += "the cn region must stay disabled until the ICP filing is done"
-      }
       if (cn.staticIps.isNotEmpty()) {
         problems += "the cn region has no static ip fallback yet: ${cn.staticIps.keys}"
       }

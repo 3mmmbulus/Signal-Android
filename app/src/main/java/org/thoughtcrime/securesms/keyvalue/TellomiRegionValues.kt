@@ -15,6 +15,7 @@ class TellomiRegionValues(store: KeyValueStore) : SignalStoreValues(store) {
     private const val CURRENT_ID = "tellomi_region.current_id"
     private const val LAST_SWITCH_AT = "tellomi_region.last_switch_at"
     private const val TEST_REGION_DOMAIN = "tellomi_region.test_region_domain"
+    private const val TARGET_FAILURES = "tellomi_region.target_failures"
   }
 
   public override fun onFirstEverAppLaunch() = Unit
@@ -25,6 +26,9 @@ class TellomiRegionValues(store: KeyValueStore) : SignalStoreValues(store) {
 
   /** 上一次切区的时间（毫秒）。0 = 没有记录，最小驻留视为已满足（冷启动时 RTT 更低的区直接胜出）。 */
   var lastSwitchAt: Long by longValue(LAST_SWITCH_AT, 0)
+
+  /** 远程配置切区（REGION_PROFILE 第六节之二）：键显式时，当前区连续探测失败的次数。 */
+  var targetFailures: Int by integerValue(TARGET_FAILURES, 0)
 
   /**
    * 测试区的域名（例如 `tellomi.test`）；null = 不开。**只在 debug 包里生效**（`TellomiRegions.profiles()`），

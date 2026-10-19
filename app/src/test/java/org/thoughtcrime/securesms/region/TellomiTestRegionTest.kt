@@ -53,8 +53,8 @@ class TellomiTestRegionTest {
     assertThat(testRegion.grpcChatHost).isEqualTo("grpc.chat.tellomi.test")
     assertThat(testRegion.contentProxyPort).isEqualTo(global.contentProxyPort)
 
-    // 包里的表不受影响：CN 仍关着，不变量照旧
-    assertThat(TellomiRegions.CN.enabled).isFalse()
+    // 包里的表不受影响：CN 仍在 tellomi.cn 下，不变量照旧
+    assertThat(TellomiRegions.CN.chat).isEqualTo("https://chat.tellomi.cn")
     assertThat(TellomiRegions.problems(TellomiRegions.ALL)).isEmpty()
   }
 
@@ -78,7 +78,7 @@ class TellomiTestRegionTest {
     val profiles = TellomiRegions.testRegionProfiles("tellomi.test")
     assertThat(TellomiRegions.resolve("cn", profiles)).isEqualTo(profiles[1])
 
-    // 清掉域名（或 release 包）之后，记住的 cn 在包里的表里关着：回落 global
-    assertThat(TellomiRegions.resolve("cn", TellomiRegions.testRegionProfiles(null))).isEqualTo(global)
+    // 清掉域名（或 release 包）之后，记住的 cn 回到包里的正式 CN（tellomi.cn），不再指向测试域名
+    assertThat(TellomiRegions.resolve("cn", TellomiRegions.testRegionProfiles(null))).isEqualTo(TellomiRegions.CN)
   }
 }

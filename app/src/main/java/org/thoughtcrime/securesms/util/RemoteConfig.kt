@@ -1116,6 +1116,18 @@ object RemoteConfig {
    * **不热切换**：内容代理的几个 OkHttpClient（Glide / Giphy / ExoPlayer）都是长寿命的，只在创建时读一次，
    * 改了要等进程重启才生效——所以这里如实写 `hotSwappable = false`。
    */
+  /**
+   * Tellomi（REGION_PROFILE 第六节之二）：客户端该去哪个区（`global` / `cn`）。不存在 / 空 = 功能关闭。
+   * 切不切、什么时候切归 [org.thoughtcrime.securesms.region.TellomiRegionAutoSwitch]（先探测，通了才切）。
+   */
+  @JvmStatic
+  @get:JvmName("tellomiRegionTarget")
+  val tellomiRegionTarget: String? by remoteString(
+    key = "global.tellomi.region.target",
+    defaultValue = null,
+    hotSwappable = true
+  )
+
   @JvmStatic
   @get:JvmName("gifProxyUrl")
   val gifProxyUrl: String? by remoteString(
