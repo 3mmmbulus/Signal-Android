@@ -1,6 +1,6 @@
 {
-  "source": "tellomi/libsignal rust/links/tests/data/bridge-golden.json (tellomi-0.102.2 4c8e772b5): the \"open_plan\" cases, verbatim",
-  "registry": "links-2026092702.json",
+  "source": "tellomi/libsignal rust/links/tests/data/bridge-golden.json (tellomi-0.102.2 070eaefb7): the \"open_plan\" cases, verbatim",
+  "registry": "links-2026101901.json",
   "open_plan": [
     {
       "plan": "{\"steps\":[{\"type\":\"installed_app_only\",\"url\":\"https://www.bilibili.com/video/BV1YDhJ6ZEL6/?spm_id_from=333.1007\"},{\"type\":\"browser\",\"url\":\"https://www.bilibili.com/video/BV1YDhJ6ZEL6/?spm_id_from=333.1007\"},{\"type\":\"copy_link\",\"url\":\"https://www.bilibili.com/video/BV1YDhJ6ZEL6/?spm_id_from=333.1007\"}],\"label\":\"open_link\",\"app_name\":{\"zh-Hans\":\"哔哩哔哩\",\"en\":\"Bilibili\"},\"lookalike\":null}",

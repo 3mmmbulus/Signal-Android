@@ -1682,7 +1682,7 @@ public final class ConversationItem extends RelativeLayout implements BindableCo
         linkPreviewStub.get().applyTellomiDisplay(getLinkDisplay(linkPreview), !isContentCondensed());
         linkPreviewStub.get().applyTellomiBrandIcon(requestManager, getLinkCardIcon());
         // The icon card keeps its sub line, and a card with no image has the link icon (card-visual §3.7).
-        linkPreviewStub.get().applyTellomiLayout(getLinkCardLayout());
+        linkPreviewStub.get().applyTellomiLayout(getLinkCardLayout(), TellomiLinkVisual.showsLinkIcon(linkCard, getLinkCardLayout()));
         linkPreviewStub.get().applyTellomiTint(getLinkCardColors());
         TellomiFirstPartyCard.Display firstParty = getFirstPartyDisplay();
         if (firstParty != null) {

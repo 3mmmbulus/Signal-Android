@@ -131,12 +131,19 @@ class TellomiLinkSenderTest {
     assertEquals(Optional.empty<Attachment>(), result.preview.thumbnail)
   }
 
+  /**
+   * links-2026101901 moved Taobao to the `claimed` tier (its page is fetched like a generic link), so the golden "brand shell,
+   * no request" case is a brand-tier Weibo post now (libsignal 070eaefb7 bridge-golden); the URL is read from the golden.
+   */
   @Test
   fun `a brand-tier link sends the platform shell without a request`() {
-    val result = preview("https://item.taobao.com/item.htm?id=100032608854", FakeLookups(image)) as TellomiLinkSender.Result.Found
+    val case = goldenCase("brand shell, no request")
+    val expected = TellomiLinkSendJob.parseOutcome(case["outcome"]!!.jsonPrimitive.content)!!.preview!!
 
-    assertEquals("Taobao", result.preview.title)
-    assertNotNull(result.preview.rich)
+    val result = preview(case["url"]!!.jsonPrimitive.content, FakeLookups(image)) as TellomiLinkSender.Result.Found
+
+    assertEquals("Weibo", result.preview.title)
+    assertArrayEquals(Hex.fromStringCondensed(expected.richHex!!), result.preview.rich)
     assertEquals(Optional.empty<Attachment>(), result.preview.thumbnail)
     assertTrue(fixture.takeRequests().isEmpty())
     assertTrue(fixture.dns.lookups.isEmpty())

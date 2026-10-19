@@ -110,7 +110,7 @@ class LinkPreviewUtilTest_findValidPreviewUrls {
   }
 
   private fun withBundledRegistry() {
-    val bytes = requireNotNull(javaClass.classLoader?.getResourceAsStream("links/links-2026092702.json")).use { it.readBytes() }
+    val bytes = requireNotNull(javaClass.classLoader?.getResourceAsStream("links/links-2026101901.json")).use { it.readBytes() }
     TellomiLinkRegistry.setForTesting(LinkRegistry.load(bytes))
   }
 

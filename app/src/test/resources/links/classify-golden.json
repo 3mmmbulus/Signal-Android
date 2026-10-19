@@ -1,7 +1,7 @@
 {
-  "source": "tellomi/libsignal rust/links/tests/data/bridge-golden.json (tellomi-0.102.2 4c8e772b5): the \"classify\" cases, verbatim",
-  "registry": "links-2026092702.json",
-  "registry_version": 2026092702,
+  "source": "tellomi/libsignal rust/links/tests/data/bridge-golden.json (tellomi-0.102.2 070eaefb7): the \"classify\" cases, verbatim",
+  "registry": "links-2026101901.json",
+  "registry_version": 2026101901,
   "classify": [
     {
       "body": "https://www.bilibili.com/video/BV1YDhJ6ZEL6",
@@ -410,6 +410,22 @@
       "name": "§6.1 a group name is cleaned like a title",
       "preview": "{\"has_image\":true,\"rich\":\"0a0d74656c6c6f6d692e67726f7570120774656c6c6f6d69\",\"title\":\"​周末⁠爬山群‍\",\"url\":\"https://tell.cc/g#AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA\"}",
       "receive_check": "{\"keep_preview\":true,\"keep_rich\":true}"
+    },
+    {
+      "body": "https://item.taobao.com/item.htm?id=100032608854",
+      "card": "{\"level\":\"generic\",\"provider\":null,\"provider_name\":null,\"kind\":null,\"route\":null,\"title\":\"某某商品\",\"description\":null,\"attrs\":[],\"domain\":\"taobao.com\",\"official_badge\":false,\"first_party\":null,\"lookalike\":null,\"show_image\":true,\"icon\":\"taobao.png\",\"tintable\":true,\"payment\":false,\"reason\":\"claimed\"}",
+      "message": "{}",
+      "name": "claimed tier (2026-10-19), no rich: the page's own card with the platform icon",
+      "preview": "{\"has_image\":true,\"title\":\"某某商品\",\"url\":\"https://item.taobao.com/item.htm?id=100032608854\"}",
+      "receive_check": "{\"keep_preview\":true,\"keep_rich\":false}"
+    },
+    {
+      "body": "https://item.taobao.com/item.htm?id=100032608854",
+      "card": "{\"level\":\"brand\",\"provider\":\"taobao\",\"provider_name\":{\"zh-Hans\":\"淘宝\",\"en\":\"Taobao\"},\"kind\":\"product\",\"route\":\"item\",\"title\":null,\"description\":null,\"attrs\":[],\"domain\":\"taobao.com\",\"official_badge\":false,\"first_party\":null,\"lookalike\":null,\"show_image\":false,\"icon\":\"taobao.png\",\"tintable\":true,\"payment\":false,\"reason\":\"claimed_no_title\"}",
+      "message": "{}",
+      "name": "claimed tier (2026-10-19), no rich, no title: the platform's brand shell",
+      "preview": "{\"has_image\":false,\"url\":\"https://item.taobao.com/item.htm?id=100032608854\"}",
+      "receive_check": "{\"keep_preview\":true,\"keep_rich\":false}"
     }
   ]
 }

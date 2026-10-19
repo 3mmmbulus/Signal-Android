@@ -29,10 +29,11 @@ androidx-core-telecom = "1.1.0-alpha06"
 androidx-window = "1.3.0"
 glide = "5.0.9"
 # Tellomi：自建服务端要 Network.customServer(...)，上游的 libsignal 没有这个入口。
-# 产物来自 tellomi/libsignal@tellomi-0.102.2 4c8e772b5（上游 v0.102.2 + 自建服务端入口 + rust/policy、rust/links +
-# 卡片图标 Card.icon + 显示文字净化 / 全文种仿冒域名，tellomi/tellomi#957 #1418，libsignal#11–#18）；正式字节挂在 GitHub Release
-# v0.102.2-tellomi.4，装法：超级仓库 python3 scripts/dev/libsignal-maven.py install（#1127）。不要自己 publishToMavenLocal，字节不同过不了校验。
-libsignal-client = "0.102.2-tellomi.4"
+# 产物来自 tellomi/libsignal@tellomi-0.102.2 070eaefb7（上游 v0.102.2 + 自建服务端入口 + rust/policy、rust/links +
+# 卡片图标 Card.icon + 显示文字净化 / 全文种仿冒域名 + claimed 档 / 备份字段 #21/#25/#29/#32，
+# tellomi/tellomi#957 #1418，libsignal#11–#18/#21/#25/#29/#32）；正式字节挂在 GitHub Release
+# v0.102.2-tellomi.5，装法：超级仓库 python3 scripts/dev/libsignal-maven.py install（#1127）。不要自己 publishToMavenLocal，字节不同过不了校验。
+libsignal-client = "0.102.2-tellomi.5"
 mp4parser = "1.9.39"
 accompanist = "0.28.0"
 nanohttpd = "2.3.1"

@@ -96,19 +96,28 @@ class TellomiLinkRegistryTest {
     }
   }
 
+  /**
+   * links-2026101901 (PM 2026-10-19): Taobao is a `claimed` platform, so its bundled icon now comes on three golden cards —
+   * the brand shell, the claimed page card and the claimed brand shell without a title. Several cards (and hosts) sharing
+   * one icon is right; the list of icons is de-duplicated.
+   */
   @Test
-  fun `only a brand shell that has a bundled icon carries its file name`() {
+  fun `only a brand shell or a claimed page card that has a bundled icon carries its file name`() {
     val cards = golden["classify"]!!.jsonArray.map { TellomiLinkCard.parse(it.jsonObject.str("card")!!)!! }
 
     val withIcon = cards.filter { it.icon != null }
-    assertEquals(listOf("taobao.png"), withIcon.map { it.icon })
-    assertEquals(TellomiLinkCard.Level.BRAND, withIcon.single().level)
-    assertTrue("a brand shell's icon can be drawn and tinted", withIcon.single().tintable && !withIcon.single().payment)
+    assertEquals(listOf("taobao.png"), withIcon.mapNotNull { it.icon }.distinct())
+    for (card in withIcon) {
+      val claimedPage = card.level == TellomiLinkCard.Level.GENERIC && card.reason == "claimed"
+      assertTrue("${card.level} ${card.reason}: only a brand shell or a claimed page card", card.level == TellomiLinkCard.Level.BRAND || claimedPage)
+      assertTrue("the bundled icon can be drawn and tinted", card.tintable && !card.payment)
+      assertTrue(TellomiBrandIcons.isValidFileName(card.icon))
+    }
+    assertTrue("the claimed page card is there", withIcon.any { it.level == TellomiLinkCard.Level.GENERIC })
 
     val alipay = cards.single { it.provider == "alipay" }
     assertNull("no official icon: name and domain only", alipay.icon)
     assertTrue("a payment shell is never tinted", alipay.payment && !alipay.tintable)
-    assertTrue(TellomiBrandIcons.isValidFileName(withIcon.single().icon))
   }
 
   @Test
@@ -137,7 +146,7 @@ class TellomiLinkRegistryTest {
   /** owner 2026-10-17 (ADR-0063 addendum): a preview of a scheme-less / http:// link the registry claims is kept. */
   @Test
   fun `keeps the https preview of a scheme-less or http link the registry claims`() {
-    TellomiLinkRegistry.setForTesting(LinkRegistry.load(resource("links-2026092702.json")))
+    TellomiLinkRegistry.setForTesting(LinkRegistry.load(resource("links-2026101901.json")))
     val preview = LinkPreview("https://b23.tv/BV1GJ411x7h7", "视频标题", "", 0, Optional.empty())
     for (body in listOf("看这个 b23.tv/BV1GJ411x7h7", "看这个 http://b23.tv/BV1GJ411x7h7")) {
       assertTrue(body, TellomiLinkRegistry.receiveCheck(preview, body, false, emptyList())!!.keepPreview)
@@ -151,7 +160,7 @@ class TellomiLinkRegistryTest {
   /** …and an http:// link the registry does not claim is still dropped, as upstream. */
   @Test
   fun `drops the preview of an http link the registry does not claim`() {
-    TellomiLinkRegistry.setForTesting(LinkRegistry.load(resource("links-2026092702.json")))
+    TellomiLinkRegistry.setForTesting(LinkRegistry.load(resource("links-2026101901.json")))
     val preview = LinkPreview("https://www.wikipedia.org/wiki/Tellomi", "维基百科", "", 0, Optional.empty())
     val check = TellomiLinkRegistry.receiveCheck(preview, "看这个 http://www.wikipedia.org/wiki/Tellomi", false, emptyList())
     assertTrue(!check!!.keepPreview)

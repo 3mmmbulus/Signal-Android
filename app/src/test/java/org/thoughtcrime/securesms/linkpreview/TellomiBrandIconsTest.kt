@@ -167,7 +167,7 @@ class TellomiBrandIconsTest {
   @Test
   fun `every icon the registry names for a brand shell is in the package`() {
     val registry = Json.parseToJsonElement(
-      requireNotNull(javaClass.classLoader?.getResourceAsStream("links/links-2026092702.json")).use { String(it.readBytes()) }
+      requireNotNull(javaClass.classLoader?.getResourceAsStream("links/links-2026101901.json")).use { String(it.readBytes()) }
     ).jsonObject
     val named = registry["payload"]!!.jsonObject["providers"]!!.jsonArray.mapNotNull { it.jsonObject["icon"]?.jsonPrimitive?.content }
     assertTrue(named.isNotEmpty())

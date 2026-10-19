@@ -1,14 +1,14 @@
 {
-  "source": "tellomi/libsignal rust/links/tests/data/bridge-golden.json (tellomi-0.102.2 4c8e772b5): the \"send\" cases, verbatim",
-  "registry": "links-2026092702.json",
+  "source": "tellomi/libsignal rust/links/tests/data/bridge-golden.json (tellomi-0.102.2 070eaefb7): the \"send\" cases, verbatim",
+  "registry": "links-2026101901.json",
   "send": [
     {
       "context": "{\"locale\":\"zh-Hans\"}",
       "name": "brand shell, no request",
-      "outcome": "{\"level\":\"brand\",\"provider\":\"taobao\",\"route\":\"item\",\"kind\":\"product\",\"preview\":{\"url\":\"https://item.taobao.com/item.htm?id=100032608854\",\"title\":\"淘宝\",\"description\":null,\"image_url\":null,\"date\":null,\"rich\":{\"kind\":\"product\",\"provider\":\"taobao\",\"schema\":1,\"canonical_url\":\"https://item.taobao.com/item.htm?id=100032608854\",\"attrs\":[],\"level\":1},\"rich_hex\":\"0a0770726f64756374120674616f62616f1801223068747470733a2f2f6974656d2e74616f62616f2e636f6d2f6974656d2e68746d3f69643d3130303033323630383835343001\"},\"group_link_invalid\":false,\"lookalike\":null,\"newly_unreachable_hosts\":[],\"failures\":[]}",
+      "outcome": "{\"level\":\"brand\",\"provider\":\"weibo\",\"route\":\"status\",\"kind\":\"article\",\"preview\":{\"url\":\"https://weibo.com/2803301701/NEfBc8VJE\",\"title\":\"微博\",\"description\":null,\"image_url\":null,\"date\":null,\"rich\":{\"kind\":\"article\",\"provider\":\"weibo\",\"schema\":1,\"canonical_url\":\"https://weibo.com/2803301701/NEfBc8VJE\",\"attrs\":[],\"level\":1},\"rich_hex\":\"0a0761727469636c651205776569626f1801222668747470733a2f2f776569626f2e636f6d2f323830333330313730312f4e4566426338564a453001\"},\"group_link_invalid\":false,\"lookalike\":null,\"newly_unreachable_hosts\":[],\"failures\":[]}",
       "requests": [],
       "script": {},
-      "url": "https://item.taobao.com/item.htm?id=100032608854"
+      "url": "https://weibo.com/2803301701/NEfBc8VJE"
     },
     {
       "context": "{}",

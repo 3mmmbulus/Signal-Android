@@ -474,12 +474,20 @@ public class LinkPreviewView extends FrameLayout {
    * Other layouts are left as they are. Only for conversation bubbles.
    */
   public void applyTellomiLayout(@Nullable TellomiLinkVisual.Layout layout) {
+    applyTellomiLayout(layout, true);
+  }
+
+  /**
+   * As {@link #applyTellomiLayout(TellomiLinkVisual.Layout)}; {@code showLinkIcon} false leaves the link icon off the no-image card
+   * ({@link TellomiLinkVisual#showsLinkIcon}: a claimed-tier card is its title and domain only, PM 2026-10-19 evening).
+   */
+  public void applyTellomiLayout(@Nullable TellomiLinkVisual.Layout layout, boolean showLinkIcon) {
     if (type == TYPE_COMPOSE) {
       return;
     }
 
     if (layout == TellomiLinkVisual.Layout.NO_IMAGE) {
-      linkIcon.setVisibility(VISIBLE);
+      linkIcon.setVisibility(showLinkIcon ? VISIBLE : GONE);
       return;
     }
 

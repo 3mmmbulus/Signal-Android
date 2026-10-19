@@ -347,6 +347,70 @@ class TellomiLinkVisualTest {
   }
 
   @Test
+  fun `a claimed-tier card whose page gave no image takes the platform's bundled icon and its colours`() {
+    // links-2026101901 (PM 2026-10-19): Taobao and the others are `claimed`; rust/links gives their page card `icon`.
+    val claimed = TellomiLinkCard(level = TellomiLinkCard.Level.GENERIC, title = "淘宝", domain = "taobao.com", showImage = false, icon = "brand-10.png", tintable = true, reason = "claimed")
+    val bridge = RecordingBridge(tintJson = orange)
+    val (icons, opened) = iconsOf("brand-10.png" to solidPng(Color.rgb(254, 117, 0), width = 114, height = 114))
+
+    assertTrue(TellomiLinkVisual.usesBundledIcon(claimed))
+    val visual = TellomiLinkVisual.decideBrand(bridge, icons, claimed)
+
+    assertEquals("the icon's size, not 0 x 0 (the no-image card)", listOf(listOf<Any>(114, 114, "", "generic")), bridge.layouts)
+    assertEquals(listOf("links/icons/brand-10.png"), opened)
+    assertEquals(TellomiLinkVisual.Layout.ICON, visual.layout)
+    assertEquals(Color.parseColor("#FE7500"), visual.tint?.colors(isDark = false)?.background)
+    assertNotNull(visual.icon)
+  }
+
+  @Test
+  fun `a claimed-tier card with a page image uses the page image, and a card with nothing has no icon`() {
+    val claimed = TellomiLinkCard(level = TellomiLinkCard.Level.GENERIC, domain = "taobao.com", showImage = true, icon = "taobao.png", tintable = true)
+    assertFalse(TellomiLinkVisual.usesBundledIcon(claimed))
+    assertFalse(TellomiLinkVisual.usesBundledIcon(claimed.copy(showImage = false, icon = null)))
+    assertFalse(TellomiLinkVisual.usesBundledIcon(claimed.copy(level = TellomiLinkCard.Level.STRUCTURED, showImage = false)))
+    assertTrue(TellomiLinkVisual.usesBundledIcon(brand))
+  }
+
+  // --- Claimed-tier cards without a bundled icon (PM 2026-10-19, evening: JD, Meituan, Pinduoduo, Tmall get none) ---
+
+  @Test
+  fun `a claimed card whose sender fetched the site icon is the icon card with the icon's colours`() {
+    val claimed = TellomiLinkCard(level = TellomiLinkCard.Level.GENERIC, title = "Apple iPhone 15", domain = "jd.com", showImage = true, tintable = true, reason = "claimed")
+    val bridge = RecordingBridge(tintJson = orange)
+
+    val visual = TellomiLinkVisual.decide(bridge, claimed, 180, 180, "claimed-site-icon") { solidPng(Color.rgb(254, 117, 0), width = 180, height = 180) }
+
+    assertFalse("no bundled icon: the sender's site icon is the image", TellomiLinkVisual.usesBundledIcon(claimed))
+    assertEquals(listOf(listOf<Any>(180, 180, "", "generic")), bridge.layouts)
+    assertEquals(listOf(Triple("icon", 32, 32)), bridge.tints)
+    assertEquals(TellomiLinkVisual.Layout.ICON, visual.layout)
+    assertEquals(Color.parseColor("#FE7500"), visual.tint?.colors(isDark = false)?.background)
+    assertFalse(TellomiLinkVisual.showsLinkIcon(claimed, visual.layout))
+  }
+
+  @Test
+  fun `a claimed card with nothing fetched is its title and domain, without the link icon`() {
+    val claimed = TellomiLinkCard(level = TellomiLinkCard.Level.GENERIC, title = "Apple iPhone 15", domain = "jd.com", showImage = false, tintable = true, reason = "claimed")
+    val bridge = bridgeOf(layoutName = "no_image", tintJson = orange)
+
+    val visual = TellomiLinkVisual.decide(bridge, claimed, 0, 0, null) { null }
+
+    assertEquals(TellomiLinkVisual.Visual(TellomiLinkVisual.Layout.NO_IMAGE, null), visual)
+    assertFalse("a claimed card has a title: no link icon", TellomiLinkVisual.showsLinkIcon(claimed, visual.layout))
+
+    val blocked = TellomiLinkCard(level = TellomiLinkCard.Level.BRAND, provider = "jd", kind = "product", domain = "jd.com", showImage = false, tintable = true, reason = "claimed_no_title")
+    val shell = TellomiLinkVisual.decideBrand(bridgeOf(layoutName = "no_image", tintJson = orange), iconsOf().first, blocked)
+    assertEquals(TellomiLinkVisual.Layout.NO_IMAGE, shell.layout)
+    assertFalse("the platform's name and the domain, no link icon", TellomiLinkVisual.showsLinkIcon(blocked, shell.layout))
+
+    assertTrue("a card with nothing at all keeps the link icon", TellomiLinkVisual.showsLinkIcon(card.copy(showImage = false), TellomiLinkVisual.Layout.NO_IMAGE))
+    assertTrue(TellomiLinkVisual.showsLinkIcon(null, TellomiLinkVisual.Layout.NO_IMAGE))
+    assertFalse(TellomiLinkVisual.showsLinkIcon(card, TellomiLinkVisual.Layout.ICON))
+    assertTrue(TellomiLinkVisual.isClaimed(blocked) && TellomiLinkVisual.isClaimed(claimed) && !TellomiLinkVisual.isClaimed(brand))
+  }
+
+  @Test
   fun `a neutral icon gives the shape and no colours, and each icon is tinted once`() {
     val bridge = RecordingBridge(tintJson = """{"tinted":false,"source":"#808082"}""")
     val (icons, _) = iconsOf("brand-6.png" to solidPng(Color.GRAY))
