@@ -31,7 +31,7 @@ object Linkifier {
    * Characters that always terminate a URL: whitespace (including the unicode variants), bidi/format
    * controls, and punctuation that is only ever used to quote or wrap a URL.
    */
-  private const val URL_TERMINATOR = "\\s\\u0085\\u00A0\\u1680\\u2000-\\u200D\\u2028\\u2029\\u202A-\\u202F\\u205F\\u2066-\\u2069\\u3000\\uFEFF<>\"`|\\\\"
+  private const val URL_TERMINATOR = "\\s\\u0085\\u00A0\\u1680\\u2000-\\u200F\\u2028\\u2029\\u202A-\\u202F\\u205F\\u2060-\\u2064\\u2066-\\u2069\\u3000\\uFEFF<>\"`|\\\\"
 
   /**
    * Characters we treat as definitely-not-part-of-a-URL when extending past the host. Commas and
@@ -166,6 +166,8 @@ object Linkifier {
   private fun isFormatOrZeroWidth(c: Char): Boolean {
     return when (c) {
       '​', '‌', '‍', '﻿' -> true // zero-width space / non-joiner / joiner / BOM
+      '\u200E', '\u200F' -> true // left-to-right / right-to-left mark (Tellomi)
+      in '\u2060'..'\u2064' -> true // word joiner and invisible operators (Tellomi)
       in '‪'..'‮' -> true // bidi formatting overrides
       in '⁦'..'⁩' -> true // bidi isolate controls
       else -> false

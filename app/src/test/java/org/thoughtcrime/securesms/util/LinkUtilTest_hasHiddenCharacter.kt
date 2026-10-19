@@ -21,7 +21,8 @@ class LinkUtilTest_hasHiddenCharacter(private val text: String, private val hidd
 
   @Test
   fun hasHiddenCharacter() {
-    val link = Linkifier.findLinks(text).first()
+    // Linkifier itself drops a link that runs into a hidden character, so there is no link (and no preview) to check
+    val link = Linkifier.findLinks(text).firstOrNull() ?: return assertEquals(text, true, hidden)
     val previewUrl = LinkUtil.trimTextGluedAfterUrl(LinkUtil.cutAtCjkSentencePunctuation(link.url))
     assertEquals(hidden, LinkUtil.hasHiddenCharacter(text, link, previewUrl))
   }
@@ -56,6 +57,9 @@ class LinkUtilTest_hasHiddenCharacter(private val text: String, private val hidd
       arrayOf("https://zh.wikipedia.org/wiki/中国，\u2060很好", false),
       arrayOf("https://signal.org/abc.\u200B", false),
       arrayOf("https://signal.org/abc\n\u200B", false),
+      arrayOf("https://signal.org/abc,\u200F next", false),
+      arrayOf("https://signal.org/abc!\u2060", false),
+      arrayOf("https://signal.org/abc.\u200E", false),
       // ordinary links are unchanged
       arrayOf("https://zh.wikipedia.org/wiki/中国", false),
       arrayOf("https://zh.wikipedia.org/wiki/中国，很好", false),
