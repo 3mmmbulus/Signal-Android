@@ -189,24 +189,42 @@ class TellomiLinkFetcherTest {
   // ---- 体积与 Content-Type ----
 
   @Test
-  fun `HTML over 2 MiB is rejected, exactly 2 MiB is accepted`() {
+  fun `HTML over 2 MiB is truncated to its first 2 MiB, exactly 2 MiB is not`() {
     val max = 2 * 1024 * 1024
+    val head = "<html><head><meta property=\"og:title\" content=\"大页面\"></head><body>".toByteArray()
+    val over = head + ByteArray(max + 1) { 'a'.code.toByte() }
     fixture.route("https://a.$d/max", MockResponse().setHeader("Content-Type", "text/html").setBody(Buffer().write(ByteArray(max) { 'a'.code.toByte() })))
-    fixture.route("https://a.$d/over", MockResponse().setHeader("Content-Type", "text/html").setBody(Buffer().write(ByteArray(max + 1) { 'a'.code.toByte() })))
-    fixture.route("https://a.$d/over-chunked", MockResponse().setHeader("Content-Type", "text/html").setChunkedBody(Buffer().write(ByteArray(max + 1) { 'a'.code.toByte() }), 64 * 1024))
+    fixture.route("https://a.$d/over", MockResponse().setHeader("Content-Type", "text/html").setBody(Buffer().write(over)))
+    fixture.route("https://a.$d/over-chunked", MockResponse().setHeader("Content-Type", "text/html").setChunkedBody(Buffer().write(over), 64 * 1024))
 
-    assertEquals(max, (fetch("https://a.$d/max") as Result.Body).bytes.size)
-    assertFailure(Reason.TOO_LARGE, fetch("https://a.$d/over"))
-    assertFailure(Reason.TOO_LARGE, fetch("https://a.$d/over-chunked"))
+    val exact = fetch("https://a.$d/max") as Result.Body
+    assertEquals(max, exact.bytes.size)
+    assertFalse(exact.truncated)
+    for (path in listOf("over", "over-chunked")) {
+      val body = fetch("https://a.$d/$path") as Result.Body
+      assertTrue(path, body.truncated)
+      assertEquals(path, max, body.bytes.size)
+      assertTrue(path, body.bytes.copyOfRange(0, head.size).contentEquals(head))
+    }
   }
 
   @Test
-  fun `gzip bomb is rejected by its decompressed size`() {
+  fun `gzip bomb is cut at its decompressed size`() {
     val bomb = gzip(ByteArray(3 * 1024 * 1024) { ' '.code.toByte() })
     assertTrue("compressed size ${bomb.size}", bomb.size < 64 * 1024)
     fixture.route("https://a.$d/bomb", MockResponse().setHeader("Content-Type", "text/html").setHeader("Content-Encoding", "gzip").setBody(Buffer().write(bomb)))
 
-    assertFailure(Reason.TOO_LARGE, fetch("https://a.$d/bomb"))
+    val body = fetch("https://a.$d/bomb") as Result.Body
+    assertTrue(body.truncated)
+    assertEquals(2 * 1024 * 1024, body.bytes.size)
+  }
+
+  @Test
+  fun `an image over 2 MiB is still rejected`() {
+    val max = 2 * 1024 * 1024
+    fixture.route("https://a.$d/big.png", MockResponse().setHeader("Content-Type", "image/png").setBody(Buffer().write(ByteArray(max + 1))))
+
+    assertFailure(Reason.TOO_LARGE, fetch("https://a.$d/big.png", Step.IMAGE))
   }
 
   @Test
@@ -396,6 +414,20 @@ class TellomiLinkFetcherTest {
   }
 
   @Test
+  fun `a connect timeout does not mark the host`() {
+    // 产品经理 2026-10-19 定（ADR-0063 §4.4）：只有明确失败才记；超时（含连接超时）不记
+    fixture.dns.resolve("lossy.$d", TellomiLinkFetchFixture.SLOW_CONNECT)
+
+    val first = fetch("https://lossy.$d/")
+    assertFailure(Reason.TIMEOUT, first)
+    assertFalse((first as Result.Failure).beforeConnect)
+    val attempts = fixture.connectAttempts.get()
+    assertFailure(Reason.TIMEOUT, fetch("https://lossy.$d/"))
+    assertTrue(fixture.connectAttempts.get() > attempts)
+    assertEquals(emptyList<String>(), fixture.reachability.unreachableHosts())
+  }
+
+  @Test
   fun `a redirect into an unreachable host is skipped without a request`() {
     fixture.dns.fail("blocked.$d")
     assertFailure(Reason.UNREACHABLE, fetch("https://blocked.$d/"))
@@ -449,7 +481,7 @@ class TellomiLinkFetcherTest {
     assertEquals(1, p1.maxImageRequests)
     assertEquals(2L * 1024 * 1024, p1.htmlMaxBytes)
     assertEquals(256L * 1024, p1.jsonMaxBytes)
-    assertEquals(TimeUnit.MINUTES.toMillis(30), TellomiLinkReachability.TTL_MS)
+    assertEquals(TimeUnit.MINUTES.toMillis(2), TellomiLinkReachability.TTL_MS)
     assertEquals("global", TellomiLinkReachability.P1_REGION_PRIOR)
   }
 

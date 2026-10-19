@@ -55,8 +55,10 @@ import kotlin.math.min
  * - 连接 5 s、单个请求（含全部跳转和读正文）10 s；每条链接（一个 [Session]）总共 10 s、最多 3 个元数据请求（短链展开算 1 个）+ 1 个图片请求。
  *   OkHttp 自己的重试（连接失败重试、503 `Retry-After: 0`、408……）一律关掉：一跳只许一个网络请求。
  * - `Content-Type` 按步骤白名单；体积按**解压后**的字节数算：HTML 2 MiB、JSON 256 KiB，图片沿用上游的 2 MiB。只认 gzip 和不压缩。
+ *   JSON / 图片超了就放弃；**HTML 超了只留开头 2 MiB 照常交回解析**（OG 在 `<head>`，靠前；产品经理 2026-10-19 定）。
  * - 短链只读 `Location`，不读正文、不跟随（http 的 `Location` 也只拿来识别）；「展开短链接」关着时一个请求都不发。
- * - 网络层失败（DNS、连接、TLS——连上之前的失败）记进 [TellomiLinkReachability]，同一 host 之后直接跳过。
+ * - 网络层明确失败（DNS、连接被拒 / 被重置、TLS——连上之前的失败）记进 [TellomiLinkReachability]，同一 host 之后直接跳过；
+ *   **超时（含连接超时）不记**（产品经理 2026-10-19 定，ADR-0063 §4.4）。
  * - 日志只记步骤、结果类别、状态码和跳数，**不记 URL、host，也不记异常**（异常信息里可能带 URL，§6.5）。
  *
  * 结构化步骤「重定向后仍在同一个 provider」要按注册表核，那是 `rust/links` 的事：这里把最终 URL 放在结果里交回去。
@@ -201,7 +203,13 @@ class TellomiLinkFetcher(
 
   /** 结果的 `toString()` 一律不带 URL，谁把它打进日志都不会泄露。 */
   sealed class Result {
-    class Body(val finalUrl: HttpUrl, val contentType: MediaType, val bytes: ByteArray) : Result() {
+    class Body(
+      val finalUrl: HttpUrl,
+      val contentType: MediaType,
+      val bytes: ByteArray,
+      /** HTML 超过上限、只读了开头 `htmlMaxBytes` 字节。 */
+      val truncated: Boolean = false
+    ) : Result() {
       /** 按 `Content-Type` 的 charset 解码；没有就照上游看页面里的 `charset=`，再没有用 UTF-8。 */
       fun text(): String {
         val charset = contentType.charset(null) ?: sniffCharset(bytes) ?: StandardCharsets.UTF_8
@@ -221,7 +229,7 @@ class TellomiLinkFetcher(
       val finalUrl: HttpUrl? = null,
       val contentType: MediaType? = null,
       val httpCode: Int = 0,
-      /** 连上之前就失败（DNS、TCP、TLS，含连接超时）：§4.3 的网络层失败。 */
+      /** 连上之前就明确失败（DNS、TCP 被拒 / 被重置、TLS；**不含**超时）：§4.3 的网络层失败。 */
       val beforeConnect: Boolean = false
     ) : Result() {
       /** 页面步骤拿到的是一张图（链接直接指向图片）：上游把它当预览图用，这里把最终地址交回去，由图片步骤去取。 */
@@ -367,10 +375,12 @@ class TellomiLinkFetcher(
       } catch (e: IOException) {
         when {
           cancelled -> Hop.Done(Result.Failure(Reason.CANCELLED))
+          // 连上之前就超时：不算「明确不可达」，不记（产品经理 2026-10-19 定，ADR-0063 §4.4）
+          !state.connected && e is InterruptedIOException -> Hop.Done(Result.Failure(Reason.TIMEOUT))
           !state.connected -> {
-            // 连上之前就失败：DNS、TCP、TLS。这是 §4.3 说的网络层失败。
+            // 连上之前就明确失败：DNS、TCP 被拒 / 被重置、TLS。这是 §4.3 说的网络层失败。
             reachability.markUnreachable(url.host)
-            Hop.Done(Result.Failure(if (e is InterruptedIOException) Reason.TIMEOUT else Reason.UNREACHABLE, beforeConnect = true))
+            Hop.Done(Result.Failure(Reason.UNREACHABLE, beforeConnect = true))
           }
           e is InterruptedIOException -> Hop.Done(Result.Failure(Reason.TIMEOUT))
           else -> Hop.Done(Result.Failure(Reason.IO))
@@ -401,9 +411,11 @@ class TellomiLinkFetcher(
       }
 
       val max = min(limits.maxBytes(step), spec.maxBytes ?: Long.MAX_VALUE)
+      // HTML 不因为大而放弃：只读开头 max 字节（产品经理 2026-10-19 定，ADR-0063 §4.4）
+      val truncates = step == Step.HTML
       val source: BufferedSource = when (response.header("Content-Encoding")?.trim()?.lowercase(Locale.ROOT)) {
         null, "", "identity" -> {
-          if (body.contentLength() > max) {
+          if (!truncates && body.contentLength() > max) {
             return Hop.Done(Result.Failure(Reason.TOO_LARGE))
           }
           body.source()
@@ -416,6 +428,10 @@ class TellomiLinkFetcher(
       source.use {
         while (it.read(buffer, 8192) != -1L) {
           if (buffer.size > max) {
+            if (truncates) {
+              // 留下开头正好 max 字节，剩下的不读了（关掉 source 就断开）
+              return Hop.Done(Result.Body(url, contentType, buffer.readByteArray(max), truncated = true))
+            }
             return Hop.Done(Result.Failure(Reason.TOO_LARGE))
           }
         }

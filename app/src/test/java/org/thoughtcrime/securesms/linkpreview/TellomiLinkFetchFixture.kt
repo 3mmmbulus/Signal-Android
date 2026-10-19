@@ -48,7 +48,7 @@ import javax.net.ssl.X509TrustManager
  *
  * - 假 DNS 把 `*.fetch-fixture.net` 解析到公网文档地址 [PUBLIC]（不在拦截名单里）；个别主机解析到私网段、fake-ip 段，或者直接解析失败。
  * - 套接字工厂把每一次 connect 改到 MockWebServer 的本机端口：抓取器按生产规则拦 127/8，测试服务又只能跑在本机，这样两边都不用放宽。
- *   解析到 [DEAD] 的主机连到一个已关闭的端口（连接被拒）。
+ *   解析到 [DEAD] 的主机连到一个已关闭的端口（连接被拒）；解析到 [SLOW_CONNECT] 的连接超时。
  * - 证书只签了 `*.fetch-fixture.net`；`*.other-fixture.org` 用来造 TLS 失败。
  * - 路由按「Host + path」派发，没配的一律 404。
  */
@@ -58,6 +58,9 @@ class TellomiLinkFetchFixture : ExternalResource() {
     const val DOMAIN = "fetch-fixture.net"
     val PUBLIC: InetAddress = InetAddress.getByName("203.0.113.10")
     val DEAD: InetAddress = InetAddress.getByName("203.0.113.99")
+
+    /** 解析到这里的主机连接超时（模拟丢包的网络：连接一直建不起来）。 */
+    val SLOW_CONNECT: InetAddress = InetAddress.getByName("203.0.113.98")
 
     /**
      * Real provider hosts the certificate also covers, so the send-side tests can replay rust/links' own requests
@@ -226,6 +229,9 @@ class TellomiLinkFetchFixture : ExternalResource() {
     override fun connect(endpoint: SocketAddress?, timeout: Int) {
       connectAttempts.incrementAndGet()
       val target = endpoint as InetSocketAddress
+      if (target.address == SLOW_CONNECT) {
+        throw java.net.SocketTimeoutException("fixture: connect timed out")
+      }
       val port = if (target.address == DEAD) closedPort else server.port
       super.connect(InetSocketAddress(InetAddress.getLoopbackAddress(), port), timeout)
     }

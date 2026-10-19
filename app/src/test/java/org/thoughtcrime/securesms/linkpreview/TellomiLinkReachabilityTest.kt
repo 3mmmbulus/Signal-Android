@@ -9,7 +9,7 @@ import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
-/** ADR-0063 §4.3 本机可达性记录：只在内存，网络变化或 30 分钟后清空。 */
+/** ADR-0063 §4.3 本机可达性记录：只在内存，网络变化或 2 分钟后清空。 */
 class TellomiLinkReachabilityTest {
 
   private var now = 0L
@@ -17,7 +17,7 @@ class TellomiLinkReachabilityTest {
   private val reachability = TellomiLinkReachability(clock = { now }, networkId = { network })
 
   @Test
-  fun `a marked host stays unreachable for 30 minutes`() {
+  fun `a marked host stays unreachable for 2 minutes`() {
     reachability.markUnreachable("www.youtube.com")
 
     now += TellomiLinkReachability.TTL_MS - 1
@@ -25,6 +25,11 @@ class TellomiLinkReachabilityTest {
 
     now += 1
     assertFalse(reachability.isUnreachable("www.youtube.com"))
+  }
+
+  @Test
+  fun `the memo lasts 2 minutes`() {
+    assertTrue(TellomiLinkReachability.TTL_MS == 2 * 60 * 1000L)
   }
 
   @Test
