@@ -102,6 +102,13 @@ object TellomiRegions {
   private const val GLOBAL_DOMAIN = ".tellomi.app"
   private const val CN_DOMAIN = ".tellomi.cn"
 
+  /**
+   * CN 档的静态 IP 回落（成都，8.137.39.82）。运维确认：所有 `.tellomi.cn` 名字都是 DNS only 的 A 记录直指这台，
+   * 不过 Cloudflare，所以 cdn3 在 CN 档也可以写死（和 global 档 #1077 的情况不同）。
+   */
+  @JvmField
+  val CN_STATIC_IPS: Set<String> = setOf("8.137.39.82")
+
   /** 原来写死在 `SubmitDebugLogRepository` 里，收进这里（契约第三节「写死」那几处之一）。 */
   private const val DEBUG_LOG_URL = "https://chat.tellomi.app/debuglogs"
 
@@ -220,8 +227,8 @@ object TellomiRegions {
   }
 
   /**
-   * `SignalServiceNetworkAccess.DNS` 最后一档（StaticDns）的表：包里各区的 staticIps 合在一起，今天只有 global 档有。
-   * 切区不用重建它：CN 的主机在表里查不到，落到系统 DNS。
+   * `SignalServiceNetworkAccess.DNS` 最后一档（StaticDns）的表：包里各区的 staticIps 合在一起（global 档 → 香港，CN 档 → 成都）。
+   * 两档主机名不重叠，切区不用重建它。
    */
   @JvmStatic
   fun staticIpTable(): Map<String, Set<String>> {
@@ -262,8 +269,9 @@ object TellomiRegions {
       uptimeHost = rehost(global.uptimeHost),
       debugLog = rehost(global.debugLog),
       feed = rehost(global.feed),
-      // 契约第三节：staticIps 只属于 global 档，CN 暂无回落
-      staticIps = emptyMap()
+      // 契约第三节 staticIps：CN 档用 global 档同一组主机（换成 .tellomi.cn），全部回落到成都 [CN_STATIC_IPS]。
+      // 只有真正的 CN 档有；测试区（domain 不是 tellomi.cn）不带静态 IP。
+      staticIps = if (domain == CN_DOMAIN) global.staticIps.keys.associate { toCnHost(it, domain) to CN_STATIC_IPS } else emptyMap()
     )
   }
 
@@ -330,8 +338,8 @@ object TellomiRegions {
     }
 
     profiles.firstOrNull { it.id == TellomiRegionId.CN }?.let { cn ->
-      if (cn.staticIps.isNotEmpty()) {
-        problems += "the cn region has no static ip fallback yet: ${cn.staticIps.keys}"
+      cn.staticIps.filterValues { it != CN_STATIC_IPS }.keys.forEach {
+        problems += "cn static ips must be the chengdu fallback $CN_STATIC_IPS: $it"
       }
       cn.endpoints().filterNot { hostOf(it).endsWith(CN_DOMAIN) }.forEach {
         problems += "cn endpoint outside tellomi.cn: $it"

@@ -44,7 +44,7 @@ class SignalServiceNetworkAccess(context: Context) {
     val DNS: Dns = SequentialDns(
       Dns.SYSTEM,
       CustomDns("1.1.1.1"),
-      // Tellomi（#1055 第三刀）：静态 IP 表从区域表来（契约第三节 staticIps，只有 global 档有，CN 暂无回落），切区不用重建。
+      // Tellomi（#1055 第三刀）：静态 IP 表从区域表来（契约第三节 staticIps，global 档回落香港，CN 档回落成都），切区不用重建。
       // 上游这里还有 cdsi / svr2 两行，指向 Signal 自己的 IP。这两样都不走这张表：svr2 的 OkHttp client
       // （SignalUrlExtensions.buildOkHttpClient）不设 dns，CDSI 走 libsignal。是死配置，删掉。
       StaticDns(TellomiRegions.staticIpTable())
