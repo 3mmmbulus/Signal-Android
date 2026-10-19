@@ -525,7 +525,9 @@ class TellomiLinkPreviewViewTest {
   /** PM 2026-10-19 (evening): a claimed-tier card without any icon (JD, Meituan, Pinduoduo, Tmall) is its title and domain only. */
   @Test
   fun `a claimed card without any icon shows its title and domain and no link icon`() {
-    view.setLinkPreview(mockk<RequestManager>(relaxed = true), LinkPreview("https://item.jd.com/100012043978.html", "Apple iPhone 15", "", 0, Optional.empty()), false)
+    // No URL, as in the other cases here: setLinkPreview's HttpUrl.topPrivateDomain() needs okhttp's PublicSuffixDatabase, which unit
+    // tests do not ship; a failed load poisons it for every later test in the JVM (TellomiLinkCardLayoutTest). The domain comes from the display.
+    view.setLinkPreview(mockk<RequestManager>(relaxed = true), LinkPreview("", "Apple iPhone 15", "", 0, Optional.empty()), false)
     view.applyTellomiDisplay(TellomiLinkDisplay("Apple iPhone 15", null, "jd.com", false), true)
 
     view.applyTellomiBrandIcon(mockk<RequestManager>(relaxed = true), null)
