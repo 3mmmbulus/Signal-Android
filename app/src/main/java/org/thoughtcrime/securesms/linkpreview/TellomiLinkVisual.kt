@@ -240,6 +240,21 @@ object TellomiLinkVisual {
     }
   }
 
+  /**
+   * A card of a claimed-tier platform (links-2026101901): rust/links' `reason` is `claimed` (the page card) or
+   * `claimed_no_title` (no title: the platform's brand shell).
+   */
+  @JvmStatic
+  fun isClaimed(card: TellomiLinkCard?): Boolean = card?.reason == "claimed" || card?.reason == "claimed_no_title"
+
+  /**
+   * Whether a card of [layout] gets the link icon at the end of its title line (PM 2026-10-19, evening): only a card with no
+   * image; and not a claimed-tier card, which always has a title or the platform's name — the link icon is only for a card
+   * with nothing at all. A claimed card whose sender fetched the site icon is the icon card with the icon's colours instead.
+   */
+  @JvmStatic
+  fun showsLinkIcon(card: TellomiLinkCard?, layout: Layout?): Boolean = layout == Layout.NO_IMAGE && !isClaimed(card)
+
   /** Null is "no decision": the card shows the way it did before layout existed. */
   @JvmStatic
   fun layout(bridge: Bridge, card: TellomiLinkCard, imageWidth: Int, imageHeight: Int): Layout? {

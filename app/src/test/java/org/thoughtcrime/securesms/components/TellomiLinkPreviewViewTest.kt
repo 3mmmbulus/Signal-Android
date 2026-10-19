@@ -522,6 +522,25 @@ class TellomiLinkPreviewViewTest {
     assertEquals("meituan.com", site.text.toString())
   }
 
+  /** PM 2026-10-19 (evening): a claimed-tier card without any icon (JD, Meituan, Pinduoduo, Tmall) is its title and domain only. */
+  @Test
+  fun `a claimed card without any icon shows its title and domain and no link icon`() {
+    view.setLinkPreview(mockk<RequestManager>(relaxed = true), LinkPreview("https://item.jd.com/100012043978.html", "Apple iPhone 15", "", 0, Optional.empty()), false)
+    view.applyTellomiDisplay(TellomiLinkDisplay("Apple iPhone 15", null, "jd.com", false), true)
+
+    view.applyTellomiBrandIcon(mockk<RequestManager>(relaxed = true), null)
+    view.applyTellomiLayout(TellomiLinkVisual.Layout.NO_IMAGE, false)
+
+    assertEquals(View.GONE, thumbnail.visibility)
+    assertEquals(View.GONE, linkIcon.visibility)
+    assertEquals("Apple iPhone 15", title.text.toString())
+    assertEquals("jd.com", site.text.toString())
+
+    // The same view, reused for a card with nothing but the link: the link icon is back.
+    view.applyTellomiLayout(TellomiLinkVisual.Layout.NO_IMAGE, true)
+    assertEquals(View.VISIBLE, linkIcon.visibility)
+  }
+
   @Test
   fun `a recycled view drops the brand icon`() {
     val requestManager = mockk<RequestManager>(relaxed = true)
