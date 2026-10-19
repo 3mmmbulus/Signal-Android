@@ -11,9 +11,10 @@ import java.util.concurrent.TimeUnit
 /**
  * 本机可达性记录（ADR-0063 §4.3，tellomi/tellomi#1422）。
  *
- * 一次抓取在**网络层**失败（DNS 失败、TCP 连接超时 / 被拒 / 被重置、TLS 握手失败；HTTP 状态码不算），
+ * 一次抓取在**网络层明确失败**（DNS 失败、TCP 连接被拒 / 被重置、TLS 握手失败；HTTP 状态码不算），
  * 就记下「这个 host 在当前网络不可达」，之后同一 host 的请求直接跳过、不再发出去。
- * 系统网络变化时（[networkId] 变了）或 [ttlMs]（30 分钟）以后清空。
+ * **超时不算**（连接超时也不算；产品经理 2026-10-19 定，ADR-0063 §4.4）。
+ * 系统网络变化时（[networkId] 变了）或 [ttlMs]（2 分钟，原来 30 分钟）以后清空。
  *
  * **只在内存、不落盘、不上报**：不会变成一份「用户所在网络能访问什么」的记录。
  */
@@ -24,8 +25,8 @@ class TellomiLinkReachability(
 ) {
 
   companion object {
-    /** ADR-0063 §4.3：30 分钟后清空。 */
-    val TTL_MS: Long = TimeUnit.MINUTES.toMillis(30)
+    /** ADR-0063 §4.3 / §4.4：2 分钟后清空（产品经理 2026-10-19 从 30 分钟缩短）。 */
+    val TTL_MS: Long = TimeUnit.MINUTES.toMillis(2)
 
     /**
      * 区域先验（ADR-0063 §4.3 第一层）。P1 固定是 `global`：RegionProfile 两端还没接进链接管线（#1055 / #1056），
