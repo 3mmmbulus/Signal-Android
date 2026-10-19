@@ -27,7 +27,7 @@ object TellomiLinkRegistry {
 
   private val TAG = Log.tag(TellomiLinkRegistry::class.java)
 
-  const val BUNDLED_ASSET = "links/links-2026092702.json"
+  const val BUNDLED_ASSET = "links/links-2026101901.json"
 
   /** rust/links' first-party provider (`limits.rs` `TELLOMI`). */
   const val FIRST_PARTY_PROVIDER = "tellomi"

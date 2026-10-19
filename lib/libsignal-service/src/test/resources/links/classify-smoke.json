@@ -1,7 +1,7 @@
 {
-  "source": "tellomi/libsignal rust/links/tests/data/bridge-golden.json (tellomi-0.102.2 4c8e772b5), classify[] \"structured video: sender level 2, required fields present\"",
-  "registry": "links-2026092702.json",
-  "registry_version": 2026092702,
+  "source": "tellomi/libsignal rust/links/tests/data/bridge-golden.json (tellomi-0.102.2 070eaefb7), classify[] \"structured video: sender level 2, required fields present\"",
+  "registry": "links-2026101901.json",
+  "registry_version": 2026101901,
   "preview": "{\"has_image\":true,\"rich\":\"0a05766964656f120862696c6962696c691801222b68747470733a2f2f7777772e62696c6962696c692e636f6d2f766964656f2f4256315944684a365a454c362a100a06617574686f721206e69fafe6b4812a150a0b6475726174696f6e5f6d7312063439393030302a280a0c7075626c69736865645f61741218323032362d30392d32325430393a32353a33332e3030305a3002\",\"title\":\"《柯洁围棋入门课》\",\"url\":\"https://www.bilibili.com/video/BV1YDhJ6ZEL6\"}",
   "body": "看 https://www.bilibili.com/video/BV1YDhJ6ZEL6",
   "message": "{}",

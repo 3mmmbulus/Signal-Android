@@ -55,7 +55,7 @@ class TellomiLinkPreviewRepositoryTest {
 
   @Test
   fun `with the registry loaded the preview is assembled by rust-links`() {
-    val envelope = requireNotNull(javaClass.classLoader?.getResourceAsStream("links/links-2026092702.json")).use { it.readBytes() }
+    val envelope = requireNotNull(javaClass.classLoader?.getResourceAsStream("links/links-2026101901.json")).use { it.readBytes() }
     TellomiLinkRegistry.setForTesting(LinkRegistry.load(envelope))
     fixture.html("https://b.$d/article", "<html><head><meta property=\"og:title\" content=\"标题\"></head></html>")
 

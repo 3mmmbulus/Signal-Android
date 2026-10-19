@@ -137,7 +137,7 @@ class TellomiLinkRegistryTest {
   /** owner 2026-10-17 (ADR-0063 addendum): a preview of a scheme-less / http:// link the registry claims is kept. */
   @Test
   fun `keeps the https preview of a scheme-less or http link the registry claims`() {
-    TellomiLinkRegistry.setForTesting(LinkRegistry.load(resource("links-2026092702.json")))
+    TellomiLinkRegistry.setForTesting(LinkRegistry.load(resource("links-2026101901.json")))
     val preview = LinkPreview("https://b23.tv/BV1GJ411x7h7", "视频标题", "", 0, Optional.empty())
     for (body in listOf("看这个 b23.tv/BV1GJ411x7h7", "看这个 http://b23.tv/BV1GJ411x7h7")) {
       assertTrue(body, TellomiLinkRegistry.receiveCheck(preview, body, false, emptyList())!!.keepPreview)
@@ -151,7 +151,7 @@ class TellomiLinkRegistryTest {
   /** …and an http:// link the registry does not claim is still dropped, as upstream. */
   @Test
   fun `drops the preview of an http link the registry does not claim`() {
-    TellomiLinkRegistry.setForTesting(LinkRegistry.load(resource("links-2026092702.json")))
+    TellomiLinkRegistry.setForTesting(LinkRegistry.load(resource("links-2026101901.json")))
     val preview = LinkPreview("https://www.wikipedia.org/wiki/Tellomi", "维基百科", "", 0, Optional.empty())
     val check = TellomiLinkRegistry.receiveCheck(preview, "看这个 http://www.wikipedia.org/wiki/Tellomi", false, emptyList())
     assertTrue(!check!!.keepPreview)
