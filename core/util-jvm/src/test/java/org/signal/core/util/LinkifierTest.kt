@@ -199,7 +199,35 @@ class LinkifierTest(private val case: Case) {
       // Tellomi (PM 2026-10-19): after Chinese sentence punctuation the link has already ended
       Case("zero-width space after CJK sentence punctuation ends the url at the punctuation", "https://zh.wikipedia.org/wiki/中国，\u200B很好", listOf(web("https://zh.wikipedia.org/wiki/中国"))),
       Case("bidi isolate after CJK closing quote ends the url at the quote", "「https://signal.org/a」\u2066", listOf(web("https://signal.org/a"))),
-      Case("zero-width space glued to CJK text still rejects the url", "https://signal.org/a/中\u200B文", emptyList())
+      Case("zero-width space glued to CJK text still rejects the url", "https://signal.org/a/中\u200B文", emptyList()),
+
+      // ----- Tellomi (PM 2026-10-19, ADR-0063 §5.6): every hidden character (Cc/Cf/Co/Cs/Cn/Zl/Zp, as iOS and Desktop) -----
+      Case("soft hyphen inside the path rejects the url", "https://signal.org/a\u00ADb", emptyList()),
+      Case("soft hyphen inside the host rejects the url", "https://sig\u00ADnal.org/a", emptyList()),
+      Case("soft hyphen inside CJK path rejects the url", "看 https://signal.org/a/中\u00AD文 吧", emptyList()),
+      Case("soft hyphen right after the url rejects it", "https://signal.org/abc\u00AD", emptyList()),
+      Case("soft hyphen before the url rejects it", "\u00ADhttps://signal.org/abc", emptyList()),
+      Case("soft hyphen after ascii punctuation does not belong to the url", "https://signal.org/abc.\u00AD", listOf(web("https://signal.org/abc"))),
+      Case("soft hyphen after CJK punctuation ends the url at the punctuation", "https://zh.wikipedia.org/wiki/中国，\u00AD很好", listOf(web("https://zh.wikipedia.org/wiki/中国"))),
+      Case("soft hyphen after a space does not belong to the url", "https://signal.org/abc \u00AD", listOf(web("https://signal.org/abc"))),
+      Case("mongolian vowel separator inside the url rejects it", "https://signal.org/a\u180Eb", emptyList()),
+      Case("arabic letter mark inside the url rejects it", "https://signal.org/a\u061Cb", emptyList()),
+      Case("interlinear annotation inside the url rejects it", "https://signal.org/a\uFFF9b", emptyList()),
+      Case("C0 control inside the url rejects it", "https://signal.org/a\u0001b", emptyList()),
+      Case("information separator inside the url rejects it", "https://signal.org/a\u001Fb", emptyList()),
+      Case("C1 control inside the url rejects it", "https://signal.org/a\u0090b", emptyList()),
+      Case("DEL inside the url rejects it", "https://signal.org/a\u007Fb", emptyList()),
+      Case("private use character inside the url rejects it", "https://signal.org/a\uE000b", emptyList()),
+      Case("unassigned U+2065 inside the url rejects it", "https://signal.org/a\u2065b", emptyList()),
+      Case("lone surrogate inside the url rejects it", "https://signal.org/a\uD800b", emptyList()),
+      Case("tag character (supplementary) inside the url rejects it", "https://signal.org/a\uDB40\uDC01b", emptyList()),
+      Case("tag character (supplementary) before the url rejects it", "\uDB40\uDC01https://signal.org/abc", emptyList()),
+      Case("supplementary private use character right after the url rejects it", "https://signal.org/abc\uDB80\uDC00", emptyList()),
+      Case("NEL after the url is a normal end", "https://signal.org/abc\u0085next", listOf(web("https://signal.org/abc"))),
+      Case("line separator after the url is a normal end", "https://signal.org/abc\u2028next", listOf(web("https://signal.org/abc"))),
+      Case("tab after the url is a normal end", "https://signal.org/abc\tnext", listOf(web("https://signal.org/abc"))),
+      Case("CRLF after a CJK url is a normal end", "https://signal.org/a/中文\r\n下一行", listOf(web("https://signal.org/a/中文"))),
+      Case("emoji (surrogate pair) in the path is still part of the url", "https://signal.org/a/😀", listOf(web("https://signal.org/a/😀")))
     ).map { arrayOf<Any>(it) }
   }
 }

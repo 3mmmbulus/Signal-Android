@@ -60,6 +60,22 @@ class LinkUtilTest_hasHiddenCharacter(private val text: String, private val hidd
       arrayOf("https://signal.org/abc,\u200F next", false),
       arrayOf("https://signal.org/abc!\u2060", false),
       arrayOf("https://signal.org/abc.\u200E", false),
+      // every hidden category, not only zero-width / direction marks (U+00AD soft hyphen and others, as iOS / Desktop)
+      arrayOf("https://signal.org/a\u00ADb", true),
+      arrayOf("https://signal.org/a/中\u00AD文", true),
+      arrayOf("https://signal.org/abc\u00AD", true),
+      arrayOf("https://signal.org/a\u180Eb", true),
+      arrayOf("https://signal.org/a\uFFF9b", true),
+      arrayOf("https://signal.org/a\u001Fb", true),
+      arrayOf("https://signal.org/abc\u001F", true),
+      arrayOf("https://signal.org/a\uE000b", true),
+      arrayOf("https://signal.org/a\uDB40\uDC01b", true),
+      arrayOf("https://signal.org/abc.\u00AD", false),
+      arrayOf("https://zh.wikipedia.org/wiki/中国，\u00AD很好", false),
+      // a line break right after a link is a normal end (as iOS isIriTerminator)
+      arrayOf("https://signal.org/abc\u0085next", false),
+      arrayOf("https://signal.org/a/中文\u2028下一行", false),
+      arrayOf("https://signal.org/a/中文\r\n下一行", false),
       // ordinary links are unchanged
       arrayOf("https://zh.wikipedia.org/wiki/中国", false),
       arrayOf("https://zh.wikipedia.org/wiki/中国，很好", false),

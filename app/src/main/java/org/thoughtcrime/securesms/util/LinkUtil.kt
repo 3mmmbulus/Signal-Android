@@ -207,7 +207,8 @@ object LinkUtil {
    * with https. True when the part of [text] it was taken from has a hidden character in it, or is followed right away by
    * one, so the link did not end normally there (at whitespace or punctuation) but at the hidden character. A hidden
    * character after whitespace or punctuation is not part of the link. Hidden: the same categories as iOS (format, control,
-   * private use, surrogate, unassigned, line / paragraph separator); whitespace such as a newline after a link is a normal end.
+   * private use, surrogate, unassigned, line / paragraph separator); a line break after a link is a normal end
+   * ([Linkifier.isHiddenCharacter]).
    */
   @JvmStatic
   fun hasHiddenCharacter(text: CharSequence, link: Linkifier.DetectedLink, previewUrl: String): Boolean {
@@ -226,7 +227,9 @@ object LinkUtil {
     }
     if (end < text.length) {
       val next = Character.codePointAt(text, end)
-      if (isHiddenCodePoint(next) && !Character.isWhitespace(next) && !Character.isSpaceChar(next)) {
+      // The same test Linkifier uses for a hidden character right after a link, so a link is either tappable and previewed or
+      // neither: line breaks (tab, LF, CR, U+0085, U+2028/2029) are a normal end, U+001C–U+001F are hidden (as on iOS)
+      if (Linkifier.isHiddenCharacter(next)) {
         return true
       }
     }
