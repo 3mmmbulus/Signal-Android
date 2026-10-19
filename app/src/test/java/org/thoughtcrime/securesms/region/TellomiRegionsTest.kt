@@ -10,7 +10,6 @@ import assertk.assertions.any
 import assertk.assertions.contains
 import assertk.assertions.isEmpty
 import assertk.assertions.isEqualTo
-import assertk.assertions.isFalse
 import assertk.assertions.isTrue
 import org.junit.Test
 import org.thoughtcrime.securesms.BuildConfig
