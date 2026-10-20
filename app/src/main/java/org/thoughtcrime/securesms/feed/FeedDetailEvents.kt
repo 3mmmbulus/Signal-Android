@@ -152,6 +152,14 @@ class FeedDetailEventTracker(
 }
 
 /**
+ * 详情页事件（open / dwell / quick_exit / share）报不报：内部开关「Feed: detail events」开着，**并且**引擎部署了 `events`
+ * （`GET /v1/capabilities`，和列表曝光同一条规则；能力拿不到按没部署）。两个都要满足，默认不报。
+ */
+fun feedDetailEventsEnabled(internalSwitch: Boolean, entries: FeedEntries): Boolean {
+  return internalSwitch && entries.events
+}
+
+/**
  * 一个详情页的事件生命周期（I-13），口径对齐 iOS `FeedPostDetailViewController` 的 `openDetailEvent` / `closeDetailEvent` / `shareFinished`：
  *
  * - 整个页面生命里只报一次 `open`（盖上别的页面再回来、退到后台再回前台都不重报、不重新计时）；
