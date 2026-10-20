@@ -7,6 +7,7 @@ package org.thoughtcrime.securesms.feed.detail
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -24,6 +25,8 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -85,6 +88,20 @@ object FeedPostDetailTestTags {
   const val DECLINE = "feed_detail_decline_"
   const val MIC = "feed_detail_mic"
   const val VOICE_RECORDING = "feed_detail_voice_recording"
+  const val COMMENT = "feed_detail_comment_"
+  const val REPORT_COMMENT = "feed_detail_report_comment"
+}
+
+/**
+ * 一条评论的长按菜单（对照 iOS `FeedDetailMenu.items(forComment:)`）：别人的、已经公开的评论给「举报」。
+ * 能看到内容就必须能举报（合规红线），所以**不看 capabilities**，任何模式下都在。
+ * 自己的评论没有举报；等作者批准的（held）别人本来看不到，也没有。举报对象是 `content` + 评论 id（引擎 `POST /v1/feed/reports`）。
+ */
+internal object FeedCommentMenu {
+  @JvmStatic
+  fun canReport(comment: FeedCard): Boolean {
+    return comment.kind == FeedCard.KIND_COMMENT && !comment.viewer.isAuthor && !comment.held
+  }
 }
 
 /** 楼里先露几条回复，多的折起来（照 Threads）。 */
@@ -121,6 +138,8 @@ fun FeedPostDetailScreen(
   onOwnPostAction: (FeedOwnPostAction) -> Unit = {},
   onDeletePost: () -> Unit = {},
   onReportPost: () -> Unit = {},
+  /** 举报别人的评论（长按评论）。 */
+  onReportComment: (FeedCard) -> Unit = {},
   onInsightsDismissed: () -> Unit = {},
   onSaveClick: () -> Unit = {},
   onRepostClick: () -> Unit = {},
@@ -190,6 +209,7 @@ fun FeedPostDetailScreen(
       onOwnPostAction = onOwnPostAction,
       onDeletePost = onDeletePost,
       onReportPost = onReportPost,
+      onReportComment = onReportComment,
       onSaveClick = onSaveClick,
       onRepostClick = onRepostClick,
       onNotInterested = onNotInterested,
@@ -219,6 +239,7 @@ private fun CommentList(
   onOwnPostAction: (FeedOwnPostAction) -> Unit,
   onDeletePost: () -> Unit,
   onReportPost: () -> Unit,
+  onReportComment: (FeedCard) -> Unit,
   onSaveClick: () -> Unit,
   onRepostClick: () -> Unit,
   onNotInterested: () -> Unit,
@@ -340,6 +361,7 @@ private fun CommentList(
           canModerate = canModerate,
           onApprove = onApproveComment,
           onDecline = { decliningId = it.id },
+          onReport = onReportComment,
           voicePlayback = voicePlayback,
           onVoiceToggle = onVoiceToggle
         )
@@ -361,6 +383,7 @@ private fun CommentList(
             canModerate = canModerate,
             onApprove = onApproveComment,
             onDecline = { decliningId = it.id },
+            onReport = onReportComment,
             voicePlayback = voicePlayback,
             onVoiceToggle = onVoiceToggle
           )
@@ -439,6 +462,7 @@ private fun CommentBubble(
   canModerate: Boolean = false,
   onApprove: (FeedCard) -> Unit = {},
   onDecline: (FeedCard) -> Unit = {},
+  onReport: (FeedCard) -> Unit = {},
   voicePlayback: FeedVoicePlayback = FeedVoicePlayback(),
   onVoiceToggle: (FeedMedia) -> Unit = {}
 ) {
@@ -458,45 +482,69 @@ private fun CommentBubble(
       // 作者本人的评论换底色（第三节第 4 条「作者气泡青色」；品牌色定了之前先用主题的 primaryContainer）
       val bubbleColor = if (isPostAuthor) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceVariant
       val onBubble = if (isPostAuthor) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurfaceVariant
-      Column(
-        modifier = Modifier
-          .clip(RoundedCornerShape(16.dp))
-          .background(bubbleColor)
-          .padding(horizontal = 12.dp, vertical = 8.dp)
-      ) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-          Text(
-            text = comment.author?.displayName.orEmpty(),
-            style = MaterialTheme.typography.labelLarge,
-            fontWeight = FontWeight.SemiBold,
-            color = MaterialTheme.colorScheme.onSurface
-          )
-          if (isPostAuthor) {
+      // 长按评论弹菜单（和 iOS 一样）；现在只有「举报」，没有项就不弹
+      val reportable = FeedCommentMenu.canReport(comment)
+      var menuOpen by remember { mutableStateOf(false) }
+      val reportLabel = stringResource(R.string.TellomiFeedReport__title)
+      Box {
+        Column(
+          modifier = Modifier
+            .clip(RoundedCornerShape(16.dp))
+            .then(
+              if (reportable) {
+                Modifier.combinedClickable(onClick = {}, onLongClickLabel = reportLabel, onLongClick = { menuOpen = true })
+              } else {
+                Modifier
+              }
+            )
+            .background(bubbleColor)
+            .padding(horizontal = 12.dp, vertical = 8.dp)
+            .testTag(FeedPostDetailTestTags.COMMENT + comment.id)
+        ) {
+          Row(verticalAlignment = Alignment.CenterVertically) {
             Text(
-              text = "  " + stringResource(R.string.TellomiFeedDetail__author),
-              style = MaterialTheme.typography.labelSmall,
-              color = onBubble
+              text = comment.author?.displayName.orEmpty(),
+              style = MaterialTheme.typography.labelLarge,
+              fontWeight = FontWeight.SemiBold,
+              color = MaterialTheme.colorScheme.onSurface
+            )
+            if (isPostAuthor) {
+              Text(
+                text = "  " + stringResource(R.string.TellomiFeedDetail__author),
+                style = MaterialTheme.typography.labelSmall,
+                color = onBubble
+              )
+            }
+          }
+
+          val primary = MaterialTheme.colorScheme.primary
+          val voice = comment.media.firstOrNull { it.isAudio }
+          // 语音评论的文字可以空：空的时候只留「@某人」，两样都没有就不占一行
+          if (voice == null || replyToName != null || !comment.text.isNullOrBlank()) {
+            Text(
+              text = buildAnnotatedString {
+                if (replyToName != null) {
+                  withStyle(SpanStyle(color = primary)) { append("@$replyToName ") }
+                }
+                append(comment.text.orEmpty())
+              },
+              style = MaterialTheme.typography.bodyMedium,
+              color = MaterialTheme.colorScheme.onSurface
             )
           }
+          if (voice != null) {
+            FeedVoiceCommentRow(media = voice, transcript = comment.transcript, playback = voicePlayback, onToggle = onVoiceToggle)
+          }
         }
-
-        val primary = MaterialTheme.colorScheme.primary
-        val voice = comment.media.firstOrNull { it.isAudio }
-        // 语音评论的文字可以空：空的时候只留「@某人」，两样都没有就不占一行
-        if (voice == null || replyToName != null || !comment.text.isNullOrBlank()) {
-          Text(
-            text = buildAnnotatedString {
-              if (replyToName != null) {
-                withStyle(SpanStyle(color = primary)) { append("@$replyToName ") }
-              }
-              append(comment.text.orEmpty())
+        DropdownMenu(expanded = menuOpen && reportable, onDismissRequest = { menuOpen = false }) {
+          DropdownMenuItem(
+            text = { Text(reportLabel) },
+            onClick = {
+              menuOpen = false
+              onReport(comment)
             },
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurface
+            modifier = Modifier.testTag(FeedPostDetailTestTags.REPORT_COMMENT)
           )
-        }
-        if (voice != null) {
-          FeedVoiceCommentRow(media = voice, transcript = comment.transcript, playback = voicePlayback, onToggle = onVoiceToggle)
         }
       }
 

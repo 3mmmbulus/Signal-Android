@@ -56,6 +56,14 @@ class FeedPostDetailActivity : PassphraseRequiredActivity() {
     if (result == FeedReportActivity.Result.NOT_INTERESTED) viewModel.notInterested()
   }
 
+  /**
+   * 举报别人的评论。和举报帖子分开：举报页里选「只是不想看到」时不能把**帖子**当不感兴趣处理，这里什么都不做；
+   * 提交成功给个提示。
+   */
+  private val commentReportLauncher = registerForActivityResult(FeedReportActivity.Contract()) { result ->
+    if (result == FeedReportActivity.Result.SENT) Toast.makeText(this, R.string.TellomiFeedReport__sent, Toast.LENGTH_SHORT).show()
+  }
+
   /** 编辑自己的帖子，保存回来刷新这条。 */
   private val editLauncher = registerForActivityResult(FeedComposeActivity.Contract()) { publishState ->
     if (publishState != null) viewModel.onEdited(publishState)
@@ -103,6 +111,7 @@ class FeedPostDetailActivity : PassphraseRequiredActivity() {
             onOwnPostAction = viewModel::onOwnPostAction,
             onDeletePost = viewModel::deletePost,
             onReportPost = { reportLauncher.launch(FeedReportTarget.content(state.post.id)) },
+            onReportComment = { comment -> commentReportLauncher.launch(FeedReportTarget.content(comment.id)) },
             onInsightsDismissed = viewModel::onInsightsDismissed,
             onSaveClick = viewModel::toggleSave,
             onRepostClick = viewModel::toggleRepost,
