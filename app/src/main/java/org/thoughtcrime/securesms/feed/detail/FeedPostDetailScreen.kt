@@ -65,6 +65,7 @@ import org.thoughtcrime.securesms.feed.FeedAvatar
 import org.thoughtcrime.securesms.feed.FeedInsightsDialog
 import org.thoughtcrime.securesms.feed.FeedOwnPostAction
 import org.thoughtcrime.securesms.feed.FeedPostCard
+import org.thoughtcrime.securesms.feed.LocalFeedEntries
 import org.thoughtcrime.securesms.feed.compose.FeedEditTarget
 import org.thoughtcrime.securesms.feed.localUriOrNull
 import org.thoughtcrime.securesms.feed.net.FeedAuthor
@@ -566,6 +567,10 @@ private fun CommentComposer(
   onSendVoice: (File) -> Unit,
   onVoiceTooShort: () -> Unit
 ) {
+  // 能力检查（契约 3.0）：引擎没部署评论就不画输入框（看评论不受影响）
+  val entries = LocalFeedEntries.current
+  if (!entries.comments) return
+
   Surface(tonalElevation = 2.dp, modifier = Modifier.fillMaxWidth()) {
     Column(modifier = Modifier.navigationBarsPadding().imePadding()) {
       HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
@@ -601,7 +606,7 @@ private fun CommentComposer(
 
       val voice = rememberFeedVoiceComposer(maxMs = state.voiceMaxSeconds * 1000L, onSendVoice = onSendVoice)
       // 输入框空着就显示话筒（照 Telegram：有字是发送，没字是按住说话）
-      val showMic = state.voiceAllowed && state.draft.isBlank() && !state.sending
+      val showMic = entries.voiceComments && state.voiceAllowed && state.draft.isBlank() && !state.sending
       Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(start = 12.dp, end = 4.dp, top = 6.dp, bottom = 6.dp)) {
         if (voice.recording) {
           FeedVoiceRecordingBar(elapsedMs = voice.elapsedMs, maxMs = state.voiceMaxSeconds * 1000L, slide = voice.slide, modifier = Modifier.weight(1f))

@@ -18,7 +18,9 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -179,7 +181,11 @@ fun ComponentActivity.setFeedContent(content: @Composable () -> Unit) {
     val minorMode = remember { SignalStore.tellomiFeed.minorMode }
     val lock = rememberFeedMinorLock(minorMode = minorMode)
     if (lock == null) {
-      content()
+      // 能力检查（契约 3.0）：没部署的入口不画；拿不到按没部署
+      val entries by remember { FeedCapabilityStore.flow() }.collectAsState()
+      CompositionLocalProvider(LocalFeedEntries provides entries) {
+        content()
+      }
     } else {
       SignalTheme {
         Surface {

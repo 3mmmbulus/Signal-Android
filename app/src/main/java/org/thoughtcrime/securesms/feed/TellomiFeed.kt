@@ -22,14 +22,19 @@ object TellomiFeed {
     return isTabEnabled(
       remoteEnabled = RemoteConfig.feedEnabled,
       engineVisible = SignalStore.tellomiFeed.engineVisible,
-      forcedByInternalUser = SignalStore.internal.forceFeedTab
+      forcedByInternalUser = SignalStore.internal.forceFeedTab,
+      feedDeployed = FeedCapabilityStore.entries().feed
     )
   }
 
-  /** 纯函数版本，单测用。引擎说不能看（不在内测名单、紧急开关关了）时隐藏入口，不显示空列表（契约 1.1）。 */
+  /**
+   * 纯函数版本，单测用。引擎说不能看（不在内测名单、紧急开关关了）时隐藏入口，不显示空列表（契约 1.1）。
+   * [feedDeployed]：`GET /v1/capabilities` 里有 `feed`（契约 3.0）；拿不到按没部署，入口隐藏。内部用户强制打开不看它。
+   */
   @JvmStatic
-  fun isTabEnabled(remoteEnabled: Boolean, engineVisible: Boolean, forcedByInternalUser: Boolean): Boolean {
-    return forcedByInternalUser || (remoteEnabled && engineVisible)
+  @JvmOverloads
+  fun isTabEnabled(remoteEnabled: Boolean, engineVisible: Boolean, forcedByInternalUser: Boolean, feedDeployed: Boolean = true): Boolean {
+    return forcedByInternalUser || (remoteEnabled && engineVisible && feedDeployed)
   }
 
   /**
