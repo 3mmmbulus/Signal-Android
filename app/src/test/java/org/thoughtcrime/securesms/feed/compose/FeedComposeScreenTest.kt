@@ -7,11 +7,14 @@ package org.thoughtcrime.securesms.feed.compose
 
 import android.app.Application
 import android.graphics.Bitmap
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.graphics.asAndroidBitmap
+import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.captureToImage
 import androidx.compose.ui.test.junit4.createComposeRule
+import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.onRoot
@@ -27,6 +30,8 @@ import org.robolectric.annotation.Config
 import org.robolectric.annotation.GraphicsMode
 import org.signal.core.ui.CoreUiDependenciesRule
 import org.signal.core.ui.compose.theme.SignalTheme
+import org.thoughtcrime.securesms.feed.FeedEntries
+import org.thoughtcrime.securesms.feed.LocalFeedEntries
 import java.io.File
 
 /**
@@ -50,31 +55,33 @@ class FeedComposeScreenTest {
   private var replies: FeedReplySettings? = null
   private val topicEvents = mutableListOf<String>()
 
-  private fun show(state: FeedComposeState) {
+  private fun show(state: FeedComposeState, entries: FeedEntries = FeedEntries.ALL) {
     composeTestRule.setContent {
       SignalTheme {
-        FeedComposeScreen(
-          state = state,
-          onClose = {},
-          onKindChanged = {},
-          onTitleChanged = {},
-          onTextChanged = {},
-          onImagesPicked = {},
-          onImageRemoved = {},
-          onVisibilityChanged = { visibility = it },
-          onPublish = { published++ },
-          onFailureShown = {},
-          onPickAudience = { picking = it },
-          pollActions = FeedComposePollActions(
-            onAdd = { pollEvents += "add" },
-            onRemove = { pollEvents += "remove" },
-            onOptionAdded = { pollEvents += "option+" },
-            onOptionRemoved = { pollEvents += "option-$it" },
-            onMultiChanged = { pollEvents += "multi=$it" }
-          ),
-          onReplySettingsChanged = { replies = it },
-          onTopicToggled = { topicEvents += it }
-        )
+        CompositionLocalProvider(LocalFeedEntries provides entries) {
+          FeedComposeScreen(
+            state = state,
+            onClose = {},
+            onKindChanged = {},
+            onTitleChanged = {},
+            onTextChanged = {},
+            onImagesPicked = {},
+            onImageRemoved = {},
+            onVisibilityChanged = { visibility = it },
+            onPublish = { published++ },
+            onFailureShown = {},
+            onPickAudience = { picking = it },
+            pollActions = FeedComposePollActions(
+              onAdd = { pollEvents += "add" },
+              onRemove = { pollEvents += "remove" },
+              onOptionAdded = { pollEvents += "option+" },
+              onOptionRemoved = { pollEvents += "option-$it" },
+              onMultiChanged = { pollEvents += "multi=$it" }
+            ),
+            onReplySettingsChanged = { replies = it },
+            onTopicToggled = { topicEvents += it }
+          )
+        }
       }
     }
   }
@@ -187,6 +194,20 @@ class FeedComposeScreenTest {
     show(FeedComposeState(draft = FeedDraft(text = "周末去哪儿？")))
     composeTestRule.onNodeWithTag(FeedComposeTestTags.ADD_POLL).performClick()
     assertThat(pollEvents).isEqualTo(listOf("add"))
+  }
+
+  @Test
+  fun `images and poll buttons hidden when the engine has not deployed them`() {
+    show(FeedComposeState(draft = FeedDraft(text = "x")), entries = FeedEntries.ALL.copy(mediaUpload = false, polls = false))
+    composeTestRule.onAllNodesWithTag(FeedComposeTestTags.ADD_IMAGES).assertCountEquals(0)
+    composeTestRule.onAllNodesWithTag(FeedComposeTestTags.ADD_POLL).assertCountEquals(0)
+  }
+
+  @Test
+  fun `images and poll buttons shown when deployed`() {
+    show(FeedComposeState(draft = FeedDraft(text = "x")))
+    composeTestRule.onAllNodesWithTag(FeedComposeTestTags.ADD_IMAGES).assertCountEquals(1)
+    composeTestRule.onAllNodesWithTag(FeedComposeTestTags.ADD_POLL).assertCountEquals(1)
   }
 
   @Test

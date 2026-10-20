@@ -42,7 +42,9 @@ class FeedViewModel(
   private val blockedKeywords: FeedBlockedKeywords = StoredFeedBlockedKeywords(),
   /** 不感兴趣后问不问原因（第三节第 11 条「约一半的时候」）；测试里换掉。 */
   private val askReason: () -> Boolean = { Random.nextBoolean() },
-  private val savedMessages: FeedSavedMessages = NoteToSelfFeedSavedMessages
+  private val savedMessages: FeedSavedMessages = NoteToSelfFeedSavedMessages,
+  /** 引擎部署了 `events`（契约 3.0）才记曝光、才上报；每次用的时候现问（能力会在后台刷新）。 */
+  private val eventsEnabled: () -> Boolean = { FeedCapabilityStore.entries().events }
 ) : ViewModel() {
 
   companion object {
@@ -93,8 +95,9 @@ class FeedViewModel(
     val tracker = impressionTrackers.getOrPut(tab) { FeedImpressionTracker() }
     val now = clock()
     var full = false
+    val reporting = eventsEnabled()
     for (id in tracker.update(visibleIds, now)) {
-      full = events.add(impressionEvent(id, tab, Instant.ofEpochMilli(now))) || full
+      if (reporting) full = events.add(impressionEvent(id, tab, Instant.ofEpochMilli(now))) || full
     }
     if (full) flushEvents()
 
@@ -113,7 +116,7 @@ class FeedViewModel(
   }
 
   private fun flushEvents() {
-    if (events.size == 0 || events.isThrottled()) return
+    if (events.size == 0 || events.isThrottled() || !eventsEnabled()) return
     viewModelScope.launch {
       // 被限流（429 / 带 Retry-After 的 503）就停在那一批，没发的留在队列里，等够了再发；别的失败丢掉那一批
       events.flush(

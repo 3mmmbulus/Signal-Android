@@ -43,6 +43,7 @@ import org.signal.core.ui.compose.Scaffolds
 import org.signal.core.ui.compose.Snackbars
 import org.thoughtcrime.securesms.R
 import org.thoughtcrime.securesms.feed.FeedPostCard
+import org.thoughtcrime.securesms.feed.LocalFeedEntries
 import org.thoughtcrime.securesms.feed.net.FeedCard
 import org.thoughtcrime.securesms.feed.net.FeedTopic
 import org.signal.core.ui.R as CoreUiR
@@ -206,7 +207,10 @@ private fun TopicHeader(label: String, following: Boolean, enabled: Boolean, onT
       style = MaterialTheme.typography.bodyMedium,
       color = colors.onSurfaceVariant
     )
-    if (following) {
+    // 引擎没部署关注（契约 3.0）：不画关注按钮
+    if (!LocalFeedEntries.current.follow) {
+      Unit
+    } else if (following) {
       OutlinedButton(onClick = onToggleFollow, enabled = enabled, modifier = Modifier.fillMaxWidth().testTag(FeedTopicTestTags.UNFOLLOW)) {
         Text(stringResource(R.string.TellomiFeedTopicFollow__following))
       }

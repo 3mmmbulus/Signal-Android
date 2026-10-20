@@ -15,6 +15,7 @@ import org.signal.network.NetworkResult
 import org.thoughtcrime.securesms.database.RecipientTable
 import org.thoughtcrime.securesms.database.SignalDatabase
 import org.thoughtcrime.securesms.dependencies.AppDependencies
+import org.thoughtcrime.securesms.feed.FeedCapabilityStore
 import org.thoughtcrime.securesms.feed.FeedSources
 import org.thoughtcrime.securesms.feed.TellomiFeed
 import org.thoughtcrime.securesms.feed.net.FeedAuthApi
@@ -31,7 +32,8 @@ object FeedFriends {
   @JvmStatic
   fun forCurrentProcess(): FeedFriendSync {
     return FeedFriendSync(
-      enabled = { TellomiFeed.isTabEnabled() && !TellomiFeed.isSampleDataEnabled() && SignalStore.account.isRegistered },
+      // 好友声明要引擎部署了 friend_assertions（契约 3.0）；Signal-Server 那一半仍按 404 标记判断
+      enabled = { TellomiFeed.isTabEnabled() && !TellomiFeed.isSampleDataEnabled() && SignalStore.account.isRegistered && FeedCapabilityStore.entries().friendAssertions },
       engineKey = { TellomiRegions.current().let { "${it.id.id} ${it.feed}" } },
       friends = ::myFriendAcis,
       signer = ::sign,

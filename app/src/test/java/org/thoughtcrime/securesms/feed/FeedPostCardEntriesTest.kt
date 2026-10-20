@@ -10,7 +10,12 @@ import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithContentDescription
+import androidx.compose.ui.test.onNodeWithContentDescription
+import androidx.compose.ui.test.onNodeWithText
+import androidx.compose.ui.test.performClick
 import androidx.test.core.app.ApplicationProvider
+import assertk.assertThat
+import assertk.assertions.isEqualTo
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -56,5 +61,21 @@ class FeedPostCardEntriesTest {
       }
     }
     composeTestRule.onAllNodesWithContentDescription("Like").assertCountEquals(1)
+  }
+
+  /** 能看到内容就必须能举报（合规红线）：举报入口不看 capabilities，什么都没部署（NONE）时也在；样例数据（ALL）同理。 */
+  @Test
+  fun `report stays even when nothing is deployed`() {
+    var reported: FeedCard? = null
+    composeTestRule.setContent {
+      SignalTheme {
+        CompositionLocalProvider(LocalFeedEntries provides FeedEntries.NONE) {
+          FeedPostCard(card = card, showIpRegion = false, onLikeClick = {}, onNotInterestedClick = null, onReportClick = { reported = it })
+        }
+      }
+    }
+    composeTestRule.onNodeWithContentDescription("More").performClick()
+    composeTestRule.onNodeWithText("Report").performClick()
+    assertThat(reported).isEqualTo(card)
   }
 }
