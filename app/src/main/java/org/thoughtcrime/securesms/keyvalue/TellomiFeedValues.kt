@@ -24,6 +24,7 @@ class TellomiFeedValues(store: KeyValueStore) : SignalStoreValues(store) {
     private const val MINOR_USAGE_DAY = "tellomi_feed.minor_usage_day"
     private const val MINOR_USED_MILLIS = "tellomi_feed.minor_used_millis"
     private const val MINOR_MODE = "tellomi_feed.minor_mode"
+    private const val CAPABILITIES = "tellomi_feed.capabilities"
   }
 
   public override fun onFirstEverAppLaunch() = Unit
@@ -34,6 +35,9 @@ class TellomiFeedValues(store: KeyValueStore) : SignalStoreValues(store) {
 
   /** 上一次问到结果的时间（毫秒）；0 = 没问过。 */
   var engineCheckedAt: Long by longValue(ENGINE_CHECKED_AT, 0)
+
+  /** 引擎 `GET /v1/capabilities` 上次成功的结果（JSON，按账号 + 引擎地址分开），见 `FeedCapabilityCache`。退出登录时清掉。 */
+  var capabilities: String? by stringValue(CAPABILITIES, null)
 
   /** 内部用户强制打开动态标签时，用本机样例（true）还是连内容引擎（false）。 */
   var useSampleData: Boolean by booleanValue(USE_SAMPLE_DATA, true)

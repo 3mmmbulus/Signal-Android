@@ -43,7 +43,7 @@ class FeedEntriesTest {
       caps(
         FeedCapabilities.FEED, FeedCapabilities.POSTING, FeedCapabilities.MEDIA_UPLOAD, FeedCapabilities.POLLS, FeedCapabilities.COMMENTS,
         FeedCapabilities.VOICE_COMMENTS, FeedCapabilities.REACTIONS, FeedCapabilities.REPORTS, FeedCapabilities.BLOCKS, FeedCapabilities.SEARCH,
-        FeedCapabilities.NOTIFICATIONS, FeedCapabilities.FOLLOW, FeedCapabilities.EVENTS, FeedCapabilities.PROFILES
+        FeedCapabilities.NOTIFICATIONS, FeedCapabilities.FOLLOW, FeedCapabilities.EVENTS, FeedCapabilities.PROFILES, FeedCapabilities.FRIEND_ASSERTIONS
       )
     )
     assertThat(all).isEqualTo(FeedEntries.ALL)

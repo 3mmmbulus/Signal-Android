@@ -125,6 +125,9 @@ class FeedCapabilityChecker(
   private var checkedAt = 0L
   private var lastOk = false
 
+  /** 这个进程里最近一次**成功**的结果；没成功过（或最近一次失败）是 null。 */
+  fun lastSuccess(): FeedCapabilities? = if (lastOk) current else null
+
   /** 最近一次检查的结果；没检查过就是 [FeedCapabilities.DISABLED]。 */
   fun capabilities(): FeedCapabilities = current
 

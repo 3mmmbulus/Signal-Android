@@ -77,6 +77,7 @@ import org.signal.core.ui.compose.SignalIcons
 import org.signal.glide.compose.GlideImage
 import org.thoughtcrime.securesms.R
 import org.thoughtcrime.securesms.feed.FeedQuotedBox
+import org.thoughtcrime.securesms.feed.LocalFeedEntries
 import org.signal.core.ui.R as CoreUiR
 
 /** 字数剩这么多时开始显示计数（Threads 也是快到上限才显示）。 */
@@ -87,6 +88,7 @@ private val THUMBNAIL_SIZE = 96.dp
 internal object FeedComposeTestTags {
   const val PUBLISH = "feed_compose_publish"
   const val ADD_POLL = "feed_compose_add_poll"
+  const val ADD_IMAGES = "feed_compose_add_images"
   const val REPLIES = "feed_compose_replies"
   const val TOPICS = "feed_compose_topics"
   const val TOPIC = "feed_compose_topic_"
@@ -485,18 +487,24 @@ private fun FeedComposeBottomBar(
       .padding(horizontal = 8.dp, vertical = 4.dp)
   ) {
     // 编辑时图片和可见范围不改（引擎只收正文和标题）
+    // 加图要 media_upload、投票要 polls（契约 3.0，引擎有专门的能力名）；没部署就不画
+    val entries = LocalFeedEntries.current
     if (state.draft.kind == FeedDraftKind.POST && state.editing == null) {
-      IconButton(onClick = onAddImages, enabled = state.canAddImages) {
-        Icon(
-          painter = painterResource(CoreUiR.drawable.symbol_photo_24),
-          contentDescription = stringResource(R.string.TellomiFeedCompose__add_images)
-        )
+      if (entries.mediaUpload) {
+        IconButton(onClick = onAddImages, enabled = state.canAddImages, modifier = Modifier.testTag(FeedComposeTestTags.ADD_IMAGES)) {
+          Icon(
+            painter = painterResource(CoreUiR.drawable.symbol_photo_24),
+            contentDescription = stringResource(R.string.TellomiFeedCompose__add_images)
+          )
+        }
       }
-      IconButton(onClick = onAddPoll, enabled = state.canAddPoll, modifier = Modifier.testTag(FeedComposeTestTags.ADD_POLL)) {
-        Icon(
-          painter = painterResource(R.drawable.symbol_poll_24),
-          contentDescription = stringResource(R.string.TellomiFeedCompose__poll_add)
-        )
+      if (entries.polls) {
+        IconButton(onClick = onAddPoll, enabled = state.canAddPoll, modifier = Modifier.testTag(FeedComposeTestTags.ADD_POLL)) {
+          Icon(
+            painter = painterResource(R.drawable.symbol_poll_24),
+            contentDescription = stringResource(R.string.TellomiFeedCompose__poll_add)
+          )
+        }
       }
     }
 

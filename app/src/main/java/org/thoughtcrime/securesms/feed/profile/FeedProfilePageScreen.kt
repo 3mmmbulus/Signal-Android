@@ -63,6 +63,7 @@ import org.thoughtcrime.securesms.feed.FeedOfficial
 import org.thoughtcrime.securesms.feed.FeedOfficialMark
 import org.thoughtcrime.securesms.feed.FeedOwnPostAction
 import org.thoughtcrime.securesms.feed.FeedPostCard
+import org.thoughtcrime.securesms.feed.LocalFeedEntries
 import org.thoughtcrime.securesms.feed.net.FeedApi
 import org.thoughtcrime.securesms.feed.net.FeedCard
 import org.thoughtcrime.securesms.feed.net.FeedProfilePage
@@ -482,6 +483,8 @@ private fun AboutCard(profile: FeedProfilePage, followBusy: Boolean, onFollowBut
         Text(stringResource(R.string.TellomiFeedPage__edit_profile))
       }
       profile.me.blocked -> Unit
+      // 引擎没部署关注（契约 3.0）：不画关注按钮
+      !LocalFeedEntries.current.follow -> Unit
       profile.me.follow == FeedRelation.FOLLOW_NONE -> Button(
         onClick = onFollowButton,
         enabled = !followBusy,
