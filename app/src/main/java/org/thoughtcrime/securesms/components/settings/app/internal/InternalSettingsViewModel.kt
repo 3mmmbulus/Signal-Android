@@ -57,6 +57,11 @@ class InternalSettingsViewModel(private val repository: InternalSettingsReposito
     refresh()
   }
 
+  fun setFeedDetailEvents(enabled: Boolean) {
+    preferenceDataStore.putBoolean(InternalValues.TELLOMI_FEED_DETAIL_EVENTS, enabled)
+    refresh()
+  }
+
   fun setFeedSampleData(enabled: Boolean) {
     SignalStore.tellomiFeed.useSampleData = enabled
     refresh()
@@ -262,6 +267,7 @@ class InternalSettingsViewModel(private val repository: InternalSettingsReposito
     shakeToReport = SignalStore.internal.shakeToReport,
     forceFeedTab = SignalStore.internal.forceFeedTab,
     feedSampleData = SignalStore.tellomiFeed.useSampleData,
+    feedDetailEvents = SignalStore.internal.feedDetailEvents,
     showArchiveStateHint = SignalStore.internal.showArchiveStateHint,
     gv2forceInvites = SignalStore.internal.gv2ForceInvites,
     gv2ignoreP2PChanges = SignalStore.internal.gv2IgnoreP2PChanges,

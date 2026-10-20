@@ -24,6 +24,12 @@ enum class FeedEventSurface(val apiName: String) {
     fun of(tab: FeedTab): FeedEventSurface {
       return entries.firstOrNull { it.apiName == tab.apiName } ?: RECOMMEND
     }
+
+    /** 从 Intent extra 还原；null / 不认识 = 不报（通知、我的动态、外链点进来的没有对应的 `surface`，和 iOS 一样）。 */
+    @JvmStatic
+    fun fromApiName(apiName: String?): FeedEventSurface? {
+      return entries.firstOrNull { it.apiName == apiName }
+    }
   }
 }
 
@@ -142,5 +148,68 @@ class FeedDetailEventTracker(
       return listOf(FeedDetailEvents.dwell(open.contentId, open.surface, elapsed / 1000.0, at))
     }
     return emptyList()
+  }
+}
+
+/**
+ * 一个详情页的事件生命周期（I-13），口径对齐 iOS `FeedPostDetailViewController` 的 `openDetailEvent` / `closeDetailEvent` / `shareFinished`：
+ *
+ * - 整个页面生命里只报一次 `open`（盖上别的页面再回来、退到后台再回前台都不重报、不重新计时）；
+ * - 离开（返回 / 关掉，或者退到后台）只收尾一次：≤ 3 秒 `quick_exit`，≥ 30 秒 `dwell`，中间什么都不报；收尾之后这页不再报 open；
+ * - 分享：只有真的完成（复制链接）才报 `share`；取消、不能分享（`shareable` 为 false）、不是这页的帖子都不报；
+ * - [enabled] 为 false 或 [surface] 为 null：什么都不报。
+ *
+ * 事件进 [buffer]（和曝光同一套攒批规则：满 50 条要发、限流时留在队列里）；调用方按 [open] / [close] / [shareFinished] 的返回值决定要不要马上 flush。
+ * Android 的详情页是单独的 Activity、拿不到信息流的 ViewModel，所以 buffer 跟着详情页走；iOS 只在退到后台时 flush，
+ * Android 在退到后台**和**离开详情时都 flush（页面关掉后这份 buffer 就没了，不 flush 等于丢）。
+ */
+class FeedDetailEventSession(
+  private val contentId: String,
+  private val surface: FeedEventSurface?,
+  private val enabled: Boolean,
+  private val tracker: FeedDetailEventTracker = FeedDetailEventTracker(),
+  val buffer: FeedEventBuffer = FeedEventBuffer()
+) {
+  private var opened = false
+  private var closed = false
+
+  private val active: Boolean
+    get() = enabled && surface != null
+
+  /** 页面出现。第一次报 `open`；返回 true = 攒满了，该马上发。 */
+  @Synchronized
+  fun open(nowMillis: Long): Boolean {
+    val surface = surface ?: return false
+    if (!enabled || opened || closed) return false
+    opened = true
+    return enqueue(tracker.opened(contentId, surface, nowMillis))
+  }
+
+  /** 离开（返回 / 关掉 / 退到后台）。只收尾一次；返回 true = 有东西要发（调用方随后 flush）。 */
+  @Synchronized
+  fun close(nowMillis: Long): Boolean {
+    if (!opened || closed) return false
+    closed = true
+    enqueue(tracker.closed(nowMillis))
+    return buffer.size > 0
+  }
+
+  /** 一次分享结束。返回 true = 攒满了，该马上发。 */
+  @Synchronized
+  fun shareFinished(cardId: String, shareable: Boolean, outcome: FeedShareOutcome, nowMillis: Long): Boolean {
+    val surface = surface ?: return false
+    if (!active || cardId != contentId) return false
+    val event = outcome.event(contentId, surface, shareable, java.time.Instant.ofEpochMilli(nowMillis)) ?: return false
+    return enqueue(listOf(event))
+  }
+
+  @get:Synchronized
+  val isOpen: Boolean
+    get() = opened && !closed
+
+  private fun enqueue(events: List<FeedEventPayload>): Boolean {
+    var full = false
+    for (event in events) full = buffer.add(event) || full
+    return full
   }
 }

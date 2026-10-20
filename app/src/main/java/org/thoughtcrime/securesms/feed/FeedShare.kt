@@ -10,6 +10,7 @@ import android.content.ClipboardManager
 import android.content.Context
 import android.content.Intent
 import android.widget.Toast
+import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.core.content.ContextCompat
 import org.signal.core.util.ThreadUtil
 import org.signal.core.util.concurrent.SignalExecutors
@@ -27,6 +28,15 @@ import org.thoughtcrime.securesms.util.TellomiLinks
  * 卡片「分享」里的「发到聊天」「分享到快拍」「复制链接」「分享到其他 App」（`dynamic-feed.md` 第三节第 26 条）。只在 [FeedCard.shareable] 时出现：
  * 私密账号和非公开动态没有外链（第 29 条）。链接里只有 id，打开的人照样要过 Card API 的可见性检查。
  */
+/**
+ * 分享结束的回调（I-13 `share` 事件）。默认什么都不做；详情页用 `CompositionLocalProvider` 换成自己的 ViewModel，
+ * 所以只有详情页里的分享会报 `share`（和 iOS 一样，列表卡片上的分享不报）。
+ *
+ * 现在只有「复制链接」算 [FeedShareOutcome.COMPLETED]：发到聊天、分享到快拍、系统分享面板打开之后 App 拿不到「真的发出去了」的结果，
+ * 按「取消不报」的规则一律不报（iOS 的系统分享面板有完成回调，这是两端唯一的差别，见报告的对照表）。
+ */
+val LocalFeedShareListener = staticCompositionLocalOf<(FeedCard, FeedShareOutcome) -> Unit> { { _, _ -> } }
+
 object FeedShare {
 
   fun link(card: FeedCard): String = TellomiLinks.postLink(card.id)

@@ -633,6 +633,15 @@ class InternalSettingsFragment : DSLSettingsFragment(R.string.preferences__inter
         }
       )
 
+      switchPref(
+        title = DSLSettingsText.from("Feed: detail events (open, dwell, quick exit, share)"),
+        summary = DSLSettingsText.from("Report open / dwell (>= 30 s) / quick_exit (<= 3 s) from the post detail page, and share after Copy link. Default off; impressions are unaffected."),
+        isChecked = state.feedDetailEvents,
+        onClick = {
+          viewModel.setFeedDetailEvents(!state.feedDetailEvents)
+        }
+      )
+
       // #1055 第四刀：手动跑一次选路器的探测，看它会怎么建议（不切区）
       clickPref(
         title = DSLSettingsText.from("Probe regions"),

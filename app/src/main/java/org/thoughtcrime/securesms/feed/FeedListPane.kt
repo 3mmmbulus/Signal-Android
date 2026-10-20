@@ -269,7 +269,8 @@ fun FeedListPane(
       onSearchClick = { context.startActivity(FeedSearchActivity.intent(context)) },
       onEditClick = { target -> editLauncher.launch(target) },
       onDeleteClick = { confirmDelete = it },
-      onOpenClick = { context.startActivity(FeedPostDetailActivity.intent(context, it)) },
+      // 带上是从哪一栏点进去的：详情事件（I-13）的 surface
+      onOpenFromTab = { card, tab -> context.startActivity(FeedPostDetailActivity.intent(context, card, FeedEventSurface.of(tab))) },
       onAuthorClick = { context.startActivity(FeedProfilePageActivity.intent(context, it.profileId)) },
       onVote = viewModel::vote,
       onOwnPostAction = viewModel::onOwnPostAction,
@@ -350,6 +351,8 @@ private fun FeedPager(
   onEditClick: (FeedEditTarget) -> Unit = {},
   onDeleteClick: (FeedCard) -> Unit = {},
   onOpenClick: (FeedCard) -> Unit = {},
+  /** 点开一条，同时要知道是哪一栏（详情事件的 surface）；给了就用它，不用 [onOpenClick]。 */
+  onOpenFromTab: ((FeedCard, FeedTab) -> Unit)? = null,
   onReportClick: (FeedCard) -> Unit = {},
   onAuthorClick: (FeedAuthor) -> Unit = {},
   onVote: (FeedCard, List<Int>) -> Unit = { _, _ -> },
@@ -426,7 +429,7 @@ private fun FeedPager(
         isCurrentPage = pagerState.currentPage == page,
         onNearTopChanged = chrome::onNearTopChanged,
         onCardsVisible = { onCardsVisible(tab, it) },
-        onOpenClick = onOpenClick,
+        onOpenClick = onOpenFromTab?.let { open -> { card: FeedCard -> open(card, tab) } } ?: onOpenClick,
         onReportClick = onReportClick,
         onAuthorClick = onAuthorClick,
         onVote = onVote,

@@ -13,6 +13,7 @@ import androidx.compose.runtime.getValue
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import org.signal.core.ui.compose.theme.SignalTheme
 import org.thoughtcrime.securesms.PassphraseRequiredActivity
+import org.thoughtcrime.securesms.feed.FeedEventSurface
 import org.thoughtcrime.securesms.feed.detail.FeedPostDetailActivity
 import org.thoughtcrime.securesms.feed.profile.FeedProfilePageActivity
 import org.thoughtcrime.securesms.feed.setFeedContent
@@ -48,7 +49,7 @@ class FeedSearchActivity : PassphraseRequiredActivity() {
           },
           onOpenPost = { card ->
             viewModel.onPostOpened()
-            startActivity(FeedPostDetailActivity.intent(this, card))
+            startActivity(FeedPostDetailActivity.intent(this, card, FeedEventSurface.SEARCH))
           },
           onLikeClick = viewModel::toggleLike,
           onLoadMore = viewModel::loadMore,
