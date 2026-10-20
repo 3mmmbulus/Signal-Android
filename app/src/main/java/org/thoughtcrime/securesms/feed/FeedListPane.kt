@@ -269,7 +269,7 @@ fun FeedListPane(
         onMuteAuthorClick = viewModel::muteAuthor,
         onManagePreferences = { context.startActivity(FeedRecommendationSettingsActivity.intent(context)) },
         onCardsVisible = viewModel::onCardsVisible,
-        onMyPostsClick = { context.startActivity(FeedMyPostsActivity.intent(context)) },
+        onMyPostsClick = if (entries.posting) ({ context.startActivity(FeedMyPostsActivity.intent(context)) }) else null,
         onNotificationsClick = if (entries.notifications) ({ context.startActivity(FeedNotificationsActivity.intent(context)) }) else null,
         onSearchClick = if (entries.search) ({ context.startActivity(FeedSearchActivity.intent(context)) }) else null,
         onEditClick = { target -> editLauncher.launch(target) },
@@ -354,7 +354,7 @@ private fun FeedPager(
   onManagePreferences: () -> Unit = {},
   onBlockAuthorClick: (FeedCard) -> Unit = {},
   onMuteAuthorClick: (FeedCard) -> Unit = {},
-  onMyPostsClick: () -> Unit,
+  onMyPostsClick: (() -> Unit)?,
   modifier: Modifier = Modifier,
   onEditClick: (FeedEditTarget) -> Unit = {},
   onDeleteClick: (FeedCard) -> Unit = {},
@@ -616,7 +616,7 @@ private fun FeedTopBar(
   tabs: List<FeedTab>,
   selectedIndex: Int,
   onTabClick: (Int) -> Unit,
-  onMyPostsClick: () -> Unit,
+  onMyPostsClick: (() -> Unit)?,
   onNotificationsClick: (() -> Unit)? = {},
   onSearchClick: (() -> Unit)? = {}
 ) {
@@ -674,16 +674,18 @@ private fun FeedTopBar(
       }
 
       // 「我的动态」：一级导航有「我」之前先放这里（第三节第 17 条）
-      Icon(
-        painter = painterResource(R.drawable.symbol_person_24),
-        contentDescription = stringResource(R.string.TellomiFeedMine__title),
-        tint = MaterialTheme.colorScheme.onSurfaceVariant,
-        modifier = Modifier
-          .clip(CircleShape)
-          .clickable(onClick = onMyPostsClick)
-          .padding(10.dp)
-          .size(24.dp)
-      )
+      if (onMyPostsClick != null) {
+        Icon(
+          painter = painterResource(R.drawable.symbol_person_24),
+          contentDescription = stringResource(R.string.TellomiFeedMine__title),
+          tint = MaterialTheme.colorScheme.onSurfaceVariant,
+          modifier = Modifier
+            .clip(CircleShape)
+            .clickable(onClick = onMyPostsClick)
+            .padding(10.dp)
+            .size(24.dp)
+        )
+      }
     }
   }
 }

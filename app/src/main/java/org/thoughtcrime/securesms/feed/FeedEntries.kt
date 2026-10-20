@@ -30,12 +30,20 @@ import org.thoughtcrime.securesms.region.TellomiRegions
  * 只管内容引擎的路由；Signal-Server 的 `/v1/tellomi/feed/` 那几条（取凭证、好友声明、名单）不在 capabilities 里，仍按 404 标记判断。
  *
  * 不在这里的入口（分享到聊天 / 快拍、复制链接、收藏到「我的收藏」）是纯本机或走 Signal 自己的通道，不看 capabilities。
+ *
+ * **举报入口永远不藏**（合规红线，产品经理 2026-10-20）：引擎没部署 `reports` 时整个动态（[feed]）一起藏，不留一个举报不了的动态。
+ * 规则和 iOS 一致：标签 `feed`（+`reports`）；发布、我的动态、发布附加项 `posting`；作者主页 `profiles`；搜索 `search`；
+ * 通知 `notifications`；名单 `follow` + `blocks`；详情事件 `events`；评论输入、点赞、投票、语音评论用引擎各自的能力名。
  */
 data class FeedEntries(
-  /** 动态标签本身（列表、卡片、详情）。 */
+  /** 动态标签本身（列表、卡片、详情）。要 `feed` 和 `reports` 都在。 */
   val feed: Boolean,
-  /** 发布按钮、编辑、引用、转发。 */
+  /** 发布按钮、「我的动态」、编辑、引用、转发。 */
   val posting: Boolean,
+  /** 作者主页（点头像 / 名字）。 */
+  val profiles: Boolean,
+  /** 名单（不看、不让看、已屏蔽、关注请求、关注的话题）：要 `follow` 和 `blocks`。 */
+  val lists: Boolean,
   /** 发帖页的加图。 */
   val mediaUpload: Boolean,
   /** 发帖页的投票、卡片上的投票。 */
@@ -46,8 +54,6 @@ data class FeedEntries(
   val voiceComments: Boolean,
   /** 点赞。 */
   val reactions: Boolean,
-  /** 「···」里的举报。 */
-  val reports: Boolean,
   /** 「···」里的屏蔽作者。 */
   val blocks: Boolean,
   /** 顶栏搜索。 */
@@ -62,33 +68,35 @@ data class FeedEntries(
   companion object {
     @JvmField
     val NONE = FeedEntries(
-      feed = false, posting = false, mediaUpload = false, polls = false, comments = false, voiceComments = false,
-      reactions = false, reports = false, blocks = false, search = false, notifications = false, follow = false, events = false
+      feed = false, posting = false, profiles = false, lists = false, mediaUpload = false, polls = false, comments = false, voiceComments = false,
+      reactions = false, blocks = false, search = false, notifications = false, follow = false, events = false
     )
 
     /** 本机样例数据（不连引擎）和界面单测 / 预览用：全开。 */
     @JvmField
     val ALL = FeedEntries(
-      feed = true, posting = true, mediaUpload = true, polls = true, comments = true, voiceComments = true,
-      reactions = true, reports = true, blocks = true, search = true, notifications = true, follow = true, events = true
+      feed = true, posting = true, profiles = true, lists = true, mediaUpload = true, polls = true, comments = true, voiceComments = true,
+      reactions = true, blocks = true, search = true, notifications = true, follow = true, events = true
     )
 
     /** 语音评论要先能评论；投票、加图要先能发帖（加图的上传本身也要 `media_upload`）。 */
     @JvmStatic
     fun from(capabilities: FeedCapabilities): FeedEntries {
       fun has(name: String) = capabilities.supports(name)
-      val feed = has(FeedCapabilities.FEED)
+      // 举报后端没部署就整个动态不出（举报入口不能藏）
+      val feed = has(FeedCapabilities.FEED) && has(FeedCapabilities.REPORTS)
       val posting = feed && has(FeedCapabilities.POSTING)
       val comments = feed && has(FeedCapabilities.COMMENTS)
       return FeedEntries(
         feed = feed,
         posting = posting,
+        profiles = feed && has(FeedCapabilities.PROFILES),
+        lists = feed && has(FeedCapabilities.FOLLOW) && has(FeedCapabilities.BLOCKS),
         mediaUpload = posting && has(FeedCapabilities.MEDIA_UPLOAD),
         polls = feed && has(FeedCapabilities.POLLS),
         comments = comments,
         voiceComments = comments && has(FeedCapabilities.VOICE_COMMENTS),
         reactions = feed && has(FeedCapabilities.REACTIONS),
-        reports = feed && has(FeedCapabilities.REPORTS),
         blocks = feed && has(FeedCapabilities.BLOCKS),
         search = feed && has(FeedCapabilities.SEARCH),
         notifications = feed && has(FeedCapabilities.NOTIFICATIONS),

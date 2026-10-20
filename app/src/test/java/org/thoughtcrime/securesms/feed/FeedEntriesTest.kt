@@ -43,19 +43,20 @@ class FeedEntriesTest {
       caps(
         FeedCapabilities.FEED, FeedCapabilities.POSTING, FeedCapabilities.MEDIA_UPLOAD, FeedCapabilities.POLLS, FeedCapabilities.COMMENTS,
         FeedCapabilities.VOICE_COMMENTS, FeedCapabilities.REACTIONS, FeedCapabilities.REPORTS, FeedCapabilities.BLOCKS, FeedCapabilities.SEARCH,
-        FeedCapabilities.NOTIFICATIONS, FeedCapabilities.FOLLOW, FeedCapabilities.EVENTS
+        FeedCapabilities.NOTIFICATIONS, FeedCapabilities.FOLLOW, FeedCapabilities.EVENTS, FeedCapabilities.PROFILES
       )
     )
     assertThat(all).isEqualTo(FeedEntries.ALL)
 
-    val some = FeedEntries.from(caps(FeedCapabilities.FEED, FeedCapabilities.REACTIONS, FeedCapabilities.SEARCH))
+    val some = FeedEntries.from(caps(FeedCapabilities.FEED, FeedCapabilities.REPORTS, FeedCapabilities.REACTIONS, FeedCapabilities.SEARCH))
     assertThat(some.feed).isTrue()
     assertThat(some.reactions).isTrue()
     assertThat(some.search).isTrue()
     assertThat(some.posting).isFalse()
     assertThat(some.comments).isFalse()
     assertThat(some.notifications).isFalse()
-    assertThat(some.reports).isFalse()
+    assertThat(some.profiles).isFalse()
+    assertThat(some.lists).isFalse()
   }
 
   @Test
@@ -65,11 +66,27 @@ class FeedEntriesTest {
   }
 
   @Test
+  fun `no reports backend hides the whole feed`() {
+    val noReports = FeedEntries.from(caps(FeedCapabilities.FEED, FeedCapabilities.POSTING, FeedCapabilities.REACTIONS, FeedCapabilities.SEARCH))
+    assertThat(noReports).isEqualTo(FeedEntries.NONE)
+  }
+
+  @Test
+  fun `lists need follow and blocks, author page needs profiles`() {
+    val base = arrayOf(FeedCapabilities.FEED, FeedCapabilities.REPORTS)
+    assertThat(FeedEntries.from(caps(*base, FeedCapabilities.FOLLOW)).lists).isFalse()
+    assertThat(FeedEntries.from(caps(*base, FeedCapabilities.BLOCKS)).lists).isFalse()
+    assertThat(FeedEntries.from(caps(*base, FeedCapabilities.FOLLOW, FeedCapabilities.BLOCKS)).lists).isTrue()
+    assertThat(FeedEntries.from(caps(*base)).profiles).isFalse()
+    assertThat(FeedEntries.from(caps(*base, FeedCapabilities.PROFILES)).profiles).isTrue()
+  }
+
+  @Test
   fun `voice needs comments and media needs posting`() {
-    val voiceOnly = FeedEntries.from(caps(FeedCapabilities.FEED, FeedCapabilities.VOICE_COMMENTS, FeedCapabilities.MEDIA_UPLOAD))
+    val voiceOnly = FeedEntries.from(caps(FeedCapabilities.FEED, FeedCapabilities.REPORTS, FeedCapabilities.VOICE_COMMENTS, FeedCapabilities.MEDIA_UPLOAD))
     assertThat(voiceOnly.voiceComments).isFalse()
     assertThat(voiceOnly.mediaUpload).isFalse()
-    val both = FeedEntries.from(caps(FeedCapabilities.FEED, FeedCapabilities.COMMENTS, FeedCapabilities.VOICE_COMMENTS, FeedCapabilities.POSTING, FeedCapabilities.MEDIA_UPLOAD))
+    val both = FeedEntries.from(caps(FeedCapabilities.FEED, FeedCapabilities.REPORTS, FeedCapabilities.COMMENTS, FeedCapabilities.VOICE_COMMENTS, FeedCapabilities.POSTING, FeedCapabilities.MEDIA_UPLOAD))
     assertThat(both.voiceComments).isTrue()
     assertThat(both.mediaUpload).isTrue()
   }
@@ -104,7 +121,7 @@ class FeedCapabilityFetchTest {
 
   @Test
   fun `asks v1 capabilities without credentials`() = runBlocking {
-    server.enqueue(MockResponse().setResponseCode(200).setBody("""{"version":1,"features":["feed","reactions"]}"""))
+    server.enqueue(MockResponse().setResponseCode(200).setBody("""{"version":1,"features":["feed","reports","reactions"]}"""))
     val response = FeedCapabilityStore.fetch(server.url("/"), OkHttpClient())
     val request = server.takeRequest()
     assertThat(request.path).isEqualTo("/v1/capabilities")

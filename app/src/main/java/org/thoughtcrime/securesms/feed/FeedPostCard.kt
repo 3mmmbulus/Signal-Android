@@ -121,7 +121,7 @@ fun FeedPostCard(
   // 能力检查（契约 3.0）：引擎没部署的功能不画入口
   val entries = LocalFeedEntries.current
   val author = card.author
-  val openAuthor: (() -> Unit)? = if (author != null && author.isNative && onAuthorClick != null) {
+  val openAuthor: (() -> Unit)? = if (author != null && author.isNative && onAuthorClick != null && entries.profiles) {
     { onAuthorClick(author) }
   } else {
     null
@@ -169,7 +169,8 @@ fun FeedPostCard(
           onNotInterestedClick = onNotInterestedClick,
           onEditClick = onEditClick,
           onDeleteClick = onDeleteClick,
-          onReportClick = onReportClick?.takeIf { entries.reports },
+          // 举报不看 capabilities（合规红线）：没部署举报时整个动态都不出
+          onReportClick = onReportClick,
           onAuthorClick = openAuthor,
           onBlockAuthorClick = onBlockAuthorClick?.takeIf { entries.blocks },
           onOwnPostAction = onOwnPostAction,
