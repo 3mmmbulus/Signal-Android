@@ -10,13 +10,17 @@ import android.content.Intent
 import android.os.Bundle
 import android.widget.Toast
 import androidx.activity.viewModels
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
 import org.signal.core.ui.compose.theme.SignalTheme
+import org.signal.core.util.AppForegroundObserver
 import org.thoughtcrime.securesms.PassphraseRequiredActivity
 import org.thoughtcrime.securesms.R
+import org.thoughtcrime.securesms.feed.FeedEventSurface
+import org.thoughtcrime.securesms.feed.LocalFeedShareListener
 import org.thoughtcrime.securesms.feed.compose.FeedComposeActivity
 import org.thoughtcrime.securesms.feed.net.FeedCard
 import org.thoughtcrime.securesms.feed.net.FeedJson
@@ -25,6 +29,7 @@ import org.thoughtcrime.securesms.feed.profile.FeedProfilePageActivity
 import org.thoughtcrime.securesms.feed.report.FeedReportActivity
 import org.thoughtcrime.securesms.feed.report.FeedReportTarget
 import org.thoughtcrime.securesms.feed.setFeedContent
+import org.thoughtcrime.securesms.keyvalue.SignalStore
 import org.thoughtcrime.securesms.util.DynamicNoActionBarTheme
 
 /**
@@ -37,8 +42,11 @@ class FeedPostDetailActivity : PassphraseRequiredActivity() {
   private val viewModel: FeedPostDetailViewModel by viewModels {
     viewModelFactory {
       initializer {
-        val json = intent.getStringExtra(EXTRA_CARD) ?: error("missing card")
-        FeedPostDetailViewModel(initial = FeedJson.decodeFromString(FeedCard.serializer(), json))
+        FeedPostDetailViewModel(
+          initial = cardFrom(intent) ?: error("missing card"),
+          eventSurface = FeedEventSurface.fromApiName(intent.getStringExtra(EXTRA_EVENT_SURFACE)),
+          eventsEnabled = SignalStore.internal.feedDetailEvents
+        )
       }
     }
   }
@@ -58,54 +66,80 @@ class FeedPostDetailActivity : PassphraseRequiredActivity() {
     if (saved) viewModel.send()
   }
 
+  /** 退到后台算离开详情（I-13，和 iOS 的 didEnterBackground 一样）：收尾并马上发；回到前台不重报 open。 */
+  private val foregroundListener = object : AppForegroundObserver.Listener {
+    override fun onBackground() {
+      viewModel.onDetailLeft()
+    }
+  }
+
   override fun onPreCreate() {
     theme.onCreate(this)
   }
 
   override fun onCreate(savedInstanceState: Bundle?, ready: Boolean) {
+    AppForegroundObserver.addListener(foregroundListener)
     setFeedContent {
       val state by viewModel.state.collectAsStateWithLifecycle()
       SignalTheme {
-        FeedPostDetailScreen(
-          state = state,
-          onBack = { finish() },
-          onLikeClick = viewModel::toggleLike,
-          onRetryComments = viewModel::refreshComments,
-          onLoadMoreComments = viewModel::loadMoreComments,
-          onReplyClick = viewModel::replyTo,
-          onDraftChanged = viewModel::onDraftChanged,
-          onSend = viewModel::send,
-          onSendVoice = viewModel::sendVoice,
-          onVoiceTooShort = viewModel::onVoiceTooShort,
-          onNoticeShown = viewModel::onNoticeShown,
-          onProfileRequired = { profileLauncher.launch(Unit) },
-          onAuthorClick = { startActivity(FeedProfilePageActivity.intent(this, it.profileId)) },
-          onVote = viewModel::vote,
-          onApproveComment = viewModel::approveComment,
-          onDeclineComment = viewModel::declineComment,
-          onOwnPostAction = viewModel::onOwnPostAction,
-          onDeletePost = viewModel::deletePost,
-          onReportPost = { reportLauncher.launch(FeedReportTarget.content(state.post.id)) },
-          onInsightsDismissed = viewModel::onInsightsDismissed,
-          onSaveClick = viewModel::toggleSave,
-          onRepostClick = viewModel::toggleRepost,
-          onNotInterested = viewModel::notInterested,
-          onMuteAuthor = viewModel::muteAuthor,
-          onBlockAuthor = viewModel::blockAuthor,
-          onEditPost = { editLauncher.launch(it) },
-          onLeave = { leave ->
-            // 页面马上关，提示用 Toast 带回上一页
-            val message = when (leave) {
-              FeedPostDetailState.Leave.NOT_INTERESTED -> R.string.TellomiFeedDetail__not_interested_done
-              FeedPostDetailState.Leave.MUTED -> R.string.TellomiFeed__muted_done
-              FeedPostDetailState.Leave.BLOCKED -> R.string.TellomiFeedPage__blocked_done
+        CompositionLocalProvider(LocalFeedShareListener provides viewModel::onShareFinished) {
+          FeedPostDetailScreen(
+            state = state,
+            onBack = { finish() },
+            onLikeClick = viewModel::toggleLike,
+            onRetryComments = viewModel::refreshComments,
+            onLoadMoreComments = viewModel::loadMoreComments,
+            onReplyClick = viewModel::replyTo,
+            onDraftChanged = viewModel::onDraftChanged,
+            onSend = viewModel::send,
+            onSendVoice = viewModel::sendVoice,
+            onVoiceTooShort = viewModel::onVoiceTooShort,
+            onNoticeShown = viewModel::onNoticeShown,
+            onProfileRequired = { profileLauncher.launch(Unit) },
+            onAuthorClick = { startActivity(FeedProfilePageActivity.intent(this, it.profileId)) },
+            onVote = viewModel::vote,
+            onApproveComment = viewModel::approveComment,
+            onDeclineComment = viewModel::declineComment,
+            onOwnPostAction = viewModel::onOwnPostAction,
+            onDeletePost = viewModel::deletePost,
+            onReportPost = { reportLauncher.launch(FeedReportTarget.content(state.post.id)) },
+            onInsightsDismissed = viewModel::onInsightsDismissed,
+            onSaveClick = viewModel::toggleSave,
+            onRepostClick = viewModel::toggleRepost,
+            onNotInterested = viewModel::notInterested,
+            onMuteAuthor = viewModel::muteAuthor,
+            onBlockAuthor = viewModel::blockAuthor,
+            onEditPost = { editLauncher.launch(it) },
+            onLeave = { leave ->
+              // 页面马上关，提示用 Toast 带回上一页
+              val message = when (leave) {
+                FeedPostDetailState.Leave.NOT_INTERESTED -> R.string.TellomiFeedDetail__not_interested_done
+                FeedPostDetailState.Leave.MUTED -> R.string.TellomiFeed__muted_done
+                FeedPostDetailState.Leave.BLOCKED -> R.string.TellomiFeedPage__blocked_done
+              }
+              Toast.makeText(this, message, Toast.LENGTH_SHORT).show()
+              finish()
             }
-            Toast.makeText(this, message, Toast.LENGTH_SHORT).show()
-            finish()
-          }
-        )
+          )
+        }
       }
     }
+  }
+
+  override fun onStart() {
+    super.onStart()
+    if (!isFinishing) viewModel.onDetailShown()
+  }
+
+  override fun onStop() {
+    super.onStop()
+    // 盖上别的页面（作者主页、举报页……）不算离开；只有真的关掉才收尾
+    if (isFinishing) viewModel.onDetailLeft()
+  }
+
+  override fun onDestroy() {
+    AppForegroundObserver.removeListener(foregroundListener)
+    super.onDestroy()
   }
 
   override fun onResume() {
@@ -115,11 +149,35 @@ class FeedPostDetailActivity : PassphraseRequiredActivity() {
 
   companion object {
     private const val EXTRA_CARD = "feed_card"
+    private const val EXTRA_EVENT_SURFACE = "feed_event_surface"
+    private const val EXTRA_SHAREABLE = "feed_card_shareable"
+    private const val EXTRA_PINNED = "feed_card_pinned"
+    private const val EXTRA_HELD = "feed_card_held"
 
+    /**
+     * [FeedCard] 的外层字段（`shareable`、`pinned`、`held`）是 `@Transient`，JSON 里没有；之前进详情时它们被丢成 false，
+     * 详情页在引擎回来之前没有分享入口、`share` 事件也报不出来。单独放 extra 带过去。
+     */
     @JvmStatic
-    fun intent(context: Context, card: FeedCard): Intent {
+    fun cardFrom(intent: Intent): FeedCard? {
+      val json = intent.getStringExtra(EXTRA_CARD) ?: return null
+      return FeedJson.decodeFromString(FeedCard.serializer(), json).copy(
+        shareable = intent.getBooleanExtra(EXTRA_SHAREABLE, false),
+        pinned = intent.getBooleanExtra(EXTRA_PINNED, false),
+        held = intent.getBooleanExtra(EXTRA_HELD, false)
+      )
+    }
+
+    /** [eventSurface]：详情事件（I-13）算哪个来源；null = 不报（通知、外链、引用卡点进来的，和 iOS 一样）。 */
+    @JvmStatic
+    @JvmOverloads
+    fun intent(context: Context, card: FeedCard, eventSurface: FeedEventSurface? = null): Intent {
       return Intent(context, FeedPostDetailActivity::class.java)
         .putExtra(EXTRA_CARD, FeedJson.encodeToString(FeedCard.serializer(), card))
+        .putExtra(EXTRA_EVENT_SURFACE, eventSurface?.apiName)
+        .putExtra(EXTRA_SHAREABLE, card.shareable)
+        .putExtra(EXTRA_PINNED, card.pinned)
+        .putExtra(EXTRA_HELD, card.held)
     }
   }
 }

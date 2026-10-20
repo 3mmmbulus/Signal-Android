@@ -631,6 +631,7 @@ object FeedPostCardTestTags {
 @Composable
 private fun FeedShareButton(card: FeedCard, onRepostClick: ((FeedCard) -> Unit)?) {
   val context = LocalContext.current
+  val onShareFinished = LocalFeedShareListener.current
   var open by remember { mutableStateOf(false) }
   val shareLabel = stringResource(R.string.TellomiFeed__share)
   Box {
@@ -687,6 +688,8 @@ private fun FeedShareButton(card: FeedCard, onRepostClick: ((FeedCard) -> Unit)?
         onClick = {
           open = false
           FeedShare.copyLink(context, card)
+          // 放进剪贴板就算分享完成（I-13，和 iOS「复制链接」一样）
+          onShareFinished(card, FeedShareOutcome.COMPLETED)
         },
         modifier = Modifier.testTag(FeedPostCardTestTags.COPY_LINK)
       )
@@ -694,7 +697,8 @@ private fun FeedShareButton(card: FeedCard, onRepostClick: ((FeedCard) -> Unit)?
         text = { Text(stringResource(R.string.TellomiFeed__share_other_apps)) },
         onClick = {
           open = false
-          FeedShare.shareToApps(context, card)
+          // 选了目标 App 才算分享完成（I-13，两端口径「选了分享目标」）
+          FeedShare.shareToApps(context, card) { outcome -> onShareFinished(card, outcome) }
         }
       )
     }

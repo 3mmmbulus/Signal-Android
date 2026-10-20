@@ -7,12 +7,14 @@ package org.thoughtcrime.securesms.feed.detail
 
 import assertk.assertThat
 import assertk.assertions.containsExactly
+import assertk.assertions.isEmpty
 import assertk.assertions.isEqualTo
 import assertk.assertions.isFalse
 import assertk.assertions.isNull
 import assertk.assertions.isTrue
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.setMain
@@ -20,13 +22,16 @@ import org.junit.After
 import org.junit.Before
 import org.junit.Test
 import org.thoughtcrime.securesms.feed.EmptyFeedSource
+import org.thoughtcrime.securesms.feed.FeedEventSurface
 import org.thoughtcrime.securesms.feed.FeedInsightsState
 import org.thoughtcrime.securesms.feed.FeedOwnPostAction
+import org.thoughtcrime.securesms.feed.FeedShareOutcome
 import org.thoughtcrime.securesms.feed.FeedSource
 import org.thoughtcrime.securesms.feed.net.FeedApiException
 import org.thoughtcrime.securesms.feed.net.FeedCard
 import org.thoughtcrime.securesms.feed.net.FeedCommentsPage
 import org.thoughtcrime.securesms.feed.net.FeedCreatePostResponse
+import org.thoughtcrime.securesms.feed.net.FeedEventPayload
 import org.thoughtcrime.securesms.feed.net.FeedPoll
 import org.thoughtcrime.securesms.feed.net.FeedPollState
 import org.thoughtcrime.securesms.feed.net.FeedPostInsights
@@ -79,6 +84,10 @@ class FeedPostDetailViewModelTest {
       val result = voiceResult()
       voices += audio.readText() to parentId
       return result
+    }
+    val reported = mutableListOf<List<FeedEventPayload>>()
+    override suspend fun reportEvents(events: List<FeedEventPayload>) {
+      reported += events
     }
     override suspend fun postComment(postId: String, text: String, parentId: String?): String {
       val result = postResult()
@@ -311,5 +320,53 @@ class FeedPostDetailViewModelTest {
     viewModel.deletePost()
     assertThat(viewModel.state.value.deleted).isTrue()
     assertThat(source.moderated).containsExactly("delete p")
+  }
+
+  @Test
+  fun `detail events - open once, dwell on leave, flushed right away (I-13)`() {
+    val source = FakeSource(fresh = null, pages = emptyMap())
+    var now = 1_800_000_000_000L
+    val viewModel = FeedPostDetailViewModel(post, source, dispatcher, eventSurface = FeedEventSurface.RECOMMEND, eventsEnabled = true, clock = { now }, eventScope = TestScope(dispatcher))
+
+    viewModel.onDetailShown()
+    viewModel.onDetailShown()
+    assertThat(source.reported).isEmpty()
+    now += 40_000
+    viewModel.onDetailLeft()
+    viewModel.onDetailLeft()
+
+    assertThat(source.reported.flatten().map { it.type }).containsExactly("open", "dwell")
+    assertThat(source.reported.flatten().all { it.contentId == "p" && it.surface == "recommend" }).isTrue()
+  }
+
+  @Test
+  fun `detail events - share after copy link only for a shareable post`() {
+    val source = FakeSource(fresh = null, pages = emptyMap())
+    var now = 0L
+    val viewModel = FeedPostDetailViewModel(post, source, dispatcher, eventSurface = FeedEventSurface.SEARCH, eventsEnabled = true, clock = { now }, eventScope = TestScope(dispatcher))
+
+    viewModel.onDetailShown()
+    viewModel.onShareFinished(post.copy(shareable = false), FeedShareOutcome.COMPLETED)
+    viewModel.onShareFinished(post.copy(shareable = true), FeedShareOutcome.CANCELLED)
+    viewModel.onShareFinished(post.copy(id = "quoted", shareable = true), FeedShareOutcome.COMPLETED)
+    viewModel.onShareFinished(post.copy(shareable = true), FeedShareOutcome.COMPLETED)
+    now += 10_000 // 3 到 30 秒之间：不报 dwell / quick_exit
+    viewModel.onDetailLeft()
+
+    assertThat(source.reported.flatten().map { it.type }).containsExactly("open", "share")
+    assertThat(source.reported.flatten().all { it.surface == "search" }).isTrue()
+  }
+
+  @Test
+  fun `detail events - flag off reports nothing`() {
+    val source = FakeSource(fresh = null, pages = emptyMap())
+    var now = 0L
+    val viewModel = FeedPostDetailViewModel(post, source, dispatcher, eventSurface = FeedEventSurface.RECOMMEND, eventsEnabled = false, clock = { now }, eventScope = TestScope(dispatcher))
+
+    viewModel.onDetailShown()
+    now += 60_000
+    viewModel.onDetailLeft()
+
+    assertThat(source.reported).isEmpty()
   }
 }

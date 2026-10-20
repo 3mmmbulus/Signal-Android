@@ -15,6 +15,7 @@ import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
 import org.signal.core.ui.compose.theme.SignalTheme
 import org.thoughtcrime.securesms.PassphraseRequiredActivity
+import org.thoughtcrime.securesms.feed.FeedEventSurface
 import org.thoughtcrime.securesms.feed.detail.FeedPostDetailActivity
 import org.thoughtcrime.securesms.feed.report.FeedReportActivity
 import org.thoughtcrime.securesms.feed.report.FeedReportTarget
@@ -67,7 +68,7 @@ class FeedProfilePageActivity : PassphraseRequiredActivity() {
           onEditProfile = { editLauncher.launch(Unit) },
           onLoadMorePosts = viewModel::loadMorePosts,
           onLikeClick = viewModel::toggleLike,
-          onOpenPost = { startActivity(FeedPostDetailActivity.intent(this, it)) },
+          onOpenPost = { startActivity(FeedPostDetailActivity.intent(this, it, FeedEventSurface.PROFILE)) },
           onReportPost = { reportLauncher.launch(FeedReportTarget.content(it.id)) },
           onNoticeShown = viewModel::onNoticeShown,
           onProfileRequired = { profileLauncher.launch(Unit) },

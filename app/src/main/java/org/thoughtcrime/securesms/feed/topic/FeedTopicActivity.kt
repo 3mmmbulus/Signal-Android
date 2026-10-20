@@ -15,6 +15,7 @@ import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
 import org.signal.core.ui.compose.theme.SignalTheme
 import org.thoughtcrime.securesms.PassphraseRequiredActivity
+import org.thoughtcrime.securesms.feed.FeedEventSurface
 import org.thoughtcrime.securesms.feed.detail.FeedPostDetailActivity
 import org.thoughtcrime.securesms.feed.feedTopicLabel
 import org.thoughtcrime.securesms.feed.report.FeedReportActivity
@@ -55,7 +56,7 @@ class FeedTopicActivity : PassphraseRequiredActivity() {
           onToggleFollow = viewModel::toggleFollow,
           onLoadMore = viewModel::loadMore,
           onLikeClick = viewModel::toggleLike,
-          onOpenPost = { startActivity(FeedPostDetailActivity.intent(this, it)) },
+          onOpenPost = { startActivity(FeedPostDetailActivity.intent(this, it, FeedEventSurface.SEARCH)) },
           onReportPost = { reportLauncher.launch(FeedReportTarget.content(it.id)) },
           onTopicClick = { if (it.slug != slug) startActivity(intent(this, it.slug, it.label)) },
           onNoticeShown = viewModel::onNoticeShown,

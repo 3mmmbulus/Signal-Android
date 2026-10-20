@@ -8,8 +8,10 @@ package org.thoughtcrime.securesms.feed.detail
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import kotlinx.coroutines.CoroutineDispatcher
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -17,10 +19,13 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import org.signal.core.util.logging.Log
+import org.thoughtcrime.securesms.feed.FeedDetailEventSession
+import org.thoughtcrime.securesms.feed.FeedEventSurface
 import org.thoughtcrime.securesms.feed.FeedInputLimit
 import org.thoughtcrime.securesms.feed.FeedInsightsState
 import org.thoughtcrime.securesms.feed.FeedOwnPostAction
 import org.thoughtcrime.securesms.feed.FeedSavedMessages
+import org.thoughtcrime.securesms.feed.FeedShareOutcome
 import org.thoughtcrime.securesms.feed.FeedSource
 import org.thoughtcrime.securesms.feed.FeedSources
 import org.thoughtcrime.securesms.feed.NoteToSelfFeedSavedMessages
@@ -48,12 +53,22 @@ class FeedPostDetailViewModel(
   initial: FeedCard,
   private val source: FeedSource = FeedSources.current(),
   private val ioDispatcher: CoroutineDispatcher = Dispatchers.IO,
-  private val savedMessages: FeedSavedMessages = NoteToSelfFeedSavedMessages
+  private val savedMessages: FeedSavedMessages = NoteToSelfFeedSavedMessages,
+  /** 详情事件（I-13）里这次打开算哪个来源；null = 不报（通知、我的动态、外链点进来的）。 */
+  eventSurface: FeedEventSurface? = null,
+  /** 内部设置「Feed: detail events」，默认关（和 iOS `TellomiFeed.isDetailEventsEnabled` 一样）。 */
+  eventsEnabled: Boolean = false,
+  private val clock: () -> Long = System::currentTimeMillis,
+  /** 发详情事件用的 scope：页面关掉（viewModelScope 取消）之后那一批也要发出去。单测里换成测试 scope。 */
+  private val eventScope: CoroutineScope = EVENT_SCOPE
 ) : ViewModel() {
 
   companion object {
     private val TAG = Log.tag(FeedPostDetailViewModel::class)
+    private val EVENT_SCOPE = CoroutineScope(SupervisorJob() + Dispatchers.IO)
   }
+
+  private val detailEvents = FeedDetailEventSession(contentId = initial.id, surface = eventSurface, enabled = eventsEnabled)
 
   private val internalState = MutableStateFlow(FeedPostDetailState(post = initial, canComment = initial.viewer.canComment))
   val state: StateFlow<FeedPostDetailState> = internalState.asStateFlow()
@@ -397,6 +412,38 @@ class FeedPostDetailViewModel(
   fun blockAuthor() {
     val author = internalState.value.post.author ?: return
     leaveAfter(FeedPostDetailState.Leave.BLOCKED) { source.setBlocked(author.profileId, true) }
+  }
+
+  /** 页面出现（Activity onStart）：整个页面生命里只报一次 `open`。 */
+  fun onDetailShown() {
+    if (detailEvents.open(clock())) flushDetailEvents()
+  }
+
+  /** 离开详情（返回 / 关掉）或者退到后台：只收尾一次（`quick_exit` / `dwell` / 不报），然后马上发。 */
+  fun onDetailLeft() {
+    if (detailEvents.close(clock())) flushDetailEvents()
+  }
+
+  /** 分享结束（「复制链接」和系统分享面板选了目标 App 算完成，见 [FeedShareOutcome]）。不是这页的帖子（比如引用的那条）不报。 */
+  fun onShareFinished(card: FeedCard, outcome: FeedShareOutcome) {
+    if (detailEvents.shareFinished(card.id, card.shareable, outcome, clock())) flushDetailEvents()
+  }
+
+  private fun flushDetailEvents() {
+    val buffer = detailEvents.buffer
+    if (buffer.size == 0 || buffer.isThrottled()) return
+    eventScope.launch {
+      buffer.flush(
+        send = { batch -> withContext(ioDispatcher) { source.reportEvents(batch) } },
+        onDropped = { batch, e -> Log.w(TAG, "detail events dropped: ${batch.size}", e) }
+      )
+    }
+  }
+
+  override fun onCleared() {
+    // 没走到 onStop 就被销毁的兜底：还开着就按「现在离开」收尾
+    onDetailLeft()
+    super.onCleared()
   }
 
   private var leavingJob: Job? = null
