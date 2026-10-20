@@ -16,6 +16,7 @@ import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.captureToImage
 import androidx.compose.ui.test.junit4.createComposeRule
+import androidx.compose.ui.test.longClick
 import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onLast
@@ -23,7 +24,6 @@ import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.onRoot
-import androidx.compose.ui.test.longClick
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performTouchInput
 import androidx.test.core.app.ApplicationProvider
@@ -270,10 +270,11 @@ class FeedPostDetailScreenTest {
     val withoutTranscript = comment("w", other, "").copy(media = listOf(voice.copy(key = "m/v2", durationMs = 61_000)))
     show(FeedPostDetailState(post = post, comments = listOf(withTranscript, withoutTranscript), loading = false, loadedOnce = true))
 
-    composeTestRule.onAllNodesWithTag(FeedVoiceTestTags.ROW).assertCountEquals(2)
+    // 别人的评论气泡可以长按举报（combinedClickable 会合并子节点的语义），找行内的 tag 要看未合并的树
+    composeTestRule.onAllNodesWithTag(FeedVoiceTestTags.ROW, useUnmergedTree = true).assertCountEquals(2)
     composeTestRule.onNodeWithText("0:04").assertExists()
     composeTestRule.onNodeWithText("1:01").assertExists()
-    composeTestRule.onAllNodesWithTag(FeedVoiceTestTags.TRANSCRIPT).assertCountEquals(1)
+    composeTestRule.onAllNodesWithTag(FeedVoiceTestTags.TRANSCRIPT, useUnmergedTree = true).assertCountEquals(1)
     composeTestRule.onNodeWithText("早上的鸟叫真好听").assertExists()
 
     System.getenv("FEED_SCREENSHOT_DIR")?.let { dir ->
