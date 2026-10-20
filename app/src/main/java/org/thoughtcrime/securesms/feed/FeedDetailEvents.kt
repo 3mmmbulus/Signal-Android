@@ -75,7 +75,7 @@ object FeedDetailEvents {
 }
 
 /**
- * 分享动作的结果。只有 [COMPLETED]（复制链接成功、系统分享面板返回「已完成」）才报 `share`；
+ * 分享动作的结果。只有 [COMPLETED]（复制链接成功、系统分享面板里选了目标 App）才报 `share`；
  * [CANCELLED]（点开面板又关掉、没选目标）什么都不报。引擎不核实这件事，所以这是客户端的责任。
  *
  * [shareable] 是卡片外层的 `shareable`（公开动态、作者不是私密账号）：不能分享的卡片没有分享入口，也就不该有 `share` 事件，
@@ -156,7 +156,7 @@ class FeedDetailEventTracker(
  *
  * - 整个页面生命里只报一次 `open`（盖上别的页面再回来、退到后台再回前台都不重报、不重新计时）；
  * - 离开（返回 / 关掉，或者退到后台）只收尾一次：≤ 3 秒 `quick_exit`，≥ 30 秒 `dwell`，中间什么都不报；收尾之后这页不再报 open；
- * - 分享：只有真的完成（复制链接）才报 `share`；取消、不能分享（`shareable` 为 false）、不是这页的帖子都不报；
+ * - 分享：只有完成（复制链接、系统分享面板里选了目标 App）才报 `share`；取消、不能分享（`shareable` 为 false）、不是这页的帖子都不报；
  * - [enabled] 为 false 或 [surface] 为 null：什么都不报。
  *
  * 事件进 [buffer]（和曝光同一套攒批规则：满 50 条要发、限流时留在队列里）；调用方按 [open] / [close] / [shareFinished] 的返回值决定要不要马上 flush。

@@ -1587,6 +1587,11 @@
         <!-- Receivers                               -->
         <!-- ======================================= -->
         <receiver
+            android:name=".feed.FeedShareChosenReceiver"
+            android:enabled="true"
+            android:exported="false" />
+
+        <receiver
             android:name=".notifications.MarkReadReceiver"
             android:enabled="true"
             android:exported="false">

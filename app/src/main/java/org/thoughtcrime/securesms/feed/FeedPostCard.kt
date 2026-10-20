@@ -697,7 +697,8 @@ private fun FeedShareButton(card: FeedCard, onRepostClick: ((FeedCard) -> Unit)?
         text = { Text(stringResource(R.string.TellomiFeed__share_other_apps)) },
         onClick = {
           open = false
-          FeedShare.shareToApps(context, card)
+          // 选了目标 App 才算分享完成（I-13，两端口径「选了分享目标」）
+          FeedShare.shareToApps(context, card) { outcome -> onShareFinished(card, outcome) }
         }
       )
     }

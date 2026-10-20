@@ -42,9 +42,8 @@ class FeedPostDetailActivity : PassphraseRequiredActivity() {
   private val viewModel: FeedPostDetailViewModel by viewModels {
     viewModelFactory {
       initializer {
-        val json = intent.getStringExtra(EXTRA_CARD) ?: error("missing card")
         FeedPostDetailViewModel(
-          initial = FeedJson.decodeFromString(FeedCard.serializer(), json),
+          initial = cardFrom(intent) ?: error("missing card"),
           eventSurface = FeedEventSurface.fromApiName(intent.getStringExtra(EXTRA_EVENT_SURFACE)),
           eventsEnabled = SignalStore.internal.feedDetailEvents
         )
@@ -151,6 +150,23 @@ class FeedPostDetailActivity : PassphraseRequiredActivity() {
   companion object {
     private const val EXTRA_CARD = "feed_card"
     private const val EXTRA_EVENT_SURFACE = "feed_event_surface"
+    private const val EXTRA_SHAREABLE = "feed_card_shareable"
+    private const val EXTRA_PINNED = "feed_card_pinned"
+    private const val EXTRA_HELD = "feed_card_held"
+
+    /**
+     * [FeedCard] 的外层字段（`shareable`、`pinned`、`held`）是 `@Transient`，JSON 里没有；之前进详情时它们被丢成 false，
+     * 详情页在引擎回来之前没有分享入口、`share` 事件也报不出来。单独放 extra 带过去。
+     */
+    @JvmStatic
+    fun cardFrom(intent: Intent): FeedCard? {
+      val json = intent.getStringExtra(EXTRA_CARD) ?: return null
+      return FeedJson.decodeFromString(FeedCard.serializer(), json).copy(
+        shareable = intent.getBooleanExtra(EXTRA_SHAREABLE, false),
+        pinned = intent.getBooleanExtra(EXTRA_PINNED, false),
+        held = intent.getBooleanExtra(EXTRA_HELD, false)
+      )
+    }
 
     /** [eventSurface]：详情事件（I-13）算哪个来源；null = 不报（通知、外链、引用卡点进来的，和 iOS 一样）。 */
     @JvmStatic
@@ -159,6 +175,9 @@ class FeedPostDetailActivity : PassphraseRequiredActivity() {
       return Intent(context, FeedPostDetailActivity::class.java)
         .putExtra(EXTRA_CARD, FeedJson.encodeToString(FeedCard.serializer(), card))
         .putExtra(EXTRA_EVENT_SURFACE, eventSurface?.apiName)
+        .putExtra(EXTRA_SHAREABLE, card.shareable)
+        .putExtra(EXTRA_PINNED, card.pinned)
+        .putExtra(EXTRA_HELD, card.held)
     }
   }
 }

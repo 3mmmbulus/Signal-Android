@@ -424,7 +424,7 @@ class FeedPostDetailViewModel(
     if (detailEvents.close(clock())) flushDetailEvents()
   }
 
-  /** 分享结束（现在只有「复制链接」算完成，见 [FeedShareOutcome]）。不是这页的帖子（比如引用的那条）不报。 */
+  /** 分享结束（「复制链接」和系统分享面板选了目标 App 算完成，见 [FeedShareOutcome]）。不是这页的帖子（比如引用的那条）不报。 */
   fun onShareFinished(card: FeedCard, outcome: FeedShareOutcome) {
     if (detailEvents.shareFinished(card.id, card.shareable, outcome, clock())) flushDetailEvents()
   }
