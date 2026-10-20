@@ -139,8 +139,8 @@ import org.thoughtcrime.securesms.conversationlist.RestoreCompleteBottomSheetDia
 import org.thoughtcrime.securesms.conversationlist.model.ConversationFilter
 import org.thoughtcrime.securesms.conversationlist.model.UnreadPaymentsLiveData
 import org.thoughtcrime.securesms.devicetransfer.olddevice.OldDeviceExitActivity
-import org.thoughtcrime.securesms.feed.FeedChromeState
 import org.thoughtcrime.securesms.feed.FeedCapabilityStore
+import org.thoughtcrime.securesms.feed.FeedChromeState
 import org.thoughtcrime.securesms.feed.FeedEntryCheck
 import org.thoughtcrime.securesms.feed.TellomiFeed
 import org.thoughtcrime.securesms.feed.friends.FeedFriends
