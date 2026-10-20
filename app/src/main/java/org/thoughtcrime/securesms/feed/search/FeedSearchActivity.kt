@@ -16,6 +16,8 @@ import org.thoughtcrime.securesms.PassphraseRequiredActivity
 import org.thoughtcrime.securesms.feed.FeedEventSurface
 import org.thoughtcrime.securesms.feed.detail.FeedPostDetailActivity
 import org.thoughtcrime.securesms.feed.profile.FeedProfilePageActivity
+import org.thoughtcrime.securesms.feed.report.FeedReportActivity
+import org.thoughtcrime.securesms.feed.report.FeedReportTarget
 import org.thoughtcrime.securesms.feed.setFeedContent
 import org.thoughtcrime.securesms.util.DynamicNoActionBarTheme
 
@@ -24,6 +26,9 @@ class FeedSearchActivity : PassphraseRequiredActivity() {
 
   private val theme = DynamicNoActionBarTheme()
   private val viewModel: FeedSearchViewModel by viewModels()
+
+  /** 搜索结果里的帖子也要能举报（能看到内容就必须有举报入口）。 */
+  private val reportLauncher = registerForActivityResult(FeedReportActivity.Contract()) { }
 
   override fun onPreCreate() {
     theme.onCreate(this)
@@ -56,6 +61,7 @@ class FeedSearchActivity : PassphraseRequiredActivity() {
           onRetry = viewModel::retry,
           onSaveClick = viewModel::toggleSave,
           onRepostClick = viewModel::toggleRepost,
+          onReportClick = { reportLauncher.launch(FeedReportTarget.content(it.id)) },
           onNoticeShown = viewModel::onNoticeShown
         )
       }

@@ -7,6 +7,7 @@ package org.thoughtcrime.securesms.feed.detail
 
 import android.app.Application
 import android.graphics.Bitmap
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
@@ -15,6 +16,7 @@ import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.captureToImage
 import androidx.compose.ui.test.junit4.createComposeRule
+import androidx.compose.ui.test.longClick
 import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onLast
@@ -23,6 +25,7 @@ import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performTouchInput
 import androidx.test.core.app.ApplicationProvider
 import assertk.assertThat
 import assertk.assertions.isEqualTo
@@ -34,12 +37,15 @@ import org.robolectric.annotation.Config
 import org.robolectric.annotation.GraphicsMode
 import org.signal.core.ui.CoreUiDependenciesRule
 import org.signal.core.ui.compose.theme.SignalTheme
+import org.thoughtcrime.securesms.feed.FeedEntries
 import org.thoughtcrime.securesms.feed.FeedOwnPostAction
 import org.thoughtcrime.securesms.feed.FeedPostCardTestTags
+import org.thoughtcrime.securesms.feed.LocalFeedEntries
 import org.thoughtcrime.securesms.feed.net.FeedAuthor
 import org.thoughtcrime.securesms.feed.net.FeedCard
 import org.thoughtcrime.securesms.feed.net.FeedMedia
 import org.thoughtcrime.securesms.feed.net.FeedStats
+import org.thoughtcrime.securesms.feed.net.FeedViewer
 import java.io.File
 
 /**
@@ -110,10 +116,54 @@ class FeedPostDetailScreenTest {
           onDeclineComment = { moderated += "decline ${it.id}" },
           onOwnPostAction = { moderated += "own ${it.name}" },
           onDeletePost = { moderated += "delete" },
-          onReportPost = { moderated += "report" }
+          onReportPost = { moderated += "report" },
+          onReportComment = { moderated += "report comment ${it.id}" }
         )
       }
     }
+  }
+
+  @Test
+  fun `long press someone else's comment reports it as content`() {
+    show(FeedPostDetailState(post = post, comments = comments, loading = false, loadedOnce = true))
+    composeTestRule.onNodeWithTag(FeedPostDetailTestTags.COMMENT + "a").performTouchInput { longClick() }
+    composeTestRule.onNodeWithTag(FeedPostDetailTestTags.REPORT_COMMENT).performClick()
+    assertThat(moderated).isEqualTo(listOf("report comment a"))
+  }
+
+  @Test
+  fun `comment report is there even when nothing is deployed`() {
+    composeTestRule.setContent {
+      SignalTheme {
+        CompositionLocalProvider(LocalFeedEntries provides FeedEntries.NONE) {
+          FeedPostDetailScreen(
+            state = FeedPostDetailState(post = post, comments = comments, loading = false, loadedOnce = true),
+            onBack = {},
+            onLikeClick = {},
+            onRetryComments = {},
+            onLoadMoreComments = {},
+            onReplyClick = {},
+            onDraftChanged = {},
+            onSend = {},
+            onNoticeShown = {},
+            onReportComment = { moderated += "report comment ${it.id}" }
+          )
+        }
+      }
+    }
+    composeTestRule.onNodeWithTag(FeedPostDetailTestTags.COMMENT + "a").performTouchInput { longClick() }
+    composeTestRule.onNodeWithTag(FeedPostDetailTestTags.REPORT_COMMENT).performClick()
+    assertThat(moderated).isEqualTo(listOf("report comment a"))
+  }
+
+  @Test
+  fun `own and held comments have no report`() {
+    val mine = comment("m", other, "我的").copy(viewer = FeedViewer(isAuthor = true))
+    val held = comment("h", third, "等批准").copy(held = true)
+    assertThat(FeedCommentMenu.canReport(mine)).isEqualTo(false)
+    assertThat(FeedCommentMenu.canReport(held)).isEqualTo(false)
+    assertThat(FeedCommentMenu.canReport(comment("o", third, "别人的"))).isEqualTo(true)
+    assertThat(FeedCommentMenu.canReport(post)).isEqualTo(false)
   }
 
   @Test
@@ -220,10 +270,11 @@ class FeedPostDetailScreenTest {
     val withoutTranscript = comment("w", other, "").copy(media = listOf(voice.copy(key = "m/v2", durationMs = 61_000)))
     show(FeedPostDetailState(post = post, comments = listOf(withTranscript, withoutTranscript), loading = false, loadedOnce = true))
 
-    composeTestRule.onAllNodesWithTag(FeedVoiceTestTags.ROW).assertCountEquals(2)
+    // 别人的评论气泡可以长按举报（combinedClickable 会合并子节点的语义），找行内的 tag 要看未合并的树
+    composeTestRule.onAllNodesWithTag(FeedVoiceTestTags.ROW, useUnmergedTree = true).assertCountEquals(2)
     composeTestRule.onNodeWithText("0:04").assertExists()
     composeTestRule.onNodeWithText("1:01").assertExists()
-    composeTestRule.onAllNodesWithTag(FeedVoiceTestTags.TRANSCRIPT).assertCountEquals(1)
+    composeTestRule.onAllNodesWithTag(FeedVoiceTestTags.TRANSCRIPT, useUnmergedTree = true).assertCountEquals(1)
     composeTestRule.onNodeWithText("早上的鸟叫真好听").assertExists()
 
     System.getenv("FEED_SCREENSHOT_DIR")?.let { dir ->

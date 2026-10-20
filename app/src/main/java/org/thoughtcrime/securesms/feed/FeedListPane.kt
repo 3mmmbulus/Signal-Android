@@ -50,6 +50,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.derivedStateOf
@@ -247,57 +248,64 @@ fun FeedListPane(
     return
   }
 
-  Box(modifier = modifier) {
-    FeedPager(
-      chrome = chrome,
-      state = state,
-      onTabShown = viewModel::onTabShown,
-      onRefresh = viewModel::refresh,
-      onLoadMore = viewModel::loadMore,
-      onLikeClick = viewModel::toggleLike,
-      onSaveClick = viewModel::toggleSave,
-      onRepostClick = viewModel::toggleRepost,
-      onNotInterestedClick = viewModel::notInterested,
-      onUndoNotInterested = viewModel::undoNotInterested,
-      onNotInterestedReason = viewModel::notInterestedReason,
-      onBlockAuthorClick = { confirmBlock = it },
-      onMuteAuthorClick = viewModel::muteAuthor,
-      onManagePreferences = { context.startActivity(FeedRecommendationSettingsActivity.intent(context)) },
-      onCardsVisible = viewModel::onCardsVisible,
-      onMyPostsClick = { context.startActivity(FeedMyPostsActivity.intent(context)) },
-      onNotificationsClick = { context.startActivity(FeedNotificationsActivity.intent(context)) },
-      onSearchClick = { context.startActivity(FeedSearchActivity.intent(context)) },
-      onEditClick = { target -> editLauncher.launch(target) },
-      onDeleteClick = { confirmDelete = it },
-      // 带上是从哪一栏点进去的：详情事件（I-13）的 surface
-      onOpenFromTab = { card, tab -> context.startActivity(FeedPostDetailActivity.intent(context, card, FeedEventSurface.of(tab))) },
-      onAuthorClick = { context.startActivity(FeedProfilePageActivity.intent(context, it.profileId)) },
-      onVote = viewModel::vote,
-      onOwnPostAction = viewModel::onOwnPostAction,
-      onReportClick = { card ->
-        reporting = card
-        reportLauncher.launch(FeedReportTarget.content(card.id))
-      },
-      modifier = Modifier.fillMaxSize()
-    )
+  // 能力检查（契约 3.0）：没部署的入口不画；拿不到按没部署
+  val entries by remember { FeedCapabilityStore.flow() }.collectAsStateWithLifecycle()
 
-    // 发布按钮只在右下角（第三节第 45 条），滑动时不动（第 46 条）
-    FloatingActionButton(
-      onClick = { composeLauncher.launch(null) },
-      shape = CircleShape,
-      containerColor = MaterialTheme.colorScheme.primaryContainer,
-      contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
-      modifier = Modifier
-        .align(Alignment.BottomEnd)
-        .padding(16.dp)
-    ) {
-      Icon(
-        painter = painterResource(CoreUiR.drawable.symbol_edit_24),
-        contentDescription = stringResource(R.string.TellomiFeedCompose__new_post)
+  CompositionLocalProvider(LocalFeedEntries provides entries) {
+    Box(modifier = modifier) {
+      FeedPager(
+        chrome = chrome,
+        state = state,
+        onTabShown = viewModel::onTabShown,
+        onRefresh = viewModel::refresh,
+        onLoadMore = viewModel::loadMore,
+        onLikeClick = viewModel::toggleLike,
+        onSaveClick = viewModel::toggleSave,
+        onRepostClick = viewModel::toggleRepost,
+        onNotInterestedClick = viewModel::notInterested,
+        onUndoNotInterested = viewModel::undoNotInterested,
+        onNotInterestedReason = viewModel::notInterestedReason,
+        onBlockAuthorClick = { confirmBlock = it },
+        onMuteAuthorClick = viewModel::muteAuthor,
+        onManagePreferences = { context.startActivity(FeedRecommendationSettingsActivity.intent(context)) },
+        onCardsVisible = viewModel::onCardsVisible,
+        onMyPostsClick = if (entries.posting) ({ context.startActivity(FeedMyPostsActivity.intent(context)) }) else null,
+        onNotificationsClick = if (entries.notifications) ({ context.startActivity(FeedNotificationsActivity.intent(context)) }) else null,
+        onSearchClick = if (entries.search) ({ context.startActivity(FeedSearchActivity.intent(context)) }) else null,
+        onEditClick = { target -> editLauncher.launch(target) },
+        onDeleteClick = { confirmDelete = it },
+        // 带上是从哪一栏点进去的：详情事件（I-13）的 surface
+        onOpenFromTab = { card, tab -> context.startActivity(FeedPostDetailActivity.intent(context, card, FeedEventSurface.of(tab))) },
+        onAuthorClick = { context.startActivity(FeedProfilePageActivity.intent(context, it.profileId)) },
+        onVote = viewModel::vote,
+        onOwnPostAction = viewModel::onOwnPostAction,
+        onReportClick = { card ->
+          reporting = card
+          reportLauncher.launch(FeedReportTarget.content(card.id))
+        },
+        modifier = Modifier.fillMaxSize()
       )
-    }
 
-    SnackbarHost(hostState = snackbarHostState, modifier = Modifier.align(Alignment.BottomCenter))
+      // 发布按钮只在右下角（第三节第 45 条），滑动时不动（第 46 条）；引擎没部署发帖就不画
+      if (entries.posting) {
+        FloatingActionButton(
+          onClick = { composeLauncher.launch(null) },
+          shape = CircleShape,
+          containerColor = MaterialTheme.colorScheme.primaryContainer,
+          contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
+          modifier = Modifier
+            .align(Alignment.BottomEnd)
+            .padding(16.dp)
+        ) {
+          Icon(
+            painter = painterResource(CoreUiR.drawable.symbol_edit_24),
+            contentDescription = stringResource(R.string.TellomiFeedCompose__new_post)
+          )
+        }
+      }
+
+      SnackbarHost(hostState = snackbarHostState, modifier = Modifier.align(Alignment.BottomCenter))
+    }
   }
 
   confirmBlock?.let { card ->
@@ -346,7 +354,7 @@ private fun FeedPager(
   onManagePreferences: () -> Unit = {},
   onBlockAuthorClick: (FeedCard) -> Unit = {},
   onMuteAuthorClick: (FeedCard) -> Unit = {},
-  onMyPostsClick: () -> Unit,
+  onMyPostsClick: (() -> Unit)?,
   modifier: Modifier = Modifier,
   onEditClick: (FeedEditTarget) -> Unit = {},
   onDeleteClick: (FeedCard) -> Unit = {},
@@ -357,8 +365,8 @@ private fun FeedPager(
   onAuthorClick: (FeedAuthor) -> Unit = {},
   onVote: (FeedCard, List<Int>) -> Unit = { _, _ -> },
   onOwnPostAction: (FeedCard, FeedOwnPostAction) -> Unit = { _, _ -> },
-  onNotificationsClick: () -> Unit = {},
-  onSearchClick: () -> Unit = {}
+  onNotificationsClick: (() -> Unit)? = {},
+  onSearchClick: (() -> Unit)? = {}
 ) {
   val tabs = state.tabs
   val pagerState = rememberPagerState(pageCount = { tabs.size })
@@ -608,9 +616,9 @@ private fun FeedTopBar(
   tabs: List<FeedTab>,
   selectedIndex: Int,
   onTabClick: (Int) -> Unit,
-  onMyPostsClick: () -> Unit,
-  onNotificationsClick: () -> Unit = {},
-  onSearchClick: () -> Unit = {}
+  onMyPostsClick: (() -> Unit)?,
+  onNotificationsClick: (() -> Unit)? = {},
+  onSearchClick: (() -> Unit)? = {}
 ) {
   Box(
     modifier = Modifier
@@ -638,40 +646,46 @@ private fun FeedTopBar(
         .align(Alignment.CenterEnd)
         .padding(end = 4.dp)
     ) {
-      // 附录 10「动态页顶部」：右边搜索 + 通知，搜索在铃铛左边
-      Icon(
-        imageVector = ImageVector.vectorResource(CoreUiR.drawable.symbol_search_24),
-        contentDescription = stringResource(R.string.TellomiFeedSearch__title),
-        tint = MaterialTheme.colorScheme.onSurfaceVariant,
-        modifier = Modifier
-          .clip(CircleShape)
-          .clickable(onClick = onSearchClick)
-          .padding(10.dp)
-          .size(24.dp)
-      )
+      // 附录 10「动态页顶部」：右边搜索 + 通知，搜索在铃铛左边；null = 引擎没部署，不画
+      if (onSearchClick != null) {
+        Icon(
+          imageVector = ImageVector.vectorResource(CoreUiR.drawable.symbol_search_24),
+          contentDescription = stringResource(R.string.TellomiFeedSearch__title),
+          tint = MaterialTheme.colorScheme.onSurfaceVariant,
+          modifier = Modifier
+            .clip(CircleShape)
+            .clickable(onClick = onSearchClick)
+            .padding(10.dp)
+            .size(24.dp)
+        )
+      }
 
-      Icon(
-        painter = painterResource(R.drawable.symbol_bell_24),
-        contentDescription = stringResource(R.string.TellomiFeedNotifications__title),
-        tint = MaterialTheme.colorScheme.onSurfaceVariant,
-        modifier = Modifier
-          .clip(CircleShape)
-          .clickable(onClick = onNotificationsClick)
-          .padding(10.dp)
-          .size(24.dp)
-      )
+      if (onNotificationsClick != null) {
+        Icon(
+          painter = painterResource(R.drawable.symbol_bell_24),
+          contentDescription = stringResource(R.string.TellomiFeedNotifications__title),
+          tint = MaterialTheme.colorScheme.onSurfaceVariant,
+          modifier = Modifier
+            .clip(CircleShape)
+            .clickable(onClick = onNotificationsClick)
+            .padding(10.dp)
+            .size(24.dp)
+        )
+      }
 
       // 「我的动态」：一级导航有「我」之前先放这里（第三节第 17 条）
-      Icon(
-        painter = painterResource(R.drawable.symbol_person_24),
-        contentDescription = stringResource(R.string.TellomiFeedMine__title),
-        tint = MaterialTheme.colorScheme.onSurfaceVariant,
-        modifier = Modifier
-          .clip(CircleShape)
-          .clickable(onClick = onMyPostsClick)
-          .padding(10.dp)
-          .size(24.dp)
-      )
+      if (onMyPostsClick != null) {
+        Icon(
+          painter = painterResource(R.drawable.symbol_person_24),
+          contentDescription = stringResource(R.string.TellomiFeedMine__title),
+          tint = MaterialTheme.colorScheme.onSurfaceVariant,
+          modifier = Modifier
+            .clip(CircleShape)
+            .clickable(onClick = onMyPostsClick)
+            .padding(10.dp)
+            .size(24.dp)
+        )
+      }
     }
   }
 }

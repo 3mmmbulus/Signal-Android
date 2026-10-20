@@ -61,6 +61,7 @@ import org.signal.core.ui.compose.Dialogs
 import org.signal.core.ui.compose.Scaffolds
 import org.signal.core.ui.compose.Snackbars
 import org.thoughtcrime.securesms.R
+import org.thoughtcrime.securesms.feed.LocalFeedEntries
 import org.thoughtcrime.securesms.feed.compose.FeedEditTarget
 import org.thoughtcrime.securesms.feed.net.FeedCard
 import org.thoughtcrime.securesms.feed.net.FeedMyPost
@@ -135,7 +136,8 @@ fun FeedMyPostsScreen(
     actions = {
       // 公开主页的名字和简介（主页页面做好后挪过去）
       TextButton(onClick = onProfileClick) { Text(stringResource(R.string.TellomiFeedProfile__title)) }
-      PeopleMenu(onFollowRequestsClick = onFollowRequestsClick, onBlockedClick = onBlockedClick, onFollowedTopicsClick = onFollowedTopicsClick, onSettingsClick = onSettingsClick)
+      // 名单要引擎部署了 follow + blocks（契约 3.0）
+      if (LocalFeedEntries.current.lists) PeopleMenu(onFollowRequestsClick = onFollowRequestsClick, onBlockedClick = onBlockedClick, onFollowedTopicsClick = onFollowedTopicsClick, onSettingsClick = onSettingsClick)
     }
   ) { padding ->
     PullToRefreshBox(

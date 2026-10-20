@@ -14,6 +14,7 @@ import me.leolin.shortcutbadger.ShortcutBadger
 import org.signal.core.util.logging.Log
 import org.signal.network.NetworkResult
 import org.thoughtcrime.securesms.dependencies.AppDependencies
+import org.thoughtcrime.securesms.feed.FeedCapabilityStore
 import org.thoughtcrime.securesms.feed.FeedSources
 import org.thoughtcrime.securesms.jobmanager.impl.NetworkConstraint
 import org.thoughtcrime.securesms.jobs.FcmRefreshJob
@@ -88,6 +89,7 @@ object TellomiLogout {
     lockLocally(context)
     // 动态的 token 缓存和来源不留给下一次登录（只是内存里的东西，不碰本机数据）
     FeedSources.reset()
+    FeedCapabilityStore.clear()
     Result.Success
   }
 

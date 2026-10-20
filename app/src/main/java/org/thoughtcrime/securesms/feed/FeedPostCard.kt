@@ -118,8 +118,10 @@ fun FeedPostCard(
   /** 「分享」里的「转发到动态 / 取消转发」（第三节第 26 条）；null 的地方不显示。 */
   onRepostClick: ((FeedCard) -> Unit)? = null
 ) {
+  // 能力检查（契约 3.0）：引擎没部署的功能不画入口
+  val entries = LocalFeedEntries.current
   val author = card.author
-  val openAuthor: (() -> Unit)? = if (author != null && author.isNative && onAuthorClick != null) {
+  val openAuthor: (() -> Unit)? = if (author != null && author.isNative && onAuthorClick != null && entries.profiles) {
     { onAuthorClick(author) }
   } else {
     null
@@ -167,9 +169,10 @@ fun FeedPostCard(
           onNotInterestedClick = onNotInterestedClick,
           onEditClick = onEditClick,
           onDeleteClick = onDeleteClick,
+          // 举报不看 capabilities（合规红线）：没部署举报时整个动态都不出
           onReportClick = onReportClick,
           onAuthorClick = openAuthor,
-          onBlockAuthorClick = onBlockAuthorClick,
+          onBlockAuthorClick = onBlockAuthorClick?.takeIf { entries.blocks },
           onOwnPostAction = onOwnPostAction,
           onMuteAuthorClick = onMuteAuthorClick
         )
@@ -202,7 +205,7 @@ fun FeedPostCard(
           FeedPollView(
             poll = poll,
             state = card.pollState,
-            onVote = onVote?.let { vote -> { options: List<Int> -> vote(card, options) } },
+            onVote = onVote?.takeIf { entries.polls }?.let { vote -> { options: List<Int> -> vote(card, options) } },
             modifier = Modifier.padding(top = 8.dp, end = 12.dp)
           )
         }
@@ -258,10 +261,10 @@ fun FeedPostCard(
 
     FeedActionRow(
       card = card,
-      onLikeClick = onLikeClick,
+      onLikeClick = onLikeClick.takeIf { entries.reactions },
       onCommentClick = onOpen,
       onSaveClick = onSaveClick,
-      onRepostClick = onRepostClick,
+      onRepostClick = onRepostClick?.takeIf { entries.posting },
       modifier = Modifier.padding(start = CONTENT_START - 12.dp, top = 2.dp)
     )
   }
@@ -522,7 +525,8 @@ internal fun FeedMedia.remoteUrlOrNull(mediaBaseUrl: String?): String? {
 @Composable
 private fun FeedActionRow(
   card: FeedCard,
-  onLikeClick: (FeedCard) -> Unit,
+  /** null = 引擎没部署点赞，不画。 */
+  onLikeClick: ((FeedCard) -> Unit)?,
   onCommentClick: ((FeedCard) -> Unit)?,
   onSaveClick: ((FeedCard) -> Unit)?,
   onRepostClick: ((FeedCard) -> Unit)?,
@@ -532,30 +536,32 @@ private fun FeedActionRow(
   val likeLabel = if (liked) stringResource(R.string.TellomiFeed__unlike) else stringResource(R.string.TellomiFeed__like)
 
   Row(verticalAlignment = Alignment.CenterVertically, modifier = modifier) {
-    Row(
-      verticalAlignment = Alignment.CenterVertically,
-      modifier = Modifier
-        .clip(RoundedCornerShape(50))
-        .clickable { onLikeClick(card) }
-        .semantics { contentDescription = likeLabel }
-        .heightIn(min = 40.dp)
-        .padding(horizontal = 12.dp)
-    ) {
-      Icon(
-        imageVector = ImageVector.vectorResource(if (liked) R.drawable.tellomi_heart_fill_24 else R.drawable.symbol_heart_24),
-        contentDescription = null,
-        tint = if (liked) LIKED_COLOR else MaterialTheme.colorScheme.onSurfaceVariant,
-        modifier = Modifier.size(20.dp)
-      )
-
-      // 隐藏了点赞数：别人拿到的是 0；作者自己照常看到数字
-      if ((!card.stats.likeCountHidden || card.viewer.isAuthor) && card.stats.likes > 0) {
-        Text(
-          text = card.stats.likes.toString(),
-          style = MaterialTheme.typography.bodySmall,
-          color = MaterialTheme.colorScheme.onSurfaceVariant,
-          modifier = Modifier.padding(start = 4.dp)
+    if (onLikeClick != null) {
+      Row(
+        verticalAlignment = Alignment.CenterVertically,
+        modifier = Modifier
+          .clip(RoundedCornerShape(50))
+          .clickable { onLikeClick(card) }
+          .semantics { contentDescription = likeLabel }
+          .heightIn(min = 40.dp)
+          .padding(horizontal = 12.dp)
+      ) {
+        Icon(
+          imageVector = ImageVector.vectorResource(if (liked) R.drawable.tellomi_heart_fill_24 else R.drawable.symbol_heart_24),
+          contentDescription = null,
+          tint = if (liked) LIKED_COLOR else MaterialTheme.colorScheme.onSurfaceVariant,
+          modifier = Modifier.size(20.dp)
         )
+
+        // 隐藏了点赞数：别人拿到的是 0；作者自己照常看到数字
+        if ((!card.stats.likeCountHidden || card.viewer.isAuthor) && card.stats.likes > 0) {
+          Text(
+            text = card.stats.likes.toString(),
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.padding(start = 4.dp)
+          )
+        }
       }
     }
 
@@ -632,6 +638,7 @@ object FeedPostCardTestTags {
 private fun FeedShareButton(card: FeedCard, onRepostClick: ((FeedCard) -> Unit)?) {
   val context = LocalContext.current
   val onShareFinished = LocalFeedShareListener.current
+  val entries = LocalFeedEntries.current
   var open by remember { mutableStateOf(false) }
   val shareLabel = stringResource(R.string.TellomiFeed__share)
   Box {
@@ -665,7 +672,7 @@ private fun FeedShareButton(card: FeedCard, onRepostClick: ((FeedCard) -> Unit)?
           modifier = Modifier.testTag(FeedPostCardTestTags.REPOST)
         )
       }
-      FeedQuoteTarget.of(card)?.let { target ->
+      FeedQuoteTarget.of(card)?.takeIf { entries.posting }?.let { target ->
         DropdownMenuItem(
           text = { Text(stringResource(R.string.TellomiFeed__quote)) },
           onClick = {

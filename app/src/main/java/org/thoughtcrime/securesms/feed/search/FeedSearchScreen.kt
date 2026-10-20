@@ -102,6 +102,8 @@ fun FeedSearchScreen(
   autoFocus: Boolean = true,
   onSaveClick: ((FeedCard) -> Unit)? = null,
   onRepostClick: ((FeedCard) -> Unit)? = null,
+  /** 别人的帖子：「···」里的举报。能看到内容就必须有（合规红线），不看 capabilities。 */
+  onReportClick: ((FeedCard) -> Unit)? = null,
   onNoticeShown: () -> Unit = {}
 ) {
   val snackbarHostState = remember { SnackbarHostState() }
@@ -147,6 +149,7 @@ fun FeedSearchScreen(
           onLikeClick = onLikeClick,
           onSaveClick = onSaveClick,
           onRepostClick = onRepostClick,
+          onReportClick = onReportClick,
           onSeeAllPeople = { onSelectScope(FeedApi.SEARCH_USERS) },
           onLoadMore = onLoadMore,
           onRetry = onRetry
@@ -324,6 +327,7 @@ private fun Results(
   onLikeClick: (FeedCard) -> Unit,
   onSaveClick: ((FeedCard) -> Unit)?,
   onRepostClick: ((FeedCard) -> Unit)?,
+  onReportClick: ((FeedCard) -> Unit)?,
   onSeeAllPeople: () -> Unit,
   onLoadMore: () -> Unit,
   onRetry: () -> Unit
@@ -354,6 +358,7 @@ private fun Results(
         onLikeClick = onLikeClick,
         onSaveClick = onSaveClick,
         onRepostClick = onRepostClick,
+        onReportClick = onReportClick,
         onSeeAllPeople = onSeeAllPeople,
         onLoadMore = onLoadMore
       )
@@ -373,6 +378,7 @@ private fun ResultList(
   onLikeClick: (FeedCard) -> Unit,
   onSaveClick: ((FeedCard) -> Unit)?,
   onRepostClick: ((FeedCard) -> Unit)?,
+  onReportClick: ((FeedCard) -> Unit)?,
   onSeeAllPeople: () -> Unit,
   onLoadMore: () -> Unit
 ) {
@@ -410,6 +416,7 @@ private fun ResultList(
           onOpen = onOpenPost,
           onSaveClick = onSaveClick,
           onRepostClick = onRepostClick,
+          onReportClick = if (card.viewer.isAuthor) null else onReportClick,
           onAuthorClick = { author ->
             onOpenPerson(FeedPersonSummary(id = author.profileId, handle = author.handle, displayName = author.displayName, avatarKey = author.avatarKey))
           }

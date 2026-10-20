@@ -139,6 +139,7 @@ import org.thoughtcrime.securesms.conversationlist.RestoreCompleteBottomSheetDia
 import org.thoughtcrime.securesms.conversationlist.model.ConversationFilter
 import org.thoughtcrime.securesms.conversationlist.model.UnreadPaymentsLiveData
 import org.thoughtcrime.securesms.devicetransfer.olddevice.OldDeviceExitActivity
+import org.thoughtcrime.securesms.feed.FeedCapabilityStore
 import org.thoughtcrime.securesms.feed.FeedChromeState
 import org.thoughtcrime.securesms.feed.FeedEntryCheck
 import org.thoughtcrime.securesms.feed.TellomiFeed
@@ -791,6 +792,10 @@ class MainActivity :
     // Tellomi（M11）：动态入口跟着内容引擎的内测名单 / 紧急开关走，变了再重画一次底栏
     lifecycleScope.launch {
       if (withContext(Dispatchers.IO) { FeedEntryCheck.forCurrentProcess().refreshIfStale() }) {
+        mainNavigationViewModel.onEvent(MainNavigationEvents.RefreshNavigationBar)
+      }
+      // Tellomi（M11，契约 3.0）：引擎没部署的功能不画入口；有变化（含 `feed` 本身）再重画底栏
+      if (withContext(Dispatchers.IO) { FeedCapabilityStore.refreshIfStale() }) {
         mainNavigationViewModel.onEvent(MainNavigationEvents.RefreshNavigationBar)
       }
       // Tellomi（M11）：把自己这一半好友关系报给内容引擎（数据模型 2.4），名单没变不走网络
