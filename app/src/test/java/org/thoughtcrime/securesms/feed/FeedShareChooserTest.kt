@@ -5,6 +5,7 @@
 
 package org.thoughtcrime.securesms.feed
 
+import android.app.Activity
 import android.app.Application
 import android.content.ComponentName
 import android.content.Intent
@@ -20,6 +21,7 @@ import org.junit.After
 import org.junit.Before
 import org.junit.Test
 import org.junit.runner.RunWith
+import org.robolectric.Robolectric
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.Shadows
 import org.robolectric.annotation.Config
@@ -98,7 +100,8 @@ class FeedShareChooserTest {
 
   @Test
   fun `share to apps starts a chooser with an intent sender`() {
-    val context = ApplicationProvider.getApplicationContext<Application>()
+    // 真实调用方是详情页（Activity 的 Context）；Application 的 Context 起 Activity 要 FLAG_ACTIVITY_NEW_TASK
+    val context = Robolectric.buildActivity(Activity::class.java).setup().get()
     FeedShare.shareToApps(context, FeedCard(id = "p1", kind = FeedCard.KIND_POST, shareable = true)) { }
     val started = Shadows.shadowOf(context).nextStartedActivity
     assertThat(started.action).isEqualTo(Intent.ACTION_CHOOSER)
