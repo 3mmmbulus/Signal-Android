@@ -11,6 +11,7 @@ import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import org.thoughtcrime.securesms.R
 import org.thoughtcrime.securesms.components.settings.DSLConfiguration
 import org.thoughtcrime.securesms.components.settings.DSLSettingsText
+import org.thoughtcrime.securesms.feed.FeedCapabilityStore
 import org.thoughtcrime.securesms.feed.net.FeedMyProfile
 import org.thoughtcrime.securesms.feed.parseInstantMillis
 import org.thoughtcrime.securesms.feed.people.FeedPeopleActivity
@@ -61,15 +62,17 @@ fun DSLConfiguration.feedPrivacySettingsPrefs(context: Context, state: FeedPriva
       )
       textPref(summary = DSLSettingsText.from(R.string.TellomiFeedPrivacy__guard_summary))
 
-      // 不看 / 不让看（ADR-0071「设置：隐私与通知」）；快拍那一份名单还没有
-      clickPref(
-        title = DSLSettingsText.from(R.string.TellomiFeedPeople__muted_title),
-        onClick = { context.startActivity(FeedPeopleActivity.intent(context, FeedPeopleMode.MUTED)) }
-      )
-      clickPref(
-        title = DSLSettingsText.from(R.string.TellomiFeedPeople__hidden_from_title),
-        onClick = { context.startActivity(FeedPeopleActivity.intent(context, FeedPeopleMode.HIDDEN_FROM)) }
-      )
+      // 不看 / 不让看（ADR-0071「设置：隐私与通知」）；快拍那一份名单还没有。引擎没部署 follow + blocks 就不画（契约 3.0）
+      if (FeedCapabilityStore.entries().lists) {
+        clickPref(
+          title = DSLSettingsText.from(R.string.TellomiFeedPeople__muted_title),
+          onClick = { context.startActivity(FeedPeopleActivity.intent(context, FeedPeopleMode.MUTED)) }
+        )
+        clickPref(
+          title = DSLSettingsText.from(R.string.TellomiFeedPeople__hidden_from_title),
+          onClick = { context.startActivity(FeedPeopleActivity.intent(context, FeedPeopleMode.HIDDEN_FROM)) }
+        )
+      }
     }
   }
 }
