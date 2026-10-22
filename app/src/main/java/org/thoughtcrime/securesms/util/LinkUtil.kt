@@ -2,6 +2,7 @@ package org.thoughtcrime.securesms.util
 
 import com.google.common.net.InetAddresses
 import okhttp3.HttpUrl.Companion.toHttpUrlOrNull
+import org.signal.core.util.Linkifier
 import org.thoughtcrime.securesms.stickers.StickerUrl
 import java.net.URI
 import java.net.URISyntaxException
@@ -171,6 +172,81 @@ object LinkUtil {
       return url
     }
     return url.substring(0, cut)
+  }
+
+  /** Chinese sentence punctuation and closing brackets / quotes: the same table as iOS `LinkValidator.isIriTerminator`. */
+  private const val CJK_URL_TERMINATORS = "，。！？；：、）」』】》〉”’"
+
+  /**
+   * Tellomi (PM 2026-10-19, ADR-0063 §5.6): a link with Chinese in its path / query / fragment gets a preview (as Telegram,
+   * behaviour only). [Linkifier] already ends the link at whitespace (full-width and no-break spaces included) and at
+   * bidi / zero-width characters, and the raw IRI is sent as the preview URL (old receivers accept it too). This only adds
+   * what iOS does on top: the link also ends at Chinese sentence punctuation, so "…/wiki/中国，很好" previews "…/wiki/中国".
+   * Only in path / query / fragment; the host is never touched.
+   */
+  @JvmStatic
+  fun cutAtCjkSentencePunctuation(url: String): String {
+    val schemeEnd = url.indexOf("://")
+    if (schemeEnd < 0) {
+      return url
+    }
+    val authorityEnd = url.indexOfAny(charArrayOf('/', '?', '#'), schemeEnd + 3)
+    if (authorityEnd < 0) {
+      return url
+    }
+    val cut = url.indexOfAny(CJK_URL_TERMINATORS.toCharArray(), authorityEnd)
+    return if (cut < 0) url else url.substring(0, cut)
+  }
+
+  /**
+   * Tellomi (PM 2026-10-19, ADR-0063 §5.6): a link with a zero-width or direction-control character in it gets no preview at
+   * all and stays a plain link, because such characters are used to disguise a URL. It is not cut short before the character
+   * and previewed (same rule as iOS `LinkValidator.tellomiPercentEncodedIri(_:followedBy:)`, behaviour only).
+   *
+   * [previewUrl] is what would be previewed for [link] in [text]: [Linkifier.DetectedLink.url] cut short and possibly respelt
+   * with https. True when the part of [text] it was taken from has a hidden character in it, or is followed right away by
+   * one, so the link did not end normally there (at whitespace or punctuation) but at the hidden character. A hidden
+   * character after whitespace or punctuation is not part of the link. Hidden: the same categories as iOS (format, control,
+   * private use, surrogate, unassigned, line / paragraph separator); a line break after a link is a normal end
+   * ([Linkifier.isHiddenCharacter]).
+   */
+  @JvmStatic
+  fun hasHiddenCharacter(text: CharSequence, link: Linkifier.DetectedLink, previewUrl: String): Boolean {
+    val written = text.subSequence(link.start, link.end).toString()
+    val writtenScheme = written.indexOf("://").let { if (it < 0) 0 else it + 3 }
+    val previewScheme = previewUrl.indexOf("://").let { if (it < 0) 0 else it + 3 }
+    val end = (link.start + writtenScheme + previewUrl.length - previewScheme).coerceIn(link.start, link.end)
+
+    var i = link.start
+    while (i < end) {
+      val codePoint = Character.codePointAt(text, i)
+      if (isHiddenCodePoint(codePoint)) {
+        return true
+      }
+      i += Character.charCount(codePoint)
+    }
+    if (end < text.length) {
+      val next = Character.codePointAt(text, end)
+      // The same test Linkifier uses for a hidden character right after a link, so a link is either tappable and previewed or
+      // neither: line breaks (tab, LF, CR, U+0085, U+2028/2029) are a normal end, U+001C–U+001F are hidden (as on iOS)
+      if (Linkifier.isHiddenCharacter(next)) {
+        return true
+      }
+    }
+    return false
+  }
+
+  private fun isHiddenCodePoint(codePoint: Int): Boolean {
+    return when (Character.getType(codePoint).toByte()) {
+      Character.FORMAT,
+      Character.CONTROL,
+      Character.PRIVATE_USE,
+      Character.SURROGATE,
+      Character.UNASSIGNED,
+      Character.LINE_SEPARATOR,
+      Character.PARAGRAPH_SEPARATOR -> true
+      else -> false
+    }
   }
 
   private data class LegalCharactersResult(val isLegal: Boolean, val domain: String? = null)

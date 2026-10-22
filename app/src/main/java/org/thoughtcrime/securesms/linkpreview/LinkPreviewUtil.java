@@ -57,14 +57,22 @@ public final class LinkPreviewUtil {
     }
 
     return new Links(detected.stream()
-                             .map(LinkPreviewUtil::previewLink)
+                             .map(link -> previewLink(text, link))
                              .filter(Objects::nonNull)
                              .collect(Collectors.toList()));
   }
 
-  private static @Nullable Link previewLink(@NonNull Linkifier.DetectedLink detected) {
-    // Tellomi: text glued after the link is not part of it (LinkUtil.trimTextGluedAfterUrl)
-    String url = LinkUtil.trimTextGluedAfterUrl(detected.getUrl());
+  private static @Nullable Link previewLink(@NonNull String text, @NonNull Linkifier.DetectedLink detected) {
+    // Tellomi (PM 2026-10-19): a link with a zero-width / direction-control character in it, or ending at one, gets no preview
+    // at all (not a shortened one) and stays a plain link (LinkUtil.hasHiddenCharacter)
+    Link link = previewLinkWithoutHiddenCheck(detected);
+    return link != null && !LinkUtil.hasHiddenCharacter(text, detected, link.url) ? link : null;
+  }
+
+  private static @Nullable Link previewLinkWithoutHiddenCheck(@NonNull Linkifier.DetectedLink detected) {
+    // Tellomi: text glued after the link is not part of it (LinkUtil.trimTextGluedAfterUrl); a link with Chinese in the path
+    // ends at Chinese sentence punctuation (LinkUtil.cutAtCjkSentencePunctuation, PM 2026-10-19)
+    String url = LinkUtil.trimTextGluedAfterUrl(LinkUtil.cutAtCjkSentencePunctuation(detected.getUrl()));
     if (LinkUtil.isValidPreviewUrl(url)) {
       return new Link(url, detected.getStart());
     }

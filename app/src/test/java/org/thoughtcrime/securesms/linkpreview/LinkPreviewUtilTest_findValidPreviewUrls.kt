@@ -104,6 +104,71 @@ class LinkPreviewUtilTest_findValidPreviewUrls {
     Assert.assertTrue(links.containsUrl("https://zh.wikipedia.org/wiki/中国"))
   }
 
+  /** Tellomi (PM 2026-10-19, ADR-0063 §5.6): Chinese in the path or query gets a preview; the raw IRI is the preview URL. */
+  @Test
+  fun cjk_in_path_or_query_gets_a_preview() {
+    val cases = mapOf(
+      "看 https://www.baidu.com/s?wd=天气 吧" to "https://www.baidu.com/s?wd=天气",
+      "https://zh.wikipedia.org/wiki/中国，很好" to "https://zh.wikipedia.org/wiki/中国",
+      "https://zh.wikipedia.org/wiki/中国。" to "https://zh.wikipedia.org/wiki/中国",
+      "https://zh.wikipedia.org/wiki/中国\u3000很好" to "https://zh.wikipedia.org/wiki/中国",
+      "看这个https://b23.tv/abc，很好" to "https://b23.tv/abc",
+      "https://signal.org/a/中文#第二节" to "https://signal.org/a/中文#第二节"
+    )
+    for ((text, url) in cases) {
+      val links = LinkPreviewUtil.findValidPreviewUrls(text)
+      Assert.assertEquals(text, 1, links.size().toLong())
+      Assert.assertTrue(text, links.containsUrl(url))
+    }
+  }
+
+  /**
+   * Tellomi (PM 2026-10-19, ADR-0063 §5.6): a link with a zero-width or direction-control character in it, or running straight
+   * into one, gets no preview at all: not one cut short before the character ("…/a/中"), not one with the character in it.
+   */
+  @Test
+  fun hidden_characters_mean_no_preview_at_all() {
+    val texts = listOf(
+      "https://signal.org/a/中\u200B文",
+      "https://signal.org/a/中\u2066文",
+      // in a sentence
+      "看 https://signal.org/a/中\u200B文 吧",
+      // at the end of the message
+      "https://zh.wikipedia.org/wiki/中国\u200B",
+      // right-to-left override
+      "https://signal.org/a/中\u202E文",
+      // hidden characters the linkifier keeps inside the link
+      "https://signal.org/a/中\u2060文",
+      "https://signal.org/a/中\u200E文",
+      "https://signal.org/a/中\u200F文",
+      "https://signal.org/a/中\uFEFF文",
+      "https://signal.org/a\u2060b",
+      "看这个https://signal.org/abc\u200E很好"
+    )
+    for (text in texts) {
+      val links = LinkPreviewUtil.findValidPreviewUrls(text)
+      Assert.assertEquals(text, 0, links.size().toLong())
+    }
+  }
+
+  /** A hidden character after a normal end of the link (whitespace, sentence punctuation) is not part of it. */
+  @Test
+  fun hidden_character_after_a_normal_end_is_not_part_of_the_link() {
+    val cases = mapOf(
+      "https://zh.wikipedia.org/wiki/中国 \u200B" to "https://zh.wikipedia.org/wiki/中国",
+      "https://zh.wikipedia.org/wiki/中国，\u200B很好" to "https://zh.wikipedia.org/wiki/中国",
+      "https://zh.wikipedia.org/wiki/中国。\u200B" to "https://zh.wikipedia.org/wiki/中国",
+      "https://zh.wikipedia.org/wiki/中国，\u2060很好" to "https://zh.wikipedia.org/wiki/中国",
+      "https://signal.org/abc.\u200B" to "https://signal.org/abc",
+      "https://signal.org/abc\n\u200B下一行" to "https://signal.org/abc"
+    )
+    for ((text, url) in cases) {
+      val links = LinkPreviewUtil.findValidPreviewUrls(text)
+      Assert.assertEquals(text, 1, links.size().toLong())
+      Assert.assertTrue(text, links.containsUrl(url))
+    }
+  }
+
   @After
   fun tearDown() {
     TellomiLinkRegistry.setForTesting(null)

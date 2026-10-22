@@ -30,8 +30,13 @@ object Linkifier {
   /**
    * Characters that always terminate a URL: whitespace (including the unicode variants), bidi/format
    * controls, and punctuation that is only ever used to quote or wrap a URL.
+   *
+   * Tellomi (PM 2026-10-19, ADR-0063 §5.6): also every character a reader cannot see, the same categories as
+   * [isHiddenCharacter] (control, format, private use, surrogate, unassigned, line / paragraph separator), so a URL
+   * never runs on through one (e.g. U+00AD soft hyphen, U+180E, U+FFF9–U+FFFB, U+E0001 tags).
    */
-  private const val URL_TERMINATOR = "\\s\\u0085\\u00A0\\u1680\\u2000-\\u200D\\u2028\\u2029\\u202A-\\u202F\\u205F\\u2066-\\u2069\\u3000\\uFEFF<>\"`|\\\\"
+  private const val URL_TERMINATOR = "\\s\\u0085\\u00A0\\u1680\\u2000-\\u200F\\u2028\\u2029\\u202A-\\u202F\\u205F\\u2060-\\u2064\\u2066-\\u2069\\u3000\\uFEFF" +
+    "\\p{Cc}\\p{Cf}\\p{Co}\\p{Cs}\\p{Cn}\\p{Zl}\\p{Zp}<>\"`|\\\\"
 
   /**
    * Characters we treat as definitely-not-part-of-a-URL when extending past the host. Commas and
@@ -101,15 +106,25 @@ object Linkifier {
         continue
       }
 
-      val end = trimTrailingNonUrlChars(text, start, rawEnd)
+      var end = trimTrailingNonUrlChars(text, start, rawEnd)
       if (end <= start) {
         continue
       }
 
       // Reject if the URL is butted up against a bidi/format/zero-width char on either side —
       // those are used for visual spoofing and shouldn't appear adjacent to a real URL.
-      if (end < text.length && isFormatOrZeroWidth(text[end])) {
-        continue
+      if (end < text.length && isHiddenCharacter(Character.codePointAt(text, end))) {
+        // Tellomi (PM 2026-10-19, ADR-0063 §5.6): a hidden char right after Chinese sentence punctuation is not part of the
+        // link; the link ended at that punctuation ("…/wiki/中国，\u200B很好" is "…/wiki/中国"), as on iOS. Anything else
+        // glued to a hidden char is still rejected.
+        val beforePunctuation = trimTrailingCjkSentencePunctuation(text, start, end)
+        if (beforePunctuation == end) {
+          continue
+        }
+        end = trimTrailingNonUrlChars(text, start, beforePunctuation)
+        if (end <= start) {
+          continue
+        }
       }
 
       val raw = text.subSequence(start, end).toString()
@@ -146,18 +161,33 @@ object Linkifier {
       return false
     }
 
-    if (isFormatOrZeroWidth(prev)) {
+    if (isHiddenCharacter(Character.codePointBefore(text, start))) {
       return false
     }
 
     return true
   }
 
-  private fun isFormatOrZeroWidth(c: Char): Boolean {
-    return when (c) {
-      '​', '‌', '‍', '﻿' -> true // zero-width space / non-joiner / joiner / BOM
-      in '‪'..'‮' -> true // bidi formatting overrides
-      in '⁦'..'⁩' -> true // bidi isolate controls
+  /**
+   * Tellomi (PM 2026-10-19, ADR-0063 §5.6): a character a reader cannot see, which must not be next to (or in) a link: a link
+   * running into one is not a link at all, neither tappable nor previewed. The same set as `LinkUtil.hasHiddenCharacter`
+   * (app), iOS `LinkValidator.isHiddenScalar` and Desktop `IRI_HIDDEN`: general category Cc, Cf, Co, Cs, Cn, Zl, Zp. Line
+   * breaks among them (tab, LF, VT, FF, CR, U+0085, U+2028, U+2029, Unicode White_Space) are a normal end of a link, as on
+   * iOS (`isIriTerminator`) and Desktop.
+   */
+  @JvmStatic
+  fun isHiddenCharacter(codePoint: Int): Boolean {
+    if (codePoint in 0x09..0x0D || codePoint == 0x85 || codePoint == 0x2028 || codePoint == 0x2029) {
+      return false
+    }
+    return when (Character.getType(codePoint).toByte()) {
+      Character.CONTROL,
+      Character.FORMAT,
+      Character.PRIVATE_USE,
+      Character.SURROGATE,
+      Character.UNASSIGNED,
+      Character.LINE_SEPARATOR,
+      Character.PARAGRAPH_SEPARATOR -> true
       else -> false
     }
   }
@@ -190,6 +220,20 @@ object Linkifier {
     }
     return end
   }
+
+  /**
+   * Tellomi: steps back over Chinese sentence punctuation and closing brackets / quotes at the end of a candidate. The same
+   * table as `LinkUtil.cutAtCjkSentencePunctuation` (app) and iOS `LinkValidator.isIriTerminator`.
+   */
+  private fun trimTrailingCjkSentencePunctuation(text: CharSequence, start: Int, initialEnd: Int): Int {
+    var end = initialEnd
+    while (end > start && text[end - 1] in CJK_SENTENCE_PUNCTUATION) {
+      end--
+    }
+    return end
+  }
+
+  private const val CJK_SENTENCE_PUNCTUATION = "，。！？；：、）」』】》〉”’"
 
   private fun countChar(text: CharSequence, start: Int, end: Int, target: Char): Int {
     var count = 0
