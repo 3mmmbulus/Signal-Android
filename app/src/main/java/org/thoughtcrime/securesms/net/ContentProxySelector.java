@@ -95,18 +95,20 @@ public class ContentProxySelector extends ProxySelector {
 
   /** 服务端下发的地址能用就用，否则回落到编译期常量。 */
   private static @NonNull Endpoint currentEndpoint() {
-    String  remote = RemoteConfig.gifProxyUrl();
-    Endpoint parsed = parseProxyUrl(remote);
+    String               remote = RemoteConfig.gifProxyUrl();
+    TellomiRegionProfile region = TellomiRegions.current();
+    Endpoint             parsed = parseProxyUrl(remote);
 
-    if (parsed != null) {
+    // Tellomi（REGION_PROFILE 第六节之二 / 第八节）：下发值按账号、不按区；不在当前区的 Tellomi 根域下就不用
+    if (parsed != null && TellomiRegions.isHostInRegion(parsed.host, region)) {
       return parsed;
     }
 
-    if (remote != null && !remote.isEmpty()) {
+    if (parsed != null) {
+      Log.w(TAG, "Ignoring global.gif.proxyUrl, its host is not in the current region. Falling back to the region's proxy.");
+    } else if (remote != null && !remote.isEmpty()) {
       Log.w(TAG, "Ignoring global.gif.proxyUrl, not an https:// URL with a host. Falling back to the build-time proxy.");
     }
-    // Tellomi（#1055）：回落值从当前区取。服务端下发的地址仍然优先——它会绕过区域，归 M6 定（REGION_PROFILE.md 第八节，#1252）
-    TellomiRegionProfile region = TellomiRegions.current();
     return new Endpoint(region.getContentProxyHost(), region.getContentProxyPort());
   }
 

@@ -19,7 +19,7 @@ import org.thoughtcrime.securesms.net.StaticDns
 import java.net.UnknownHostException
 
 /**
- * tellomi/tellomi#1055 第三刀：静态 IP 收进区域表（契约第三节 staticIps，Android 独有，只属于 global 档）。
+ * tellomi/tellomi#1055 第三刀：静态 IP 收进区域表（契约第三节 staticIps，Android 独有，global 档回落香港 47.57.71.77，CN 档回落成都 8.137.39.82）。
  */
 class TellomiStaticIpsTest {
 
@@ -43,19 +43,36 @@ class TellomiStaticIpsTest {
   }
 
   @Test
-  fun `the dns table only knows global hosts`() {
-    assertThat(cn.staticIps).isEmpty()
-    assertThat(TellomiRegions.staticIpTable()).isEqualTo(global.staticIps)
-    // 上游的 cdsi / svr2 两行（指向 Signal 的 IP，也没人用）不在了
+  fun `cn static ips are the chengdu fallback for its own hosts`() {
+    assertThat(cn.staticIps).isEqualTo(
+      mapOf(
+        "chat.tellomi.cn" to setOf("8.137.39.82"),
+        "storage.tellomi.cn" to setOf("8.137.39.82"),
+        "cdn.tellomi.cn" to setOf("8.137.39.82"),
+        "cdn2.tellomi.cn" to setOf("8.137.39.82"),
+        "cdn3.tellomi.cn" to setOf("8.137.39.82"),
+        "contentproxy.tellomi.cn" to setOf("8.137.39.82")
+      )
+    )
+    // 香港 IP 只留在 global 档
+    assertThat(cn.staticIps.values.none { "47.57.71.77" in it }).isTrue()
+    assertThat(global.staticIps.getValue("chat.tellomi.app")).isEqualTo(setOf("47.57.71.77"))
+  }
+
+  @Test
+  fun `the dns table knows both regions`() {
+    assertThat(TellomiRegions.staticIpTable()).isEqualTo(global.staticIps + cn.staticIps)
     assertThat(TellomiRegions.staticIpTable().keys.none { it.endsWith("signal.org") }).isTrue()
-    // CN 的主机在表里查不到，和没有静态 IP 的主机一样，所以切区不用重建这张表
-    assertFailure { StaticDns(TellomiRegions.staticIpTable()).lookup("chat.tellomi.cn") }.isInstanceOf<UnknownHostException>()
+    assertThat(StaticDns(TellomiRegions.staticIpTable()).lookup("chat.tellomi.cn").map { it.hostAddress }).isEqualTo(listOf("8.137.39.82"))
+    assertThat(StaticDns(TellomiRegions.staticIpTable()).lookup("chat.tellomi.app").map { it.hostAddress }).isEqualTo(listOf("47.57.71.77"))
+    assertFailure { StaticDns(TellomiRegions.staticIpTable()).lookup("grpc.chat.tellomi.cn") }.isInstanceOf<UnknownHostException>()
   }
 
   @Test
   fun `the invariant check catches misplaced static ips`() {
-    assertThat(TellomiRegions.problems(listOf(global, cn.copy(staticIps = mapOf("chat.tellomi.cn" to setOf("192.0.2.1"))))))
-      .any { it.contains("no static ip fallback") }
+    assertThat(TellomiRegions.problems(listOf(global, cn))).isEmpty()
+    assertThat(TellomiRegions.problems(listOf(global, cn.copy(staticIps = mapOf("chat.tellomi.cn" to setOf("47.57.71.77"))))))
+      .any { it.contains("chengdu fallback") }
     assertThat(TellomiRegions.problems(listOf(global.copy(staticIps = global.staticIps + ("svr2.staging.signal.org" to setOf("192.0.2.1"))), cn)))
       .any { it.contains("svr2.staging.signal.org") }
   }

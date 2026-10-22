@@ -60,8 +60,9 @@ class TellomiRegionSelectorTest {
 
   @Test
   fun `probes only enabled regions`() {
-    assertThat(TellomiRegions.ALL.filter { it.enabled }.map { it.id }).isEqualTo(listOf(TellomiRegionId.GLOBAL))
-    val (selector, log) = selector(TellomiRegions.ALL, mapOf(TellomiRegionId.GLOBAL to ProbeResult.Ok(40)))
+    val cnOff = listOf(global, TellomiRegions.CN.copy(enabled = false))
+    assertThat(cnOff.filter { it.enabled }.map { it.id }).isEqualTo(listOf(TellomiRegionId.GLOBAL))
+    val (selector, log) = selector(cnOff, mapOf(TellomiRegionId.GLOBAL to ProbeResult.Ok(40)))
 
     val decision = selector.probe()
 
@@ -73,7 +74,8 @@ class TellomiRegionSelectorTest {
   @Test
   fun `no tellomi cn host is probed while cn is disabled`() {
     // #1055 判据 4 在选路器这一层：CN 关着时，探测连 tellomi.cn 的主机名都碰不到
-    val (selector, log) = selector(TellomiRegions.ALL, mapOf(TellomiRegionId.GLOBAL to ProbeResult.Failed("offline in tests")))
+    val cnOff = listOf(global, TellomiRegions.CN.copy(enabled = false))
+    val (selector, log) = selector(cnOff, mapOf(TellomiRegionId.GLOBAL to ProbeResult.Failed("offline in tests")))
 
     val decision = selector.probe()
 
@@ -161,8 +163,8 @@ class TellomiRegionSelectorTest {
 
   @Test
   fun `a disabled region is never recommended`() {
-    // 包里的 CN 关着：就算它会探得很快（假如探了的话），也不探、不推荐；当前区失败也只能 no-alternative
-    val (selector, log) = selector(TellomiRegions.ALL, mapOf(TellomiRegionId.GLOBAL to ProbeResult.Failed("timeout"), TellomiRegionId.CN to ProbeResult.Ok(1)))
+    // 关着的 CN：就算它会探得很快（假如探了的话），也不探、不推荐；当前区失败也只能 no-alternative
+    val (selector, log) = selector(listOf(global, TellomiRegions.CN.copy(enabled = false)), mapOf(TellomiRegionId.GLOBAL to ProbeResult.Failed("timeout"), TellomiRegionId.CN to ProbeResult.Ok(1)))
 
     repeat(3) {
       val decision = selector.probe()

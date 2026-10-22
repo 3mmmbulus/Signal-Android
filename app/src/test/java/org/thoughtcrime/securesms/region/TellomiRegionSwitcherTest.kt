@@ -43,9 +43,9 @@ class TellomiRegionSwitcherTest {
 
   @Test
   fun `unknown and disabled regions are refused before touching the network`() {
-    // 包里的 CN 关着：直接报错
+    // 关着的 CN：直接报错
     val packaged = Recorder()
-    assertFailure { switcher(TellomiRegions.ALL, packaged).switchTo(TellomiRegionId.CN) }
+    assertFailure { switcher(listOf(global, TellomiRegions.CN.copy(enabled = false)), packaged).switchTo(TellomiRegionId.CN) }
       .isInstanceOf<TellomiRegionSwitcher.SwitchException>()
       .prop(TellomiRegionSwitcher.SwitchException::reason).isEqualTo(TellomiRegionSwitcher.Reason.DISABLED)
 
@@ -97,7 +97,7 @@ class TellomiRegionSwitcherTest {
   fun `a stored region that is no longer usable counts as global`() {
     // 记住的是 cn，但这个进程的表里 cn 关着（例如测试区只在别的进程开着）：当前区按规则回落 global，切 global 什么都不做
     val recorder = Recorder(storedId = "cn")
-    assertThat(switcher(TellomiRegions.ALL, recorder).switchTo(TellomiRegionId.GLOBAL)).isFalse()
+    assertThat(switcher(listOf(TellomiRegions.GLOBAL, TellomiRegions.CN.copy(enabled = false)), recorder).switchTo(TellomiRegionId.GLOBAL)).isFalse()
     assertThat(recorder.events).isEmpty()
   }
 }
