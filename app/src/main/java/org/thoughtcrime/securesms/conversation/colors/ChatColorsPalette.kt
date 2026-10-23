@@ -9,9 +9,13 @@ object ChatColorsPalette {
     // region Default
 
     @JvmField
-    val ULTRAMARINE = ChatColors.forColor(
+    val ULTRAMARINE = ChatColors.forGradient(
       ChatColors.Id.BuiltIn,
-      0xFF315FF4.toInt()
+      ChatColors.LinearGradient(
+        0f,
+        intArrayOf(0xFF0552F0.toInt(), 0xFF2C6BED.toInt()),
+        floatArrayOf(0f, 1f)
+      )
     )
 
     // endregion
