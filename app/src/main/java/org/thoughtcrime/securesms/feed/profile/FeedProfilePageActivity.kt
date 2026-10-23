@@ -9,6 +9,7 @@ import android.content.Context
 import android.content.Intent
 import android.os.Bundle
 import androidx.activity.viewModels
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.initializer
@@ -16,6 +17,8 @@ import androidx.lifecycle.viewmodel.viewModelFactory
 import org.signal.core.ui.compose.theme.SignalTheme
 import org.thoughtcrime.securesms.PassphraseRequiredActivity
 import org.thoughtcrime.securesms.feed.FeedEventSurface
+import org.thoughtcrime.securesms.feed.FeedListShareEvents
+import org.thoughtcrime.securesms.feed.LocalFeedShareListener
 import org.thoughtcrime.securesms.feed.detail.FeedPostDetailActivity
 import org.thoughtcrime.securesms.feed.report.FeedReportActivity
 import org.thoughtcrime.securesms.feed.report.FeedReportTarget
@@ -57,27 +60,29 @@ class FeedProfilePageActivity : PassphraseRequiredActivity() {
     setFeedContent {
       val state by viewModel.state.collectAsStateWithLifecycle()
       SignalTheme {
-        FeedProfilePageScreen(
-          state = state,
-          onBack = { finish() },
-          onRetry = viewModel::refresh,
-          onFollow = viewModel::follow,
-          onUnfollow = viewModel::unfollow,
-          onSetBlocked = viewModel::setBlocked,
-          onReport = { reportLauncher.launch(FeedReportTarget.author(profileId)) },
-          onEditProfile = { editLauncher.launch(Unit) },
-          onLoadMorePosts = viewModel::loadMorePosts,
-          onLikeClick = viewModel::toggleLike,
-          onOpenPost = { startActivity(FeedPostDetailActivity.intent(this, it, FeedEventSurface.PROFILE)) },
-          onReportPost = { reportLauncher.launch(FeedReportTarget.content(it.id)) },
-          onNoticeShown = viewModel::onNoticeShown,
-          onProfileRequired = { profileLauncher.launch(Unit) },
-          onOwnPostAction = viewModel::onOwnPostAction,
-          onInsightsDismissed = viewModel::onInsightsDismissed,
-          onSetHidden = viewModel::setHidden,
-          onSaveClick = viewModel::toggleSave,
-          onRepostClick = viewModel::toggleRepost
-        )
+        CompositionLocalProvider(LocalFeedShareListener provides FeedListShareEvents.listener(FeedEventSurface.PROFILE)) {
+          FeedProfilePageScreen(
+            state = state,
+            onBack = { finish() },
+            onRetry = viewModel::refresh,
+            onFollow = viewModel::follow,
+            onUnfollow = viewModel::unfollow,
+            onSetBlocked = viewModel::setBlocked,
+            onReport = { reportLauncher.launch(FeedReportTarget.author(profileId)) },
+            onEditProfile = { editLauncher.launch(Unit) },
+            onLoadMorePosts = viewModel::loadMorePosts,
+            onLikeClick = viewModel::toggleLike,
+            onOpenPost = { startActivity(FeedPostDetailActivity.intent(this, it, FeedEventSurface.PROFILE)) },
+            onReportPost = { reportLauncher.launch(FeedReportTarget.content(it.id)) },
+            onNoticeShown = viewModel::onNoticeShown,
+            onProfileRequired = { profileLauncher.launch(Unit) },
+            onOwnPostAction = viewModel::onOwnPostAction,
+            onInsightsDismissed = viewModel::onInsightsDismissed,
+            onSetHidden = viewModel::setHidden,
+            onSaveClick = viewModel::toggleSave,
+            onRepostClick = viewModel::toggleRepost
+          )
+        }
       }
     }
   }

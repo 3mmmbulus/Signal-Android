@@ -9,6 +9,7 @@ import android.content.Context
 import android.content.Intent
 import android.os.Bundle
 import androidx.activity.viewModels
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.initializer
@@ -16,6 +17,8 @@ import androidx.lifecycle.viewmodel.viewModelFactory
 import org.signal.core.ui.compose.theme.SignalTheme
 import org.thoughtcrime.securesms.PassphraseRequiredActivity
 import org.thoughtcrime.securesms.feed.FeedEventSurface
+import org.thoughtcrime.securesms.feed.FeedListShareEvents
+import org.thoughtcrime.securesms.feed.LocalFeedShareListener
 import org.thoughtcrime.securesms.feed.detail.FeedPostDetailActivity
 import org.thoughtcrime.securesms.feed.feedTopicLabel
 import org.thoughtcrime.securesms.feed.report.FeedReportActivity
@@ -48,21 +51,23 @@ class FeedTopicActivity : PassphraseRequiredActivity() {
     setFeedContent {
       val state by viewModel.state.collectAsStateWithLifecycle()
       SignalTheme {
-        FeedTopicScreen(
-          label = givenLabel?.takeIf { it.isNotBlank() } ?: feedTopicLabel(slug),
-          state = state,
-          onBack = { finish() },
-          onRetry = viewModel::refresh,
-          onToggleFollow = viewModel::toggleFollow,
-          onLoadMore = viewModel::loadMore,
-          onLikeClick = viewModel::toggleLike,
-          onOpenPost = { startActivity(FeedPostDetailActivity.intent(this, it, FeedEventSurface.SEARCH)) },
-          onReportPost = { reportLauncher.launch(FeedReportTarget.content(it.id)) },
-          onTopicClick = { if (it.slug != slug) startActivity(intent(this, it.slug, it.label)) },
-          onNoticeShown = viewModel::onNoticeShown,
-          onSaveClick = viewModel::toggleSave,
-          onRepostClick = viewModel::toggleRepost
-        )
+        CompositionLocalProvider(LocalFeedShareListener provides FeedListShareEvents.listener(FeedEventSurface.SEARCH)) {
+          FeedTopicScreen(
+            label = givenLabel?.takeIf { it.isNotBlank() } ?: feedTopicLabel(slug),
+            state = state,
+            onBack = { finish() },
+            onRetry = viewModel::refresh,
+            onToggleFollow = viewModel::toggleFollow,
+            onLoadMore = viewModel::loadMore,
+            onLikeClick = viewModel::toggleLike,
+            onOpenPost = { startActivity(FeedPostDetailActivity.intent(this, it, FeedEventSurface.SEARCH)) },
+            onReportPost = { reportLauncher.launch(FeedReportTarget.content(it.id)) },
+            onTopicClick = { if (it.slug != slug) startActivity(intent(this, it.slug, it.label)) },
+            onNoticeShown = viewModel::onNoticeShown,
+            onSaveClick = viewModel::toggleSave,
+            onRepostClick = viewModel::toggleRepost
+          )
+        }
       }
     }
   }
