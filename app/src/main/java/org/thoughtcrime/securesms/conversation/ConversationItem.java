@@ -133,6 +133,7 @@ import org.thoughtcrime.securesms.keyvalue.SignalStore;
 import org.thoughtcrime.securesms.linkpreview.LinkPreview;
 import org.thoughtcrime.securesms.linkpreview.TellomiFirstPartyCard;
 import org.thoughtcrime.securesms.linkpreview.TellomiLinkCard;
+import org.thoughtcrime.securesms.linkpreview.TellomiLinkCardStyle;
 import org.thoughtcrime.securesms.linkpreview.TellomiLinkDisplay;
 import org.thoughtcrime.securesms.linkpreview.TellomiLinkVisual;
 import org.thoughtcrime.securesms.maps.TellomiLocationActivity;
@@ -1338,6 +1339,30 @@ public final class ConversationItem extends RelativeLayout implements BindableCo
     return tint.colors(DynamicTheme.isDarkTheme(context));
   }
 
+  /**
+   * Tellomi (PM 2026-10-19, DESIGN.md §9): a third-party card in one of the four styles of {@link TellomiLinkCardStyle}, the
+   * way iOS {@code TellomiLinkPreviewCardState.cardStyle} picks it. Not for first-party cards, nor without a rust/links card
+   * or its layout (call links, group invites and Signal's own previews keep their look).
+   */
+  private void applyLinkCardStyle(@NonNull LinkPreview linkPreview, boolean hasImage) {
+    TellomiLinkCard    card    = getLinkCard();
+    TellomiLinkDisplay display = getLinkDisplay(linkPreview);
+    // No layout decision (the bridge failed): the card is drawn the way it was before layout existed, as everywhere else here.
+    if (card == null || display == null || getFirstPartyDisplay() != null || getLinkCardLayout() == null) {
+      return;
+    }
+    boolean plainLink = display.getPlainLink();
+    TellomiLinkCardStyle.Text text = TellomiLinkCardStyle.text(plainLink ? null : display.getTitle(),
+                                                               display.getDomain() != null ? display.getDomain() : (plainLink ? display.getTitle() : null),
+                                                               linkPreview.getUrl());
+    if (text == null) {
+      return;
+    }
+    TellomiLinkCardStyle.Kind kind = TellomiLinkCardStyle.kind(TellomiLinkVisual.styleLayout(getLinkCardLayout()), hasImage, text.getTitle() != null, plainLink);
+    boolean showCompass = TellomiLinkCardStyle.showsCompass(kind, TellomiLinkVisual.isClaimed(card));
+    linkPreviewStub.get().applyTellomiCardStyle(kind, showCompass, text, display.getLookalike(), getLinkCardColors() != null);
+  }
+
   private @Nullable TellomiLinkCard getLinkCard() {
     return conversationMessage != null ? conversationMessage.getComputedProperties().getLinkCard() : null;
   }
@@ -1668,6 +1693,7 @@ public final class ConversationItem extends RelativeLayout implements BindableCo
         linkPreviewStub.get().setLinkPreview(requestManager, linkPreview, false);
         linkPreviewStub.get().applyTellomiDisplay(getLinkDisplay(linkPreview), true);
         linkPreviewStub.get().applyTellomiTint(getLinkCardColors());
+        applyLinkCardStyle(linkPreview, true);
 
         setThumbnailCorners(messageRecord, previousRecord, nextRecord, isGroupThread);
         setLinkPreviewCorners(messageRecord, previousRecord, nextRecord, isGroupThread, true);
@@ -1687,6 +1713,8 @@ public final class ConversationItem extends RelativeLayout implements BindableCo
         TellomiFirstPartyCard.Display firstParty = getFirstPartyDisplay();
         if (firstParty != null) {
           linkPreviewStub.get().applyTellomiFirstParty(requestManager, firstParty, getFirstPartyAvatarRecipient(), linkPreview.getThumbnail().isPresent() && (linkCard == null || linkCard.getShowImage()));
+        } else {
+          applyLinkCardStyle(linkPreview, linkPreviewStub.get().hasTellomiThumbnail());
         }
         linkPreviewStub.get().setDownloadClickedListener(downloadClickListener);
         setLinkPreviewCorners(messageRecord, previousRecord, nextRecord, isGroupThread, false);

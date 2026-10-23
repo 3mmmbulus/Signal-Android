@@ -52,6 +52,7 @@ import org.thoughtcrime.securesms.database.model.MmsMessageRecord
 import org.thoughtcrime.securesms.keyvalue.PlainTextKeyValueStore
 import org.thoughtcrime.securesms.keyvalue.SettingsValues
 import org.thoughtcrime.securesms.linkpreview.LinkPreview
+import org.thoughtcrime.securesms.linkpreview.TellomiLinkCardStyle
 import org.thoughtcrime.securesms.linkpreview.TellomiLinkOnly
 import org.thoughtcrime.securesms.linkpreview.TellomiLinkRegistry
 import org.thoughtcrime.securesms.linkpreview.TellomiLinkVisual
@@ -267,5 +268,29 @@ class TellomiLinkCardLayoutTest {
     val item = bind(FakeMessageRecords.buildMediaMmsMessageRecord(body = url, linkPreviews = listOf(preview("网易新闻"))), TellomiLinkVisual.Visual.NONE)
 
     assertEquals(View.GONE, item.card.findViewById<View>(R.id.linkpreview_link_icon).visibility)
+  }
+
+  // ---- DESIGN.md §9 (PM 2026-10-19, after Apple Messages): the strips ----
+
+  @Test
+  fun `a card with a title and no image is the neutral grey title strip with the compass, and no sub line`() {
+    val item = bind(FakeMessageRecords.buildMediaMmsMessageRecord(body = url, linkPreviews = listOf(preview("网易新闻"))), TellomiLinkVisual.Visual(TellomiLinkVisual.Layout.NO_IMAGE, null))
+    val card = item.card
+
+    assertEquals(View.GONE, card.findViewById<View>(R.id.linkpreview_description).visibility)
+    assertEquals(2, card.findViewById<android.widget.TextView>(R.id.linkpreview_title).maxLines)
+    assertEquals(View.VISIBLE, card.findViewById<View>(R.id.linkpreview_link_icon).visibility)
+    val background = card.findViewById<View>(R.id.linkpreview_container).background as android.graphics.drawable.ColorDrawable
+    assertEquals(TellomiLinkCardStyle.NEUTRAL_LIGHT, background.color)
+  }
+
+  @Test
+  fun `a card with nothing is the domain as its only line, with the compass`() {
+    val item = bind(FakeMessageRecords.buildMediaMmsMessageRecord(body = url, linkPreviews = listOf(preview(""))), TellomiLinkVisual.Visual(TellomiLinkVisual.Layout.NO_IMAGE, null))
+    val card = item.card
+
+    assertEquals("163.com", card.findViewById<android.widget.TextView>(R.id.linkpreview_title).text.toString())
+    assertEquals(View.GONE, card.findViewById<View>(R.id.linkpreview_site).visibility)
+    assertEquals(View.VISIBLE, card.findViewById<View>(R.id.linkpreview_link_icon).visibility)
   }
 }
