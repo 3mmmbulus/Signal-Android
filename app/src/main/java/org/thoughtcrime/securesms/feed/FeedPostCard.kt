@@ -190,12 +190,14 @@ fun FeedPostCard(
         // 长文在信息流里是卡片（第三节第 25 条）：只露开头几行，点开是阅读页（阅读页在后面的 PR）
         val text = if (card.kind == FeedCard.KIND_ARTICLE && !expanded) card.summary ?: card.text else card.text ?: card.summary
         if (!text.isNullOrBlank()) {
-          Text(
+          // 网址可点（长按出菜单）；点在链接以外照旧打开这条
+          FeedLinkText(
             text = text,
             style = MaterialTheme.typography.bodyLarge,
             color = MaterialTheme.colorScheme.onSurface,
             maxLines = if (card.kind == FeedCard.KIND_ARTICLE && !expanded) ARTICLE_PREVIEW_LINES else Int.MAX_VALUE,
             overflow = TextOverflow.Ellipsis,
+            onTapOutsideLink = onOpen?.let { open -> { open(card) } },
             modifier = Modifier.padding(end = 12.dp)
           )
         }
