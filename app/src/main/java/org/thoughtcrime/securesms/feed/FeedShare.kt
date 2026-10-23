@@ -32,7 +32,7 @@ import org.thoughtcrime.securesms.util.TellomiLinks
  */
 /**
  * 分享结束的回调（I-13 `share` 事件）。默认什么都不做；详情页用 `CompositionLocalProvider` 换成自己的 ViewModel，
- * 所以只有详情页里的分享会报 `share`（和 iOS 一样，列表卡片上的分享不报）。
+ * 动态各栏、搜索、话题、作者主页的列表换成 [FeedListShareEvents.listener]（列表卡片直接分享也报，产品经理 2026-10-23 定）。
  *
  * 算 [FeedShareOutcome.COMPLETED] 的：「复制链接」，和系统分享面板里**选了目标 App**（[FeedShareChooser]，两端口径统一为
  * 「选了分享目标」，产品经理 2026-10-20 定）。发到聊天、分享到快拍拿不到结果，一律不报。

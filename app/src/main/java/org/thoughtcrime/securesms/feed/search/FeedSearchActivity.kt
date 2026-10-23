@@ -9,11 +9,14 @@ import android.content.Context
 import android.content.Intent
 import android.os.Bundle
 import androidx.activity.viewModels
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import org.signal.core.ui.compose.theme.SignalTheme
 import org.thoughtcrime.securesms.PassphraseRequiredActivity
 import org.thoughtcrime.securesms.feed.FeedEventSurface
+import org.thoughtcrime.securesms.feed.FeedListShareEvents
+import org.thoughtcrime.securesms.feed.LocalFeedShareListener
 import org.thoughtcrime.securesms.feed.detail.FeedPostDetailActivity
 import org.thoughtcrime.securesms.feed.profile.FeedProfilePageActivity
 import org.thoughtcrime.securesms.feed.report.FeedReportActivity
@@ -38,32 +41,34 @@ class FeedSearchActivity : PassphraseRequiredActivity() {
     setFeedContent {
       val state by viewModel.state.collectAsStateWithLifecycle()
       SignalTheme {
-        FeedSearchScreen(
-          state = state,
-          onQueryChange = viewModel::onQueryChange,
-          onSubmit = viewModel::submit,
-          onCancel = { finish() },
-          onSelectScope = viewModel::selectScope,
-          onRecentQuery = viewModel::useRecentQuery,
-          onRemoveRecentQuery = viewModel::removeRecentQuery,
-          onClearRecentQueries = viewModel::clearRecentQueries,
-          onClearRecentPeople = viewModel::clearRecentPeople,
-          onOpenPerson = { person ->
-            viewModel.onPersonOpened(person)
-            startActivity(FeedProfilePageActivity.intent(this, person.id))
-          },
-          onOpenPost = { card ->
-            viewModel.onPostOpened()
-            startActivity(FeedPostDetailActivity.intent(this, card, FeedEventSurface.SEARCH))
-          },
-          onLikeClick = viewModel::toggleLike,
-          onLoadMore = viewModel::loadMore,
-          onRetry = viewModel::retry,
-          onSaveClick = viewModel::toggleSave,
-          onRepostClick = viewModel::toggleRepost,
-          onReportClick = { reportLauncher.launch(FeedReportTarget.content(it.id)) },
-          onNoticeShown = viewModel::onNoticeShown
-        )
+        CompositionLocalProvider(LocalFeedShareListener provides FeedListShareEvents.listener(FeedEventSurface.SEARCH)) {
+          FeedSearchScreen(
+            state = state,
+            onQueryChange = viewModel::onQueryChange,
+            onSubmit = viewModel::submit,
+            onCancel = { finish() },
+            onSelectScope = viewModel::selectScope,
+            onRecentQuery = viewModel::useRecentQuery,
+            onRemoveRecentQuery = viewModel::removeRecentQuery,
+            onClearRecentQueries = viewModel::clearRecentQueries,
+            onClearRecentPeople = viewModel::clearRecentPeople,
+            onOpenPerson = { person ->
+              viewModel.onPersonOpened(person)
+              startActivity(FeedProfilePageActivity.intent(this, person.id))
+            },
+            onOpenPost = { card ->
+              viewModel.onPostOpened()
+              startActivity(FeedPostDetailActivity.intent(this, card, FeedEventSurface.SEARCH))
+            },
+            onLikeClick = viewModel::toggleLike,
+            onLoadMore = viewModel::loadMore,
+            onRetry = viewModel::retry,
+            onSaveClick = viewModel::toggleSave,
+            onRepostClick = viewModel::toggleRepost,
+            onReportClick = { reportLauncher.launch(FeedReportTarget.content(it.id)) },
+            onNoticeShown = viewModel::onNoticeShown
+          )
+        }
       }
     }
   }

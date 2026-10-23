@@ -413,36 +413,39 @@ private fun FeedPager(
       val tab = tabs[page]
       LaunchedEffect(tab) { onTabShown(tab) }
 
-      FeedTimeline(
-        tab = tab,
-        tabState = state.tab(tab),
-        showIpRegion = state.config?.ipRegionVisible == true,
-        mediaBaseUrl = state.config?.mediaBaseUrl,
-        editWindowSeconds = (state.config?.limits ?: FeedLimits()).editWindowSeconds,
-        onEditClick = onEditClick,
-        onDeleteClick = onDeleteClick,
-        onRefresh = { onRefresh(tab) },
-        onLoadMore = { onLoadMore(tab) },
-        onLikeClick = onLikeClick,
-        onSaveClick = onSaveClick,
-        onRepostClick = onRepostClick,
-        onNotInterestedClick = onNotInterestedClick,
-        hidden = state.hidden,
-        reasonAsks = state.reasonAsks,
-        onUndoNotInterested = onUndoNotInterested,
-        onNotInterestedReason = onNotInterestedReason,
-        onManagePreferences = onManagePreferences,
-        onBlockAuthorClick = onBlockAuthorClick,
-        onMuteAuthorClick = onMuteAuthorClick,
-        isCurrentPage = pagerState.currentPage == page,
-        onNearTopChanged = chrome::onNearTopChanged,
-        onCardsVisible = { onCardsVisible(tab, it) },
-        onOpenClick = onOpenFromTab?.let { open -> { card: FeedCard -> open(card, tab) } } ?: onOpenClick,
-        onReportClick = onReportClick,
-        onAuthorClick = onAuthorClick,
-        onVote = onVote,
-        onOwnPostAction = onOwnPostAction
-      )
+      // 列表卡片上直接分享也报 share（surface = 这一栏），开关和详情事件同一条
+      CompositionLocalProvider(LocalFeedShareListener provides remember(tab) { FeedListShareEvents.listener(FeedEventSurface.of(tab)) }) {
+        FeedTimeline(
+          tab = tab,
+          tabState = state.tab(tab),
+          showIpRegion = state.config?.ipRegionVisible == true,
+          mediaBaseUrl = state.config?.mediaBaseUrl,
+          editWindowSeconds = (state.config?.limits ?: FeedLimits()).editWindowSeconds,
+          onEditClick = onEditClick,
+          onDeleteClick = onDeleteClick,
+          onRefresh = { onRefresh(tab) },
+          onLoadMore = { onLoadMore(tab) },
+          onLikeClick = onLikeClick,
+          onSaveClick = onSaveClick,
+          onRepostClick = onRepostClick,
+          onNotInterestedClick = onNotInterestedClick,
+          hidden = state.hidden,
+          reasonAsks = state.reasonAsks,
+          onUndoNotInterested = onUndoNotInterested,
+          onNotInterestedReason = onNotInterestedReason,
+          onManagePreferences = onManagePreferences,
+          onBlockAuthorClick = onBlockAuthorClick,
+          onMuteAuthorClick = onMuteAuthorClick,
+          isCurrentPage = pagerState.currentPage == page,
+          onNearTopChanged = chrome::onNearTopChanged,
+          onCardsVisible = { onCardsVisible(tab, it) },
+          onOpenClick = onOpenFromTab?.let { open -> { card: FeedCard -> open(card, tab) } } ?: onOpenClick,
+          onReportClick = onReportClick,
+          onAuthorClick = onAuthorClick,
+          onVote = onVote,
+          onOwnPostAction = onOwnPostAction
+        )
+      }
     }
   }
 }
