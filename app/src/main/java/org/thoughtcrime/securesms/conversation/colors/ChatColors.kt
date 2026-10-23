@@ -199,10 +199,26 @@ class ChatColors(
       } else if (chatColor.singleColor != null) {
         val singleColor = chatColor.singleColor.color
 
-        forColor(id, singleColor)
+        if (isLegacyUltramarine(id, singleColor)) {
+          ChatColorsPalette.Bubbles.ULTRAMARINE.withId(id)
+        } else {
+          forColor(id, singleColor)
+        }
       } else {
         ChatColorsPalette.Bubbles.ULTRAMARINE
       }
+    }
+
+    /** Solid ultramarine that built-in/auto chat colors stored before the DESIGN.md recolor. */
+    const val LEGACY_ULTRAMARINE_SOLID: Int = 0xFF315FF4.toInt()
+
+    /**
+     * True when [color] is the pre-recolor built-in ultramarine solid. Custom colors that happen to be
+     * #315FF4 are left alone.
+     */
+    @JvmStatic
+    fun isLegacyUltramarine(id: Id, @ColorInt color: Int): Boolean {
+      return color == LEGACY_ULTRAMARINE_SOLID && (id == Id.BuiltIn || id == Id.Auto)
     }
 
     @JvmStatic

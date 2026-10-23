@@ -141,6 +141,11 @@ fun ChatStyle.toLocal(importState: ImportState): ChatColors? {
 }
 
 fun ChatColors.toRemote(): ChatStyle.BubbleColorPreset? {
+  val legacySolid = this.singleColor
+  if (legacySolid != null && ChatColors.isLegacyUltramarine(this.id, legacySolid)) {
+    return ChatStyle.BubbleColorPreset.SOLID_ULTRAMARINE
+  }
+
   when (this) {
     // Solids
     ChatColorsPalette.Bubbles.CRIMSON -> return ChatStyle.BubbleColorPreset.SOLID_CRIMSON
