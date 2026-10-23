@@ -227,6 +227,26 @@ class LinkifierTest(private val case: Case) {
       Case("line separator after the url is a normal end", "https://signal.org/abc\u2028next", listOf(web("https://signal.org/abc"))),
       Case("tab after the url is a normal end", "https://signal.org/abc\tnext", listOf(web("https://signal.org/abc"))),
       Case("CRLF after a CJK url is a normal end", "https://signal.org/a/中文\r\n下一行", listOf(web("https://signal.org/a/中文"))),
+
+      // ----- Tellomi (PM 2026-10-24): full-width Chinese punctuation / closing brackets end the link -----
+      Case("cjk full stop after url is excluded", "看 https://x.com/abc。", listOf(web("https://x.com/abc"))),
+      Case("cjk comma mid-text ends the url", "https://x.com/abc，后面", listOf(web("https://x.com/abc"))),
+      Case("cjk enumeration comma ends the url", "https://x.com/a、https://y.com/b", listOf(web("https://x.com/a"), web("https://y.com/b"))),
+      Case("cjk exclamation ends the url", "快看https://x.com/abc！真的", listOf(web("https://x.com/abc"))),
+      Case("cjk question mark ends the url", "这是https://x.com/abc？", listOf(web("https://x.com/abc"))),
+      Case("cjk semicolon ends the url", "https://x.com/abc；下一个", listOf(web("https://x.com/abc"))),
+      Case("cjk colon ends the url", "https://x.com/abc：说明", listOf(web("https://x.com/abc"))),
+      Case("cjk corner bracket wraps the url", "「https://x.com/abc」", listOf(web("https://x.com/abc"))),
+      Case("cjk parenthesis wraps the url", "（https://x.com/abc）", listOf(web("https://x.com/abc"))),
+      Case("cjk lenticular bracket wraps the url", "【https://x.com/abc】", listOf(web("https://x.com/abc"))),
+      Case("cjk punctuation right after the host ends the url", "https://x.com，后面", listOf(web("https://x.com"))),
+      Case("cjk punctuation in query ends the url", "https://x.com/s?q=1，后面", listOf(web("https://x.com/s?q=1"))),
+      Case("several cjk punctuation marks are all excluded", "https://x.com/abc）。", listOf(web("https://x.com/abc"))),
+      Case("chinese path before cjk comma is kept", "https://zh.wikipedia.org/wiki/中国，很好", listOf(web("https://zh.wikipedia.org/wiki/中国"))),
+      Case("www url with space before cjk full stop", "去 www.x.com。", listOf(web("www.x.com", url = "http://www.x.com"))),
+      Case("bare domain before cjk comma", "打开 signal.org，然后", listOf(web("signal.org", url = "http://signal.org"))),
+      Case("ascii comma inside path is still kept", "https://x.com/a,b", listOf(web("https://x.com/a,b"))),
+      Case("ascii paren pair inside path is still kept", "https://en.wikipedia.org/wiki/Foo_(bar)", listOf(web("https://en.wikipedia.org/wiki/Foo_(bar)"))),
       Case("emoji (surrogate pair) in the path is still part of the url", "https://signal.org/a/😀", listOf(web("https://signal.org/a/😀")))
     ).map { arrayOf<Any>(it) }
   }
