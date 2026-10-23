@@ -1308,10 +1308,15 @@ public final class ConversationItem extends RelativeLayout implements BindableCo
     if (card != null && !card.getShowImage()) {
       return false;
     }
-    // Tellomi (card-visual §3.2): the shape rust/links decided decides; without a decision, Signal's own rule.
+    // Tellomi (card-visual §3.2, DESIGN.md §9): the shape rust/links decided decides. A card of rust/links without a decision is
+    // never large (iOS TellomiLinkCardStyle.kind: an image is the icon strip, not guessed large, PM 2026-10-24); only a preview
+    // rust/links has no card for keeps Signal's own rule.
     TellomiLinkVisual.Layout layout = getLinkCardLayout();
     if (layout != null) {
       return layout == TellomiLinkVisual.Layout.LARGE_IMAGE && MessageRecordUtil.hasLinkPreview(messageRecord) && !isContentCondensed() && hasLinkPreviewThumbnail(messageRecord);
+    }
+    if (card != null) {
+      return false;
     }
     return MessageRecordUtil.hasBigImageLinkPreview(messageRecord, context) && !isContentCondensed();
   }
