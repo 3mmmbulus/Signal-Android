@@ -19,9 +19,11 @@ import org.signal.core.ui.compose.theme.SignalTheme
 import org.signal.core.util.AppForegroundObserver
 import org.thoughtcrime.securesms.PassphraseRequiredActivity
 import org.thoughtcrime.securesms.R
+import org.thoughtcrime.securesms.feed.FeedCapabilityStore
 import org.thoughtcrime.securesms.feed.FeedEventSurface
 import org.thoughtcrime.securesms.feed.LocalFeedShareListener
 import org.thoughtcrime.securesms.feed.compose.FeedComposeActivity
+import org.thoughtcrime.securesms.feed.feedDetailEventsEnabled
 import org.thoughtcrime.securesms.feed.net.FeedCard
 import org.thoughtcrime.securesms.feed.net.FeedJson
 import org.thoughtcrime.securesms.feed.profile.FeedProfileActivity
@@ -45,7 +47,7 @@ class FeedPostDetailActivity : PassphraseRequiredActivity() {
         FeedPostDetailViewModel(
           initial = cardFrom(intent) ?: error("missing card"),
           eventSurface = FeedEventSurface.fromApiName(intent.getStringExtra(EXTRA_EVENT_SURFACE)),
-          eventsEnabled = SignalStore.internal.feedDetailEvents
+          eventsEnabled = feedDetailEventsEnabled(SignalStore.internal.feedDetailEvents, FeedCapabilityStore.entries())
         )
       }
     }

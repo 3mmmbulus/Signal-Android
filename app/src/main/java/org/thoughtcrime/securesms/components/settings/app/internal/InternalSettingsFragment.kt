@@ -635,7 +635,7 @@ class InternalSettingsFragment : DSLSettingsFragment(R.string.preferences__inter
 
       switchPref(
         title = DSLSettingsText.from("Feed: detail events (open, dwell, quick exit, share)"),
-        summary = DSLSettingsText.from("Report open / dwell (>= 30 s) / quick_exit (<= 3 s) from the post detail page, and share after Copy link. Default off; impressions are unaffected."),
+        summary = DSLSettingsText.from("Report open / dwell (>= 30 s) / quick_exit (<= 3 s) from the post detail page, and share after Copy link or picking an app. Only when the engine advertises events. Default off; impressions are unaffected."),
         isChecked = state.feedDetailEvents,
         onClick = {
           viewModel.setFeedDetailEvents(!state.feedDetailEvents)
