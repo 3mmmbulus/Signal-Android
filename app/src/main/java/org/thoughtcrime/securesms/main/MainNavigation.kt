@@ -74,6 +74,8 @@ private fun EntryProviderScope<NavKey>.registerMainScreenRoutes() {
       MainListRoute.Archive -> ArchiveListPane(modifier = Modifier.fillMaxSize())
       MainListRoute.Calls -> CallsListPane(modifier = Modifier.fillMaxSize())
       MainListRoute.Stories -> StoriesListPane(modifier = Modifier.fillMaxSize())
+      MainListRoute.Friends -> TellomiFriendsListPane(modifier = Modifier.fillMaxSize())
+      MainListRoute.Me -> TellomiMeListPane(modifier = Modifier.fillMaxSize())
     }
   }
 }

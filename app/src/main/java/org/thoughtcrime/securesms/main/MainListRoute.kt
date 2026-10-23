@@ -44,6 +44,22 @@ enum class MainListRoute(
   Stories(
     label = R.string.ConversationListTabs__stories,
     icon = R.raw.stories_28
+  ),
+
+  /**
+   * Tellomi（tellomi/tellomi#1355、#1360）：好友（联系人列表）。叫「好友」不叫「联系人」。图标是静态矢量图，[icon] 为 0。
+   */
+  Friends(
+    label = R.string.ConversationListTabs__tellomi_friends,
+    icon = 0
+  ),
+
+  /**
+   * Tellomi（tellomi/tellomi#1355）：我（自己的资料和设置入口）。图标是静态矢量图，[icon] 为 0。
+   */
+  Me(
+    label = R.string.ConversationListTabs__tellomi_me,
+    icon = 0
   );
 
   val isChatsTab: Boolean

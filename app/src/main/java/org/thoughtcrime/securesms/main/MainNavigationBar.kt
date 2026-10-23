@@ -59,6 +59,7 @@ import org.signal.core.ui.compose.DayNightPreviews
 import org.signal.core.ui.compose.Previews
 import org.signal.core.ui.compose.theme.SignalTheme
 import org.thoughtcrime.securesms.R
+import org.signal.core.ui.R as CoreUiR
 
 private val LOTTIE_SIZE = 28.dp
 
@@ -83,6 +84,7 @@ fun MainNavigationBar(
         MainListRoute.Chats -> state.chatsCount
         MainListRoute.Calls -> state.callsCount
         MainListRoute.Stories -> state.storiesCount
+        MainListRoute.Friends, MainListRoute.Me -> 0
       }
 
       val selected = state.currentListLocation == destination
@@ -235,6 +237,7 @@ private fun BoxScope.NavigationRailCountIndicator(
       MainListRoute.Chats -> state.chatsCount
       MainListRoute.Calls -> state.callsCount
       MainListRoute.Stories -> state.storiesCount
+      MainListRoute.Friends, MainListRoute.Me -> 0
     }
   }
 
@@ -269,6 +272,11 @@ private fun NavigationDestinationIcon(
     return
   }
 
+  if (destination == MainListRoute.Friends || destination == MainListRoute.Me) {
+    TellomiStaticDestinationIcon(destination = destination, selected = selected)
+    return
+  }
+
   val dynamicProperties = rememberLottieDynamicProperties(
     rememberLottieDynamicProperty(
       property = LottieProperty.COLOR_FILTER,
@@ -300,6 +308,21 @@ private fun NavigationDestinationIcon(
 private fun TellomiFeedDestinationIcon(selected: Boolean) {
   Icon(
     imageVector = ImageVector.vectorResource(if (selected) R.drawable.tellomi_feed_fill_28 else R.drawable.tellomi_feed_28),
+    contentDescription = null,
+    tint = MaterialTheme.colorScheme.onSurface,
+    modifier = Modifier.size(LOTTIE_SIZE)
+  )
+}
+
+/**
+ * Tellomi（tellomi/tellomi#1355）：「好友」「我」的底栏图标（iOS 用 SF Symbols `person.2` / `person.crop.circle`，
+ * 这里用 Signal 自带的同类图标）。没有实心版，选中状态靠底栏自己的指示块表示。
+ */
+@Composable
+private fun TellomiStaticDestinationIcon(destination: MainListRoute, selected: Boolean) {
+  val icon = if (destination == MainListRoute.Friends) R.drawable.symbol_group_24 else CoreUiR.drawable.symbol_person_circle_24
+  Icon(
+    imageVector = ImageVector.vectorResource(icon),
     contentDescription = null,
     tint = MaterialTheme.colorScheme.onSurface,
     modifier = Modifier.size(LOTTIE_SIZE)

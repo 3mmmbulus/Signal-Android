@@ -407,6 +407,8 @@ class MainActivity :
           MainListRoute.Archive -> toolbarViewModel.presentToolbarForConversationListArchiveFragment()
           MainListRoute.Calls -> toolbarViewModel.presentToolbarForCallLogFragment()
           MainListRoute.Stories -> toolbarViewModel.presentToolbarForStoriesLandingFragment()
+          MainListRoute.Friends -> toolbarViewModel.presentToolbarForTellomiTab(MainListRoute.Friends)
+          MainListRoute.Me -> toolbarViewModel.presentToolbarForTellomiTab(MainListRoute.Me)
         }
       }
 
@@ -741,6 +743,7 @@ class MainActivity :
     val startingTabEnabled = when (startingTab) {
       MainListRoute.Stories -> Stories.isFeatureEnabled()
       MainListRoute.Feed -> TellomiFeed.isTabEnabled()
+      MainListRoute.Friends, MainListRoute.Me -> TellomiFeed.isFriendsAndMeTabsEnabled()
       else -> true
     }
 
