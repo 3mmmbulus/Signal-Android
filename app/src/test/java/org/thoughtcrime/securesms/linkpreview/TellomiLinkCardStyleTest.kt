@@ -54,10 +54,10 @@ class TellomiLinkCardStyleTest {
   }
 
   @Test
-  fun `no layout decision without an image is the title strip or the domain strip, with the compass unless claimed`() {
+  fun `no layout decision without an image is the title strip without a compass, or the domain strip with one`() {
     assertEquals(Kind.TEXT_STRIP, kind(null, hasImage = false, hasTitle = true))
     assertEquals(Kind.DOMAIN_STRIP, kind(null, hasImage = false, hasTitle = false))
-    assertTrue(TellomiLinkCardStyle.showsCompass(kind(null, hasImage = false, hasTitle = true), isClaimed = false))
+    assertFalse(TellomiLinkCardStyle.showsCompass(kind(null, hasImage = false, hasTitle = true), isClaimed = false))
     assertFalse(TellomiLinkCardStyle.showsCompass(kind(null, hasImage = false, hasTitle = true), isClaimed = true))
     assertTrue(TellomiLinkCardStyle.showsCompass(kind(null, hasImage = false, hasTitle = false), isClaimed = true))
   }
@@ -72,10 +72,10 @@ class TellomiLinkCardStyleTest {
   }
 
   @Test
-  fun `the compass is only for a card with nothing, never for a claimed card with a title`() {
+  fun `the compass is only for a card with nothing, never for a title strip, claimed or not`() {
     assertFalse(TellomiLinkCardStyle.showsCompass(Kind.ICON_STRIP, isClaimed = true))
     assertFalse(TellomiLinkCardStyle.showsCompass(Kind.TEXT_STRIP, isClaimed = true))
-    assertTrue(TellomiLinkCardStyle.showsCompass(Kind.TEXT_STRIP, isClaimed = false))
+    assertFalse(TellomiLinkCardStyle.showsCompass(Kind.TEXT_STRIP, isClaimed = false))
     assertTrue(TellomiLinkCardStyle.showsCompass(Kind.DOMAIN_STRIP, isClaimed = false))
     assertTrue(TellomiLinkCardStyle.showsCompass(Kind.DOMAIN_STRIP, isClaimed = true))
     assertFalse(TellomiLinkCardStyle.showsCompass(Kind.ICON_STRIP, isClaimed = false))

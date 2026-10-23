@@ -1353,7 +1353,7 @@ public final class ConversationItem extends RelativeLayout implements BindableCo
     TellomiLinkCard    card    = getLinkCard();
     TellomiLinkDisplay display = getLinkDisplay(linkPreview);
     // No layout decision (the bridge failed) gets the style too, as on iOS (PM 2026-10-24): an image is the icon strip, never
-    // guessed large; without one, the title strip (compass unless claimed) or the domain strip.
+    // guessed large; without one, the title strip (no compass) or the domain strip (compass).
     if (card == null || display == null || getFirstPartyDisplay() != null) {
       return;
     }

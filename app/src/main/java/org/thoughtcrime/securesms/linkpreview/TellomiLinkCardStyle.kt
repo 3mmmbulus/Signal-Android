@@ -14,7 +14,7 @@ import java.net.URI
  * - [Kind.LARGE_IMAGE]: a large image on top, the title and the domain under it, neutral grey;
  * - [Kind.ICON_STRIP]: a small image (site icon, square picture, a brand shell's bundled icon): one strip, the title (bold) and the
  *   domain (grey) on the left, the icon on the right; the strip takes the icon's colours (rust/links `tint`), neutral grey without;
- * - [Kind.TEXT_STRIP]: no image, a title: neutral grey strip, title and domain, a compass on the right (not for a claimed-tier card);
+ * - [Kind.TEXT_STRIP]: no image, a title: neutral grey strip, title and domain, nothing on the right;
  * - [Kind.DOMAIN_STRIP]: nothing was fetched: neutral grey strip, the domain only, a compass on the right.
  *
  * Large or small is still rust/links' `layout`. No sub line (the sender's description, kind names such as 「网页」) in any of them.
@@ -86,15 +86,13 @@ object TellomiLinkCardStyle {
   }
 
   /**
-   * Whether the strip has the compass on the right (PM 2026-10-19 evening): only a card with nothing at all. An icon strip has
-   * its icon; a claimed-tier card without an image is its title (or platform name) and domain with nothing on the right.
+   * Whether the strip has the compass on the right (PM, since TestFlight 31; confirmed 2026-10-24): only a card with nothing at
+   * all, the grey domain strip. An icon strip has its icon; a title strip is its title and domain with nothing on the right,
+   * claimed or not. [isClaimed] no longer changes the answer; it is kept so callers say what they know.
    */
   @JvmStatic
-  fun showsCompass(kind: Kind, isClaimed: Boolean): Boolean = when (kind) {
-    Kind.LARGE_IMAGE, Kind.ICON_STRIP -> false
-    Kind.TEXT_STRIP -> !isClaimed
-    Kind.DOMAIN_STRIP -> true
-  }
+  @Suppress("UNUSED_PARAMETER")
+  fun showsCompass(kind: Kind, isClaimed: Boolean): Boolean = kind == Kind.DOMAIN_STRIP
 
   /** Only an icon strip takes colours from its image; every other card is neutral grey (a large image card too). */
   @JvmStatic

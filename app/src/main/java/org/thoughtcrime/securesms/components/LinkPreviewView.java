@@ -578,7 +578,7 @@ public class LinkPreviewView extends FrameLayout {
    *   <li>{@code LARGE_IMAGE}: the bar under the image (drawn by the bubble's media view): title and domain, neutral grey;</li>
    *   <li>{@code ICON_STRIP}: title and domain on the left, the image as a 36dp square with 8dp corners on the right, centred;
    *       the colours the tint gave (neutral grey without one);</li>
-   *   <li>{@code TEXT_STRIP}: neutral grey, title and domain, the compass on the right when {@code showCompass};</li>
+   *   <li>{@code TEXT_STRIP}: neutral grey, title and domain, nothing on the right;</li>
    *   <li>{@code DOMAIN_STRIP}: neutral grey, the domain as the only line (title size, regular weight), the compass on the right.</li>
    * </ul>
    *
