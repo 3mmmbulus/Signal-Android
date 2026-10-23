@@ -64,9 +64,9 @@ import org.signal.core.ui.compose.Dialogs
 import org.signal.core.ui.compose.Scaffolds
 import org.signal.core.ui.compose.Snackbars
 import org.thoughtcrime.securesms.R
-import org.thoughtcrime.securesms.feed.FeedLinkText
 import org.thoughtcrime.securesms.feed.FeedAvatar
 import org.thoughtcrime.securesms.feed.FeedInsightsDialog
+import org.thoughtcrime.securesms.feed.FeedLinkText
 import org.thoughtcrime.securesms.feed.FeedOwnPostAction
 import org.thoughtcrime.securesms.feed.FeedPostCard
 import org.thoughtcrime.securesms.feed.LocalFeedEntries
