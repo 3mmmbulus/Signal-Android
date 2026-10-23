@@ -6901,6 +6901,10 @@
     <!-- String for counts above 99 in conversation list tabs -->
     <!-- Tellomi (M11): label for the social feed tab in the home screen navigation bar -->
     <string name="ConversationListTabs__tellomi_feed">Feed</string>
+    <!-- Tellomi (tellomi/tellomi#1355, #1360): label for the Friends (contact list) tab in the home bottom bar. Must be "Friends", not "Contacts". -->
+    <string name="ConversationListTabs__tellomi_friends">Friends</string>
+    <!-- Tellomi (tellomi/tellomi#1355): label for the Me (profile and settings) tab in the home bottom bar -->
+    <string name="ConversationListTabs__tellomi_me">Me</string>
     <!-- Tellomi (M11 feed): the two tabs at the top of the feed, and what each shows while it has no posts -->
     <string name="TellomiFeed__tab_recommend">For you</string>
     <string name="TellomiFeed__tab_following">Following</string>

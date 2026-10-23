@@ -101,6 +101,11 @@ class MainToolbarViewModel : ViewModel() {
     setToolbarMode(MainToolbarMode.FULL, destination = MainListRoute.Feed)
   }
 
+  /** Tellomi（tellomi/tellomi#1355）：「好友」「我」用完整顶栏，标题是标签名。 */
+  fun presentToolbarForTellomiTab(destination: MainListRoute) {
+    setToolbarMode(MainToolbarMode.FULL, destination = destination)
+  }
+
   fun presentToolbarForCallLogFragment() {
     setToolbarMode(MainToolbarMode.FULL, destination = MainListRoute.Calls)
   }

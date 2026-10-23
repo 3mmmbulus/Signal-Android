@@ -6658,6 +6658,10 @@
     <string name="ConversationListTabs__stories">快拍</string>
     <!-- String for counts above 99 in conversation list tabs -->
     <string name="ConversationListTabs__tellomi_feed">動態</string>
+    <!-- Tellomi (tellomi/tellomi#1355, #1360): label for the Friends (contact list) tab in the home bottom bar. Must be "Friends", not "Contacts". -->
+    <string name="ConversationListTabs__tellomi_friends">好友</string>
+    <!-- Tellomi (tellomi/tellomi#1355): label for the Me (profile and settings) tab in the home bottom bar -->
+    <string name="ConversationListTabs__tellomi_me">我</string>
     <string name="TellomiFeed__tab_recommend">推薦</string>
     <string name="TellomiFeed__tab_following">關注</string>
     <string name="TellomiFeed__recommend_empty_title">還沒有內容</string>

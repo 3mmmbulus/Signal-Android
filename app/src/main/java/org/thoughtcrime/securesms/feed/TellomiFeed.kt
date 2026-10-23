@@ -28,6 +28,15 @@ object TellomiFeed {
   }
 
   /**
+   * Tellomi（tellomi/tellomi#1355）：底栏「好友」「我」。和 iOS 一样暂时跟「动态」同一个条件（iOS 是 TestFlight 动态预览）：
+   * 动态标签出现时底栏换成「动态、聊天、通话、好友、我」，没有动态时底栏和以前一样。以后要单独放开，只改这里。
+   */
+  @JvmStatic
+  fun isFriendsAndMeTabsEnabled(): Boolean {
+    return isTabEnabled()
+  }
+
+  /**
    * 纯函数版本，单测用。引擎说不能看（不在内测名单、紧急开关关了）时隐藏入口，不显示空列表（契约 1.1）。
    * [feedDeployed]：`GET /v1/capabilities` 里有 `feed`（契约 3.0）；拿不到按没部署，入口隐藏。内部用户强制打开不看它。
    */

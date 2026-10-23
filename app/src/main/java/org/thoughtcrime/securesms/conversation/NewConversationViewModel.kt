@@ -138,6 +138,11 @@ class NewConversationViewModel : ViewModel() {
     internalUiState.update { it.copy(userMessage = Info.UserAlreadyInAnotherCall) }
   }
 
+  /** Tellomi：底栏「好友」页打开聊天后清掉，免得回到这一页又打开一次（新建会话页打开后直接关掉，用不到）。 */
+  fun clearPendingDestination() {
+    internalUiState.update { it.copy(pendingDestination = null) }
+  }
+
   fun clearShouldResetContactsList() {
     internalUiState.update { it.copy(shouldResetContactsList = false) }
   }

@@ -67,7 +67,8 @@ fun MainFloatingActionButtons(
   modifier: Modifier = Modifier,
   navigationType: NavigationType = NavigationType.rememberNavigationType()
 ) {
-  if (destination == MainListRoute.Feed) {
+  if (destination == MainListRoute.Feed || destination == MainListRoute.Friends || destination == MainListRoute.Me) {
+    // Tellomi（#1355）：「好友」「我」没有主 FAB（和 iOS 一样）。
     // Tellomi（M11 动态）：动态页只有右下角自己的发布按钮（dynamic-feed.md 第三节第 45 条），由 FeedListPane 画，主 FAB 不显示。
     return
   }
@@ -184,6 +185,7 @@ private fun PrimaryActionButton(
       MainListRoute.Stories -> {
         { onCameraClick(destination) }
       }
+      MainListRoute.Friends, MainListRoute.Me -> onNewChatClick
     }
   }
 
@@ -198,6 +200,7 @@ private fun PrimaryActionButton(
           MainListRoute.Chats -> CoreUiR.drawable.symbol_edit_24 to R.string.conversation_list_fragment__fab_content_description
           MainListRoute.Calls -> R.drawable.symbol_phone_plus_24 to R.string.CallLogFragment__start_a_new_call
           MainListRoute.Stories -> CoreUiR.drawable.symbol_camera_24 to R.string.conversation_list_fragment__open_camera_description
+          MainListRoute.Friends, MainListRoute.Me -> CoreUiR.drawable.symbol_edit_24 to R.string.conversation_list_fragment__fab_content_description
         }
 
         Icon(

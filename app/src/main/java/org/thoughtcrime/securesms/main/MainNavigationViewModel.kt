@@ -60,6 +60,8 @@ class MainNavigationViewModel(
     private const val CALLS_BACK_STACK_KEY = "calls_back_stack_v2"
     private const val STORIES_BACK_STACK_KEY = "stories_back_stack_v2"
     private const val FEED_BACK_STACK_KEY = "tellomi_feed_back_stack"
+    private const val FRIENDS_BACK_STACK_KEY = "tellomi_friends_back_stack"
+    private const val ME_BACK_STACK_KEY = "tellomi_me_back_stack"
   }
 
   class Factory(
@@ -87,7 +89,9 @@ class MainNavigationViewModel(
       MainListRoute.Feed to FEED_BACK_STACK_KEY,
       MainListRoute.Chats to CHATS_BACK_STACK_KEY,
       MainListRoute.Calls to CALLS_BACK_STACK_KEY,
-      MainListRoute.Stories to STORIES_BACK_STACK_KEY
+      MainListRoute.Stories to STORIES_BACK_STACK_KEY,
+      MainListRoute.Friends to FRIENDS_BACK_STACK_KEY,
+      MainListRoute.Me to ME_BACK_STACK_KEY
     ),
     initialRoot = initialListLocation.tab
   )
@@ -290,13 +294,11 @@ class MainNavigationViewModel(
     internalMainNavigationBarState.update {
       it.copy(
         compact = SignalStore.settings.useCompactNavigationBar,
-        destinations = MainNavigationBarState.ALL_DESTINATIONS.filter { destination ->
-          when (destination) {
-            MainListRoute.Stories -> Stories.isFeatureEnabled()
-            MainListRoute.Feed -> TellomiFeed.isTabEnabled()
-            else -> true
-          }
-        }
+        destinations = MainNavigationBarState.tabsToShow(
+          areStoriesEnabled = Stories.isFeatureEnabled(),
+          isFeedEnabled = TellomiFeed.isTabEnabled(),
+          showsFriendsAndMe = TellomiFeed.isFriendsAndMeTabsEnabled()
+        )
       )
     }
   }
