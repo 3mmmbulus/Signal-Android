@@ -23,5 +23,5 @@ val LocalChatColorProvider = compositionLocalOf<@Composable (Long) -> State<Colo
   { remember(it) { mutableStateOf(UnboundChatColor) } }
 }
 
-/** Stand-in used in previews and anywhere else the provider is left unbound. Matches the default (ultramarine) bubble. */
-private val UnboundChatColor = Color(0xFF315FF4)
+/** Stand-in used in previews and anywhere else the provider is left unbound. Matches the default (ultramarine) bubble collapsed to one color (gradient end #2C6BED). */
+private val UnboundChatColor = Color(0xFF2C6BED)
