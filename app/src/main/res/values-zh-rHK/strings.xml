@@ -6701,6 +6701,9 @@
     <string name="TellomiFeed__stories_off">快拍已關閉，可在「設定 > 快拍」裡開啟</string>
     <string name="TellomiFeed__quote_deleted">原動態已被作者刪除</string>
     <string name="TellomiFeed__copy_link">複製連結</string>
+    <string name="TellomiFeed__text_link_open">打開連結</string>
+    <string name="TellomiFeed__text_link_copy">複製</string>
+    <string name="TellomiFeed__text_link_cancel">取消</string>
     <string name="TellomiFeed__share_other_apps">分享到其他 App</string>
     <string name="TellomiFeed__link_copied">連結已複製</string>
     <string name="TellomiFeed__pin">置頂</string>

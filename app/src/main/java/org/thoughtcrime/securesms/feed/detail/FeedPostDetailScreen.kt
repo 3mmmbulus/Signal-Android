@@ -64,6 +64,7 @@ import org.signal.core.ui.compose.Dialogs
 import org.signal.core.ui.compose.Scaffolds
 import org.signal.core.ui.compose.Snackbars
 import org.thoughtcrime.securesms.R
+import org.thoughtcrime.securesms.feed.FeedLinkText
 import org.thoughtcrime.securesms.feed.FeedAvatar
 import org.thoughtcrime.securesms.feed.FeedInsightsDialog
 import org.thoughtcrime.securesms.feed.FeedOwnPostAction
@@ -521,7 +522,7 @@ private fun CommentBubble(
           val voice = comment.media.firstOrNull { it.isAudio }
           // 语音评论的文字可以空：空的时候只留「@某人」，两样都没有就不占一行
           if (voice == null || replyToName != null || !comment.text.isNullOrBlank()) {
-            Text(
+            FeedLinkText(
               text = buildAnnotatedString {
                 if (replyToName != null) {
                   withStyle(SpanStyle(color = primary)) { append("@$replyToName ") }
@@ -529,7 +530,8 @@ private fun CommentBubble(
                 append(comment.text.orEmpty())
               },
               style = MaterialTheme.typography.bodyMedium,
-              color = MaterialTheme.colorScheme.onSurface
+              color = MaterialTheme.colorScheme.onSurface,
+              onLongPressOutsideLink = if (reportable) ({ menuOpen = true }) else null
             )
           }
           if (voice != null) {

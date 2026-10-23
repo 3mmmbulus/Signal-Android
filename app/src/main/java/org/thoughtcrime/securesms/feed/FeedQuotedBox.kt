@@ -68,11 +68,13 @@ fun FeedQuotedBox(
           )
         }
         if (!text.isNullOrBlank()) {
-          Text(
+          // 点链接打开链接，点别处仍是打开被引用的那条；「已删除 / 不可见」的灰字不走这里，不会变成链接
+          FeedLinkText(
             text = text,
             style = MaterialTheme.typography.bodyMedium,
             maxLines = QUOTED_LINES,
-            overflow = TextOverflow.Ellipsis
+            overflow = TextOverflow.Ellipsis,
+            onTapOutsideLink = onClick
           )
         }
       }
