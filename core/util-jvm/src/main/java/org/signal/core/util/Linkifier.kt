@@ -24,6 +24,9 @@ object Linkifier {
     '.', ',', '!', '?', ';', ':', '\'', '"', '`', '|', '<', '>'
   )
 
+  /** Tellomi: Chinese sentence punctuation and closing brackets / quotes; never part of a link (see [URL_TERMINATOR]). */
+  private const val CJK_SENTENCE_PUNCTUATION = "，。！？；：、）」』】》〉”’"
+
   /** Closing brackets that are trimmed only if the URL has no matching opener inside */
   private val CLOSING_BRACKETS = mapOf(')' to '(', ']' to '[', '}' to '{')
 
@@ -36,7 +39,11 @@ object Linkifier {
    * never runs on through one (e.g. U+00AD soft hyphen, U+180E, U+FFF9–U+FFFB, U+E0001 tags).
    */
   private const val URL_TERMINATOR = "\\s\\u0085\\u00A0\\u1680\\u2000-\\u200F\\u2028\\u2029\\u202A-\\u202F\\u205F\\u2060-\\u2064\\u2066-\\u2069\\u3000\\uFEFF" +
-    "\\p{Cc}\\p{Cf}\\p{Co}\\p{Cs}\\p{Cn}\\p{Zl}\\p{Zp}<>\"`|\\\\"
+    "\\p{Cc}\\p{Cf}\\p{Co}\\p{Cs}\\p{Cn}\\p{Zl}\\p{Zp}<>\"`|\\\\" +
+    // Tellomi (PM 2026-10-24): full-width Chinese punctuation and closing brackets / quotes always end a link, at the end
+    // or in the middle ("https://x.com/abc，后面" is "https://x.com/abc"), so chat and 动态 never pull them into the tap
+    // target. Same table as [CJK_SENTENCE_PUNCTUATION], `LinkUtil.CJK_URL_TERMINATORS` and iOS `LinkValidator.isIriTerminator`.
+    CJK_SENTENCE_PUNCTUATION
 
   /**
    * Characters we treat as definitely-not-part-of-a-URL when extending past the host. Commas and
@@ -232,8 +239,6 @@ object Linkifier {
     }
     return end
   }
-
-  private const val CJK_SENTENCE_PUNCTUATION = "，。！？；：、）」』】》〉”’"
 
   private fun countChar(text: CharSequence, start: Int, end: Int, target: Char): Int {
     var count = 0
