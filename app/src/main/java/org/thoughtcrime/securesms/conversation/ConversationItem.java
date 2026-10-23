@@ -1341,14 +1341,15 @@ public final class ConversationItem extends RelativeLayout implements BindableCo
 
   /**
    * Tellomi (PM 2026-10-19, DESIGN.md §9): a third-party card in one of the four styles of {@link TellomiLinkCardStyle}, the
-   * way iOS {@code TellomiLinkPreviewCardState.cardStyle} picks it. Not for first-party cards, nor without a rust/links card
-   * or its layout (call links, group invites and Signal's own previews keep their look).
+   * way iOS {@code TellomiLinkPreviewCardState.cardStyle} picks it, with or without a layout decision. Not for first-party
+   * cards, nor without a rust/links card (call links, group invites and Signal's own previews keep their look).
    */
   private void applyLinkCardStyle(@NonNull LinkPreview linkPreview, boolean hasImage) {
     TellomiLinkCard    card    = getLinkCard();
     TellomiLinkDisplay display = getLinkDisplay(linkPreview);
-    // No layout decision (the bridge failed): the card is drawn the way it was before layout existed, as everywhere else here.
-    if (card == null || display == null || getFirstPartyDisplay() != null || getLinkCardLayout() == null) {
+    // No layout decision (the bridge failed) gets the style too, as on iOS (PM 2026-10-24): an image is the icon strip, never
+    // guessed large; without one, the title strip (compass unless claimed) or the domain strip.
+    if (card == null || display == null || getFirstPartyDisplay() != null) {
       return;
     }
     boolean plainLink = display.getPlainLink();

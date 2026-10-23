@@ -264,10 +264,26 @@ class TellomiLinkCardLayoutTest {
   }
 
   @Test
-  fun `a card the data layer has not decided on has no link icon`() {
+  fun `a card the data layer has not decided on is the title strip with the compass, as on iOS`() {
     val item = bind(FakeMessageRecords.buildMediaMmsMessageRecord(body = url, linkPreviews = listOf(preview("网易新闻"))), TellomiLinkVisual.Visual.NONE)
+    val card = item.card
 
-    assertEquals(View.GONE, item.card.findViewById<View>(R.id.linkpreview_link_icon).visibility)
+    assertEquals("网易新闻", card.findViewById<android.widget.TextView>(R.id.linkpreview_title).text.toString())
+    assertEquals("163.com", card.findViewById<android.widget.TextView>(R.id.linkpreview_site).text.toString())
+    assertEquals(View.GONE, card.findViewById<View>(R.id.linkpreview_description).visibility)
+    assertEquals(View.VISIBLE, card.findViewById<View>(R.id.linkpreview_link_icon).visibility)
+    val background = card.findViewById<View>(R.id.linkpreview_container).background as android.graphics.drawable.ColorDrawable
+    assertEquals(TellomiLinkCardStyle.NEUTRAL_LIGHT, background.color)
+  }
+
+  @Test
+  fun `a card the data layer has not decided on, with nothing, is the domain strip with the compass`() {
+    val item = bind(FakeMessageRecords.buildMediaMmsMessageRecord(body = url, linkPreviews = listOf(preview(""))), TellomiLinkVisual.Visual.NONE)
+    val card = item.card
+
+    assertEquals("163.com", card.findViewById<android.widget.TextView>(R.id.linkpreview_title).text.toString())
+    assertEquals(View.GONE, card.findViewById<View>(R.id.linkpreview_site).visibility)
+    assertEquals(View.VISIBLE, card.findViewById<View>(R.id.linkpreview_link_icon).visibility)
   }
 
   // ---- DESIGN.md §9 (PM 2026-10-19, after Apple Messages): the strips ----

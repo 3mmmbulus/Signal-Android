@@ -54,6 +54,15 @@ class TellomiLinkCardStyleTest {
   }
 
   @Test
+  fun `no layout decision without an image is the title strip or the domain strip, with the compass unless claimed`() {
+    assertEquals(Kind.TEXT_STRIP, kind(null, hasImage = false, hasTitle = true))
+    assertEquals(Kind.DOMAIN_STRIP, kind(null, hasImage = false, hasTitle = false))
+    assertTrue(TellomiLinkCardStyle.showsCompass(kind(null, hasImage = false, hasTitle = true), isClaimed = false))
+    assertFalse(TellomiLinkCardStyle.showsCompass(kind(null, hasImage = false, hasTitle = true), isClaimed = true))
+    assertTrue(TellomiLinkCardStyle.showsCompass(kind(null, hasImage = false, hasTitle = false), isClaimed = true))
+  }
+
+  @Test
   fun `a plain link is always the domain strip`() {
     for (layout in listOf(Layout.LARGE_IMAGE, Layout.ICON, Layout.NO_IMAGE, null)) {
       for (hasImage in listOf(true, false)) {
