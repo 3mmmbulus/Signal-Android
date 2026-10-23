@@ -39,6 +39,17 @@ class FeedTextLinksTest {
   }
 
   @Test
+  fun `trailing chinese punctuation and closing brackets are not part of the link`() {
+    listOf("。", "，", "、", "！", "？", "；", "：", "」", "】", "）").forEach { mark ->
+      val text = "看 https://tellomi.app/abc${mark}后面的字"
+      val link = FeedTextLinks.find(text).single()
+      assertEquals(mark, "https://tellomi.app/abc", link.url)
+      assertEquals(mark, "https://tellomi.app/abc", text.substring(link.start, link.end))
+    }
+    assertEquals(listOf("https://tellomi.app"), FeedTextLinks.find("「tellomi.app」，好用。").map { it.url })
+  }
+
+  @Test
   fun `email and phone are not links`() {
     assertTrue(FeedTextLinks.find("写信 someone@tellomi.app 或打 +86 138 0000 0000").isEmpty())
     assertTrue(FeedTextLinks.find("mailto:someone@tellomi.app tel:13800000000").isEmpty())
