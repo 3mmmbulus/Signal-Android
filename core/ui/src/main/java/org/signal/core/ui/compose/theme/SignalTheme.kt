@@ -81,24 +81,24 @@ private val typography = Typography().run {
 }
 
 private val lightColorScheme = lightColorScheme(
-  primary = Color(0xFF2C58C3),
+  primary = Color(0xFF2267F5),
   primaryContainer = Color(0xFFD2DFFB),
   secondary = Color(0xFF586071),
   secondaryContainer = Color(0xFFDCE5F9),
-  surface = Color(0xFFFBFCFF),
+  surface = Color(0xFFFFFFFF),
   surfaceContainerLow = Color(0xFFF2F5F9),
-  surfaceContainerHighest = Color(0xFFE7EBF3),
-  surfaceVariant = Color(0xFFE7EBF3),
-  background = Color(0xFFFBFCFF),
+  surfaceContainerHighest = Color(0xFFEFEFF0),
+  surfaceVariant = Color(0xFFEFEFF0),
+  background = Color(0xFFFFFFFF),
   error = Color(0xFFBA1B1B),
   errorContainer = Color(0xFFFFDAD4),
   onPrimary = Color(0xFFFFFFFF),
   onPrimaryContainer = Color(0xFF051845),
   onSecondary = Color(0xFFFFFFFF),
   onSecondaryContainer = Color(0xFF151D2C),
-  onSurface = Color(0xFF1B1B1D),
-  onSurfaceVariant = Color(0xFF545863),
-  onBackground = Color(0xFF1B1D1D),
+  onSurface = Color(0xFF000000),
+  onSurfaceVariant = Color(0xFF737378),
+  onBackground = Color(0xFF000000),
   outline = Color(0xFF808389)
 )
 
@@ -165,24 +165,24 @@ private val darkExtendedColors = ExtendedColors(
 )
 
 private val darkColorScheme = darkColorScheme(
-  primary = Color(0xFFB6C5FA),
+  primary = Color(0xFF2D70FA),
   primaryContainer = Color(0xFF464B5C),
   secondary = Color(0xFFC1C6DD),
   secondaryContainer = Color(0xFF414659),
-  surface = Color(0xFF1B1C1F),
+  surface = Color(0xFF000000),
   surfaceContainerLow = Color(0xFF23242A),
-  surfaceContainerHighest = Color(0xFF303133),
-  surfaceVariant = Color(0xFF303133),
-  background = Color(0xFF1B1C1F),
+  surfaceContainerHighest = Color(0xFF1C1C1E),
+  surfaceVariant = Color(0xFF1C1C1E),
+  background = Color(0xFF000000),
   error = Color(0xFFFFB4A9),
   errorContainer = Color(0xFF930006),
-  onPrimary = Color(0xFF1E2438),
+  onPrimary = Color(0xFFFFFFFF),
   onPrimaryContainer = Color(0xFFDBE1FC),
   onSecondary = Color(0xFF2A3042),
   onSecondaryContainer = Color(0xFFDCE1F9),
-  onSurface = Color(0xFFE2E1E5),
-  onSurfaceVariant = Color(0xFFBEBFC5),
-  onBackground = Color(0xFFE2E1E5),
+  onSurface = Color(0xFFFFFFFF),
+  onSurfaceVariant = Color(0xFFA5A5AC),
+  onBackground = Color(0xFFFFFFFF),
   outline = Color(0xFF5C5E65)
 )
 

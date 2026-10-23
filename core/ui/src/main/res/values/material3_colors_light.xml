@@ -1,23 +1,23 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <color name="signal_light_colorPrimary">#2C58C3</color>
+    <color name="signal_light_colorPrimary">#2267F5</color>
     <color name="signal_light_colorPrimaryContainer">#D2DFFB</color>
     <color name="signal_light_colorSecondary">#586071</color>
     <color name="signal_light_colorSecondaryContainer">#DCE5F9</color>
-    <color name="signal_light_colorSurface">#FBFCFF</color>
-    <color name="signal_light_colorSurfaceVariant">#E7EBF3</color>
+    <color name="signal_light_colorSurface">#FFFFFF</color>
+    <color name="signal_light_colorSurfaceVariant">#EFEFF0</color>
     <color name="signal_light_colorSurfaceVariantFill">#CCFFFFFF</color>
-    <color name="signal_light_colorBackground">#FBFCFF</color>
+    <color name="signal_light_colorBackground">#FFFFFF</color>
     <color name="signal_light_colorError">#BA1B1B</color>
     <color name="signal_light_colorErrorContainer">#FFDAD4</color>
     <color name="signal_light_colorOnPrimary">#FFFFFF</color>
     <color name="signal_light_colorOnPrimaryContainer">#051845</color>
     <color name="signal_light_colorOnSecondary">#FFFFFF</color>
     <color name="signal_light_colorOnSecondaryContainer">#151D2C</color>
-    <color name="signal_light_colorOnSurface">#1B1B1D</color>
-    <color name="signal_light_colorOnSurfaceVariant">#545863</color>
+    <color name="signal_light_colorOnSurface">#000000</color>
+    <color name="signal_light_colorOnSurfaceVariant">#737378</color>
     <color name="signal_light_colorOnSurfaceVariant1">#BBBFC8</color>
-    <color name="signal_light_colorOnBackground">#1B1D1D</color>
+    <color name="signal_light_colorOnBackground">#000000</color>
     <color name="signal_light_colorOutline">#808389</color>
     <color name="signal_light_neutralSurface">#99FFFFFF</color>
     <color name="signal_light_neutralFill">#1A000000</color>
