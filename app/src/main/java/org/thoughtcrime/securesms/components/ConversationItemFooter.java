@@ -420,23 +420,32 @@ public class ConversationItemFooter extends ConstraintLayout {
 
     if (onlyShowSendingStatus) {
       if (messageRecord.isPending()) {
-        deliveryStatusView.setPending();
+        deliveryStatusView.setPending(getSendingIndicatorDelayMs(messageRecord));
       } else {
         deliveryStatusView.setNone();
       }
     } else {
       if (!messageRecord.isOutgoing()) {
         deliveryStatusView.setNone();
-      } else if (messageRecord.isPending()) {
-        deliveryStatusView.setPending();
-      } else if (messageRecord.hasReadReceipt()) {
-        deliveryStatusView.setRead();
-      } else if (messageRecord.isDelivered()) {
-        deliveryStatusView.setDelivered();
       } else {
-        deliveryStatusView.setSent();
+        // Tellomi：两档勾，已送达画成一个勾；文字消息发送中 2 秒后才转圈（#1183）
+        switch (TellomiMessageStatus.display(messageRecord.isPending(), messageRecord.hasReadReceipt(), messageRecord.isViewed())) {
+          case SENDING:
+            deliveryStatusView.setPending(getSendingIndicatorDelayMs(messageRecord));
+            break;
+          case READ:
+            deliveryStatusView.setRead();
+            break;
+          default:
+            deliveryStatusView.setSent();
+            break;
+        }
       }
     }
+  }
+
+  private static long getSendingIndicatorDelayMs(@NonNull MessageRecord messageRecord) {
+    return TellomiMessageStatus.sendingIndicatorDelayMs(TellomiMessageStatus.isTextOnly(messageRecord), messageRecord.getDateSent(), System.currentTimeMillis());
   }
 
   private void presentAudioDuration(@NonNull MessageRecord messageRecord) {

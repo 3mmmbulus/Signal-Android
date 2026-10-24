@@ -32,6 +32,7 @@ import org.signal.core.ui.util.ThemeUtil
 import org.signal.core.util.StringUtil
 import org.signal.core.util.dp
 import org.thoughtcrime.securesms.R
+import org.thoughtcrime.securesms.components.TellomiMessageStatus
 import org.thoughtcrime.securesms.components.mention.MentionAnnotation
 import org.thoughtcrime.securesms.conversation.BodyBubbleLayoutTransition
 import org.thoughtcrime.securesms.conversation.ConversationAdapterBridge
@@ -933,9 +934,11 @@ open class V2ConversationItemTextOnlyViewHolder<Model : MappingModel<Model>>(
       else -> false
     }
 
+    val sendingIndicatorDelayMs = TellomiMessageStatus.sendingIndicatorDelayMs(TellomiMessageStatus.isTextOnly(record), record.dateSent, System.currentTimeMillis())
+
     if (onlyShowSendingStatus) {
       if (record.isPending) {
-        deliveryStatus.setPending()
+        deliveryStatus.setPending(sendingIndicatorDelayMs)
       } else {
         deliveryStatus.setNone()
       }
@@ -943,11 +946,11 @@ open class V2ConversationItemTextOnlyViewHolder<Model : MappingModel<Model>>(
       return
     }
 
-    when {
-      record.isPending -> deliveryStatus.setPending()
-      record.hasReadReceipt() -> deliveryStatus.setRead()
-      record.isDelivered -> deliveryStatus.setDelivered()
-      else -> deliveryStatus.setSent()
+    // Tellomi：两档勾，已送达画成一个勾；文字消息发送中 2 秒后才转圈（#1183）
+    when (TellomiMessageStatus.display(record.isPending, record.hasReadReceipt(), record.isViewed)) {
+      TellomiMessageStatus.Display.SENDING -> deliveryStatus.setPending(sendingIndicatorDelayMs)
+      TellomiMessageStatus.Display.READ -> deliveryStatus.setRead()
+      TellomiMessageStatus.Display.SENT -> deliveryStatus.setSent()
     }
   }
 

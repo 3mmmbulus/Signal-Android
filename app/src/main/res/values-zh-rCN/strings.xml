@@ -411,7 +411,7 @@
     <string name="ContactShareEditActivity_invalid_contact">所选联系人无效</string>
 
     <!-- ConversationItem -->
-    <string name="ConversationItem_error_not_sent_tap_for_details">未发送，点击查看详情</string>
+    <string name="ConversationItem_error_not_sent_tap_for_details">发送失败，点击查看详情</string>
     <string name="ConversationItem_error_partially_not_delivered">仅部分人收到消息，点击查看详情</string>
     <!-- Warning footer when an admin delete has not been sent to everyone -->
     <string name="ConversationItem_error_partially_not_deleted">已部分删除，点击查看详情</string>
@@ -3559,7 +3559,7 @@
     <string name="conversation_item_sent__send_failed_indicator_description">发送失败</string>
     <string name="conversation_item_sent__pending_approval_description">待处理审批</string>
     <string name="conversation_item_sent__delivered_description">已送达</string>
-    <string name="conversation_item_sent__message_read">消息已读</string>
+    <string name="conversation_item_sent__message_read">已读</string>
 
     <!-- conversation_item_received -->
     <!-- Content description for profile pictures -->
@@ -3886,13 +3886,13 @@
     <string name="message_details_header_via">通道</string>
 
     <!-- message_details_recipient_header -->
-    <string name="message_details_recipient_header__pending_send">处理中</string>
-    <string name="message_details_recipient_header__sent_to">已发送</string>
+    <string name="message_details_recipient_header__pending_send">发送中</string>
+    <string name="message_details_recipient_header__sent_to">已发出</string>
     <string name="message_details_recipient_header__sent_from">收自</string>
-    <string name="message_details_recipient_header__delivered_to">送达</string>
+    <string name="message_details_recipient_header__delivered_to">已送达</string>
     <string name="message_details_recipient_header__read_by">已读</string>
-    <string name="message_details_recipient_header__not_sent">未发</string>
-    <string name="message_details_recipient_header__viewed">已查看：</string>
+    <string name="message_details_recipient_header__not_sent">发送失败</string>
+    <string name="message_details_recipient_header__viewed">已查看</string>
     <string name="message_details_recipient_header__skipped">已跳过</string>
 
     <!-- message_Details_recipient -->
@@ -4175,7 +4175,7 @@
     <string name="preferences__submit_debug_log">提交调试日志</string>
     <string name="preferences__incognito_keyboard">隐身键盘</string>
     <string name="preferences__read_receipts">已读回执</string>
-    <string name="preferences__if_read_receipts_are_disabled_you_wont_be_able_to_see_read_receipts">禁用已读回执之后，将无法查看来其他用户的已读回执。</string>
+    <string name="preferences__if_read_receipts_are_disabled_you_wont_be_able_to_see_read_receipts">开启后，你读过的消息会让对方看到两个勾。关闭后，对方看不到你是否已读，你也看不到任何人是否已读。关着时收到的消息，之后打开也不会显示为已读。</string>
     <string name="preferences__typing_indicators">“正在输入”提示</string>
     <string name="preferences__if_typing_indicators_are_disabled_you_wont_be_able_to_see_typing_indicators">禁用“正在输入”提示之后，无法查看其他用户的正在输入状态。</string>
     <string name="preferences__request_keyboard_to_disable">请求键盘禁用个性化学习。</string>

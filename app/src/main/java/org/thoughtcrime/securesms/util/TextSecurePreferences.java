@@ -363,7 +363,10 @@ public class TextSecurePreferences {
   }
 
   public static void setReadReceiptsEnabled(Context context, boolean enabled) {
+    boolean hadValue = getSharedPreferences(context).contains(READ_RECEIPTS_PREF);
+    boolean previous = isReadReceiptsEnabled(context);
     setBooleanPreference(context, READ_RECEIPTS_PREF, enabled);
+    TellomiReadReceiptHistory.onSettingWritten(context, hadValue, previous, enabled);
   }
 
   public static boolean isTypingIndicatorsEnabled(Context context) {

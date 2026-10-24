@@ -63,6 +63,7 @@ import org.thoughtcrime.securesms.components.AlertView;
 import org.thoughtcrime.securesms.components.AvatarImageView;
 import org.thoughtcrime.securesms.components.DeliveryStatusView;
 import org.thoughtcrime.securesms.components.FromTextView;
+import org.thoughtcrime.securesms.components.TellomiMessageStatus;
 import org.thoughtcrime.securesms.components.TypingIndicatorView;
 import org.signal.emoji.EmojiStrings;
 import org.thoughtcrime.securesms.components.emoji.EmojiTextView;
@@ -559,21 +560,26 @@ public final class ConversationListItem extends ConstraintLayout implements Bind
     } else {
       alertView.setNone();
 
+      long sendingIndicatorDelayMs = TellomiMessageStatus.sendingIndicatorDelayMs(TellomiMessageStatus.isTextOnlySnippet(thread.getContentType()), thread.getDate(), System.currentTimeMillis());
+
       if (thread.getExtra() != null && thread.getExtra().getDeletedBy() != null) {
         if (thread.isPending()) {
-          deliveryStatusIndicator.setPending();
+          deliveryStatusIndicator.setPending(sendingIndicatorDelayMs);
         } else {
           deliveryStatusIndicator.setNone();
         }
       } else {
-        if (thread.isPending()) {
-          deliveryStatusIndicator.setPending();
-        } else if (thread.hasReadReceipt()) {
-          deliveryStatusIndicator.setRead();
-        } else if (thread.isDelivered()) {
-          deliveryStatusIndicator.setDelivered();
-        } else {
-          deliveryStatusIndicator.setSent();
+        // Tellomi：和气泡同一套两档勾与 2 秒规则（#1183）
+        switch (TellomiMessageStatus.display(thread.isPending(), thread.hasReadReceipt(), false)) {
+          case SENDING:
+            deliveryStatusIndicator.setPending(sendingIndicatorDelayMs);
+            break;
+          case READ:
+            deliveryStatusIndicator.setRead();
+            break;
+          default:
+            deliveryStatusIndicator.setSent();
+            break;
         }
       }
     }

@@ -9,6 +9,7 @@ import androidx.lifecycle.LiveData;
 import androidx.lifecycle.MutableLiveData;
 
 import org.signal.core.util.concurrent.SignalExecutors;
+import org.thoughtcrime.securesms.components.TellomiMessageStatus;
 import org.thoughtcrime.securesms.conversation.ConversationMessage.ConversationMessageFactory;
 import org.thoughtcrime.securesms.database.AttachmentTable;
 import org.thoughtcrime.securesms.database.DatabaseObserver;
@@ -26,6 +27,7 @@ import org.thoughtcrime.securesms.dependencies.AppDependencies;
 import org.thoughtcrime.securesms.mms.Slide;
 import org.thoughtcrime.securesms.recipients.Recipient;
 import org.thoughtcrime.securesms.recipients.RecipientId;
+import org.thoughtcrime.securesms.util.TextSecurePreferences;
 import org.whispersystems.signalservice.api.push.DistributionId;
 
 import java.util.LinkedList;
@@ -126,7 +128,7 @@ public final class MessageDetailsRepository {
 
           recipients.add(new RecipientDeliveryStatus(messageRecord,
                                                      recipient,
-                                                     getStatusFor(messageRecord, info.getStatus(), messageRecord.isPending(), recipientFailure),
+                                                     getStatusFor(messageRecord, TellomiMessageStatus.groupStatusForDetails(info.getStatus(), TextSecurePreferences.isReadReceiptsEnabled(context)), messageRecord.isPending(), recipientFailure),
                                                      info.isUnidentified(),
                                                      info.getTimestamp(),
                                                      failure,
