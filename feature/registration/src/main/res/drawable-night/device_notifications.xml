@@ -24,22 +24,22 @@
         android:fillColor="#FF41485A"
         android:pathData="M188.72 148.34c33.3 50.81 19.1 119-31.7 152.3L18 391.74V30c0-6.63 5.37-12 12-12h73.3l85.42 130.34Z"/>
     <path
-        android:fillColor="#FF1B1C1F"
+        android:fillColor="#FF1C1C1E"
         android:pathData="M73 140c0-13.25 10.75-24 24-24h229c13.25 0 24 10.75 24 24v91c0 13.25-10.75 24-24 24h-229c-13.25 0-24-10.75-24-24z"/>
     <path
-        android:fillColor="#14B6C5FA"
+        android:fillColor="#14B2CAFB"
         android:pathData="M73 140c0-13.25 10.75-24 24-24h229c13.25 0 24 10.75 24 24v91c0 13.25-10.75 24-24 24h-229c-13.25 0-24-10.75-24-24z"/>
     <path
-        android:fillColor="#FF1B1C1F"
+        android:fillColor="#FF1C1C1E"
         android:pathData="M89 193c0-7.18 5.82-13 13-13h219c7.18 0 13 5.82 13 13v0c0 7.18-5.82 13-13 13h-219c-7.18 0-13-5.82-13-13z"/>
     <path
-        android:fillColor="#24B6C5FA"
+        android:fillColor="#24B2CAFB"
         android:pathData="M89 193c0-7.18 5.82-13 13-13h219c7.18 0 13 5.82 13 13v0c0 7.18-5.82 13-13 13h-219c-7.18 0-13-5.82-13-13z"/>
     <path
-        android:fillColor="#FF1B1C1F"
+        android:fillColor="#FF1C1C1E"
         android:pathData="M89 226c0-7.18 5.82-13 13-13h219c7.18 0 13 5.82 13 13s-5.82 13-13 13H102c-7.18 0-13-5.82-13-13Z"/>
     <path
-        android:fillColor="#24B6C5FA"
+        android:fillColor="#24B2CAFB"
         android:pathData="M89 226c0-7.18 5.82-13 13-13h219c7.18 0 13 5.82 13 13s-5.82 13-13 13H102c-7.18 0-13-5.82-13-13Z"/>
     <path
         android:fillColor="#FFBEBFC5"
