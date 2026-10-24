@@ -68,9 +68,12 @@ class MainNavigationViewModel(
       return if (fromFriendsTab) MainListRoute.Friends else MainListRoute.Chats
     }
 
-    /** Tellomi：压到 [target] 之前要不要先切 Tab。站在「好友」上、却要压到「聊天」时先切到聊天，免得会话压在看不见的栈上。 */
+    /**
+     * Tellomi：压到 [target] 之前要不要先切 Tab。要压到「聊天」、而当前不在聊天（通话、动态、我、好友……）时，
+     * 一律先切到聊天，跟 iOS 一样，免得会话压在看不见的栈上。
+     */
     fun shouldSwitchToChatsFirst(currentRoot: MainListRoute, target: MainListRoute): Boolean {
-      return target == MainListRoute.Chats && currentRoot == MainListRoute.Friends
+      return target == MainListRoute.Chats && !currentRoot.isChatsTab
     }
 
     private const val FRIENDS_BACK_STACK_KEY = "tellomi_friends_back_stack"

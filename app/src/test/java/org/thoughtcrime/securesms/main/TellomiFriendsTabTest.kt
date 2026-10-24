@@ -35,6 +35,14 @@ class TellomiFriendsTabTest {
     assertTrue(MainNavigationViewModel.shouldSwitchToChatsFirst(MainListRoute.Friends, MainListRoute.Chats))
     assertFalse(MainNavigationViewModel.shouldSwitchToChatsFirst(MainListRoute.Friends, MainListRoute.Friends))
     assertFalse(MainNavigationViewModel.shouldSwitchToChatsFirst(MainListRoute.Chats, MainListRoute.Chats))
+    assertFalse(MainNavigationViewModel.shouldSwitchToChatsFirst(MainListRoute.Archive, MainListRoute.Chats))
+  }
+
+  @Test
+  fun `notification or share from any other tab switches to chats first`() {
+    for (tab in listOf(MainListRoute.Calls, MainListRoute.Feed, MainListRoute.Me, MainListRoute.Stories, MainListRoute.Friends)) {
+      assertTrue("$tab", MainNavigationViewModel.shouldSwitchToChatsFirst(tab, MainListRoute.Chats))
+    }
   }
 
   @Test
