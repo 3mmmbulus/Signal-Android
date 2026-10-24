@@ -40,7 +40,7 @@ class FeedTextLinksTest {
 
   @Test
   fun `trailing chinese punctuation and closing brackets are not part of the link`() {
-    listOf("。", "，", "、", "！", "？", "；", "：", "」", "】", "）").forEach { mark ->
+    listOf("。", "，", "、", "！", "？", "；", "：", "」", "】", "）", "…", "—", "－", "．").forEach { mark ->
       val text = "看 https://tellomi.app/abc${mark}后面的字"
       val link = FeedTextLinks.find(text).single()
       assertEquals(mark, "https://tellomi.app/abc", link.url)

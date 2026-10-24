@@ -25,7 +25,7 @@ object Linkifier {
   )
 
   /** Tellomi: Chinese sentence punctuation and closing brackets / quotes; never part of a link (see [URL_TERMINATOR]). */
-  private const val CJK_SENTENCE_PUNCTUATION = "，。！？；：、）」』】》〉”’"
+  private const val CJK_SENTENCE_PUNCTUATION = "，。！？；：、）」』】》〉”’…—－．"
 
   /** Closing brackets that are trimmed only if the URL has no matching opener inside */
   private val CLOSING_BRACKETS = mapOf(')' to '(', ']' to '[', '}' to '{')
@@ -42,7 +42,7 @@ object Linkifier {
     "\\p{Cc}\\p{Cf}\\p{Co}\\p{Cs}\\p{Cn}\\p{Zl}\\p{Zp}<>\"`|\\\\" +
     // Tellomi (PM 2026-10-24): full-width Chinese punctuation and closing brackets / quotes always end a link, at the end
     // or in the middle ("https://x.com/abc，后面" is "https://x.com/abc"), so chat and 动态 never pull them into the tap
-    // target. Same table as [CJK_SENTENCE_PUNCTUATION], `LinkUtil.CJK_URL_TERMINATORS` and iOS `LinkValidator.isIriTerminator`.
+    // target. Same table as [CJK_SENTENCE_PUNCTUATION], `LinkUtil.CJK_URL_TERMINATORS` and iOS `TellomiLinkPunctuation.terminators`.
     CJK_SENTENCE_PUNCTUATION
 
   /**
@@ -230,7 +230,7 @@ object Linkifier {
 
   /**
    * Tellomi: steps back over Chinese sentence punctuation and closing brackets / quotes at the end of a candidate. The same
-   * table as `LinkUtil.cutAtCjkSentencePunctuation` (app) and iOS `LinkValidator.isIriTerminator`.
+   * table as `LinkUtil.cutAtCjkSentencePunctuation` (app) and iOS `TellomiLinkPunctuation.terminators`.
    */
   private fun trimTrailingCjkSentencePunctuation(text: CharSequence, start: Int, initialEnd: Int): Int {
     var end = initialEnd
