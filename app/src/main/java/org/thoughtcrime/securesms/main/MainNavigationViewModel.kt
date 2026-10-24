@@ -76,6 +76,19 @@ class MainNavigationViewModel(
       return target == MainListRoute.Chats && !currentRoot.isChatsTab
     }
 
+    /**
+     * Tellomi：会话里点头像/标题打开的设置页（以及消息详情等会话子页）要留在会话所在的栈上。
+     * 当前显示「好友」、且好友栈顶开着的就是这个人时，压在好友栈上；别的情况照旧压在「聊天」上。
+     */
+    fun chatsSubpageFromFriends(
+      friendsAndMeEnabled: Boolean,
+      currentRoot: MainListRoute,
+      friendsActiveRecipientId: RecipientId?,
+      recipientId: RecipientId
+    ): Boolean {
+      return friendsAndMeEnabled && currentRoot == MainListRoute.Friends && friendsActiveRecipientId == recipientId
+    }
+
     private const val FRIENDS_BACK_STACK_KEY = "tellomi_friends_back_stack"
     private const val ME_BACK_STACK_KEY = "tellomi_me_back_stack"
   }
@@ -233,7 +246,15 @@ class MainNavigationViewModel(
 
   private suspend fun goToDetail(route: MainDetailRoute) {
     when (route) {
-      is MainDetailRoute.Chats -> pushChatsDetailLocation(route)
+      is MainDetailRoute.Chats -> pushChatsDetailLocation(
+        route,
+        fromFriendsTab = chatsSubpageFromFriends(
+          friendsAndMeEnabled = TellomiFeed.isFriendsAndMeTabsEnabled(),
+          currentRoot = navigator.currentRoot.value,
+          friendsActiveRecipientId = navigator[MainListRoute.Friends].activeRecipientId,
+          recipientId = route.controllerKey
+        )
+      )
       is MainDetailRoute.Conversation -> goToConversation(route)
       is MainDetailRoute.Calls, is MainDetailRoute.CallLinkDetails -> pushCallsDetailLocation(route)
       is MainDetailRoute.Stories -> navigator.processEvent(ListDetailEvents.Push(route, MainListRoute.Stories))
