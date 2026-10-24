@@ -33,10 +33,10 @@
           android:fillAlpha="0.6"/>
       <path
           android:pathData="M0,133H280V159C280,168.94 271.94,177 262,177H18C8.06,177 0,168.94 0,159V133Z"
-          android:fillColor="#1B1C1F"/>
+          android:fillColor="#1C1C1E"/>
       <path
           android:pathData="M0,133H280V159C280,168.94 271.94,177 262,177H18C8.06,177 0,168.94 0,159V133Z"
-          android:fillColor="#B6C5FA"
+          android:fillColor="#B2CAFB"
           android:fillAlpha="0.08"/>
       <path
           android:pathData="M163.79,170.76H116.21C115.84,170.76 115.53,171.06 115.53,171.44C115.53,171.81 115.84,172.12 116.21,172.12H163.79C164.16,172.12 164.47,171.81 164.47,171.44C164.47,171.06 164.16,170.76 163.79,170.76Z"
