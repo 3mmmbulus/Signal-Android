@@ -72,6 +72,7 @@ import org.thoughtcrime.securesms.attachments.Attachment
 import org.thoughtcrime.securesms.attachments.DatabaseAttachment
 import org.thoughtcrime.securesms.attachments.DatabaseAttachment.DisplayOrderComparator
 import org.thoughtcrime.securesms.backup.v2.exporters.ChatItemArchiveExporter
+import org.thoughtcrime.securesms.components.TellomiMessageStatus
 import org.thoughtcrime.securesms.components.settings.app.notifications.ReminderType
 import org.thoughtcrime.securesms.contactshare.Contact
 import org.thoughtcrime.securesms.conversation.MessageStyler
@@ -7271,7 +7272,7 @@ open class MessageTable(context: Context?, databaseHelper: SignalDatabase) : Dat
       val mentionsSelf = cursor.requireBoolean(MENTIONS_SELF)
       val notifiedTimestamp = cursor.requireLong(NOTIFIED_TIMESTAMP)
       var isViewed = cursor.requireBoolean(VIEWED_COLUMN)
-      val receiptTimestamp = cursor.requireLong(RECEIPT_TIMESTAMP)
+      var receiptTimestamp = cursor.requireLong(RECEIPT_TIMESTAMP)
       val messageRangesData = cursor.requireBlob(MESSAGE_RANGES)
       val storyType = StoryType.fromCode(cursor.requireInt(STORY_TYPE))
       val parentStoryId = ParentStoryId.deserialize(cursor.requireLong(PARENT_STORY_ID))
@@ -7289,8 +7290,16 @@ open class MessageTable(context: Context?, databaseHelper: SignalDatabase) : Dat
       val messageExtras = messageExtraBytes?.let { MessageExtras.ADAPTER.decode(it) }
 
       if (!TextSecurePreferences.isReadReceiptsEnabled(context)) {
+        val isOutgoingNonStory = MessageTypes.isOutgoingMessageType(box) && !storyType.isStory
+        // Tellomi（#1183）：已读 / 已查看被藏成已送达时，receipt_timestamp 存的是对方的已读时间，不能拿去显示。
+        receiptTimestamp = TellomiMessageStatus.oneToOneReceiptTimestampForDetails(
+          receiptTimestamp = receiptTimestamp,
+          isOutgoingNonStory = isOutgoingNonStory,
+          hadReadOrViewed = hasReadReceipt || isViewed,
+          readReceiptsEnabled = false
+        )
         hasReadReceipt = false
-        if (MessageTypes.isOutgoingMessageType(box) && !storyType.isStory) {
+        if (isOutgoingNonStory) {
           isViewed = false
         }
       }

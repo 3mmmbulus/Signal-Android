@@ -146,6 +146,22 @@ class TellomiMessageStatusTest {
     assertThat(context.getString(R.string.message_details_recipient_header__read_by)).isEqualTo("已讀")
   }
 
+  @Test
+  fun `group details hide the read time when read is downgraded to delivered`() {
+    assertThat(TellomiMessageStatus.groupTimestampForDetails(GroupReceiptTable.STATUS_READ, 300L, false)).isEqualTo(0L)
+    assertThat(TellomiMessageStatus.groupTimestampForDetails(GroupReceiptTable.STATUS_VIEWED, 300L, false)).isEqualTo(0L)
+    assertThat(TellomiMessageStatus.groupTimestampForDetails(GroupReceiptTable.STATUS_DELIVERED, 200L, false)).isEqualTo(200L)
+    assertThat(TellomiMessageStatus.groupTimestampForDetails(GroupReceiptTable.STATUS_READ, 300L, true)).isEqualTo(300L)
+  }
+
+  @Test
+  fun `one to one details show no time when read is downgraded to delivered`() {
+    assertThat(TellomiMessageStatus.oneToOneReceiptTimestampForDetails(300L, isOutgoingNonStory = true, hadReadOrViewed = true, readReceiptsEnabled = false)).isEqualTo(0L)
+    assertThat(TellomiMessageStatus.oneToOneReceiptTimestampForDetails(200L, isOutgoingNonStory = true, hadReadOrViewed = false, readReceiptsEnabled = false)).isEqualTo(200L)
+    assertThat(TellomiMessageStatus.oneToOneReceiptTimestampForDetails(300L, isOutgoingNonStory = true, hadReadOrViewed = true, readReceiptsEnabled = true)).isEqualTo(300L)
+    assertThat(TellomiMessageStatus.oneToOneReceiptTimestampForDetails(300L, isOutgoingNonStory = false, hadReadOrViewed = true, readReceiptsEnabled = false)).isEqualTo(300L)
+  }
+
   private fun mmsWith(vararg slides: Slide): MessageRecord {
     val deck = mockk<SlideDeck> { every { this@mockk.slides } returns slides.toList() }
     return mockk<MmsMessageRecord> { every { slideDeck } returns deck }

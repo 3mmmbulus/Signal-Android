@@ -76,6 +76,25 @@ object TellomiMessageStatus {
     return groupStatus
   }
 
+  /**
+   * 「信息」页群成员的逐人时间：GroupReceiptTable 每人只存当前状态的一个时间，已读 / 已查看被藏成已送达时
+   * 那个时间是对方的已读时间，送达时间已被覆盖，所以不显示时间（返回 0，RecipientViewHolder 不画）。
+   * 真正停在已送达的，时间就是送达时间，照常显示。
+   */
+  @JvmStatic
+  fun groupTimestampForDetails(groupStatus: Int, timestamp: Long, readReceiptsEnabled: Boolean): Long {
+    return if (groupStatusForDetails(groupStatus, readReceiptsEnabled) != groupStatus) 0L else timestamp
+  }
+
+  /**
+   * 一对一「信息」页的时间：MessageTable 每条消息只存一个 receipt_timestamp，收到已读后就被已读时间覆盖。
+   * 已读 / 已查看被藏成已送达时一律不显示时间（返回 0），绝不显示对方的已读时间（产品决定，不另存送达时间）。
+   */
+  @JvmStatic
+  fun oneToOneReceiptTimestampForDetails(receiptTimestamp: Long, isOutgoingNonStory: Boolean, hadReadOrViewed: Boolean, readReceiptsEnabled: Boolean): Long {
+    return if (!readReceiptsEnabled && isOutgoingNonStory && hadReadOrViewed) 0L else receiptTimestamp
+  }
+
   /** 聊天列表只有最后一条的第一个附件类型（ThreadTable.getContentTypeFor）。 */
   @JvmStatic
   fun isTextOnlySnippet(snippetContentType: String?): Boolean {

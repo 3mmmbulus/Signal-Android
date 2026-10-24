@@ -130,7 +130,7 @@ public final class MessageDetailsRepository {
                                                      recipient,
                                                      getStatusFor(messageRecord, TellomiMessageStatus.groupStatusForDetails(info.getStatus(), TextSecurePreferences.isReadReceiptsEnabled(context)), messageRecord.isPending(), recipientFailure),
                                                      info.isUnidentified(),
-                                                     info.getTimestamp(),
+                                                     TellomiMessageStatus.groupTimestampForDetails(info.getStatus(), info.getTimestamp(), TextSecurePreferences.isReadReceiptsEnabled(context)),
                                                      failure,
                                                      mismatch));
         }
