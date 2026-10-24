@@ -10,6 +10,7 @@ import android.app.Application
 import android.os.Looper
 import android.view.View
 import android.widget.FrameLayout
+import androidx.test.core.app.ApplicationProvider
 import assertk.assertThat
 import assertk.assertions.isEqualTo
 import assertk.assertions.isFalse
@@ -24,6 +25,7 @@ import org.robolectric.Robolectric
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.Shadows.shadowOf
 import org.robolectric.annotation.Config
+import org.thoughtcrime.securesms.R
 import org.thoughtcrime.securesms.components.TellomiMessageStatus.Display
 import org.thoughtcrime.securesms.database.GroupReceiptTable
 import org.thoughtcrime.securesms.database.model.MessageRecord
@@ -133,6 +135,15 @@ class TellomiMessageStatusTest {
     idle(3_000)
     assertThat(view.visibility).isEqualTo(View.VISIBLE)
     assertThat(view.isPending).isFalse()
+  }
+
+  @Test
+  @Config(qualifiers = "yue")
+  fun `cantonese message details use the same sent, delivered and read words`() {
+    val context = ApplicationProvider.getApplicationContext<Application>()
+    assertThat(context.getString(R.string.message_details_recipient_header__sent_to)).isEqualTo("已發出")
+    assertThat(context.getString(R.string.message_details_recipient_header__delivered_to)).isEqualTo("已送達")
+    assertThat(context.getString(R.string.message_details_recipient_header__read_by)).isEqualTo("已讀")
   }
 
   private fun mmsWith(vararg slides: Slide): MessageRecord {
