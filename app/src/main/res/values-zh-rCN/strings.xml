@@ -6660,6 +6660,8 @@
     <string name="ConversationListTabs__tellomi_feed">动态</string>
     <!-- Tellomi (tellomi/tellomi#1355, #1360): label for the Friends (contact list) tab in the home bottom bar. Must be "Friends", not "Contacts". -->
     <string name="ConversationListTabs__tellomi_friends">好友</string>
+    <!-- Tellomi: share text sent from the Friends tab invite row, %1$s is the download link (same sentence as iOS) -->
+    <string name="TellomiFriends__invite_text">请你下载Tellomi加密通讯软件！链接：%1$s</string>
     <!-- Tellomi (tellomi/tellomi#1355): label for the Me (profile and settings) tab in the home bottom bar -->
     <string name="ConversationListTabs__tellomi_me">我</string>
     <string name="TellomiFeed__tab_recommend">推荐</string>

@@ -470,16 +470,19 @@ private fun PrimaryToolbar(
         }
       }
 
-      IconButtons.IconButton(
-        onClick = callback::onSearchClick,
-        modifier = Modifier.onPlaced {
-          onSearchButtonPositioned(it.positionInWindow().x + (it.size.width / 2f))
+      // Tellomi：「好友」页自己有搜索框，顶栏不再放搜索按钮（和 iOS 一样）
+      if (state.destination != MainListRoute.Friends) {
+        IconButtons.IconButton(
+          onClick = callback::onSearchClick,
+          modifier = Modifier.onPlaced {
+            onSearchButtonPositioned(it.positionInWindow().x + (it.size.width / 2f))
+          }
+        ) {
+          Icon(
+            imageVector = SignalIcons.Search.imageVector,
+            contentDescription = stringResource(R.string.conversation_list_search_description)
+          )
         }
-      ) {
-        Icon(
-          imageVector = SignalIcons.Search.imageVector,
-          contentDescription = stringResource(R.string.conversation_list_search_description)
-        )
       }
 
       val controller = remember { DropdownMenus.MenuController() }
@@ -500,7 +503,8 @@ private fun PrimaryToolbar(
           MainListRoute.Chats -> ChatDropdownItems(state, callback, dismiss)
           MainListRoute.Calls -> CallDropdownItems(state.callFilter, callback, dismiss)
           MainListRoute.Stories -> StoryDropDownItems(callback, dismiss)
-          MainListRoute.Friends, MainListRoute.Me -> Unit
+          MainListRoute.Friends -> TellomiFriendsDropdownItems(callback, dismiss)
+          MainListRoute.Me -> Unit
         }
       }
     }
@@ -933,4 +937,34 @@ private fun TooltipOverflowButtonPreview() {
       isTooltipVisible = true
     )
   }
+}
+
+/** Tellomi：「好友」页的菜单只留「新建群组」和「设置」。 */
+@Composable
+private fun TellomiFriendsDropdownItems(callback: MainToolbarCallback, onOptionSelected: () -> Unit) {
+  DropdownMenus.Item(
+    leadingIconResId = R.drawable.symbol_group_24,
+    text = {
+      Text(
+        text = stringResource(R.string.text_secure_normal__menu_new_group)
+      )
+    },
+    onClick = {
+      callback.onNewGroupClick()
+      onOptionSelected()
+    }
+  )
+
+  DropdownMenus.Item(
+    leadingIconResId = CoreUiR.drawable.symbol_settings_android_24,
+    text = {
+      Text(
+        text = stringResource(R.string.text_secure_normal__menu_settings)
+      )
+    },
+    onClick = {
+      callback.onSettingsClick()
+      onOptionSelected()
+    }
+  )
 }
