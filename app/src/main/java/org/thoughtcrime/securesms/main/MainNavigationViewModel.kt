@@ -60,6 +60,19 @@ class MainNavigationViewModel(
     private const val CALLS_BACK_STACK_KEY = "calls_back_stack_v2"
     private const val STORIES_BACK_STACK_KEY = "stories_back_stack_v2"
     private const val FEED_BACK_STACK_KEY = "tellomi_feed_back_stack"
+    /**
+     * Tellomi：会话压在哪个栈上，由来源决定、不看当前 Tab：只有好友页里点人打开的压在「好友」上，
+     * 别的（通知、分享、深链接……）一律压在「聊天」上。
+     */
+    fun chatsDetailRoot(fromFriendsTab: Boolean): MainListRoute {
+      return if (fromFriendsTab) MainListRoute.Friends else MainListRoute.Chats
+    }
+
+    /** Tellomi：压到 [target] 之前要不要先切 Tab。站在「好友」上、却要压到「聊天」时先切到聊天，免得会话压在看不见的栈上。 */
+    fun shouldSwitchToChatsFirst(currentRoot: MainListRoute, target: MainListRoute): Boolean {
+      return target == MainListRoute.Chats && currentRoot == MainListRoute.Friends
+    }
+
     private const val FRIENDS_BACK_STACK_KEY = "tellomi_friends_back_stack"
     private const val ME_BACK_STACK_KEY = "tellomi_me_back_stack"
   }
@@ -105,8 +118,13 @@ class MainNavigationViewModel(
   /** Whether one pane currently occupies the whole window. Only meaningful in split-pane layouts. */
   val isFullScreenPane: StateFlow<Boolean> = navigator.isFullScreenPane
 
+  // Tellomi：「好友」栈上开着的会话也算当前会话（通知据此不重复提醒），按当前 Tab 取那一栈
   val observableActiveRecipientId: Observable<Optional<out RecipientId>> =
-    navigator.snapshotsOf(MainListRoute.Chats) { activeRecipientId }
+    combine(
+      navigator.snapshotsOf(MainListRoute.Chats) { activeRecipientId },
+      navigator.snapshotsOf(MainListRoute.Friends) { activeRecipientId },
+      navigator.currentRoot
+    ) { chats, friends, root -> if (root == MainListRoute.Friends) friends else chats }
       .combine(isFullScreenPane) { id, expanded -> if (expanded) Optional.ofNullable(null) else Optional.ofNullable(id) }
       .asObservable()
 
@@ -169,6 +187,7 @@ class MainNavigationViewModel(
       is MainNavigationEvents.GoToTab -> goToTab(event.tab)
       is MainNavigationEvents.GoToList -> goToList(event.route)
       is MainNavigationEvents.GoToDetail -> goToDetail(event.route)
+      is MainNavigationEvents.GoToConversationFromFriends -> goToConversation(event.route, fromFriendsTab = true)
       MainNavigationEvents.ExitDetail -> navigator.processEvent(ListDetailEvents.ExitDetail)
       MainNavigationEvents.GoToCameraFirstStoryCapture -> internalNavigationEvents.emit(NavigationEvent.STORY_CAMERA_FIRST)
       MainNavigationEvents.RefreshNavigationBar -> refreshNavigationBarState()
@@ -244,25 +263,37 @@ class MainNavigationViewModel(
     return copy(conversationArgs = updatedArgs)
   }
 
-  private suspend fun goToConversation(location: MainDetailRoute.Conversation) {
+  private suspend fun goToConversation(location: MainDetailRoute.Conversation, fromFriendsTab: Boolean = false) {
     val captureSnapshot = captureChatListSnapshot
 
     if (captureSnapshot == null) {
       // share intent or process restore - there's no chat-list snapshot to capture and no need to preload a wallpaper
-      pushChatsDetailLocation(location)
+      pushChatsDetailLocation(location, fromFriendsTab)
     } else {
       captureSnapshot()
-      pushChatsDetailLocation(location.withPreloadedWallpaper())
+      pushChatsDetailLocation(location.withPreloadedWallpaper(), fromFriendsTab)
     }
   }
 
-  private fun pushChatsDetailLocation(location: MainDetailRoute) {
-    val chatsBackStack = navigator[MainListRoute.Chats]
+  private fun pushChatsDetailLocation(location: MainDetailRoute, fromFriendsTab: Boolean = false) {
+    val root = chatsDetailRoot(fromFriendsTab)
+    if (shouldSwitchToChatsFirst(navigator.currentRoot.value, root)) {
+      goToList(MainListRoute.Chats)
+    }
+
+    // Tellomi：同一个会话不在两个栈上各开一份——另一个栈顶上开着同一个人，先把它收掉
+    val otherRoot = if (root == MainListRoute.Friends) MainListRoute.Chats else MainListRoute.Friends
+    val otherBackStack = navigator[otherRoot]
+    if (location is MainDetailRoute.Chats && otherBackStack.activeRecipientId == location.controllerKey) {
+      otherBackStack.exitDetail()
+    }
+
+    val chatsBackStack = navigator[root]
     if (location is MainDetailRoute.Chats && chatsBackStack.activeRecipientId != location.controllerKey) {
       chatsBackStack.exitDetail()
     }
 
-    navigator.processEvent(ListDetailEvents.Push(location, MainListRoute.Chats))
+    navigator.processEvent(ListDetailEvents.Push(location, root))
   }
 
   private fun pushCallsDetailLocation(location: MainDetailRoute) {

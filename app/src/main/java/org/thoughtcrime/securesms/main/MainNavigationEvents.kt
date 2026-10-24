@@ -26,6 +26,12 @@ sealed interface MainNavigationEvents {
   /** Open [route] above the list of whichever tab owns it. */
   data class GoToDetail(val route: MainDetailRoute) : MainNavigationEvents
 
+  /**
+   * Tellomi：在「好友」页里点人（含按用户名查找、扫码）打开的会话，压在「好友」自己的栈上，返回回到好友。
+   * 只有好友页自己发这个；通知、分享、深链接等一律走 [GoToDetail]，压在「聊天」上（产品经理定）。
+   */
+  data class GoToConversationFromFriends(val route: MainDetailRoute.Conversation) : MainNavigationEvents
+
   /** Drop the detail above the displayed list, leaving that list on its own. */
   data object ExitDetail : MainNavigationEvents
 
