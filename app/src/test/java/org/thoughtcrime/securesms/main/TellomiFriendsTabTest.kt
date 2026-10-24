@@ -16,6 +16,7 @@ import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
+import org.thoughtcrime.securesms.recipients.RecipientId
 import org.thoughtcrime.securesms.recipients.ui.RecipientPicker
 import java.util.Locale
 
@@ -28,6 +29,18 @@ class TellomiFriendsTabTest {
   fun `only taps inside friends go on the friends stack, everything else on chats`() {
     assertEquals(MainListRoute.Friends, MainNavigationViewModel.chatsDetailRoot(fromFriendsTab = true))
     assertEquals(MainListRoute.Chats, MainNavigationViewModel.chatsDetailRoot(fromFriendsTab = false))
+  }
+
+  @Test
+  fun `conversation settings opened from a friends conversation stay on the friends stack`() {
+    val kai = RecipientId.from(7)
+    val other = RecipientId.from(8)
+    assertTrue(MainNavigationViewModel.chatsSubpageFromFriends(true, MainListRoute.Friends, kai, kai))
+    assertFalse(MainNavigationViewModel.chatsSubpageFromFriends(true, MainListRoute.Chats, kai, kai))
+    assertFalse(MainNavigationViewModel.chatsSubpageFromFriends(true, MainListRoute.Friends, other, kai))
+    assertFalse(MainNavigationViewModel.chatsSubpageFromFriends(true, MainListRoute.Friends, null, kai))
+    assertFalse(MainNavigationViewModel.chatsSubpageFromFriends(false, MainListRoute.Friends, kai, kai))
+    assertEquals(MainListRoute.Friends, MainNavigationViewModel.chatsDetailRoot(fromFriendsTab = true))
   }
 
   @Test
