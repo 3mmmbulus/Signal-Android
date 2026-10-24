@@ -24,18 +24,18 @@
     <color name="signal_dark_colorOnCustom">#FFFFFF</color>
     <color name="signal_dark_colorOnCustomVariant">#B3FFFFFF</color>
 
-    <color name="signal_dark_colorSurface1">#23242A</color>
-    <color name="signal_dark_colorSurface2">#272A31</color>
-    <color name="signal_dark_colorSurface3">#2C2F37</color>
-    <color name="signal_dark_colorSurface4">#2E3039</color>
-    <color name="signal_dark_colorSurface5">#31343E</color>
+    <color name="signal_dark_colorSurface1">#1C1C1E</color>
+    <color name="signal_dark_colorSurface2">#1C1C1E</color>
+    <color name="signal_dark_colorSurface3">#2C2C2E</color>
+    <color name="signal_dark_colorSurface4">#2C2C2E</color>
+    <color name="signal_dark_colorSurface5">#2C2C2E</color>
 
     <color name="signal_dark_colorTransparent1">#0AFFFFFF</color>
     <color name="signal_dark_colorTransparent2">#1FFFFFFF</color>
     <color name="signal_dark_colorTransparent3">#29FFFFFF</color>
     <color name="signal_dark_colorTransparent4">#7AFFFFFF</color>
     <color name="signal_dark_colorTransparent5">#B8FFFFFF</color>
-    <color name="signal_dark_colorNeutral">#121212</color>
+    <color name="signal_dark_colorNeutral">#1C1C1E</color>
     <color name="signal_dark_colorNeutralVariant">#5C5C5C</color>
     <color name="signal_dark_colorTransparentInverse1">#0A000000</color>
     <color name="signal_dark_colorTransparentInverse2">#14000000</color>
@@ -47,6 +47,6 @@
 
     <color name="signal_dark_colorBackground_92">#EB000000</color>
     <color name="signal_dark_colorSurface_87">#DE000000</color>
-    <color name="signal_dark_colorSurface5_80">#CC31343E</color>
+    <color name="signal_dark_colorSurface5_80">#CC2C2C2E</color>
     <color name="signal_dark_colorSurfaceVariant_92">#EB1C1C1E</color>
 </resources>
