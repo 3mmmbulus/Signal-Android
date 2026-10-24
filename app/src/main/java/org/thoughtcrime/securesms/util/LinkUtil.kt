@@ -174,8 +174,8 @@ object LinkUtil {
     return url.substring(0, cut)
   }
 
-  /** Chinese sentence punctuation and closing brackets / quotes: the same table as iOS `LinkValidator.isIriTerminator`. */
-  private const val CJK_URL_TERMINATORS = "，。！？；：、）」』】》〉”’"
+  /** Chinese sentence punctuation and closing brackets / quotes: the same table as iOS `TellomiLinkPunctuation.terminators`. */
+  private const val CJK_URL_TERMINATORS = "，。！？；：、）」』】》〉”’…—－．"
 
   /**
    * Tellomi (PM 2026-10-19, ADR-0063 §5.6): a link with Chinese in its path / query / fragment gets a preview (as Telegram,

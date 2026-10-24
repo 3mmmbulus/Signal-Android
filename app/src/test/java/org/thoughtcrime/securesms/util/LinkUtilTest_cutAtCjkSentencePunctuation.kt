@@ -10,7 +10,7 @@ import org.junit.Test
 import org.junit.runner.RunWith
 import org.junit.runners.Parameterized
 
-/** PM 2026-10-19 (ADR-0063 §5.6): same terminator table as iOS `LinkValidator.isIriTerminator`. */
+/** PM 2026-10-19 (ADR-0063 §5.6): same terminator table as iOS `TellomiLinkPunctuation.terminators`. */
 @Suppress("ClassName")
 @RunWith(Parameterized::class)
 class LinkUtilTest_cutAtCjkSentencePunctuation(private val input: String, private val output: String) {
@@ -28,6 +28,10 @@ class LinkUtilTest_cutAtCjkSentencePunctuation(private val input: String, privat
       arrayOf("https://zh.wikipedia.org/wiki/中国。", "https://zh.wikipedia.org/wiki/中国"),
       arrayOf("https://www.baidu.com/s?wd=天气！", "https://www.baidu.com/s?wd=天气"),
       arrayOf("https://signal.org/a/中文」后面", "https://signal.org/a/中文"),
+      arrayOf("https://zh.wikipedia.org/wiki/中国…", "https://zh.wikipedia.org/wiki/中国"),
+      arrayOf("https://zh.wikipedia.org/wiki/中国—后面", "https://zh.wikipedia.org/wiki/中国"),
+      arrayOf("https://www.baidu.com/s?wd=天气－", "https://www.baidu.com/s?wd=天气"),
+      arrayOf("https://signal.org/a/中文．", "https://signal.org/a/中文"),
       // nothing to cut
       arrayOf("https://zh.wikipedia.org/wiki/中国", "https://zh.wikipedia.org/wiki/中国"),
       arrayOf("https://signal.org/path", "https://signal.org/path"),

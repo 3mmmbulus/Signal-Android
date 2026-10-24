@@ -245,6 +245,12 @@ class LinkifierTest(private val case: Case) {
       Case("chinese path before cjk comma is kept", "https://zh.wikipedia.org/wiki/中国，很好", listOf(web("https://zh.wikipedia.org/wiki/中国"))),
       Case("www url with space before cjk full stop", "去 www.x.com。", listOf(web("www.x.com", url = "http://www.x.com"))),
       Case("bare domain before cjk comma", "打开 signal.org，然后", listOf(web("signal.org", url = "http://signal.org"))),
+      Case("cjk ellipsis after url is excluded", "看 https://x.com/abc…", listOf(web("https://x.com/abc"))),
+      Case("cjk em dash mid-text ends the url", "https://x.com/abc—后面", listOf(web("https://x.com/abc"))),
+      Case("fullwidth hyphen-minus after url is excluded", "看 https://x.com/abc－", listOf(web("https://x.com/abc"))),
+      Case("fullwidth full stop after url is excluded", "看 https://x.com/abc．后面", listOf(web("https://x.com/abc"))),
+      Case("mixed ascii period then cjk full stop", "Visit https://signal.org.。", listOf(web("https://signal.org"))),
+      Case("ascii comma inside path then cjk ellipsis", "https://x.com/a,b…", listOf(web("https://x.com/a,b"))),
       Case("ascii comma inside path is still kept", "https://x.com/a,b", listOf(web("https://x.com/a,b"))),
       Case("ascii paren pair inside path is still kept", "https://en.wikipedia.org/wiki/Foo_(bar)", listOf(web("https://en.wikipedia.org/wiki/Foo_(bar)"))),
       Case("emoji (surrogate pair) in the path is still part of the url", "https://signal.org/a/😀", listOf(web("https://signal.org/a/😀")))
