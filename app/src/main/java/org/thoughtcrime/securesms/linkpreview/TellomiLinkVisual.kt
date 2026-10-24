@@ -255,6 +255,15 @@ object TellomiLinkVisual {
   @JvmStatic
   fun showsLinkIcon(card: TellomiLinkCard?, layout: Layout?): Boolean = layout == Layout.NO_IMAGE && !isClaimed(card)
 
+  /** The layout as [TellomiLinkCardStyle] reads it; first-party and no decision are null (first-party cards keep their own style). */
+  @JvmStatic
+  fun styleLayout(layout: Layout?): TellomiLinkCardStyle.Layout? = when (layout) {
+    Layout.LARGE_IMAGE -> TellomiLinkCardStyle.Layout.LARGE_IMAGE
+    Layout.ICON -> TellomiLinkCardStyle.Layout.ICON
+    Layout.NO_IMAGE -> TellomiLinkCardStyle.Layout.NO_IMAGE
+    Layout.FIRST_PARTY, null -> null
+  }
+
   /** Null is "no decision": the card shows the way it did before layout existed. */
   @JvmStatic
   fun layout(bridge: Bridge, card: TellomiLinkCard, imageWidth: Int, imageHeight: Int): Layout? {

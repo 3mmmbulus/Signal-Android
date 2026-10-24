@@ -57,6 +57,7 @@ import org.thoughtcrime.securesms.keyvalue.PlainTextKeyValueStore
 import org.thoughtcrime.securesms.keyvalue.SettingsValues
 import org.thoughtcrime.securesms.linkpreview.LinkPreview
 import org.thoughtcrime.securesms.linkpreview.TellomiLinkCard
+import org.thoughtcrime.securesms.linkpreview.TellomiLinkCardStyle
 import org.thoughtcrime.securesms.linkpreview.TellomiLinkOnly
 import org.thoughtcrime.securesms.linkpreview.TellomiLinkRegistry
 import org.thoughtcrime.securesms.linkpreview.TellomiLinkVisual
@@ -371,11 +372,12 @@ class TellomiRequestLinkCardTest {
   }
 
   @Test
-  fun `once accepted, the card is tinted with the colours of its image`() {
+  fun `once accepted, a card without an image to show is neutral grey, whatever tint the data layer had`() {
+    // DESIGN.md §9 (PM 2026-10-24): only an icon strip keeps its image's colours; with no image drawn this is a title strip.
     val item = bind(message(url, preview(url, "网易新闻")), accepted = true, visual = tinted)
 
-    assertEquals(orange.background, item.cardBackground)
-    assertEquals(orange.text, item.card.text(R.id.linkpreview_title).currentTextColor)
+    assertEquals(TellomiLinkCardStyle.NEUTRAL_LIGHT, item.cardBackground)
+    assertEquals(ContextCompat.getColor(context, org.signal.core.ui.R.color.signal_colorOnSurface), item.card.text(R.id.linkpreview_title).currentTextColor)
   }
 
   @Test
@@ -400,7 +402,7 @@ class TellomiRequestLinkCardTest {
     bind(record, accepted = true, item = item, visual = tinted)
     assertEquals("网易新闻", item.card.text(R.id.linkpreview_title).text.toString())
     assertEquals("163.com", item.card.text(R.id.linkpreview_site).text.toString())
-    assertEquals(orange.background, item.cardBackground)
+    assertEquals(TellomiLinkCardStyle.NEUTRAL_LIGHT, item.cardBackground)
     assertEquals(View.GONE, item.card.visibilityOf(R.id.linkpreview_link_icon))
     assertEquals(View.GONE, item.body.visibility)
 

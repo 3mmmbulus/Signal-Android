@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Tellomi (DESIGN.md §9): the neutral grey of a link card, light #E9E9EB, dark #2C2C2E (iOS TellomiLinkCardColors). -->
+<resources>
+    <color name="tellomi_link_card_neutral">#FFE9E9EB</color>
+</resources>

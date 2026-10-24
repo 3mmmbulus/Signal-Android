@@ -6,6 +6,7 @@ import android.content.res.TypedArray;
 import android.graphics.Bitmap;
 import android.graphics.Canvas;
 import android.graphics.Color;
+import android.graphics.Typeface;
 import android.graphics.drawable.BitmapDrawable;
 import android.graphics.drawable.ColorDrawable;
 import android.graphics.drawable.Drawable;
@@ -16,10 +17,12 @@ import android.text.style.ForegroundColorSpan;
 import android.text.style.RelativeSizeSpan;
 import android.util.AttributeSet;
 import android.util.StateSet;
+import android.util.TypedValue;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.Button;
 import android.widget.FrameLayout;
+import android.widget.ImageView;
 import android.widget.TextView;
 
 import androidx.annotation.ColorInt;
@@ -32,6 +35,7 @@ import androidx.core.content.ContextCompat;
 import androidx.core.view.AccessibilityDelegateCompat;
 import androidx.core.view.ViewCompat;
 import androidx.core.view.accessibility.AccessibilityNodeInfoCompat;
+import androidx.core.widget.ImageViewCompat;
 
 import com.bumptech.glide.RequestManager;
 
@@ -47,6 +51,7 @@ import org.thoughtcrime.securesms.linkpreview.LinkPreview;
 import org.thoughtcrime.securesms.linkpreview.LinkPreviewRepository;
 import org.thoughtcrime.securesms.linkpreview.TellomiFirstPartyCard;
 import org.thoughtcrime.securesms.linkpreview.TellomiLinkCardAccessibility;
+import org.thoughtcrime.securesms.linkpreview.TellomiLinkCardStyle;
 import org.thoughtcrime.securesms.linkpreview.TellomiLinkDisplay;
 import org.thoughtcrime.securesms.linkpreview.TellomiLinkVisual;
 import org.thoughtcrime.securesms.mms.ImageSlide;
@@ -110,6 +115,16 @@ public class LinkPreviewView extends FrameLayout {
   private int                           type;
   private int                           defaultRadius;
   private boolean                       iconLayout;
+  /** Tellomi (DESIGN.md §9): the unified card style is on this view; undone by {@link #resetTellomiCardStyle}, since views are reused. */
+  private boolean                       cardStyled;
+  private ConstraintLayout.LayoutParams xmlTitleParams;
+  private ConstraintLayout.LayoutParams xmlSiteParams;
+  private ConstraintLayout.LayoutParams xmlLinkIconParams;
+  private float                         xmlTitleTextSize;
+  private float                         xmlSiteTextSize;
+  private Typeface                      xmlTitleTypeface;
+  private int[]                         xmlContainerPadding;
+  private ColorStateList                xmlLinkIconTint;
   /** Tellomi (card-visual §3.6): what a screen reader says for the whole card, and whether its action is a button. */
   private TellomiLinkCardAccessibility.Strings accessibilityStrings;
   private boolean                       actionIsButton;
@@ -147,7 +162,15 @@ public class LinkPreviewView extends FrameLayout {
     noPreview     = findViewById(R.id.linkpreview_no_preview);
     defaultRadius = getResources().getDimensionPixelSize(R.dimen.thumbnail_default_radius);
     cornerMask    = new CornerMask(this);
+    xmlTitleParams      = new ConstraintLayout.LayoutParams((ConstraintLayout.LayoutParams) title.getLayoutParams());
+    xmlSiteParams       = new ConstraintLayout.LayoutParams((ConstraintLayout.LayoutParams) site.getLayoutParams());
+    xmlLinkIconParams   = new ConstraintLayout.LayoutParams((ConstraintLayout.LayoutParams) linkIcon.getLayoutParams());
+    xmlTitleTextSize    = title.getTextSize();
+    xmlSiteTextSize     = site.getTextSize();
+    xmlTitleTypeface    = title.getTypeface();
+    xmlLinkIconTint     = ImageViewCompat.getImageTintList((ImageView) linkIcon);
     accessibilityStrings = TellomiLinkCardAccessibility.Strings.from(getContext());
+    xmlContainerPadding  = new int[] { container.getPaddingStart(), container.getPaddingTop(), container.getPaddingEnd(), container.getPaddingBottom() };
 
     if (attrs != null) {
       TypedArray typedArray   = getContext().getTheme().obtainStyledAttributes(attrs, R.styleable.LinkPreviewView, 0, 0);
@@ -546,6 +569,176 @@ public class LinkPreviewView extends FrameLayout {
   }
 
   /**
+   * Tellomi (PM 2026-10-19, after Apple Messages; DESIGN.md §9; iOS {@code CVLinkPreviewViewAdapterTellomiStrip} /
+   * {@code ...Large}): last, after {@link #applyTellomiDisplay}, {@link #applyTellomiBrandIcon}, {@link #applyTellomiLayout} and
+   * {@link #applyTellomiTint}, draw a third-party card in one of the four styles of {@link TellomiLinkCardStyle}. Only the title
+   * (at most two lines, bold) and the domain; no sub line.
+   *
+   * <ul>
+   *   <li>{@code LARGE_IMAGE}: the bar under the image (drawn by the bubble's media view): title and domain, neutral grey;</li>
+   *   <li>{@code ICON_STRIP}: title and domain on the left, the image as a 36dp square with 8dp corners on the right, centred;
+   *       the colours the tint gave (neutral grey without one);</li>
+   *   <li>{@code TEXT_STRIP}: neutral grey, title and domain, nothing on the right;</li>
+   *   <li>{@code DOMAIN_STRIP}: neutral grey, the domain as the only line (title size, regular weight), the compass on the right.</li>
+   * </ul>
+   *
+   * {@code tinted}: {@link #applyTellomiTint} gave this card its image's colours; they are kept on an icon strip only.
+   * A null kind or text leaves the card as it is (first-party cards, group invites, call links, the compose box).
+   */
+  public void applyTellomiCardStyle(@Nullable TellomiLinkCardStyle.Kind kind, boolean showCompass, @Nullable TellomiLinkCardStyle.Text text, boolean lookalike, boolean tinted) {
+    if (type == TYPE_COMPOSE || kind == null || text == null || firstPartyAvatar.getVisibility() == VISIBLE) {
+      return;
+    }
+    if (kind == TellomiLinkCardStyle.Kind.ICON_STRIP && (!thumbnail.resolved() || thumbnail.getVisibility() != VISIBLE)) {
+      return;
+    }
+
+    cardStyled = true;
+    description.setVisibility(GONE);
+
+    boolean iconStrip   = kind == TellomiLinkCardStyle.Kind.ICON_STRIP;
+    boolean domainOnly  = text.getTitle() == null;
+    boolean hasCompass  = showCompass && (kind == TellomiLinkCardStyle.Kind.TEXT_STRIP || kind == TellomiLinkCardStyle.Kind.DOMAIN_STRIP);
+    boolean hasTrailing = iconStrip || hasCompass;
+
+    int titleColor;
+    int secondaryColor;
+    if (tinted && TellomiLinkCardStyle.isTinted(kind)) {
+      titleColor     = title.getCurrentTextColor();
+      secondaryColor = site.getCurrentTextColor();
+    } else {
+      container.setBackgroundColor(ContextCompat.getColor(getContext(), R.color.tellomi_link_card_neutral));
+      titleColor     = ContextCompat.getColor(getContext(), org.signal.core.ui.R.color.signal_colorOnSurface);
+      secondaryColor = ContextCompat.getColor(getContext(), org.signal.core.ui.R.color.signal_colorOnSurfaceVariant);
+      showStateLayer(titleColor);
+    }
+    int dangerColor = ContextCompat.getColor(getContext(), org.signal.core.ui.R.color.signal_colorError);
+
+    int[] padding = kind == TellomiLinkCardStyle.Kind.LARGE_IMAGE ? TellomiLinkCardStyle.LARGE_IMAGE_TEXT_PADDING_DP
+                                                                    : hasTrailing ? TellomiLinkCardStyle.STRIP_PADDING_DP
+                                                                                  : TellomiLinkCardStyle.STRIP_NO_TRAILING_PADDING_DP;
+    container.setPaddingRelative(ViewUtil.dpToPx(padding[0]), ViewUtil.dpToPx(padding[1]), ViewUtil.dpToPx(padding[2]), ViewUtil.dpToPx(padding[3]));
+
+    int trailingDp = iconStrip ? TellomiLinkCardStyle.ICON_DP : TellomiLinkCardStyle.COMPASS_DP;
+    container.setMinimumHeight(kind == TellomiLinkCardStyle.Kind.LARGE_IMAGE ? 0 : ViewUtil.dpToPx(trailingDp + padding[1] + padding[3]));
+
+    // The title line, or the domain as the only line.
+    title.setVisibility(VISIBLE);
+    title.setMaxLines(domainOnly ? 1 : TellomiLinkCardStyle.MAX_TITLE_LINES);
+    title.setTextSize(TypedValue.COMPLEX_UNIT_SP, TellomiLinkCardStyle.TITLE_SP);
+    if (domainOnly) {
+      title.setText(text.getDomain());
+      title.setTypeface(Typeface.create(xmlTitleTypeface, Typeface.NORMAL));
+      title.setTextColor(lookalike ? dangerColor : secondaryColor);
+      site.setVisibility(GONE);
+    } else {
+      title.setTypeface(Typeface.create(xmlTitleTypeface, Typeface.BOLD));
+      title.setTextColor(lookalike ? dangerColor : titleColor);
+      site.setText(text.getDomain());
+      site.setTextSize(TypedValue.COMPLEX_UNIT_SP, TellomiLinkCardStyle.DOMAIN_SP);
+      site.setTextColor(secondaryColor);
+      site.setVisibility(VISIBLE);
+    }
+
+    int trailingId = iconStrip ? R.id.linkpreview_thumbnail : hasCompass ? R.id.linkpreview_link_icon : ConstraintLayout.LayoutParams.PARENT_ID;
+
+    // The trailing slot: the icon, or the compass, centred on the strip at the end padding.
+    if (iconStrip) {
+      linkIcon.setVisibility(GONE);
+      // The image keeps its own corners, not the bubble's (see setCorners).
+      iconLayout = true;
+      resizeThumbnail(TellomiLinkCardStyle.ICON_DP);
+      int radius = ViewUtil.dpToPx(TellomiLinkCardStyle.ICON_RADIUS_DP);
+      thumbnailState = thumbnailState.copy(radius, radius, radius, radius, thumbnailState.getDownloadListener());
+      thumbnailState.applyState(thumbnail);
+      centreAtEnd(thumbnail.get());
+    } else if (hasCompass) {
+      ImageView compass = (ImageView) linkIcon;
+      compass.setImageResource(R.drawable.ic_tellomi_compass_26);
+      ImageViewCompat.setImageTintList(compass, ColorStateList.valueOf(secondaryColor));
+      ViewGroup.LayoutParams size = compass.getLayoutParams();
+      size.width  = ViewUtil.dpToPx(TellomiLinkCardStyle.COMPASS_DP);
+      size.height = ViewUtil.dpToPx(TellomiLinkCardStyle.COMPASS_DP);
+      compass.setLayoutParams(size);
+      centreAtEnd(compass);
+      compass.setVisibility(VISIBLE);
+    } else {
+      linkIcon.setVisibility(GONE);
+    }
+
+    // Title and domain: one packed column, centred on the strip, from the start padding to the trailing slot.
+    ConstraintLayout.LayoutParams titleParams = (ConstraintLayout.LayoutParams) title.getLayoutParams();
+    titleParams.topToTop           = ConstraintLayout.LayoutParams.PARENT_ID;
+    titleParams.topToBottom        = ConstraintLayout.LayoutParams.UNSET;
+    titleParams.bottomToTop        = domainOnly ? ConstraintLayout.LayoutParams.UNSET : R.id.linkpreview_site;
+    titleParams.bottomToBottom     = domainOnly ? ConstraintLayout.LayoutParams.PARENT_ID : ConstraintLayout.LayoutParams.UNSET;
+    titleParams.startToEnd         = ConstraintLayout.LayoutParams.UNSET;
+    titleParams.startToStart       = ConstraintLayout.LayoutParams.PARENT_ID;
+    titleParams.endToStart         = trailingId == ConstraintLayout.LayoutParams.PARENT_ID ? ConstraintLayout.LayoutParams.UNSET : trailingId;
+    titleParams.endToEnd           = trailingId == ConstraintLayout.LayoutParams.PARENT_ID ? ConstraintLayout.LayoutParams.PARENT_ID : ConstraintLayout.LayoutParams.UNSET;
+    titleParams.verticalChainStyle = ConstraintLayout.LayoutParams.CHAIN_PACKED;
+    titleParams.verticalBias       = 0.5f;
+    titleParams.setMarginStart(0);
+    titleParams.setMarginEnd(hasTrailing ? ViewUtil.dpToPx(TellomiLinkCardStyle.TRAILING_GAP_DP) : 0);
+    title.setLayoutParams(titleParams);
+
+    if (!domainOnly) {
+      ConstraintLayout.LayoutParams siteParams = (ConstraintLayout.LayoutParams) site.getLayoutParams();
+      siteParams.topToBottom    = R.id.linkpreview_title;
+      siteParams.bottomToBottom = ConstraintLayout.LayoutParams.PARENT_ID;
+      siteParams.startToStart   = R.id.linkpreview_title;
+      siteParams.endToEnd       = R.id.linkpreview_title;
+      siteParams.topMargin      = ViewUtil.dpToPx(TellomiLinkCardStyle.LINE_GAP_DP);
+      site.setLayoutParams(siteParams);
+    }
+  }
+
+  /** Whether the card's own image (or a brand shell's bundled icon) is shown in the thumbnail slot. */
+  public boolean hasTellomiThumbnail() {
+    return thumbnail.resolved() && thumbnail.getVisibility() == VISIBLE;
+  }
+
+  /** The view at the card's end edge, centred top to bottom. */
+  private static void centreAtEnd(@NonNull View view) {
+    ConstraintLayout.LayoutParams params = (ConstraintLayout.LayoutParams) view.getLayoutParams();
+    params.startToStart   = ConstraintLayout.LayoutParams.UNSET;
+    params.startToEnd     = ConstraintLayout.LayoutParams.UNSET;
+    params.endToStart     = ConstraintLayout.LayoutParams.UNSET;
+    params.endToEnd       = ConstraintLayout.LayoutParams.PARENT_ID;
+    params.topToTop       = ConstraintLayout.LayoutParams.PARENT_ID;
+    params.topToBottom    = ConstraintLayout.LayoutParams.UNSET;
+    params.bottomToTop    = ConstraintLayout.LayoutParams.UNSET;
+    params.bottomToBottom = ConstraintLayout.LayoutParams.PARENT_ID;
+    params.setMarginEnd(0);
+    view.setLayoutParams(params);
+  }
+
+  /** Undoes {@link #applyTellomiCardStyle}: back to the layout file. The thumbnail is put back by {@link #showTellomiVisual}. */
+  private void resetTellomiCardStyle() {
+    if (!cardStyled) {
+      return;
+    }
+    cardStyled = false;
+    title.setLayoutParams(new ConstraintLayout.LayoutParams(xmlTitleParams));
+    site.setLayoutParams(new ConstraintLayout.LayoutParams(xmlSiteParams));
+    linkIcon.setLayoutParams(new ConstraintLayout.LayoutParams(xmlLinkIconParams));
+    ((ImageView) linkIcon).setImageResource(R.drawable.ic_link_24);
+    ImageViewCompat.setImageTintList((ImageView) linkIcon, xmlLinkIconTint);
+    title.setTextSize(TypedValue.COMPLEX_UNIT_PX, xmlTitleTextSize);
+    title.setTypeface(xmlTitleTypeface);
+    title.setMaxLines(2);
+    title.setTextColor(titleColors);
+    site.setTextSize(TypedValue.COMPLEX_UNIT_PX, xmlSiteTextSize);
+    container.setPaddingRelative(xmlContainerPadding[0], xmlContainerPadding[1], xmlContainerPadding[2], xmlContainerPadding[3]);
+    container.setMinimumHeight(0);
+    if (thumbnail.resolved()) {
+      ConstraintLayout.LayoutParams thumbnailParams = (ConstraintLayout.LayoutParams) thumbnail.get().getLayoutParams();
+      thumbnailParams.bottomToBottom = ConstraintLayout.LayoutParams.UNSET;
+      thumbnail.get().setLayoutParams(thumbnailParams);
+    }
+  }
+
+  /**
    * Tellomi (card-visual §3.3): the whole card in the colours taken from its own image; null keeps the default colours.
    * Whether to apply them (never in a message request) and which set (light or dark) is decided by the caller.
    */
@@ -604,6 +797,7 @@ public class LinkPreviewView extends FrameLayout {
       return;
     }
 
+    resetTellomiCardStyle();
     iconLayout = false;
     if (type != TYPE_COMPOSE) {
       container.setBackgroundColor(ContextCompat.getColor(getContext(), org.signal.core.ui.R.color.signal_neutralSurface));
