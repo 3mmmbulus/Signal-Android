@@ -26,9 +26,9 @@
 
     <color name="signal_dark_colorSurface1">#1C1C1E</color>
     <color name="signal_dark_colorSurface2">#1C1C1E</color>
-    <color name="signal_dark_colorSurface3">#3A3A3C</color>
-    <color name="signal_dark_colorSurface4">#3A3A3C</color>
-    <color name="signal_dark_colorSurface5">#3A3A3C</color>
+    <color name="signal_dark_colorSurface3">#2C2C2E</color>
+    <color name="signal_dark_colorSurface4">#2C2C2E</color>
+    <color name="signal_dark_colorSurface5">#2C2C2E</color>
 
     <color name="signal_dark_colorTransparent1">#0AFFFFFF</color>
     <color name="signal_dark_colorTransparent2">#1FFFFFFF</color>
