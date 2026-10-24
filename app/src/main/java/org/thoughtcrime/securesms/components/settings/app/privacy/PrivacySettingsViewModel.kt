@@ -26,7 +26,8 @@ class PrivacySettingsViewModel(
   }
 
   fun setReadReceiptsEnabled(enabled: Boolean) {
-    sharedPreferences.edit().putBoolean(TextSecurePreferences.READ_RECEIPTS_PREF, enabled).apply()
+    // Tellomi：走 TextSecurePreferences，记下开关切换的时间（按到达时判断已读，#1183）
+    TextSecurePreferences.setReadReceiptsEnabled(AppDependencies.application, enabled)
     repository.syncReadReceiptState()
     refresh()
   }

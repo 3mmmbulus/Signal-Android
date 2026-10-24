@@ -39,6 +39,9 @@ public class DeliveryStatusView extends AppCompatImageView {
 
   private State state = State.NONE;
 
+  /** Tellomi：文字消息发送中的转圈延后露出（#1183），换绑 / 换状态时一律先撤掉。 */
+  private final Runnable showDelayedPending = this::showDelayedPending;
+
   public DeliveryStatusView(Context context) {
     this(context, null);
   }
@@ -103,7 +106,7 @@ public class DeliveryStatusView extends AppCompatImageView {
 
   @Override
   protected void onSizeChanged(int w, int h, int oldw, int oldh) {
-    if (state == State.PENDING && rotationAnimation == null) {
+    if (state == State.PENDING && rotationAnimation == null && getVisibility() == View.VISIBLE) {
       final float pivotXValue;
       if (ViewUtil.isLtr(this)) {
         pivotXValue = (w - getPaddingEnd()) / 2f;
@@ -132,6 +135,7 @@ public class DeliveryStatusView extends AppCompatImageView {
   }
 
   public void setNone() {
+    removeCallbacks(showDelayedPending);
     state = State.NONE;
     clearAnimation();
     setVisibility(View.GONE);
@@ -143,6 +147,7 @@ public class DeliveryStatusView extends AppCompatImageView {
   }
 
   public void setPending() {
+    removeCallbacks(showDelayedPending);
     state = State.PENDING;
     setVisibility(View.VISIBLE);
     ViewUtil.setPaddingStart(this, 0);
@@ -151,7 +156,43 @@ public class DeliveryStatusView extends AppCompatImageView {
     updateContentDescription();
   }
 
+  /**
+   * Tellomi：发送中，但 {@code delayMs} 之后才露出转圈（文字消息的 2 秒规则，tellomi/tellomi#1183）。
+   * 之前占着位置不显示（INVISIBLE），这样变成一个勾时时间不会跳。
+   */
+  public void setPending(long delayMs) {
+    if (delayMs <= 0) {
+      setPending();
+      return;
+    }
+
+    removeCallbacks(showDelayedPending);
+    state = State.PENDING;
+    // 挂着动画的 View 即使 INVISIBLE 也会被父 View 画出来（ViewGroup.dispatchDraw），等待期间先摘掉，露出来时再转
+    clearAnimation();
+    setVisibility(View.INVISIBLE);
+    ViewUtil.setPaddingStart(this, 0);
+    ViewUtil.setPaddingEnd(this, horizontalPadding);
+    setImageResource(R.drawable.symbol_messagestatus_sending_24);
+    setContentDescription(null);
+    postDelayed(showDelayedPending, delayMs);
+  }
+
+  private void showDelayedPending() {
+    if (state != State.PENDING) {
+      return;
+    }
+
+    setVisibility(View.VISIBLE);
+    updateContentDescription();
+
+    if (rotationAnimation == null && getWidth() > 0 && getHeight() > 0) {
+      onSizeChanged(getWidth(), getHeight(), getWidth(), getHeight());
+    }
+  }
+
   public void setSent() {
+    removeCallbacks(showDelayedPending);
     state = State.SENT;
     setVisibility(View.VISIBLE);
     ViewUtil.setPaddingStart(this, horizontalPadding);
@@ -162,6 +203,7 @@ public class DeliveryStatusView extends AppCompatImageView {
   }
 
   public void setDelivered() {
+    removeCallbacks(showDelayedPending);
     state = State.DELIVERED;
     setVisibility(View.VISIBLE);
     ViewUtil.setPaddingStart(this, horizontalPadding);
@@ -172,6 +214,7 @@ public class DeliveryStatusView extends AppCompatImageView {
   }
 
   public void setRead() {
+    removeCallbacks(showDelayedPending);
     state = State.READ;
     setVisibility(View.VISIBLE);
     ViewUtil.setPaddingStart(this, horizontalPadding);

@@ -24,6 +24,7 @@ import org.thoughtcrime.securesms.recipients.Recipient;
 import org.thoughtcrime.securesms.recipients.RecipientId;
 import org.thoughtcrime.securesms.recipients.RecipientUtil;
 import org.thoughtcrime.securesms.transport.UndeliverableMessageException;
+import org.thoughtcrime.securesms.util.TellomiReadReceiptHistory;
 import org.thoughtcrime.securesms.util.TextSecurePreferences;
 import org.signal.core.util.Util;
 import org.whispersystems.signalservice.api.SignalServiceMessageSender;
@@ -153,6 +154,13 @@ public class SendReadReceiptJob extends BaseJob {
 
     if (!TextSecurePreferences.isReadReceiptsEnabled(context) || messageSentTimestamps.isEmpty()) return;
 
+    // Tellomi：到达时关着已读回执的消息，之后打开开关再读也不发（#1183）
+    TellomiReadReceiptHistory.Filtered<Long> arrivedWhileEnabled = TellomiReadReceiptHistory.filterArrivedWhileEnabled(context, messageIds, messageSentTimestamps);
+    if (arrivedWhileEnabled.getValues().isEmpty()) {
+      Log.i(TAG, "All messages arrived while read receipts were off, not sending.");
+      return;
+    }
+
     if (!RecipientUtil.isMessageRequestAccepted(threadId)) {
       Log.w(TAG, "Refusing to send receipts to untrusted recipient");
       return;
@@ -191,7 +199,7 @@ public class SendReadReceiptJob extends BaseJob {
 
     SignalServiceMessageSender  messageSender  = AppDependencies.getSignalServiceMessageSender();
     SignalServiceAddress        remoteAddress  = RecipientUtil.toSignalServiceAddress(recipient);
-    SignalServiceReceiptMessage receiptMessage = new SignalServiceReceiptMessage(SignalServiceReceiptMessage.Type.READ, messageSentTimestamps, timestamp);
+    SignalServiceReceiptMessage receiptMessage = new SignalServiceReceiptMessage(SignalServiceReceiptMessage.Type.READ, arrivedWhileEnabled.getValues(), timestamp);
 
     SendMessageResult result = ReceiptSender.sendWithSessionRepair(recipientId, () -> messageSender.sendReceipt(remoteAddress,
                                                                                                                 SealedSenderAccessUtil.getSealedSenderAccessFor(recipient,
@@ -199,8 +207,8 @@ public class SendReadReceiptJob extends BaseJob {
                                                                                                                 receiptMessage,
                                                                                                                 recipient.needsPniSignature()));
 
-    if (result != null && Util.hasItems(messageIds)) {
-      SignalDatabase.messageLog().insertIfPossible(recipientId, timestamp, result, ContentHint.IMPLICIT, messageIds, false);
+    if (result != null && Util.hasItems(arrivedWhileEnabled.getMessageIds())) {
+      SignalDatabase.messageLog().insertIfPossible(recipientId, timestamp, result, ContentHint.IMPLICIT, arrivedWhileEnabled.getMessageIds(), false);
     }
   }
 

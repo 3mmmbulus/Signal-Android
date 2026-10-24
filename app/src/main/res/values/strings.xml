@@ -4380,7 +4380,7 @@
     <string name="preferences__submit_debug_log">Submit debug log</string>
     <string name="preferences__incognito_keyboard">Incognito keyboard</string>
     <string name="preferences__read_receipts">Read receipts</string>
-    <string name="preferences__if_read_receipts_are_disabled_you_wont_be_able_to_see_read_receipts">If read receipts are disabled, you won\'t be able to see read receipts from others.</string>
+    <string name="preferences__if_read_receipts_are_disabled_you_wont_be_able_to_see_read_receipts">When read receipts are on, people see two checks on messages you\'ve read. When they\'re off, people can\'t see whether you\'ve read their messages, and you can\'t see whether anyone has read yours. Messages received while read receipts are off won\'t show as read, even if you turn read receipts on later.</string>
     <string name="preferences__typing_indicators">Typing indicators</string>
     <string name="preferences__if_typing_indicators_are_disabled_you_wont_be_able_to_see_typing_indicators">If typing indicators are disabled, you won\'t be able to see typing indicators from others.</string>
     <string name="preferences__request_keyboard_to_disable">Request keyboard to disable personalized learning.</string>

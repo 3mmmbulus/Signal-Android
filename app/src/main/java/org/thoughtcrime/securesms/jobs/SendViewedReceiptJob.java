@@ -26,6 +26,7 @@ import org.thoughtcrime.securesms.net.NotPushRegisteredException;
 import org.thoughtcrime.securesms.recipients.Recipient;
 import org.thoughtcrime.securesms.recipients.RecipientId;
 import org.thoughtcrime.securesms.recipients.RecipientUtil;
+import org.thoughtcrime.securesms.util.TellomiReadReceiptHistory;
 import org.thoughtcrime.securesms.util.TextSecurePreferences;
 import org.signal.core.util.Util;
 import org.whispersystems.signalservice.api.SignalServiceMessageSender;
@@ -39,8 +40,10 @@ import org.whispersystems.signalservice.api.push.exceptions.ServerRejectedExcept
 
 import java.io.IOException;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Set;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
@@ -146,9 +149,13 @@ public class SendViewedReceiptJob extends BaseJob {
     List<Long>      messageSentTimestamps = new LinkedList<>();
     List<StoryType> storyTypes            = SignalDatabase.messages().getStoryTypes(this.messageIds);
 
+    // Tellomi：一次性媒体「已查看」、语音「已播放」同样按到达时的已读回执开关判断（#1183）
+    Set<MessageId> arrivedWhileEnabled = canSendNonStoryReceipts ? new HashSet<>(TellomiReadReceiptHistory.filterArrivedWhileEnabled(context, this.messageIds, this.messageSentTimestamps).getMessageIds())
+                                                                 : Collections.emptySet();
+
     for (int i = 0; i < storyTypes.size(); i++) {
       StoryType storyType = storyTypes.get(i);
-      if ((storyType == StoryType.NONE && canSendNonStoryReceipts) || (storyType.isStory() && canSendStoryReceipts)) {
+      if ((storyType == StoryType.NONE && canSendNonStoryReceipts && arrivedWhileEnabled.contains(this.messageIds.get(i))) || (storyType.isStory() && canSendStoryReceipts)) {
         foundMessageIds.add(this.messageIds.get(i));
         messageSentTimestamps.add(this.messageSentTimestamps.get(i));
       }
