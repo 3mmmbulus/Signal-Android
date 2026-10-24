@@ -6903,6 +6903,8 @@
     <string name="ConversationListTabs__tellomi_feed">Feed</string>
     <!-- Tellomi (tellomi/tellomi#1355, #1360): label for the Friends (contact list) tab in the home bottom bar. Must be "Friends", not "Contacts". -->
     <string name="ConversationListTabs__tellomi_friends">Friends</string>
+    <!-- Tellomi: share text sent from the Friends tab invite row, %1$s is the download link (same sentence as iOS) -->
+    <string name="TellomiFriends__invite_text">I'm inviting you to install Tellomi! Here is the link: %1$s</string>
     <!-- Tellomi (tellomi/tellomi#1355): label for the Me (profile and settings) tab in the home bottom bar -->
     <string name="ConversationListTabs__tellomi_me">Me</string>
     <!-- Tellomi (M11 feed): the two tabs at the top of the feed, and what each shows while it has no posts -->

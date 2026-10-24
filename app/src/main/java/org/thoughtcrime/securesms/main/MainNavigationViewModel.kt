@@ -60,6 +60,13 @@ class MainNavigationViewModel(
     private const val CALLS_BACK_STACK_KEY = "calls_back_stack_v2"
     private const val STORIES_BACK_STACK_KEY = "stories_back_stack_v2"
     private const val FEED_BACK_STACK_KEY = "tellomi_feed_back_stack"
+    /**
+     * Tellomi：会话压在哪个栈上。在「好友」里打开的会话压在好友自己的栈上，返回回到好友；别的照旧压在聊天上。
+     */
+    fun chatsDetailRoot(currentRoot: MainListRoute): MainListRoute {
+      return if (currentRoot == MainListRoute.Friends) MainListRoute.Friends else MainListRoute.Chats
+    }
+
     private const val FRIENDS_BACK_STACK_KEY = "tellomi_friends_back_stack"
     private const val ME_BACK_STACK_KEY = "tellomi_me_back_stack"
   }
@@ -257,12 +264,13 @@ class MainNavigationViewModel(
   }
 
   private fun pushChatsDetailLocation(location: MainDetailRoute) {
-    val chatsBackStack = navigator[MainListRoute.Chats]
+    val root = chatsDetailRoot(navigator.currentRoot.value)
+    val chatsBackStack = navigator[root]
     if (location is MainDetailRoute.Chats && chatsBackStack.activeRecipientId != location.controllerKey) {
       chatsBackStack.exitDetail()
     }
 
-    navigator.processEvent(ListDetailEvents.Push(location, MainListRoute.Chats))
+    navigator.processEvent(ListDetailEvents.Push(location, root))
   }
 
   private fun pushCallsDetailLocation(location: MainDetailRoute) {
