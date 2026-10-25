@@ -4545,6 +4545,7 @@
     <string name="conversation_selection__menu_forward">轉寄</string>
     <!-- Tellomi（#1174）：长按菜单「收藏」，直接存进「我的收藏」 -->
     <string name="conversation_selection__menu_tellomi_save">收藏</string>
+    <string name="conversation_selection__menu_tellomi_select_text">選取文字</string>
     <!-- Tellomi（#1174）：收藏成功的提示，后面跟「查看」按钮 -->
     <string name="ConversationFragment__tellomi_saved_to_saved_messages">已收藏</string>
     <!-- Tellomi（#1174）：收藏成功提示上的按钮，打开「我的收藏」 -->

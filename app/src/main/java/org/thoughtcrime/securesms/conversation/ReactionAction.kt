@@ -26,5 +26,8 @@ enum class ReactionAction {
   UNSTAR_MESSAGE,
 
   /** Tellomi：长按「收藏」，直接存进「我的收藏」（tellomi/tellomi#1174）。 */
-  TELLOMI_SAVE_TO_SAVED_MESSAGES
+  TELLOMI_SAVE_TO_SAVED_MESSAGES,
+
+  /** Tellomi（审计 4.4）：「选择文字」，用系统手柄选一段再复制。 */
+  TELLOMI_SELECT_TEXT
 }

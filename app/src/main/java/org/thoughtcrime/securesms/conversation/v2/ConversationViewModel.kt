@@ -791,6 +791,10 @@ class ConversationViewModel(
     return repository.copyToClipboard(context, messageParts)
   }
 
+  fun tellomiPlainBody(context: Context, conversationMessage: ConversationMessage): Maybe<CharSequence> {
+    return repository.tellomiPlainBody(context, conversationMessage)
+  }
+
   fun resendMessage(conversationMessage: ConversationMessage): Completable {
     return repository.resendMessage(conversationMessage.messageRecord)
   }

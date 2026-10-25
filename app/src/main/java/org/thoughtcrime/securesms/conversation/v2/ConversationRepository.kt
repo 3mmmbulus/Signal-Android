@@ -779,6 +779,14 @@ class ConversationRepository(
       }
   }
 
+  /** Tellomi（审计 4.4）：「选择文字」用的纯文本正文，不碰剪贴板。 */
+  fun tellomiPlainBody(context: Context, conversationMessage: ConversationMessage): Maybe<CharSequence> {
+    return Maybe.fromCallable { extractBodies(context, conversationMessage.multiselectCollection.toSet()).toString() as CharSequence }
+      .filter { it.isNotEmpty() }
+      .subscribeOn(Schedulers.computation())
+      .observeOn(AndroidSchedulers.mainThread())
+  }
+
   fun resendMessage(messageRecord: MessageRecord): Completable {
     return Completable.fromAction {
       MessageSender.resend(applicationContext, messageRecord)
