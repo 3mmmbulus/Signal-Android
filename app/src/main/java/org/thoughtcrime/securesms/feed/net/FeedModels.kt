@@ -7,10 +7,19 @@ package org.thoughtcrime.securesms.feed.net
 
 import kotlinx.serialization.EncodeDefault
 import kotlinx.serialization.ExperimentalSerializationApi
+import kotlinx.serialization.KSerializer
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.Transient
+import kotlinx.serialization.builtins.ListSerializer
+import kotlinx.serialization.descriptors.SerialDescriptor
+import kotlinx.serialization.encoding.Decoder
+import kotlinx.serialization.encoding.Encoder
+import kotlinx.serialization.json.JsonArray
+import kotlinx.serialization.json.JsonDecoder
 import kotlinx.serialization.json.JsonElement
+import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.JsonPrimitive
 
 /*
  * 内容引擎（`tellomi/content-engine` `internal/engine/api`）的 JSON 结构，字段名与引擎逐字相同（snake_case）。
@@ -171,7 +180,8 @@ data class FeedCard(
   val media: List<FeedMedia> = emptyList(),
   /** 语音评论的服务端转写；转写还没接上时是空串，空的不显示。 */
   val transcript: String = "",
-  val topics: List<FeedTopic> = emptyList(),
+  /** 引擎给的是 slug 字符串数组（`moderation/worker.go` card()，没有话题时不出现）；也认 `{slug,label}` 对象，见 [FeedTopicListSerializer]。 */
+  @Serializable(with = FeedTopicListSerializer::class) val topics: List<FeedTopic> = emptyList(),
   val poll: FeedPoll? = null,
   /** 被引用的帖子 id；要显示时再走一次 Card API。 */
   @SerialName("quote_of") val quoteOf: String? = null,
@@ -277,8 +287,43 @@ data class FeedMedia(
   }
 }
 
+/**
+ * 卡片上的话题。[label] 为空时显示名由客户端话题表给（[org.thoughtcrime.securesms.feed.feedTopicLabel]，
+ * 不认识的 slug 直接显示 slug）。
+ */
 @Serializable
-data class FeedTopic(val slug: String, val label: String)
+data class FeedTopic(val slug: String, val label: String = "")
+
+/**
+ * 卡片 `topics` 的解析：引擎 main 66ce9cb 下发 `["food","hiking"]`；样例数据、旧格式是 `[{"slug","label"}]`。
+ * 两种都认；空 slug、数字、缺 slug 的对象等坏项丢掉，不让整张卡片（以及整批 Card API 结果）解析失败。
+ * 整个字段不是数组时当没有话题。写出时统一写成对象形状（详情页 Intent 里来回传卡片用）。
+ */
+object FeedTopicListSerializer : KSerializer<List<FeedTopic>> {
+  private val delegate = ListSerializer(FeedTopic.serializer())
+
+  override val descriptor: SerialDescriptor = delegate.descriptor
+
+  override fun serialize(encoder: Encoder, value: List<FeedTopic>) = delegate.serialize(encoder, value)
+
+  override fun deserialize(decoder: Decoder): List<FeedTopic> {
+    val input = decoder as? JsonDecoder ?: return delegate.deserialize(decoder)
+    val array = input.decodeJsonElement() as? JsonArray ?: return emptyList()
+    return array.mapNotNull(::topicOf)
+  }
+
+  private fun topicOf(element: JsonElement): FeedTopic? {
+    return when (element) {
+      is JsonPrimitive -> if (element.isString) element.content.takeIf { it.isNotBlank() }?.let { FeedTopic(slug = it) } else null
+      is JsonObject -> {
+        val slug = (element["slug"] as? JsonPrimitive)?.takeIf { it.isString }?.content?.takeIf { it.isNotBlank() } ?: return null
+        val label = (element["label"] as? JsonPrimitive)?.takeIf { it.isString }?.content.orEmpty()
+        FeedTopic(slug = slug, label = label)
+      }
+      else -> null
+    }
+  }
+}
 
 /** 投票的题面（卡片里，审核时定下）。 */
 @Serializable
