@@ -55,12 +55,31 @@ class LinkifierSpannableExtensionsTest {
   }
 
   @Test
-  fun `bare domain gets http scheme prefix`() {
+  fun `bare domain opens over https by default`() {
     val spannable = SpannableString("see signal.org today")
     assertThat(spannable.addDetectedLinks()).isTrue()
 
     val span = spannable.urlSpans().single()
-    assertThat(span.url).isEqualTo("http://signal.org")
+    assertThat(span.url).isEqualTo("https://signal.org")
+  }
+
+  @Test
+  fun `explicit http is kept by default`() {
+    val spannable = SpannableString("see http://signal.org today")
+    spannable.addDetectedLinks()
+    assertThat(spannable.urlSpans().single().url).isEqualTo("http://signal.org")
+  }
+
+  @Test
+  fun `bare domain path ends at cjk punctuation and opens over https`() {
+    for (p in listOf("，", "。", "！", "？", "、", "；", "：", "」", "』", "）", "】")) {
+      val text = "看 b23.tv/abc${p}后面"
+      val spannable = SpannableString(text)
+      spannable.addDetectedLinks()
+      val span = spannable.urlSpans().single()
+      assertThat(span.url).isEqualTo("https://b23.tv/abc")
+      assertThat(spannable.getSpanEnd(span)).isEqualTo(text.indexOf(p))
+    }
   }
 
   @Test
