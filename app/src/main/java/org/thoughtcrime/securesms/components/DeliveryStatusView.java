@@ -42,6 +42,9 @@ public class DeliveryStatusView extends AppCompatImageView {
 
   private final int horizontalPadding = (int) DimensionUnit.DP.toPixels(2);
 
+  /** Tellomi：发送中时钟（12dp）在 tellomi_sending_18 画布里的中心横坐标。 */
+  private final float sendingClockCenterX = DimensionUnit.DP.toPixels(6);
+
   private RotateAnimation rotationAnimation;
 
   private State state = State.NONE;
@@ -127,12 +130,8 @@ public class DeliveryStatusView extends AppCompatImageView {
   @Override
   protected void onSizeChanged(int w, int h, int oldw, int oldh) {
     if (state == State.PENDING && rotationAnimation == null && getVisibility() == View.VISIBLE) {
-      final float pivotXValue;
-      if (ViewUtil.isLtr(this)) {
-        pivotXValue = (w - getPaddingEnd()) / 2f;
-      } else {
-        pivotXValue = ((w - getPaddingEnd()) / 2f) + getPaddingEnd();
-      }
+      // Tellomi：时钟画在 18dp 宽画布的左边 12dp（tellomi_sending_18），绕时钟中心转；图标不随 RTL 翻转，所以按左内边距算
+      final float pivotXValue = getPaddingLeft() + sendingClockCenterX;
 
       final float pivotYValue = (h - getPaddingTop() - getPaddingBottom()) / 2f;
 
@@ -170,9 +169,10 @@ public class DeliveryStatusView extends AppCompatImageView {
     removeCallbacks(showDelayedPending);
     changeState(State.PENDING);
     setVisibility(View.VISIBLE);
-    ViewUtil.setPaddingStart(this, 0);
-    ViewUtil.setPaddingEnd(this, horizontalPadding);
-    setImageResource(R.drawable.symbol_messagestatus_sending_24);
+    // Tellomi：和一勾 / 两勾同样 2dp 起始间距 + 18dp 画布 = 20dp，发送中变一勾时时间不跳
+    ViewUtil.setPaddingStart(this, horizontalPadding);
+    ViewUtil.setPaddingEnd(this, 0);
+    setImageResource(R.drawable.tellomi_sending_18);
     updateContentDescription();
   }
 
@@ -191,9 +191,10 @@ public class DeliveryStatusView extends AppCompatImageView {
     // 挂着动画的 View 即使 INVISIBLE 也会被父 View 画出来（ViewGroup.dispatchDraw），等待期间先摘掉，露出来时再转
     clearAnimation();
     setVisibility(View.INVISIBLE);
-    ViewUtil.setPaddingStart(this, 0);
-    ViewUtil.setPaddingEnd(this, horizontalPadding);
-    setImageResource(R.drawable.symbol_messagestatus_sending_24);
+    // Tellomi：和一勾 / 两勾同样 2dp 起始间距 + 18dp 画布 = 20dp，发送中变一勾时时间不跳
+    ViewUtil.setPaddingStart(this, horizontalPadding);
+    ViewUtil.setPaddingEnd(this, 0);
+    setImageResource(R.drawable.tellomi_sending_18);
     setContentDescription(null);
     postDelayed(showDelayedPending, delayMs);
   }
