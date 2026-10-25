@@ -228,11 +228,12 @@ fun FeedPostCard(
         if (card.topics.isNotEmpty()) {
           // 点话题进话题页，那里能关注（第三节第 18 条）
           val context = LocalContext.current
-          val openTopic: (FeedTopic) -> Unit = onTopicClick ?: { context.startActivity(FeedTopicActivity.intent(context, it.slug, it.label)) }
+          val openTopic: (FeedTopic) -> Unit = onTopicClick ?: { context.startActivity(FeedTopicActivity.intent(context, it.slug, it.label.takeIf { l -> l.isNotBlank() })) }
           FlowRow(horizontalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.padding(top = 4.dp, end = 12.dp)) {
             card.topics.forEach { topic ->
+              val topicLabel = topic.label.ifBlank { feedTopicLabel(topic.slug) }
               Text(
-                text = "#${topic.label}",
+                text = "#$topicLabel",
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.primary,
                 modifier = Modifier
