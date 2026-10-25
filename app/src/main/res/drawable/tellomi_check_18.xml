@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Tellomi M7 (#1186)：一个勾 = 已发出。和电脑端 / iOS 同一份 tellomi-check.svg 的勾形，无圆圈；颜色由 DeliveryStatusView 染。
+     画布和两勾（tellomi_double_check_18）一样宽 18×12，勾靠左、和两勾里第一个勾重合，所以一勾 / 两勾切换时状态宽度固定（含 2dp 间距共 20dp），时间不左移。 -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="18dp"
+    android:height="12dp"
+    android:viewportWidth="18"
+    android:viewportHeight="12">
+    <path
+        android:pathData="M2.25,6.4 L5,9.1 L10.75,3"
+        android:strokeWidth="1.35"
+        android:strokeColor="#FF000000"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round" />
+</vector>

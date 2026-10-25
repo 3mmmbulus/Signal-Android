@@ -540,6 +540,11 @@ public final class ConversationListItem extends ConstraintLayout implements Bind
     }
   }
 
+  /** 会话 + 最后一条消息的时间：最后一条换了就是另一条消息。 */
+  private static long tellomiStatusKey(@NonNull ThreadWithRecipient thread) {
+    return thread.getThreadId() * 31 + thread.getDate();
+  }
+
   private void setStatusIcons(ThreadWithRecipient thread) {
     if (MessageTypes.isBadDecryptType(thread.getType())) {
       deliveryStatusIndicator.setNone();
@@ -559,6 +564,9 @@ public final class ConversationListItem extends ConstraintLayout implements Bind
       alertView.setFailed();
     } else {
       alertView.setNone();
+
+      // Tellomi M7（#1186）：同一行、同一条最后消息的状态变化才动；行换成另一条消息（新消息、删掉最新一条）不动
+      deliveryStatusIndicator.setMessageKey(tellomiStatusKey(thread));
 
       long sendingIndicatorDelayMs = TellomiMessageStatus.sendingIndicatorDelayMs(TellomiMessageStatus.isTextOnlySnippet(thread.getContentType()), thread.getDate(), System.currentTimeMillis());
 

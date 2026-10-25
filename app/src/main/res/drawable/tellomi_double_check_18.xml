@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Tellomi M7 (#1186)：两个勾 = 已读 / 已查看。和电脑端 / iOS 同一份 tellomi-double-check.svg（18×12），无圆圈。 -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="18dp"
+    android:height="12dp"
+    android:viewportWidth="18"
+    android:viewportHeight="12">
+    <path
+        android:pathData="M2.25,6.4 L5,9.1 L10.75,3 M8.9,8.05 L9.95,9.1 L15.75,3"
+        android:strokeWidth="1.35"
+        android:strokeColor="#FF000000"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round" />
+</vector>
