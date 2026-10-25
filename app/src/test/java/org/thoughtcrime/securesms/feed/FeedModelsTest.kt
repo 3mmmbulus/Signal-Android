@@ -24,6 +24,7 @@ import org.thoughtcrime.securesms.feed.net.FeedPostSettings
 import org.thoughtcrime.securesms.feed.net.FeedPostSettingsUpdate
 import org.thoughtcrime.securesms.feed.net.FeedProfilePage
 import org.thoughtcrime.securesms.feed.net.FeedStats
+import org.thoughtcrime.securesms.feed.net.FeedTopic
 import org.thoughtcrime.securesms.feed.net.FeedViewer
 
 class FeedModelsTest {
@@ -204,5 +205,53 @@ class FeedModelsTest {
 
   private fun card(id: String, likes: Int = 0, liked: Boolean = false): FeedCard {
     return FeedCard(id = id, kind = FeedCard.KIND_POST, stats = FeedStats(likes = likes), viewer = FeedViewer(liked = liked))
+  }
+
+  // 内容引擎 main 66ce9cb 的 moderation/worker.go card()：topics 是 slug 字符串数组，没有话题时不出现。
+
+  @Test
+  fun `card topics decode from engine slug strings`() {
+    val card = FeedJson.decodeFromString(FeedCard.serializer(), """{"kind":"post","text":"hi","topics":["food","no-such-topic",""]}""")
+
+    assertThat(card.text).isEqualTo("hi")
+    assertThat(card.topics).containsExactly(FeedTopic("food"), FeedTopic("no-such-topic"))
+  }
+
+  @Test
+  fun `card topics accept objects and drop junk items without failing the card`() {
+    val card = FeedJson.decodeFromString(
+      FeedCard.serializer(),
+      """{"kind":"post","text":"hi","topics":[{"slug":"hiking","label":"徒步"},{"slug":"food"},7,{"label":"x"},null,["a"],"news"]}"""
+    )
+
+    assertThat(card.text).isEqualTo("hi")
+    assertThat(card.topics).containsExactly(FeedTopic("hiking", "徒步"), FeedTopic("food"), FeedTopic("news"))
+  }
+
+  @Test
+  fun `card topics missing or not an array means no topics`() {
+    assertThat(FeedJson.decodeFromString(FeedCard.serializer(), """{"kind":"post"}""").topics).isEqualTo(emptyList())
+    assertThat(FeedJson.decodeFromString(FeedCard.serializer(), """{"kind":"post","topics":"food"}""").topics).isEqualTo(emptyList())
+    assertThat(FeedJson.decodeFromString(FeedCard.serializer(), """{"kind":"post","topics":null}""").topics).isEqualTo(emptyList())
+  }
+
+  @Test
+  fun `card result with engine string topics still decodes the whole batch`() {
+    val result = FeedJson.decodeFromString(
+      FeedCardResult.serializer(),
+      """{"id":"x","state":"ok","card":{"kind":"post","text":"hi","topics":["food"]}}"""
+    )
+
+    val card = result.toCard()!!
+    assertThat(card.id).isEqualTo("x")
+    assertThat(card.topics).containsExactly(FeedTopic("food"))
+  }
+
+  @Test
+  fun `card topics round trip through encode for the detail intent`() {
+    val card = FeedCard(kind = FeedCard.KIND_POST, topics = listOf(FeedTopic("hiking", "徒步"), FeedTopic("food")))
+    val json = FeedJson.encodeToString(FeedCard.serializer(), card)
+
+    assertThat(FeedJson.decodeFromString(FeedCard.serializer(), json).topics).isEqualTo(card.topics)
   }
 }
