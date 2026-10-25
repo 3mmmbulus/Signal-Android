@@ -51,6 +51,7 @@ import org.thoughtcrime.securesms.R;
 import org.thoughtcrime.securesms.animation.AnimationCompleteListener;
 import org.thoughtcrime.securesms.animation.AnimationStartListener;
 import org.thoughtcrime.securesms.audio.AudioRecordingHandler;
+import org.thoughtcrime.securesms.audio.TellomiVoicePauseUI;
 import org.signal.emoji.EmojiEventListener;
 import org.thoughtcrime.securesms.components.emoji.EmojiToggle;
 import org.thoughtcrime.securesms.components.emoji.MediaKeyboard;
@@ -105,6 +106,7 @@ public class InputPanel extends ConstraintLayout
   private SendButton            sendButton;
   private View                  recordingContainer;
   private View                  recordLockCancel;
+  private ImageButton           recordPause;
   private View                  composeContainer;
   private View                  editMessageCancel;
   private ImageView             editMessageThumbnail;
@@ -114,6 +116,7 @@ public class InputPanel extends ConstraintLayout
   private MicrophoneRecorderView   microphoneRecorderView;
   private SlideToCancel            slideToCancel;
   private RecordTime               recordTime;
+  private TellomiVoicePauseUI.Control voicePauseControl;
   private ValueAnimator            quoteAnimator;
   private ValueAnimator            editMessageAnimator;
   private Stub<VoiceNoteDraftView> voiceNoteDraftViewStub;
@@ -166,6 +169,7 @@ public class InputPanel extends ConstraintLayout
     this.sendButton             = findViewById(R.id.send_button);
     this.recordingContainer     = findViewById(R.id.recording_container);
     this.recordLockCancel       = findViewById(R.id.record_cancel);
+    this.recordPause            = findViewById(R.id.record_pause);
     this.voiceNoteDraftViewStub = new Stub<>(findViewById(R.id.voice_note_draft_view_stub));
     this.slideToCancel          = new SlideToCancel(findViewById(R.id.slide_to_cancel));
     this.microphoneRecorderView = findViewById(R.id.recorder_view);
@@ -179,6 +183,8 @@ public class InputPanel extends ConstraintLayout
     this.editMessageThumbnail   = findViewById(R.id.edit_message_thumbnail);
 
     this.recordLockCancel.setOnClickListener(v -> microphoneRecorderView.cancelAction(true));
+    // Tellomi（Telegram 对照 3.3 / F12）：锁定后暂停 / 继续。
+    this.recordPause.setOnClickListener(v -> tellomiToggleVoicePause());
 
     mediaKeyboard.setVisibility(View.VISIBLE);
     emojiVisible = true;
@@ -675,6 +681,28 @@ public class InputPanel extends ConstraintLayout
     microphoneRecorderView.setLevelSource(levelSource);
   }
 
+  /** Tellomi（Telegram 对照 3.3 / F12）：锁定录音时暂停 / 继续，以及不计暂停的计时。 */
+  public void setVoicePauseControl(@Nullable TellomiVoicePauseUI.Control control) {
+    this.voicePauseControl = control;
+    this.recordTime.setElapsedMsSupplier(control != null ? control::elapsedMs : null);
+  }
+
+  private void tellomiToggleVoicePause() {
+    TellomiVoicePauseUI.Control control = voicePauseControl;
+    if (control == null || !isRecordingInLockedMode()) {
+      return;
+    }
+    boolean isPaused = TellomiVoicePauseUI.INSTANCE.toggle(control);
+    tellomiUpdatePauseButton(isPaused);
+    recordTime.setMicPulsing(!isPaused);
+    TellomiHaptics.INSTANCE.perform(this, TellomiHaptics.Event.SELECTION_TICK);
+  }
+
+  private void tellomiUpdatePauseButton(boolean isPaused) {
+    recordPause.setImageResource(TellomiVoicePauseUI.INSTANCE.iconRes(isPaused));
+    recordPause.setContentDescription(getContext().getString(TellomiVoicePauseUI.INSTANCE.contentDescriptionRes(isPaused)));
+  }
+
   @Override
   public void onRecordPressed() {
     if (listener != null) listener.onRecorderStarted();
@@ -742,6 +770,11 @@ public class InputPanel extends ConstraintLayout
     TellomiHaptics.INSTANCE.perform(this, TellomiHaptics.Event.CONFIRM);
     slideToCancel.hide();
     recordLockCancel.setVisibility(View.VISIBLE);
+    // Tellomi（3.3）：锁定后显示暂停；有 control 才显示（会话页会注入）。
+    if (voicePauseControl != null) {
+      tellomiUpdatePauseButton(false);
+      recordPause.setVisibility(View.VISIBLE);
+    }
     fadeIn(buttonToggle);
     if (listener != null) listener.onRecorderLocked();
   }
@@ -774,6 +807,8 @@ public class InputPanel extends ConstraintLayout
 
   private long onRecordHideEvent() {
     recordLockCancel.setVisibility(View.GONE);
+    recordPause.setVisibility(View.GONE);
+    tellomiUpdatePauseButton(false);
 
     ListenableFuture<Void> future      = slideToCancel.hide();
     long                   elapsedTime = recordTime.hide();
@@ -1027,6 +1062,8 @@ public class InputPanel extends ConstraintLayout
     private final @NonNull Runnable onLimitHit;
     private final          long     limitSeconds;
     private                long     startTime;
+    private @Nullable java.util.function.LongSupplier elapsedMsSupplier;
+    private                boolean  micPulsing = true;
 
     private RecordTime(@NonNull TextView recordTimeView, @NonNull View microphone, long limitSeconds, @NonNull Runnable onLimitHit) {
       this.recordTimeView = recordTimeView;
@@ -1035,20 +1072,50 @@ public class InputPanel extends ConstraintLayout
       this.onLimitHit     = onLimitHit;
     }
 
+    void setElapsedMsSupplier(@Nullable java.util.function.LongSupplier elapsedMsSupplier) {
+      this.elapsedMsSupplier = elapsedMsSupplier;
+    }
+
+    /** Tellomi（3.3）：暂停时停闪，继续时再闪。 */
+    @MainThread
+    void setMicPulsing(boolean pulsing) {
+      this.micPulsing = pulsing;
+      microphone.clearAnimation();
+      if (startTime > 0 && pulsing) {
+        microphone.setAlpha(1f);
+        microphone.startAnimation(pulseAnimation());
+      } else if (startTime > 0) {
+        microphone.setAlpha(1f);
+      }
+    }
+
+    private long currentElapsedMs() {
+      if (elapsedMsSupplier != null && startTime > 0) {
+        return Math.max(0L, elapsedMsSupplier.getAsLong());
+      }
+      if (startTime <= 0) {
+        return 0L;
+      }
+      return System.currentTimeMillis() - startTime;
+    }
+
     @MainThread
     public void display() {
       this.startTime = System.currentTimeMillis();
+      this.micPulsing = true;
       this.recordTimeView.setText(DateUtils.formatElapsedTime(0));
       ViewUtil.fadeIn(this.recordTimeView, FADE_TIME);
       ThreadUtil.runOnMainDelayed(this, TimeUnit.SECONDS.toMillis(1));
       microphone.setVisibility(View.VISIBLE);
+      microphone.setAlpha(1f);
       microphone.startAnimation(pulseAnimation());
     }
 
     @MainThread
     public long hide() {
-      long elapsedTime = System.currentTimeMillis() - startTime;
+      long elapsedTime = currentElapsedMs();
       this.startTime = 0;
+      this.micPulsing = true;
       ViewUtil.fadeOut(this.recordTimeView, FADE_TIME, View.INVISIBLE);
       microphone.clearAnimation();
       ViewUtil.fadeOut(this.microphone, FADE_TIME, View.INVISIBLE);
@@ -1058,9 +1125,8 @@ public class InputPanel extends ConstraintLayout
     @Override
     @MainThread
     public void run() {
-      long localStartTime = startTime;
-      if (localStartTime > 0) {
-        long elapsedTime = System.currentTimeMillis() - localStartTime;
+      if (startTime > 0) {
+        long elapsedTime = currentElapsedMs();
         long elapsedSeconds = TimeUnit.MILLISECONDS.toSeconds(elapsedTime);
         if (elapsedSeconds >= limitSeconds) {
           onLimitHit.run();

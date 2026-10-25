@@ -42,6 +42,22 @@
         tools:text="00:00"
         tools:visibility="visible" />
 
+    <!-- Tellomi（Telegram 对照 3.3 / F12）：锁定后「取消」左边的暂停 / 继续 -->
+    <androidx.appcompat.widget.AppCompatImageButton
+        android:id="@+id/record_pause"
+        android:layout_width="40dp"
+        android:layout_height="40dp"
+        android:background="?attr/selectableItemBackgroundBorderless"
+        android:contentDescription="@string/TellomiVoicePause__pause_recording"
+        android:padding="8dp"
+        android:tint="@color/red_500"
+        android:visibility="gone"
+        app:srcCompat="@drawable/tellomi_symbol_pause_24"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toStartOf="@id/record_cancel"
+        app:layout_constraintTop_toTopOf="parent"
+        tools:visibility="visible" />
+
     <TextView
         android:id="@+id/record_cancel"
         style="@style/Signal.Text.Caption"
@@ -57,7 +73,6 @@
         android:visibility="gone"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintStart_toStartOf="@+id/frameLayout"
         app:layout_constraintTop_toTopOf="parent"
         tools:visibility="visible" />
 
@@ -68,7 +83,8 @@
         android:clipChildren="true"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintStart_toEndOf="@+id/record_time"
-        app:layout_constraintTop_toTopOf="parent">
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintEnd_toStartOf="@id/record_pause">
 
         <TextView
             android:id="@+id/slide_to_cancel"

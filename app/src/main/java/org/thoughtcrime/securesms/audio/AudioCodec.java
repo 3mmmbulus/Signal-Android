@@ -17,6 +17,7 @@ import org.signal.core.util.Util;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.nio.ByteBuffer;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 
 public class AudioCodec implements Recorder {
@@ -37,6 +38,9 @@ public class AudioCodec implements Recorder {
   private boolean running  = true;
   private boolean failed   = false;
   private boolean finished = false;
+
+  /** Tellomi（3.3）：暂停时丢掉麦克风缓冲、不写文件。 */
+  private final AtomicBoolean paused = new AtomicBoolean(false);
 
   public AudioCodec() throws IOException {
     this.bufferSize  = AudioRecord.getMinBufferSize(SAMPLE_RATE, AudioFormat.CHANNEL_IN_MONO, AudioFormat.ENCODING_PCM_16BIT);
@@ -80,8 +84,14 @@ public class AudioCodec implements Recorder {
           while (true) {
             boolean running = isRunning();
 
-            handleCodecInput(audioRecord, audioRecordData, mediaCodec, codecInputBuffers, running);
-            handleCodecOutput(mediaCodec, codecOutputBuffers, bufferInfo, outputStream);
+            if (paused.get()) {
+              // Drain mic so the buffer does not overrun; do not feed the encoder (paused time stays out of the file).
+              audioRecord.read(audioRecordData, 0, audioRecordData.length);
+              handleCodecOutput(mediaCodec, codecOutputBuffers, bufferInfo, outputStream);
+            } else {
+              handleCodecInput(audioRecord, audioRecordData, mediaCodec, codecInputBuffers, running);
+              handleCodecOutput(mediaCodec, codecOutputBuffers, bufferInfo, outputStream);
+            }
 
             if (!running) break;
           }
@@ -122,7 +132,26 @@ public class AudioCodec implements Recorder {
 
   @Override
   public int getMaxAmplitude() {
+    if (paused.get()) {
+      return 0;
+    }
     return maxAmplitude.getAndSet(0);
+  }
+
+  @Override
+  public boolean pause() {
+    if (!isRunning() || finished) {
+      return false;
+    }
+    return paused.compareAndSet(false, true);
+  }
+
+  @Override
+  public boolean resume() {
+    if (!isRunning() || finished) {
+      return false;
+    }
+    return paused.compareAndSet(true, false);
   }
 
   private synchronized void setFinished() {

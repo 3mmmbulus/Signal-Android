@@ -5,6 +5,7 @@ import android.media.AudioManager;
 import android.net.Uri;
 import android.os.Build;
 import android.os.ParcelFileDescriptor;
+import android.os.SystemClock;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
@@ -26,7 +27,7 @@ import java.util.concurrent.Future;
 import io.reactivex.rxjava3.core.Single;
 import io.reactivex.rxjava3.subjects.SingleSubject;
 
-public class AudioRecorder {
+public class AudioRecorder implements TellomiVoicePauseUI.Control {
 
   private static final String TAG = Log.tag(AudioRecorder.class);
 
@@ -35,14 +36,19 @@ public class AudioRecorder {
   private final Context                   context;
   private final AudioRecordingHandler     uiHandler;
   private final AudioRecorderFocusManager audioFocusManager;
+  private final TellomiVoicePauseClock    pauseClock = new TellomiVoicePauseClock();
 
   private volatile Recorder recorder;
   private Future<Uri>      recordingUriFuture;
   private volatile Uri     recordingUri;
   private SingleSubject<VoiceNoteDraft> recordingSubject;
+  private volatile boolean paused;
 
   /** Tellomi（交互审计 A-12）：上次调用以来的最大振幅，没在录时是 0。主线程调。 */
   public int getMaxAmplitude() {
+    if (paused) {
+      return 0;
+    }
     Recorder current = recorder;
     return current != null ? current.getMaxAmplitude() : 0;
   }
@@ -71,12 +77,83 @@ public class AudioRecorder {
     audioFocusManager = AudioRecorderFocusManager.create(context, onAudioFocusChangeListener);
   }
 
+  @Override
+  public boolean isPaused() {
+    return paused;
+  }
+
+  @Override
+  public long elapsedMs() {
+    synchronized (pauseClock) {
+      return pauseClock.elapsed(SystemClock.elapsedRealtime());
+    }
+  }
+
+  /**
+   * Tellomi（Telegram 对照 3.3 / F12）：暂停录音。主线程可调；在录音线程上执行。
+   */
+  @Override
+  public boolean pauseRecording() {
+    try {
+      return Boolean.TRUE.equals(executor.submit(() -> {
+        Recorder current = recorder;
+        if (current == null || paused) {
+          return false;
+        }
+        if (!current.pause()) {
+          return false;
+        }
+        paused = true;
+        synchronized (pauseClock) {
+          pauseClock.pause(SystemClock.elapsedRealtime());
+        }
+        return true;
+      }).get());
+    } catch (ExecutionException | InterruptedException e) {
+      Log.w(TAG, "pauseRecording failed", e);
+      return false;
+    }
+  }
+
+  /**
+   * Tellomi（Telegram 对照 3.3 / F12）：从暂停继续，接在同一条后面。
+   */
+  @Override
+  public boolean resumeRecording() {
+    try {
+      return Boolean.TRUE.equals(executor.submit(() -> {
+        Recorder current = recorder;
+        if (current == null || !paused) {
+          return false;
+        }
+        if (!current.resume()) {
+          return false;
+        }
+        paused = false;
+        synchronized (pauseClock) {
+          pauseClock.resume(SystemClock.elapsedRealtime());
+        }
+        return true;
+      }).get());
+    } catch (ExecutionException | InterruptedException e) {
+      Log.w(TAG, "resumeRecording failed", e);
+      return false;
+    }
+  }
+
   public @NonNull Single<VoiceNoteDraft> startRecording() {
     return startRecording(Build.VERSION.SDK_INT >= 26);
   }
 
   public @NonNull Single<VoiceNoteDraft> startRecording(final boolean useMediaCodecWrapper) {
     Log.i(TAG, "startRecording(" + useMediaCodecWrapper + ")");
+
+    // Start the pause-aware clock on the caller thread so the locked UI timer does not sit at 0
+    // while the recorder thread is still opening the mic.
+    paused = false;
+    synchronized (pauseClock) {
+      pauseClock.forceResetAndStart(SystemClock.elapsedRealtime());
+    }
 
     final SingleSubject<VoiceNoteDraft> recordingSingle = SingleSubject.create();
     startRecordingInternal(useMediaCodecWrapper, recordingSingle);
@@ -114,15 +191,20 @@ public class AudioRecorder {
         Log.w(TAG, e);
         recordingUriFuture = null;
         recorder = null;
+        paused = false;
         audioFocusManager.abandonAudioFocus();
         if (useMediaRecorderWrapper) {
           startRecordingInternal(false, recordingSingle);
         } else {
+          synchronized (pauseClock) {
+            pauseClock.forceReset();
+          }
           recordingSingle.onError(e);
         }
       }
     });
   }
+
 
   public void discardRecording() {
     Log.i(TAG, "cancelRecording()");
@@ -140,6 +222,10 @@ public class AudioRecorder {
       recorder           = null;
       recordingUriFuture = null;
       recordingUri       = null;
+      paused             = false;
+      synchronized (pauseClock) {
+        pauseClock.forceReset();
+      }
     });
   }
 
@@ -154,6 +240,10 @@ public class AudioRecorder {
       InChatNotificationSoundSuppressor.allowNotification();
       audioFocusManager.abandonAudioFocus();
       recorder.stop();
+      synchronized (pauseClock) {
+        pauseClock.stop(SystemClock.elapsedRealtime());
+      }
+      paused = false;
 
       try {
         Uri uri = recordingUriFuture.get();
@@ -168,6 +258,9 @@ public class AudioRecorder {
       recorder           = null;
       recordingUriFuture = null;
       recordingUri       = null;
+      synchronized (pauseClock) {
+        pauseClock.forceReset();
+      }
     });
   }
 
