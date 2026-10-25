@@ -109,6 +109,41 @@ class TellomiMessageStatusBrandTest {
   }
 
   @Test
+  fun `going straight from sending to read on screen also counts as sent for the first-send hint`() {
+    assertThat(TellomiMessageStatus.isSeenSent(Display.SENDING, Display.SENT, sameMessage = true)).isTrue()
+    assertThat(TellomiMessageStatus.isSeenSent(Display.SENDING, Display.READ, sameMessage = true)).isTrue()
+    assertThat(TellomiMessageStatus.isSeenSent(Display.SENT, Display.READ, sameMessage = true)).isFalse()
+    assertThat(TellomiMessageStatus.isSeenSent(null, Display.SENT, sameMessage = true)).isFalse()
+    assertThat(TellomiMessageStatus.isSeenSent(Display.SENDING, Display.SENT, sameMessage = false)).isFalse()
+    assertThat(TellomiMessageStatus.isSeenSent(Display.SENDING, Display.READ, sameMessage = false)).isFalse()
+
+    val view = attachedStatusView()
+    view.setMessageKey(1)
+    view.setPending(0)
+    view.setMessageKey(1)
+    view.setRead()
+    assertThat(view.consumeLiveSentChange()).isTrue()
+
+    view.setMessageKey(2)
+    view.setPending(0)
+    view.setMessageKey(3)
+    view.setRead()
+    assertThat(view.consumeLiveSentChange()).isFalse()
+  }
+
+  @Test
+  fun `the first-send hint only counts a bubble that is on screen`() {
+    val attached = attachedStatusView()
+    assertThat(TellomiChecksHint.isOnScreen(attached)).isTrue()
+
+    attached.visibility = View.GONE
+    assertThat(TellomiChecksHint.isOnScreen(attached)).isFalse()
+
+    val detached = DeliveryStatusView(ApplicationProvider.getApplicationContext<Application>())
+    assertThat(TellomiChecksHint.isOnScreen(detached)).isFalse()
+  }
+
+  @Test
   fun `message details never animate because they never set a message key`() {
     val view = attachedStatusView()
 

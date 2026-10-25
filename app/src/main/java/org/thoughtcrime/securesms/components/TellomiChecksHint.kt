@@ -6,6 +6,7 @@
 package org.thoughtcrime.securesms.components
 
 import android.content.Context
+import android.graphics.Rect
 import android.view.View
 import androidx.core.content.edit
 import androidx.preference.PreferenceManager
@@ -17,7 +18,7 @@ import org.thoughtcrime.securesms.util.isEditMessage
 
 /**
  * Tellomi M7 (tellomi/tellomi#1186，需求 §3.1)：本机第一次发出消息后一次性提示「一个勾：已发出；两个勾：对方已读」（8 秒）。
- * 在气泡上看到自己的消息从发送中变成一个勾时触发（和 iOS 一样，只有在会话里看得见勾时才有意义），记在本机偏好里，只提示一次。
+ * 在气泡上看到自己的消息从发送中变成一个勾（或直接两个勾）时触发（和 iOS 一样，只有在会话里看得见勾时才有意义），记在本机偏好里，只提示一次。
  * 笔记、编辑、故事回复不触发。
  */
 object TellomiChecksHint {
@@ -43,11 +44,11 @@ object TellomiChecksHint {
     return shownThisProcess || PreferenceManager.getDefaultSharedPreferences(context).getBoolean(PREF_KEY, false)
   }
 
-  /** 调用方已确认这是同一条消息在屏上从发送中变成一个勾。 */
+  /** 调用方已确认这是同一条消息从发送中变成一个勾或两个勾；这里再确认气泡真的在屏上。 */
   @JvmStatic
   fun maybeShow(anchor: View, record: MessageRecord) {
     val context = anchor.context
-    if (hasBeenShown(context) || !isEligible(record) || !anchor.isAttachedToWindow) {
+    if (hasBeenShown(context) || !isEligible(record) || !isOnScreen(anchor)) {
       return
     }
 
@@ -56,6 +57,15 @@ object TellomiChecksHint {
     Snackbar.make(anchor, R.string.TellomiChecksHint__one_check_sent_two_checks_read, DURATION_MS)
       .setAnchorView(findComposeBar(anchor))
       .show()
+  }
+
+  /**
+   * Tellomi（裁定）：不在屏上不触发。RecyclerView 预取 / 缓存的行可能已绑定但没挂上窗口或被滚出可见区，
+   * 要求挂在窗口上、自己和父级都可见、且至少有一像素在屏上。
+   */
+  @JvmStatic
+  fun isOnScreen(anchor: View): Boolean {
+    return anchor.isAttachedToWindow && anchor.isShown && anchor.getGlobalVisibleRect(Rect())
   }
 
   /**
