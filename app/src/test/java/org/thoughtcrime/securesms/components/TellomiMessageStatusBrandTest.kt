@@ -16,6 +16,7 @@ import androidx.test.core.app.ApplicationProvider
 import assertk.assertThat
 import assertk.assertions.isEqualTo
 import assertk.assertions.isFalse
+import assertk.assertions.isGreaterThan
 import assertk.assertions.isInstanceOf
 import assertk.assertions.isLessThan
 import assertk.assertions.isNotInstanceOf
@@ -106,6 +107,62 @@ class TellomiMessageStatusBrandTest {
 
     shadowOf(Looper.getMainLooper()).idleFor(java.time.Duration.ofMillis(TellomiMessageStatus.READ_GROW_MS + 50))
     assertThat(view.drawable.level).isEqualTo(10_000)
+  }
+
+  @Test
+  fun `going straight from sending to read on screen also counts as sent for the first-send hint`() {
+    assertThat(TellomiMessageStatus.isSeenSent(Display.SENDING, Display.SENT, sameMessage = true)).isTrue()
+    assertThat(TellomiMessageStatus.isSeenSent(Display.SENDING, Display.READ, sameMessage = true)).isTrue()
+    assertThat(TellomiMessageStatus.isSeenSent(Display.SENT, Display.READ, sameMessage = true)).isFalse()
+    assertThat(TellomiMessageStatus.isSeenSent(null, Display.SENT, sameMessage = true)).isFalse()
+    assertThat(TellomiMessageStatus.isSeenSent(Display.SENDING, Display.SENT, sameMessage = false)).isFalse()
+    assertThat(TellomiMessageStatus.isSeenSent(Display.SENDING, Display.READ, sameMessage = false)).isFalse()
+
+    val view = attachedStatusView()
+    view.setMessageKey(1)
+    view.setPending(0)
+    view.setMessageKey(1)
+    view.setRead()
+    assertThat(view.consumeLiveSentChange()).isTrue()
+
+    view.setMessageKey(2)
+    view.setPending(0)
+    view.setMessageKey(3)
+    view.setRead()
+    assertThat(view.consumeLiveSentChange()).isFalse()
+  }
+
+  @Test
+  fun `the first-send hint only counts a bubble that is on screen`() {
+    // DeliveryStatusView 新建时是 GONE：先 setSent() 让它可见，再走一遍 measure / layout 让它有尺寸。
+    val attached = attachedStatusView()
+    attached.setSent()
+    layOut(attached.parent as FrameLayout)
+    assertThat(attached.isShown).isTrue()
+    assertThat(attached.width).isGreaterThan(0)
+    assertThat(TellomiChecksHint.isOnScreen(attached)).isTrue()
+
+    attached.visibility = View.GONE
+    assertThat(TellomiChecksHint.isOnScreen(attached)).isFalse()
+
+    val detached = DeliveryStatusView(ApplicationProvider.getApplicationContext<Application>())
+    assertThat(TellomiChecksHint.isOnScreen(detached)).isFalse()
+  }
+
+  @Test
+  fun `a bubble attached and visible but outside its parent is not on screen`() {
+    val view = attachedStatusView()
+    view.setSent()
+    val parent = view.parent as FrameLayout
+    layOut(parent)
+    assertThat(TellomiChecksHint.isOnScreen(view)).isTrue()
+
+    // 挂在窗口上、可见、有尺寸，但整块落在父级（100×100）范围外：getGlobalVisibleRect 为 false。
+    view.layout(PARENT_SIZE * 2, PARENT_SIZE * 2, PARENT_SIZE * 2 + view.width, PARENT_SIZE * 2 + view.height)
+    assertThat(view.isAttachedToWindow).isTrue()
+    assertThat(view.isShown).isTrue()
+    assertThat(view.width).isGreaterThan(0)
+    assertThat(TellomiChecksHint.isOnScreen(view)).isFalse()
   }
 
   @Test
@@ -232,6 +289,17 @@ class TellomiMessageStatusBrandTest {
   /** 状态位占的宽度：图标固有宽度 + 左右内边距（wrap_content 时就是 View 的宽）。 */
   private fun statusWidth(view: DeliveryStatusView): Int {
     return view.drawable.intrinsicWidth + view.paddingLeft + view.paddingRight
+  }
+
+  /** 在测试里手动走完 measure / layout（不依赖 Robolectric 的布局时机）。 */
+  private fun layOut(parent: FrameLayout) {
+    val spec = View.MeasureSpec.makeMeasureSpec(PARENT_SIZE, View.MeasureSpec.EXACTLY)
+    parent.measure(spec, spec)
+    parent.layout(0, 0, PARENT_SIZE, PARENT_SIZE)
+  }
+
+  private companion object {
+    const val PARENT_SIZE = 100
   }
 
   private fun attachedStatusView(): DeliveryStatusView {
