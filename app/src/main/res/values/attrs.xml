@@ -80,6 +80,8 @@
 
     <declare-styleable name="DeliveryStatusView">
         <attr name="iconColor" format="color" />
+        <!-- Tellomi M7 (#1186)：两个勾（已读）的颜色；不设 = 和 iconColor 一样 -->
+        <attr name="readIconColor" format="color" />
     </declare-styleable>
 
     <declare-styleable name="AudioView">

@@ -2390,6 +2390,7 @@ public final class ConversationItem extends RelativeLayout implements BindableCo
           activeFooter.setTextColor(ContextCompat.getColor(context, R.color.conversation_item_sent_text_secondary_color));
           activeFooter.setIconColor(ContextCompat.getColor(context, R.color.conversation_item_sent_text_secondary_color));
           activeFooter.setRevealDotColor(ContextCompat.getColor(context, R.color.conversation_item_sent_text_secondary_color));
+          activeFooter.setReadIconColor(ContextCompat.getColor(context, org.signal.core.ui.R.color.signal_colorPrimary));
         } else {
           activeFooter.enableBubbleBackground(R.drawable.wallpaper_bubble_background_tintable_11, getDefaultBubbleColor(hasWallpaper));
         }
@@ -2398,8 +2399,12 @@ public final class ConversationItem extends RelativeLayout implements BindableCo
         activeFooter.setTextColor(ContextCompat.getColor(context, R.color.signal_text_secondary));
         activeFooter.setIconColor(ContextCompat.getColor(context, R.color.signal_icon_tint_secondary));
         activeFooter.setRevealDotColor(ContextCompat.getColor(context, R.color.signal_icon_tint_secondary));
+        // Tellomi M7（#1186）：没有底色（贴纸、大表情）时已读两勾用强调色
+        activeFooter.setReadIconColor(ContextCompat.getColor(context, org.signal.core.ui.R.color.signal_colorPrimary));
       } else {
         activeFooter.disableBubbleBackground();
+        // 有底色的气泡上沿用时间颜色，强调色会和气泡同色看不见
+        activeFooter.setReadIconColor(null);
       }
     }
   }

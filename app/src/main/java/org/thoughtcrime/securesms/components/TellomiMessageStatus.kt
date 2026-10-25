@@ -100,4 +100,45 @@ object TellomiMessageStatus {
   fun isTextOnlySnippet(snippetContentType: String?): Boolean {
     return snippetContentType == null || MediaUtil.isLongTextType(snippetContentType)
   }
+
+  /** Tellomi M7 (#1186)：一勾淡入 150 ms、第二个勾长出 220 ms，和电脑端 / iOS 一样。 */
+  const val SENT_FADE_IN_MS = 150L
+  const val READ_GROW_MS = 220L
+
+  /** 两勾图标（18×12）里第一个勾的右边缘约在 11.5 / 18 处，长出动画从这里裁起。 */
+  const val READ_GROW_START_LEVEL = 6_400
+
+  enum class Animation {
+    /** 发送中 → 一个勾：淡入 */
+    SENT,
+
+    /** 发送中 / 一个勾 → 两个勾：第二个勾从第一个勾处长出 */
+    READ
+  }
+
+  /**
+   * Tellomi M7 (#1186)：同一条消息留在屏幕上时看到的状态变化才动。
+   * [sameMessage] 为 false（打开会话、滚动 / 回翻换绑到别的消息、列表行换成另一条消息）一律不动；
+   * 第一次画（[previous] 为 null）也不动。
+   */
+  @JvmStatic
+  fun statusAnimation(previous: Display?, next: Display?, sameMessage: Boolean): Animation? {
+    if (!sameMessage || previous == null || next == null || previous == next) {
+      return null
+    }
+    return when {
+      previous == Display.SENDING && next == Display.SENT -> Animation.SENT
+      next == Display.READ -> Animation.READ
+      else -> null
+    }
+  }
+
+  /**
+   * Tellomi M7 (#1186)：本机第一次发出后一次性提示「一个勾：已发出；两个勾：对方已读」。
+   * 笔记（Note to Self）、编辑、故事回复上勾的意思不一样，不触发。
+   */
+  @JvmStatic
+  fun shouldShowChecksHint(alreadyShown: Boolean, isNoteToSelf: Boolean, isEdit: Boolean, isStoryReply: Boolean): Boolean {
+    return !alreadyShown && !isNoteToSelf && !isEdit && !isStoryReply
+  }
 }

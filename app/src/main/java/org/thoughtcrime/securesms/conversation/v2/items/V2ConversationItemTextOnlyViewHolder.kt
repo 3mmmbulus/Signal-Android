@@ -32,6 +32,7 @@ import org.signal.core.ui.util.ThemeUtil
 import org.signal.core.util.StringUtil
 import org.signal.core.util.dp
 import org.thoughtcrime.securesms.R
+import org.thoughtcrime.securesms.components.TellomiChecksHint
 import org.thoughtcrime.securesms.components.TellomiMessageStatus
 import org.thoughtcrime.securesms.components.mention.MentionAnnotation
 import org.thoughtcrime.securesms.conversation.BodyBubbleLayoutTransition
@@ -912,6 +913,10 @@ open class V2ConversationItemTextOnlyViewHolder<Model : MappingModel<Model>>(
     val newMessageId = record.buildMessageId()
 
     deliveryStatus.setTint(themeDelegate.getFooterForegroundColor(conversationMessage))
+    // Tellomi M7（#1186）：没有底色（大表情）时已读两勾用强调色；有底色的发出气泡沿用时间颜色
+    deliveryStatus.setReadTint(
+      if (conversationMessage.messageRecord.hasNoBubble(context)) ContextCompat.getColor(context, org.signal.core.ui.R.color.signal_colorPrimary) else null
+    )
 
     if (messageId == newMessageId && deliveryStatus.isPending && !record.isPending) {
       if (record.toRecipient.isGroup) {
@@ -922,6 +927,7 @@ open class V2ConversationItemTextOnlyViewHolder<Model : MappingModel<Model>>(
     }
 
     messageId = newMessageId
+    deliveryStatus.setMessageKey(newMessageId)
 
     if (!record.isOutgoing || record.isFailed || record.isScheduled()) {
       deliveryStatus.setNone()
@@ -951,6 +957,10 @@ open class V2ConversationItemTextOnlyViewHolder<Model : MappingModel<Model>>(
       TellomiMessageStatus.Display.SENDING -> deliveryStatus.setPending(sendingIndicatorDelayMs)
       TellomiMessageStatus.Display.READ -> deliveryStatus.setRead()
       TellomiMessageStatus.Display.SENT -> deliveryStatus.setSent()
+    }
+
+    if (deliveryStatus.consumeLiveSentChange()) {
+      TellomiChecksHint.maybeShow(itemView, record)
     }
   }
 
