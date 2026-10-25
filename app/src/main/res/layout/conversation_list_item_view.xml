@@ -146,7 +146,8 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_gravity="center_vertical"
-            app:iconColor="@color/signal_colorOnSurfaceVariant" />
+            app:iconColor="@color/signal_colorOnSurfaceVariant"
+            app:readIconColor="@color/signal_colorPrimary" />
 
         <androidx.appcompat.widget.AppCompatImageView
             android:id="@+id/conversation_list_item_unread_mentions_indicator"

@@ -10266,4 +10266,6 @@
     <string name="TellomiScheduleTimePicker__remind_on_at">%1$s %2$s 提醒</string>
 
     <!-- EOF -->
+    <!-- Tellomi M7 (#1186): one-time tip after the first message this device sends -->
+    <string name="TellomiChecksHint__one_check_sent_two_checks_read">一个勾：已发出；两个勾：对方已读</string>
 </resources>

@@ -190,6 +190,11 @@ public class ConversationItemFooter extends ConstraintLayout {
     }
   }
 
+  /** Tellomi M7（#1186）：两个勾的颜色；null = 和其它图标一样用时间颜色（有底色的发出气泡）。 */
+  public void setReadIconColor(@Nullable Integer color) {
+    deliveryStatusView.setReadTint(color);
+  }
+
   public void setRevealDotColor(int color) {
     revealDot.addValueCallback(
         new KeyPath("**"),
@@ -411,6 +416,8 @@ public class ConversationItemFooter extends ConstraintLayout {
     }
 
     previousMessageId = newMessageId;
+    // Tellomi M7（#1186）：只有同一条消息在屏上的状态变化才动
+    deliveryStatusView.setMessageKey(newMessageId);
 
 
     if (messageRecord.isFailed() || MessageRecordUtil.isScheduled(messageRecord)) {
@@ -439,6 +446,10 @@ public class ConversationItemFooter extends ConstraintLayout {
           default:
             deliveryStatusView.setSent();
             break;
+        }
+
+        if (deliveryStatusView.consumeLiveSentChange()) {
+          TellomiChecksHint.maybeShow(this, messageRecord);
         }
       }
     }
