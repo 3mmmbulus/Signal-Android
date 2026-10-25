@@ -160,6 +160,28 @@ class TellomiMessageStatusBrandTest {
   }
 
   @Test
+  fun `sending, one check and two checks take the same 20dp so the time does not jump`() {
+    val view = attachedStatusView()
+    val density = view.resources.displayMetrics.density
+
+    view.setPending()
+    val pending = statusWidth(view)
+    view.setSent()
+    val sent = statusWidth(view)
+    view.setRead()
+    val read = statusWidth(view)
+
+    view.setPending(2_000)
+    val delayedPending = statusWidth(view)
+    assertThat(view.visibility).isEqualTo(View.INVISIBLE)
+
+    assertThat(pending).isEqualTo(sent)
+    assertThat(read).isEqualTo(sent)
+    assertThat(delayedPending).isEqualTo(sent)
+    assertThat(sent).isEqualTo((18 * density).toInt() + (2 * density).toInt())
+  }
+
+  @Test
   fun `the hint anchors above the compose bar when it is on screen, otherwise falls back`() {
     val activity = Robolectric.buildActivity(Activity::class.java).setup().get()
     val bubble = View(activity)
@@ -205,6 +227,11 @@ class TellomiMessageStatusBrandTest {
 
   private fun hint(): String {
     return ApplicationProvider.getApplicationContext<Application>().getString(R.string.TellomiChecksHint__one_check_sent_two_checks_read)
+  }
+
+  /** 状态位占的宽度：图标固有宽度 + 左右内边距（wrap_content 时就是 View 的宽）。 */
+  private fun statusWidth(view: DeliveryStatusView): Int {
+    return view.drawable.intrinsicWidth + view.paddingLeft + view.paddingRight
   }
 
   private fun attachedStatusView(): DeliveryStatusView {
