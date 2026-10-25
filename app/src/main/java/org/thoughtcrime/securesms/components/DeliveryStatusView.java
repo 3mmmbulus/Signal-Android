@@ -277,7 +277,7 @@ public class DeliveryStatusView extends AppCompatImageView {
     messageKey  = key;
   }
 
-  /** Tellomi M7（#1186）：上一次 set*() 是不是同一条消息在屏上从发送中变成一个勾（新手提示用；读一次就清掉）。 */
+  /** Tellomi：上一次 set*() 是不是同一条消息在屏上从发送中变成一个勾或直接两个勾（新手提示用；读一次就清掉）。 */
   public boolean consumeLiveSentChange() {
     boolean result = liveSentChange;
     liveSentChange = false;
@@ -287,8 +287,9 @@ public class DeliveryStatusView extends AppCompatImageView {
   private @Nullable TellomiMessageStatus.Animation changeState(@NonNull State next) {
     TellomiMessageStatus.Animation animation = TellomiMessageStatus.statusAnimation(state.display, next.display, sameMessage);
 
+    // Tellomi（裁定）：发送中 → 一勾、发送中 → 直接两勾都算「屏上变成已发出」。
+    liveSentChange = TellomiMessageStatus.isSeenSent(state.display, next.display, sameMessage);
     sameMessage    = messageKey != NO_MESSAGE_KEY;
-    liveSentChange = animation == TellomiMessageStatus.Animation.SENT;
     state          = next;
 
     cancelTellomiAnimations();

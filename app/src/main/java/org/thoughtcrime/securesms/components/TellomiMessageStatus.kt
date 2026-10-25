@@ -134,6 +134,16 @@ object TellomiMessageStatus {
   }
 
   /**
+   * Tellomi（产品经理裁定，三端统一）：首发提示看的是「同一条消息在屏上第一次变成已发出」——
+   * 从发送中变成一个勾，或者直接变成两个勾（对方秒读、送达和已读一起到）都算。
+   * 换绑到别的消息（[sameMessage] 为 false）、第一次画（[previous] 为 null）不算；和系统动画开关无关。
+   */
+  @JvmStatic
+  fun isSeenSent(previous: Display?, next: Display?, sameMessage: Boolean): Boolean {
+    return sameMessage && previous == Display.SENDING && (next == Display.SENT || next == Display.READ)
+  }
+
+  /**
    * Tellomi M7 (#1186)：本机第一次发出后一次性提示「一个勾：已发出；两个勾：对方已读」。
    * 笔记（Note to Self）、编辑、故事回复上勾的意思不一样，不触发。
    */
