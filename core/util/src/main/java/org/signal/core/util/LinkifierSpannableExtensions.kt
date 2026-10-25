@@ -16,14 +16,15 @@ import org.signal.core.util.Linkifier.DetectedLink
  * Overlapping spans are pruned using the same longest-wins rule. Equal-length overlapping spans are both kept.
  *
  * @param filter       caller-supplied filter; only links for which this returns `true` are added
- * @param spanFactory  builds the span to apply for each link; defaults to a plain [URLSpan]
+ * @param spanFactory  builds the span to apply for each link; defaults to a plain [URLSpan] on [Linkifier.openUrl]
+ *                     (Tellomi: a link written without a scheme opens over https, as in chat; explicit `http://` is kept)
  *
  * @return `true` if at least one span was added.
  */
 @JvmOverloads
 fun Spannable.addDetectedLinks(
   filter: (DetectedLink) -> Boolean = { true },
-  spanFactory: (DetectedLink) -> Any = { URLSpan(it.url) }
+  spanFactory: (DetectedLink) -> Any = { URLSpan(Linkifier.openUrl(this, it)) }
 ): Boolean {
   val detected = Linkifier.findLinks(this).filter(filter)
   if (detected.isEmpty()) return false
