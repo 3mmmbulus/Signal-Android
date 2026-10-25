@@ -35,7 +35,17 @@ public class LongClickCopySpan extends URLSpan {
     this.underline = underline;
   }
 
+  /** Tellomi (TF43 P1): web links get their own menu on long press (see {@link TellomiLinkMenu}). */
+  boolean showsLinkMenu() {
+    return TellomiLinkMenu.isWebLink(getURL());
+  }
+
   void onLongClick(View widget) {
+    // Tellomi (TF43 P1, PM 2026-10-25): no silent copy; show the link menu, Open goes through the normal tap path.
+    if (showsLinkMenu()) {
+      TellomiLinkMenu.show(widget, getURL(), () -> onClick(widget));
+      return;
+    }
     Context context = widget.getContext();
     String preparedUrl = prepareUrl(getURL());
     copyUrl(context, preparedUrl);

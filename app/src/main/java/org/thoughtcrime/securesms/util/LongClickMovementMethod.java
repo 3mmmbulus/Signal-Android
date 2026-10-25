@@ -92,6 +92,10 @@ public class LongClickMovementMethod extends LinkMovementMethod {
       if (longClickCopySpan.length != 0) {
         LongClickCopySpan aSingleSpan = longClickCopySpan[0];
         if (action == MotionEvent.ACTION_DOWN) {
+          if (aSingleSpan.showsLinkMenu()) {
+            // Tellomi (TF43 P1): a long press on a web link opens the link menu only, not the message's menu as well.
+            widget.cancelLongPress();
+          }
           Selection.setSelection(buffer, buffer.getSpanStart(aSingleSpan), buffer.getSpanEnd(aSingleSpan));
           aSingleSpan.setHighlighted(true, ContextCompat.getColor(widget.getContext(), R.color.touch_highlight));
         } else {
