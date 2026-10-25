@@ -11,6 +11,7 @@ import org.thoughtcrime.securesms.components.menu.ActionItem
 import org.thoughtcrime.securesms.database.model.MessageRecord
 import org.thoughtcrime.securesms.recipients.Recipient
 import org.thoughtcrime.securesms.util.hasPinnedMessageUpdate
+import org.thoughtcrime.securesms.util.hasTextSlide
 import org.signal.core.ui.R as CoreUiR
 
 /**
@@ -92,6 +93,10 @@ object ReactionMenu {
 
     if (menuState.shouldShowCopyAction()) {
       add(CoreUiR.drawable.symbol_copy_android_24, R.string.conversation_selection__menu_copy, ReactionAction.COPY)
+      // Tellomi（审计 4.4）：「选择文字」紧跟「复制」，一次性消息不提供（和 iOS #387 一致）
+      if (TellomiPartialTextSelection.canSelectText(messageRecord.isViewOnce, messageRecord.body, messageRecord.hasTextSlide())) {
+        add(R.drawable.tellomi_symbol_select_text_24, R.string.conversation_selection__menu_tellomi_select_text, ReactionAction.TELLOMI_SELECT_TEXT)
+      }
     }
 
     if (menuState.shouldShowPaymentDetails()) {

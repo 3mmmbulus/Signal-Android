@@ -249,6 +249,7 @@ import org.thoughtcrime.securesms.conversation.ScheduledMessagesBottomSheet
 import org.thoughtcrime.securesms.conversation.ScheduledMessagesRepository
 import org.thoughtcrime.securesms.conversation.ShowAdminsBottomSheetDialog
 import org.thoughtcrime.securesms.conversation.TellomiPressFeedback
+import org.thoughtcrime.securesms.conversation.TellomiTextSelectionDialog
 import org.thoughtcrime.securesms.conversation.clicklisteners.PollVotesFragment
 import org.thoughtcrime.securesms.conversation.colors.ChatColors
 import org.thoughtcrime.securesms.conversation.colors.ColorizerV2
@@ -3934,6 +3935,13 @@ class ConversationFragment :
     viewModel.copyToClipboard(requireContext(), messageParts).subscribe().addTo(disposables)
   }
 
+  /** Tellomi（审计 4.4）：「选择文字」，正文按纯文本（提及展开、长消息读全文）。 */
+  private fun handleTellomiSelectText(conversationMessage: ConversationMessage) {
+    viewModel.tellomiPlainBody(requireContext(), conversationMessage)
+      .subscribe { text -> TellomiTextSelectionDialog.show(requireContext(), text.toString()) }
+      .addTo(disposables)
+  }
+
   private fun handleResend(conversationMessage: ConversationMessage) {
     viewModel.resendMessage(conversationMessage).subscribe()
   }
@@ -5889,6 +5897,7 @@ class ConversationFragment :
         ReactionAction.RESEND -> handleResend(conversationMessage)
         ReactionAction.DOWNLOAD -> handleSaveAttachment(conversationMessage.messageRecord as MmsMessageRecord)
         ReactionAction.COPY -> handleCopyMessage(conversationMessage.multiselectCollection.toSet())
+        ReactionAction.TELLOMI_SELECT_TEXT -> handleTellomiSelectText(conversationMessage)
         ReactionAction.MULTISELECT -> handleEnterMultiselect(conversationMessage)
         ReactionAction.PAYMENT_DETAILS -> handleViewPaymentDetails(conversationMessage)
         ReactionAction.VIEW_INFO -> handleDisplayDetails(conversationMessage)
