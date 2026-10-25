@@ -253,7 +253,23 @@ class LinkifierTest(private val case: Case) {
       Case("ascii comma inside path then cjk ellipsis", "https://x.com/a,b…", listOf(web("https://x.com/a,b"))),
       Case("ascii comma inside path is still kept", "https://x.com/a,b", listOf(web("https://x.com/a,b"))),
       Case("ascii paren pair inside path is still kept", "https://en.wikipedia.org/wiki/Foo_(bar)", listOf(web("https://en.wikipedia.org/wiki/Foo_(bar)"))),
-      Case("emoji (surrogate pair) in the path is still part of the url", "https://signal.org/a/😀", listOf(web("https://signal.org/a/😀")))
+      Case("emoji (surrogate pair) in the path is still part of the url", "https://signal.org/a/😀", listOf(web("https://signal.org/a/😀"))),
+
+      // ----- Tellomi (TF43 P1): bare domains vs file names and versions -----
+      Case("bare baidu.com is a link", "baidu.com", listOf(web("baidu.com", url = "http://baidu.com"))),
+      Case("bare domain glued to cjk full stop", "去 baidu.com。", listOf(web("baidu.com", url = "http://baidu.com"))),
+      Case("python file name is not a link", "运行 setup.py 就行", emptyList()),
+      Case("markdown file name is not a link", "看 README.md", emptyList()),
+      Case("zip file name is not a link", "下载 photos.zip", emptyList()),
+      Case("file-like tld with a path is a link", "a.py/docs", listOf(web("a.py/docs", url = "http://a.py/docs"))),
+      Case("file-like tld with www is a link", "www.setup.py", listOf(web("www.setup.py", url = "http://www.setup.py"))),
+      Case("file-like tld with scheme is a link", "https://setup.py", listOf(web("https://setup.py"))),
+      Case("version numbers are not links", "升级到 1.2.3 或 v2.0.1", emptyList()),
+      Case("tell.cc is still a link", "tell.cc", listOf(web("tell.cc", url = "http://tell.cc"))),
+      Case("bare domain glued after chinese text", "打开baidu.com 看看", listOf(web("baidu.com", url = "http://baidu.com"))),
+      Case("bare domain glued after chinese text then cjk comma", "去baidu.com，然后", listOf(web("baidu.com", url = "http://baidu.com"))),
+      Case("www domain glued after chinese text", "去www.jd.com/a", listOf(web("www.jd.com/a", url = "http://www.jd.com/a"))),
+      Case("file name glued after chinese text is still not a link", "运行setup.py", emptyList())
     ).map { arrayOf<Any>(it) }
   }
 }
@@ -272,5 +288,29 @@ class LinkifierContractTest {
   @Test
   fun `DetectedLink with end before start throws`() {
     assertFailure { Linkifier.DetectedLink(5, 4, "x") }.isInstanceOf<IllegalArgumentException>()
+  }
+}
+
+/** Tellomi (TF43 P1): links written without a scheme open over https; explicit schemes are kept. */
+class LinkifierOpenUrlTest {
+
+  private fun openUrls(text: String) = Linkifier.findLinks(text).map { Linkifier.openUrl(text, it) }
+
+  @Test
+  fun `bare domain opens over https`() {
+    assertThat(openUrls("看 baidu.com")).isEqualTo(listOf("https://baidu.com"))
+    assertThat(openUrls("www.jd.com/a?b=1")).isEqualTo(listOf("https://www.jd.com/a?b=1"))
+  }
+
+  @Test
+  fun `explicit http and https are kept`() {
+    assertThat(openUrls("http://signal.org/a")).isEqualTo(listOf("http://signal.org/a"))
+    assertThat(openUrls("HTTPS://signal.org")).isEqualTo(listOf("HTTPS://signal.org"))
+  }
+
+  @Test
+  fun `cjk punctuation rule still applies before the https upgrade`() {
+    assertThat(openUrls("打开 baidu.com，然后")).isEqualTo(listOf("https://baidu.com"))
+    assertThat(openUrls("打开baidu.com，然后")).isEqualTo(listOf("https://baidu.com"))
   }
 }

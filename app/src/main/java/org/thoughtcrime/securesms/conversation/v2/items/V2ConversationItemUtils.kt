@@ -11,6 +11,7 @@ import android.text.Spanned
 import android.text.style.URLSpan
 import android.text.util.Linkify
 import androidx.core.text.util.LinkifyCompat
+import org.signal.core.util.Linkifier
 import org.signal.core.util.addDetectedLinks
 import org.thoughtcrime.securesms.database.model.MessageRecord
 import org.thoughtcrime.securesms.util.InterceptableLongClickCopyLinkSpan
@@ -34,7 +35,8 @@ object V2ConversationItemUtils {
     }
 
     LinkifyCompat.addLinks(messageBody, Linkify.EMAIL_ADDRESSES or Linkify.PHONE_NUMBERS)
-    messageBody.addDetectedLinks()
+    // Tellomi (TF43 P1): links written without a scheme open over https.
+    messageBody.addDetectedLinks(spanFactory = { URLSpan(Linkifier.openUrl(messageBody, it)) })
 
     messageBody.getSpans(0, messageBody.length, URLSpan::class.java).forEach { urlSpan ->
       val url = urlSpan.url

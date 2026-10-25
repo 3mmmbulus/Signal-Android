@@ -106,10 +106,14 @@ object Linkifier {
     val matcher = WEB_URL_PATTERN.matcher(text)
     val out = ArrayList<DetectedLink>()
     while (matcher.find()) {
-      val start = matcher.start()
       val rawEnd = matcher.end()
+      // Tellomi (TF43 P1, PM 2026-10-25): Chinese / Japanese / Korean text has no spaces, so in "打开baidu.com" the
+      // bare-domain pattern swallows "打开" into the host. A link written without a scheme starts at the first ASCII
+      // letter or digit after such text ("baidu.com"); a real IDN label ("中文.com") is left alone.
+      val start = skipLeadingCjk(text, matcher.start(), rawEnd)
+      val gluedToCjk = start > matcher.start()
 
-      if (!isAtLeadingBoundary(text, start, hasExplicitScheme(text, start))) {
+      if (!gluedToCjk && !isAtLeadingBoundary(text, start, hasExplicitScheme(text, start))) {
         continue
       }
 
@@ -143,6 +147,31 @@ object Linkifier {
       out.add(DetectedLink(start, end, normalized))
     }
     return out
+  }
+
+  private fun skipLeadingCjk(text: CharSequence, start: Int, end: Int): Int {
+    if (hasExplicitScheme(text, start)) {
+      return start
+    }
+    var i = start
+    while (i < end && isCjk(text[i])) {
+      i++
+    }
+    if (i == start || i >= end) {
+      return start
+    }
+    val next = text[i]
+    return if (next.code < 0x80 && next.isLetterOrDigit()) i else start
+  }
+
+  private fun isCjk(c: Char): Boolean {
+    return when (Character.UnicodeScript.of(c.code)) {
+      Character.UnicodeScript.HAN,
+      Character.UnicodeScript.HIRAGANA,
+      Character.UnicodeScript.KATAKANA,
+      Character.UnicodeScript.HANGUL -> true
+      else -> false
+    }
   }
 
   private fun hasExplicitScheme(text: CharSequence, start: Int): Boolean {
@@ -270,7 +299,33 @@ object Linkifier {
     }
 
     val tld = host.substringAfterLast('.')
-    return isKnownTld(tld)
+    if (!isKnownTld(tld)) {
+      return false
+    }
+    // Tellomi (TF43 P1, PM 2026-10-25): a bare `name.ext` whose TLD is also a common file extension ("setup.py",
+    // "README.md", "photos.zip") is a file name, not a link. With a path ("a.py/docs") it is still a link; `www.` is
+    // handled above. Same table as iOS `TellomiSchemelessLink.fileLikeTopLevelDomains`.
+    if (host.length == candidate.length && tld.lowercase() in FILE_LIKE_TOP_LEVEL_DOMAINS) {
+      return false
+    }
+    return true
+  }
+
+  /** TLDs that are also common file extensions; `.cc`, `.ai`, `.io` are real web suffixes and are not here. */
+  @JvmField
+  val FILE_LIKE_TOP_LEVEL_DOMAINS: Set<String> = setOf("zip", "mov", "py", "md", "sh", "rs", "pl", "gz", "kt", "js", "ts", "swift")
+
+  /**
+   * Tellomi (TF43 P1, PM 2026-10-25): the URL to open for [link] found in [text]. A link written without a scheme
+   * ("baidu.com", "www.jd.com/a") opens over https, as Telegram does; an explicit `http://` is kept.
+   * [DetectedLink.url] itself is unchanged (`http://` prefix), because link previews decide on it separately.
+   */
+  @JvmStatic
+  fun openUrl(text: CharSequence, link: DetectedLink): String {
+    if (hasExplicitScheme(text, link.start)) {
+      return link.url
+    }
+    return if (link.url.startsWith("http://", ignoreCase = true)) "https://" + link.url.substring("http://".length) else link.url
   }
 
   private fun hostPortion(candidate: String): String {
