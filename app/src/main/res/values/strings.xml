@@ -4758,6 +4758,8 @@
     <string name="conversation_selection__menu_tellomi_save">Save</string>
     <!-- Tellomi（审计 4.4）：长按菜单「选择文字」，选一段再复制 -->
     <string name="conversation_selection__menu_tellomi_select_text">Select text</string>
+    <!-- Tellomi（审计 1.3）：群长按自己的消息，「信息」项显示已读人数。%1$d = read, %2$d = total -->
+    <string name="conversation_selection__menu_tellomi_read_by_format">Read %1$d/%2$d</string>
     <!-- Tellomi（审计 3.4 / F22）：输入框上方表情建议栏的无障碍标签 -->
     <string name="TellomiEmojiSuggest__accessibility_label">Emoji suggestions</string>
     <!-- Tellomi（#1174）：收藏成功的提示，后面跟「查看」按钮 -->

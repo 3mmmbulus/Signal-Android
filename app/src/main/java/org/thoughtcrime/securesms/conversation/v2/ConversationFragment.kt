@@ -249,6 +249,7 @@ import org.thoughtcrime.securesms.conversation.ScheduledMessagesBottomSheet
 import org.thoughtcrime.securesms.conversation.ScheduledMessagesRepository
 import org.thoughtcrime.securesms.conversation.ShowAdminsBottomSheetDialog
 import org.thoughtcrime.securesms.conversation.TellomiPressFeedback
+import org.thoughtcrime.securesms.conversation.TellomiReadByMenuTitle
 import org.thoughtcrime.securesms.conversation.TellomiTextSelectionDialog
 import org.thoughtcrime.securesms.conversation.clicklisteners.PollVotesFragment
 import org.thoughtcrime.securesms.conversation.colors.ChatColors
@@ -3436,8 +3437,14 @@ class ConversationFragment :
     }
 
     if (menuState.shouldShowDetailsAction()) {
+      // Tellomi（审计 1.3）：群里自己的消息，「信息」写成「已读 N/M」（对齐 iOS #377）
+      val detailsTitle = TellomiReadByMenuTitle.menuTitle(
+        requireContext(),
+        recipient,
+        getSelectedConversationMessage().messageRecord
+      )
       items.add(
-        ActionItem(CoreUiR.drawable.symbol_info_24, resources.getString(R.string.conversation_selection__menu_message_details)) {
+        ActionItem(CoreUiR.drawable.symbol_info_24, detailsTitle) {
           handleDisplayDetails(getSelectedConversationMessage())
           finishActionMode()
         }
