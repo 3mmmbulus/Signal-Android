@@ -44,6 +44,7 @@ import org.thoughtcrime.securesms.conversation.mutiselect.Multiselect
 import org.thoughtcrime.securesms.conversation.mutiselect.MultiselectPart
 import org.thoughtcrime.securesms.conversation.mutiselect.Multiselectable
 import org.thoughtcrime.securesms.conversation.v2.TellomiSendTransition
+import org.thoughtcrime.securesms.conversation.v2.TellomiSingleEmojiAnimationPlayer
 import org.thoughtcrime.securesms.conversation.v2.computed.FormattedDate
 import org.thoughtcrime.securesms.conversation.v2.data.ConversationMessageElement
 import org.thoughtcrime.securesms.database.model.MessageRecord
@@ -240,11 +241,18 @@ open class V2ConversationItemTextOnlyViewHolder<Model : MappingModel<Model>>(
 
     check(model is ConversationMessageElement)
 
-    if (this::conversationMessage.isInitialized) {
+    val previousMessageId = if (this::conversationMessage.isInitialized) {
       conversationMessage.messageRecord.fromRecipient.live().removeObserver(this)
+      conversationMessage.messageRecord.id
+    } else {
+      null
     }
 
     conversationMessage = model.conversationMessage
+    // Tellomi（审计 4.2）：换绑到另一条消息时停掉弹动画，避免复用 View 带着缩放；同条局部刷新（时间戳等）不打断。
+    if (previousMessageId != null && previousMessageId != conversationMessage.messageRecord.id) {
+      TellomiSingleEmojiAnimationPlayer.cancel(binding.body)
+    }
     // Tellomi（M9 发送动画）：刚从输入框发出的这一条先藏着，由 TellomiSendTransition 从输入框飞过来，落定后再露出。
     TellomiSendTransition.holdIfSending(conversationMessage.messageRecord, itemView)
     if (conversationMessage.threadRecipient.isGroup) {
@@ -550,6 +558,35 @@ open class V2ConversationItemTextOnlyViewHolder<Model : MappingModel<Model>>(
 
     binding.body.visible = bodyText.isNotEmpty()
     binding.body.text = bodyText
+
+    // Tellomi（审计 4.2）：单个表情首次出现时弹一下。
+    tellomiMaybePlaySingleEmojiAppear()
+  }
+
+  private fun tellomiMaybePlaySingleEmojiAppear() {
+    val count = TellomiSingleEmojiAnimationPlayer.jumbomojiCount(binding.body.text)
+    val messageId = conversationMessage.messageRecord.id
+    val reduce = TellomiSingleEmojiAnimationPlayer.reduceMotion(context)
+    if (!TellomiSingleEmojiAnimationPlayer.shared.consumeAppear(messageId, count, reduce)) {
+      return
+    }
+    val target = binding.body
+    target.post {
+      if (!this::conversationMessage.isInitialized) return@post
+      if (conversationMessage.messageRecord.id != messageId) return@post
+      TellomiSingleEmojiAnimationPlayer.play(target)
+    }
+  }
+
+  /** @return true if the tap was consumed as a single-emoji replay. */
+  private fun tellomiMaybeReplaySingleEmoji(): Boolean {
+    val count = TellomiSingleEmojiAnimationPlayer.jumbomojiCount(binding.body.text)
+    val reduce = TellomiSingleEmojiAnimationPlayer.reduceMotion(context)
+    if (!TellomiSingleEmojiAnimationPlayer.shared.shouldPlayOnTap(count, reduce)) {
+      return false
+    }
+    TellomiSingleEmojiAnimationPlayer.play(binding.body)
+    return true
   }
 
   private fun linkifyMessageBody(messageBody: Spannable) {
@@ -987,6 +1024,8 @@ open class V2ConversationItemTextOnlyViewHolder<Model : MappingModel<Model>>(
       messageRecord.isOutgoing && messageRecord.isIdentityMismatchFailure -> {
         conversationContext.clickListener.onIncomingIdentityMismatchClicked(messageRecord.fromRecipient.id)
       }
+
+      tellomiMaybeReplaySingleEmoji() -> Unit
 
       else -> {
         conversationContext.clickListener.onItemClick(getMultiselectPartForLatestTouch())

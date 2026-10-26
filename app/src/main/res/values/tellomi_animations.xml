@@ -18,4 +18,7 @@
     <!-- Tellomi（交互审计 A-09）：TellomiPressFeedback 每个视图上的按下缩放弹簧。 -->
     <item name="tellomi_press_scale_x" type="id" />
     <item name="tellomi_press_scale_y" type="id" />
+
+    <!-- Tellomi（审计 4.2）：单个表情弹动画挂在 View 上的 Animator tag。 -->
+    <item name="tellomi_single_emoji_anim" type="id" />
 </resources>
