@@ -10588,4 +10588,10 @@
     <!-- EOF -->
     <!-- Tellomi M7 (#1186): one-time tip after the first message this device sends -->
     <string name="TellomiChecksHint__one_check_sent_two_checks_read">One check: sent. Two checks: read.</string>
+
+    <!-- Tellomi（审计 7.2 / F03b）：跳日期月历（带媒体日缩略图） -->
+    <string name="TellomiJumpToDate__title">Jump to date</string>
+    <!-- Accessibility label when a calendar day shows a photo/video thumbnail. %1$s = the date. -->
+    <string name="TellomiJumpToDate__day_has_media_format">%1$s, has media</string>
+
 </resources>
