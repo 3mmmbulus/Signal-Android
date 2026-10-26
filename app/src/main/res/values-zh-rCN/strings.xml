@@ -4549,6 +4549,8 @@
     <!-- Tellomi（#1174）：长按菜单「收藏」，直接存进「我的收藏」 -->
     <string name="conversation_selection__menu_tellomi_save">收藏</string>
     <string name="conversation_selection__menu_tellomi_select_text">选择文字</string>
+    <!-- Tellomi（审计 3.4 / F22）：输入框上方表情建议栏的无障碍标签 -->
+    <string name="TellomiEmojiSuggest__accessibility_label">表情建议</string>
     <!-- Tellomi（#1174）：收藏成功的提示，后面跟「查看」按钮 -->
     <string name="ConversationFragment__tellomi_saved_to_saved_messages">已收藏</string>
     <!-- Tellomi（#1174）：收藏成功提示上的按钮，打开「我的收藏」 -->

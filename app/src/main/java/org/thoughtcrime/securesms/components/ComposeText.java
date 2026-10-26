@@ -41,6 +41,7 @@ import org.thoughtcrime.securesms.components.mention.MentionValidatorWatcher;
 import org.thoughtcrime.securesms.components.spoiler.SpoilerRendererDelegate;
 import org.thoughtcrime.securesms.conversation.MessageSendType;
 import org.thoughtcrime.securesms.conversation.MessageStyler;
+import org.thoughtcrime.securesms.conversation.ui.emoji.TellomiEmojiSuggest;
 import org.thoughtcrime.securesms.conversation.ui.inlinequery.InlineQuery;
 import org.thoughtcrime.securesms.conversation.ui.inlinequery.InlineQueryChangedListener;
 import org.thoughtcrime.securesms.conversation.ui.inlinequery.InlineQueryReplacement;
@@ -70,6 +71,7 @@ public class ComposeText extends EmojiEditText {
   private MessageSendType         lastMessageSendType;
 
   @Nullable private CursorPositionChangedListener cursorPositionChangedListener;
+  @Nullable private Runnable                      tellomiEmojiSuggestRefresh;
   @Nullable private InlineQueryChangedListener    inlineQueryChangedListener;
   @Nullable private StylingChangedListener        stylingChangedListener;
   @Nullable private OnPasteListener               onPasteListener;
@@ -140,6 +142,10 @@ public class ComposeText extends EmojiEditText {
     if (cursorPositionChangedListener != null) {
       cursorPositionChangedListener.onCursorPositionChanged(selectionStart, selectionEnd);
     }
+
+    if (tellomiEmojiSuggestRefresh != null) {
+      tellomiEmojiSuggestRefresh.run();
+    }
   }
 
   @Override
@@ -201,6 +207,16 @@ public class ComposeText extends EmojiEditText {
 
   public void setCursorPositionChangedListener(@Nullable CursorPositionChangedListener listener) {
     this.cursorPositionChangedListener = listener;
+  }
+
+  /** Tellomi（审计 3.4）：光标 / 文字变化后刷新输入框上方表情建议栏。 */
+  public void setTellomiEmojiSuggestRefresh(@Nullable Runnable refresh) {
+    this.tellomiEmojiSuggestRefresh = refresh;
+  }
+
+  /** 让表情建议栏在接管 `:query` 时关掉上游 InlineQuery 弹层。 */
+  public void clearInlineQueryResults() {
+    clearInlineQuery();
   }
 
   public void setInlineQueryChangedListener(@Nullable InlineQueryChangedListener listener) {
@@ -450,7 +466,14 @@ public class ComposeText extends EmojiEditText {
       if (queryStart.isMentionQuery) {
         inlineQueryChangedListener.onQueryChanged(new InlineQuery.Mention(query));
       } else {
-        inlineQueryChangedListener.onQueryChanged(new InlineQuery.Emoji(query));
+        // Tellomi（审计 3.4）：自家建议栏能接住的 `:query` 不再弹上游 InlineQuery，避免双层。
+        String full = text.toString();
+        int sel = getSelectionEnd();
+        if (TellomiEmojiSuggest.INSTANCE.suggestion(full, sel, sel) != null) {
+          inlineQueryChangedListener.clearQuery();
+        } else {
+          inlineQueryChangedListener.onQueryChanged(new InlineQuery.Emoji(query));
+        }
       }
     }
   }
