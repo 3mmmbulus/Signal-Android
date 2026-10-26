@@ -5,12 +5,14 @@
 
 package org.thoughtcrime.securesms.conversation.mutiselect.forward
 
+import android.net.Uri
 import assertk.assertThat
 import assertk.assertions.containsExactly
 import assertk.assertions.isEmpty
 import assertk.assertions.isEqualTo
 import assertk.assertions.isFalse
 import assertk.assertions.isInstanceOf
+import assertk.assertions.isNull
 import assertk.assertions.isTrue
 import io.mockk.every
 import io.mockk.mockk
@@ -25,6 +27,7 @@ import kotlinx.coroutines.test.setMain
 import org.junit.After
 import org.junit.Before
 import org.junit.Test
+import org.signal.core.models.media.Media
 import org.thoughtcrime.securesms.contacts.paged.ContactSearchKey
 import org.thoughtcrime.securesms.database.model.IdentityRecord
 import org.thoughtcrime.securesms.recipients.Recipient
@@ -50,6 +53,7 @@ class TellomiForwardGridViewModelTest {
     var identities: MutableList<List<IdentityRecord>> = mutableListOf()
     val checked = mutableListOf<List<ContactSearchKey.RecipientSearchKey>>()
     val sent = mutableListOf<Pair<String, List<ContactSearchKey>>>()
+    val sentArgs = mutableListOf<List<MultiShareArgs>>()
     var result = TellomiForwardGridViewModel.Result.SUCCESS
 
     override fun checkIdentities(keys: Set<ContactSearchKey.RecipientSearchKey>, changedSince: Long, callback: (List<IdentityRecord>) -> Unit) {
@@ -59,6 +63,7 @@ class TellomiForwardGridViewModelTest {
 
     override fun send(message: String, multiShareArgs: List<MultiShareArgs>, keys: Set<ContactSearchKey>, onResult: (TellomiForwardGridViewModel.Result) -> Unit) {
       sent += message to keys.toList()
+      sentArgs += multiShareArgs
       onResult(result)
     }
   }
@@ -83,13 +88,17 @@ class TellomiForwardGridViewModelTest {
     return TellomiForwardTarget(recipient, isSavedMessages)
   }
 
-  private fun viewModel(limit: Int = 5, searchResults: TellomiForwardSearchResults = TellomiForwardSearchResults()): TellomiForwardGridViewModel {
+  private fun viewModel(
+    limit: Int = 5,
+    searchResults: TellomiForwardSearchResults = TellomiForwardSearchResults(),
+    multiShareArgs: List<MultiShareArgs> = emptyList()
+  ): TellomiForwardGridViewModel {
     val repository = mockk<TellomiForwardTargetsRepository>()
     every { repository.load() } returns listOf(saved, lin, wang, group, far)
     every { repository.recentContacts(any()) } answers { firstArg<List<TellomiForwardTarget>>().filter { !it.isSavedMessages && !it.recipient.isGroup } }
     every { repository.search(any(), any()) } returns searchResults
     return TellomiForwardGridViewModel(
-      multiShareArgs = emptyList(),
+      multiShareArgs = multiShareArgs,
       repository = repository,
       selectionLimit = limit,
       identityChangesSince = 0,
@@ -272,5 +281,59 @@ class TellomiForwardGridViewModelTest {
 
     assertThat(sender.checked).isEmpty()
     assertThat(viewModel.snapshot.stage == TellomiForwardGridViewModel.Stage.Selection).isTrue()
+  }
+
+  /** 审计 5.4：带附件+说明时显示开关，默认关；拨动后发送去掉说明，附言照常。 */
+  @Test
+  fun `hide caption strips draft text on send but keeps the comment`() {
+    val mediaArgs = MultiShareArgs.Builder(setOf())
+      .withMedia(listOf(photo()))
+      .withDraftText("海边")
+      .build()
+    val viewModel = viewModel(multiShareArgs = listOf(mediaArgs))
+
+    assertThat(viewModel.snapshot.showHideCaptionToggle).isTrue()
+    assertThat(viewModel.snapshot.hideCaption).isFalse()
+
+    viewModel.onTargetClicked(lin, fromSearch = false)
+    viewModel.setMessage("看看")
+    viewModel.setHideCaption(true)
+    assertThat(viewModel.snapshot.hideCaption).isTrue()
+    viewModel.send()
+
+    assertThat(sender.sent.map { it.first }).containsExactly("看看")
+    assertThat(sender.sentArgs.single().single().draftText).isNull()
+  }
+
+  @Test
+  fun `hide caption toggle stays hidden for text-only forwards`() {
+    val textArgs = MultiShareArgs.Builder(setOf()).withDraftText("你好").build()
+    val viewModel = viewModel(multiShareArgs = listOf(textArgs))
+
+    assertThat(viewModel.snapshot.showHideCaptionToggle).isFalse()
+    viewModel.setHideCaption(true)
+    assertThat(viewModel.snapshot.hideCaption).isFalse()
+
+    viewModel.onTargetClicked(lin, fromSearch = false)
+    viewModel.send()
+    assertThat(sender.sentArgs.single().single().draftText).isEqualTo("你好")
+  }
+
+  private fun photo(): Media {
+    return Media(
+      uri = Uri.parse("content://org.thoughtcrime.securesms/part/1"),
+      contentType = "image/jpeg",
+      date = 0,
+      width = 100,
+      height = 100,
+      size = 10,
+      duration = 0,
+      isBorderless = false,
+      isVideoGif = false,
+      bucketId = null,
+      caption = null,
+      transformProperties = null,
+      fileName = null
+    )
   }
 }
