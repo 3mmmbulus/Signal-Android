@@ -60,6 +60,8 @@ import org.thoughtcrime.securesms.conversation.ConversationMessage;
 import org.thoughtcrime.securesms.conversation.ConversationStickerSuggestionAdapter;
 import org.thoughtcrime.securesms.conversation.MessageStyler;
 import org.thoughtcrime.securesms.conversation.VoiceNoteDraftView;
+import org.thoughtcrime.securesms.conversation.ui.emoji.TellomiEmojiSuggestBar;
+import org.thoughtcrime.securesms.conversation.ui.emoji.TellomiEmojiSuggestBarModel;
 import org.thoughtcrime.securesms.database.DraftTable;
 import org.thoughtcrime.securesms.database.model.MessageId;
 import org.thoughtcrime.securesms.database.model.MessageRecord;
@@ -96,6 +98,7 @@ public class InputPanel extends ConstraintLayout
   private static final int  FADE_TIME                    = 150;
 
   private RecyclerView          stickerSuggestion;
+  private TellomiEmojiSuggestBar emojiSuggestBar;
   private Stub<QuoteView>       quoteViewStub;
   private Stub<LinkPreviewView> linkPreviewStub;
   private EmojiToggle           mediaKeyboard;
@@ -158,6 +161,7 @@ public class InputPanel extends ConstraintLayout
 
     this.composeContainer       = findViewById(R.id.compose_bubble);
     this.stickerSuggestion      = findViewById(R.id.input_panel_sticker_suggestion);
+    this.emojiSuggestBar        = findViewById(R.id.input_panel_emoji_suggest);
     this.quoteViewStub          = new Stub<>(findViewById(R.id.quote_view));
     this.linkPreviewStub        = new Stub<>(findViewById(R.id.link_preview));
     this.mediaKeyboard          = findViewById(R.id.emoji_toggle);
@@ -193,6 +197,10 @@ public class InputPanel extends ConstraintLayout
 
     stickerSuggestion.setLayoutManager(new LinearLayoutManager(getContext(), LinearLayoutManager.HORIZONTAL, false));
     stickerSuggestion.setAdapter(stickerSuggestionAdapter);
+
+    // Tellomi（审计 3.4 / F22）：打字时输入框上方表情建议栏，对齐 iOS #384。
+    emojiSuggestBar.setOnSelectListener(this::tellomiApplyEmojiSuggestion);
+    composeText.setTellomiEmojiSuggestRefresh(this::tellomiUpdateEmojiSuggestions);
 
     editMessageCancel.setOnClickListener(v -> exitEditMessageMode());
 
@@ -397,6 +405,74 @@ public class InputPanel extends ConstraintLayout
   public void setStickerSuggestions(@NonNull List<StickerRecord> stickers) {
     stickerSuggestion.setVisibility(stickers.isEmpty() ? View.GONE : View.VISIBLE);
     stickerSuggestionAdapter.setStickers(stickers);
+  }
+
+  // MARK: Tellomi emoji suggestions（Telegram 对照 3.4 / F22）
+
+  /** 按当前文字和光标刷新建议栏；录音界面显示时不出。 */
+  private void tellomiUpdateEmojiSuggestions() {
+    if (emojiSuggestBar == null || composeText == null) {
+      return;
+    }
+    final java.util.List<String> emoji;
+    if (microphoneRecorderView != null && microphoneRecorderView.isRecording()) {
+      emoji = java.util.Collections.emptyList();
+    } else {
+      CharSequence text = composeText.getText();
+      String body = text != null ? text.toString() : "";
+      emoji = TellomiEmojiSuggestBarModel.INSTANCE.visibleEmoji(
+          body,
+          composeText.getSelectionStart(),
+          composeText.getSelectionEnd()
+      );
+    }
+    boolean visibilityChanged = emojiSuggestBar.update(emoji);
+    if (!emoji.isEmpty()) {
+      composeText.clearInlineQueryResults();
+    }
+    if (visibilityChanged) {
+      requestLayout();
+    }
+  }
+
+  private void tellomiHideEmojiSuggestions() {
+    if (emojiSuggestBar != null) {
+      emojiSuggestBar.update(java.util.Collections.emptyList());
+    }
+  }
+
+  /** 点了建议栏里的一个表情：用 TellomiEmojiSuggest.apply 换掉查询词并把光标放到表情后面。 */
+  private void tellomiApplyEmojiSuggestion(@NonNull String emoji) {
+    CharSequence current = composeText.getText();
+    if (current == null) {
+      tellomiUpdateEmojiSuggestions();
+      return;
+    }
+    String body = current.toString();
+    TellomiEmojiSuggestBarModel.Applied applied = TellomiEmojiSuggestBarModel.INSTANCE.applying(
+        emoji,
+        body,
+        composeText.getSelectionStart(),
+        composeText.getSelectionEnd()
+    );
+    if (applied == null) {
+      tellomiUpdateEmojiSuggestions();
+      return;
+    }
+    // 走 Editable.replace，尽量保留其余文字里的 @提及 和样式。
+    android.text.Editable editable = composeText.getText();
+    if (editable == null) {
+      return;
+    }
+    int start = applied.getReplacedStart();
+    int end = start + applied.getReplacedLength();
+    if (start < 0 || end > editable.length() || start > end) {
+      tellomiUpdateEmojiSuggestions();
+      return;
+    }
+    editable.replace(start, end, emoji);
+    composeText.setSelection(applied.getCursor());
+    tellomiUpdateEmojiSuggestions();
   }
 
   public void showMediaKeyboardToggle(boolean show) {
@@ -708,6 +784,7 @@ public class InputPanel extends ConstraintLayout
     if (listener != null) listener.onRecorderStarted();
     recordTime.display();
     slideToCancel.display();
+    tellomiHideEmojiSuggestions();
 
     if (emojiVisible) {
       fadeOut(mediaKeyboard);
@@ -912,6 +989,8 @@ public class InputPanel extends ConstraintLayout
     fadeIn(quickCameraToggle);
     fadeIn(quickAudioToggle);
     fadeIn(buttonToggle);
+    // Tellomi（审计 3.4）：录音 UI 收起后按当前文字把表情建议栏刷回来（对齐 iOS voice-memo 切换）。
+    tellomiUpdateEmojiSuggestions();
   }
 
   private void fadeIn(@NonNull View v) {

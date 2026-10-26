@@ -22,6 +22,18 @@
         app:layout_constraintTop_toTopOf="parent"
         tools:visibility="visible" />
 
+    <!-- Tellomi（审计 3.4 / F22）：打字时输入框上方的表情建议栏；没有建议时 gone。 -->
+    <org.thoughtcrime.securesms.conversation.ui.emoji.TellomiEmojiSuggestBar
+        android:id="@+id/input_panel_emoji_suggest"
+        android:layout_width="0dp"
+        android:layout_height="40dp"
+        android:background="@color/signal_background_primary"
+        android:visibility="gone"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@id/input_panel_sticker_suggestion"
+        tools:visibility="visible" />
+
     <androidx.appcompat.widget.AppCompatImageButton
         android:id="@+id/input_panel_exit_edit_mode"
         android:layout_width="40dp"
@@ -52,7 +64,7 @@
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toStartOf="@+id/button_toggle"
         app:layout_constraintStart_toEndOf="@id/input_panel_exit_edit_mode"
-        app:layout_constraintTop_toBottomOf="@id/input_panel_sticker_suggestion" />
+        app:layout_constraintTop_toBottomOf="@id/input_panel_emoji_suggest" />
 
     <androidx.appcompat.widget.AppCompatTextView
         android:id="@+id/edit_message_title"
