@@ -23,6 +23,7 @@ object TellomiVoicePauseUI {
   /** 正在录的这条，给暂停按钮和计时标签用。 */
   interface Control {
     val isPaused: Boolean
+
     /** 有效录音时长（暂停不计），毫秒。 */
     fun elapsedMs(): Long
     fun pauseRecording(): Boolean
