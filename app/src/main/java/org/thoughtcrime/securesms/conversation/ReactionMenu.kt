@@ -106,7 +106,12 @@ object ReactionMenu {
     add(CoreUiR.drawable.symbol_check_circle_24, R.string.conversation_selection__menu_multi_select, ReactionAction.MULTISELECT)
 
     if (menuState.shouldShowDetailsAction()) {
-      add(CoreUiR.drawable.symbol_info_24, R.string.conversation_selection__menu_message_details, ReactionAction.VIEW_INFO)
+      // Tellomi（审计 1.3）：群里自己的消息，「信息」写成「已读 N/M」（对齐 iOS #377）
+      items += ActionItem(
+        iconRes = CoreUiR.drawable.symbol_info_24,
+        title = TellomiReadByMenuTitle.menuTitle(context, conversationRecipient, messageRecord),
+        action = { onAction(ReactionAction.VIEW_INFO) }
+      )
     }
 
     if (menuState.shouldShowPollTerminateAction()) {
