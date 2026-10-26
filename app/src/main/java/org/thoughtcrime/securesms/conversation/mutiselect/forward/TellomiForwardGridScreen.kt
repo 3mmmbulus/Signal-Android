@@ -37,6 +37,7 @@ import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.runtime.Composable
@@ -81,6 +82,7 @@ object TellomiForwardGridTags {
   const val RECENT_ROW = "tellomi-forward-recent"
   const val NO_RESULTS = "tellomi-forward-no-results"
   const val MESSAGE = "tellomi-forward-message"
+  const val HIDE_CAPTION = "tellomi-forward-hide-caption"
   const val SEND = "tellomi-forward-send"
   const val SEND_COUNT = "tellomi-forward-send-count"
   const val SECTION_HEADER = "tellomi-forward-section"
@@ -388,7 +390,8 @@ private fun TargetCell(
 }
 
 /**
- * 选中后的底部（F-7）：附言「添加消息…」+ 带已选数量的「发送」。附言作为单独一条文字先于转发内容发出。
+ * 选中后的底部（F-7 / 审计 5.4）：可选的「隐藏说明文字」开关 + 附言「添加消息…」+ 带已选数量的「发送」。
+ * 附言作为单独一条文字先于转发内容发出；开关只在有可隐藏说明时出现，默认关。
  */
 @Composable
 fun TellomiForwardGridBottomBar(
@@ -397,57 +400,81 @@ fun TellomiForwardGridBottomBar(
   isSendEnabled: Boolean,
   onMessageChanged: (String) -> Unit,
   onSend: () -> Unit,
+  showHideCaptionToggle: Boolean = false,
+  hideCaption: Boolean = false,
+  onHideCaptionChanged: (Boolean) -> Unit = {},
   modifier: Modifier = Modifier
 ) {
-  Row(
-    verticalAlignment = Alignment.CenterVertically,
-    horizontalArrangement = Arrangement.spacedBy(8.dp),
-    modifier = modifier.padding(start = 12.dp, end = 12.dp, top = 8.dp, bottom = 8.dp)
-  ) {
-    TextFields.TextField(
-      value = message,
-      onValueChange = onMessageChanged,
-      placeholder = { Text(text = stringResource(R.string.TellomiForwardGrid__add_a_message)) },
-      shape = RoundedCornerShape(24.dp),
-      maxLines = 4,
-      colors = TextFieldDefaults.colors(
-        focusedIndicatorColor = Color.Transparent,
-        unfocusedIndicatorColor = Color.Transparent,
-        disabledIndicatorColor = Color.Transparent,
-        errorIndicatorColor = Color.Transparent
-      ),
-      contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 10.dp, bottom = 10.dp),
-      modifier = Modifier
-        .weight(1f)
-        .heightIn(min = 44.dp)
-        .testTag(TellomiForwardGridTags.MESSAGE)
-    )
-    Button(
-      onClick = onSend,
-      enabled = isSendEnabled,
-      shape = RoundedCornerShape(22.dp),
-      contentPadding = PaddingValues(start = 16.dp, end = 10.dp),
-      colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary),
-      modifier = Modifier
-        .heightIn(min = 44.dp)
-        .testTag(TellomiForwardGridTags.SEND)
-    ) {
-      Text(text = stringResource(R.string.ShareActivity__send), fontWeight = FontWeight.SemiBold)
-      Box(
-        contentAlignment = Alignment.Center,
+  Column(modifier = modifier.padding(start = 12.dp, end = 12.dp, top = 8.dp, bottom = 8.dp)) {
+    if (showHideCaptionToggle) {
+      Row(
+        verticalAlignment = Alignment.CenterVertically,
         modifier = Modifier
-          .padding(start = 8.dp)
-          .heightIn(min = 22.dp)
-          .background(MaterialTheme.colorScheme.onPrimary, CircleShape)
-          .padding(horizontal = 7.dp)
+          .fillMaxWidth()
+          .padding(bottom = 4.dp)
       ) {
         Text(
-          text = selectedCount.toString(),
-          color = MaterialTheme.colorScheme.primary,
-          fontSize = 13.sp,
-          fontWeight = FontWeight.Bold,
-          modifier = Modifier.testTag(TellomiForwardGridTags.SEND_COUNT)
+          text = stringResource(R.string.TellomiForwardGrid__hide_caption),
+          style = MaterialTheme.typography.bodyMedium,
+          color = MaterialTheme.colorScheme.onSurface,
+          modifier = Modifier.weight(1f)
         )
+        Switch(
+          checked = hideCaption,
+          onCheckedChange = onHideCaptionChanged,
+          modifier = Modifier.testTag(TellomiForwardGridTags.HIDE_CAPTION)
+        )
+      }
+    }
+    Row(
+      verticalAlignment = Alignment.CenterVertically,
+      horizontalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+      TextFields.TextField(
+        value = message,
+        onValueChange = onMessageChanged,
+        placeholder = { Text(text = stringResource(R.string.TellomiForwardGrid__add_a_message)) },
+        shape = RoundedCornerShape(24.dp),
+        maxLines = 4,
+        colors = TextFieldDefaults.colors(
+          focusedIndicatorColor = Color.Transparent,
+          unfocusedIndicatorColor = Color.Transparent,
+          disabledIndicatorColor = Color.Transparent,
+          errorIndicatorColor = Color.Transparent
+        ),
+        contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 10.dp, bottom = 10.dp),
+        modifier = Modifier
+          .weight(1f)
+          .heightIn(min = 44.dp)
+          .testTag(TellomiForwardGridTags.MESSAGE)
+      )
+      Button(
+        onClick = onSend,
+        enabled = isSendEnabled,
+        shape = RoundedCornerShape(22.dp),
+        contentPadding = PaddingValues(start = 16.dp, end = 10.dp),
+        colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary),
+        modifier = Modifier
+          .heightIn(min = 44.dp)
+          .testTag(TellomiForwardGridTags.SEND)
+      ) {
+        Text(text = stringResource(R.string.ShareActivity__send), fontWeight = FontWeight.SemiBold)
+        Box(
+          contentAlignment = Alignment.Center,
+          modifier = Modifier
+            .padding(start = 8.dp)
+            .heightIn(min = 22.dp)
+            .background(MaterialTheme.colorScheme.onPrimary, CircleShape)
+            .padding(horizontal = 7.dp)
+        ) {
+          Text(
+            text = selectedCount.toString(),
+            color = MaterialTheme.colorScheme.primary,
+            fontSize = 13.sp,
+            fontWeight = FontWeight.Bold,
+            modifier = Modifier.testTag(TellomiForwardGridTags.SEND_COUNT)
+          )
+        }
       }
     }
   }

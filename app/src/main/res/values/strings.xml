@@ -6404,6 +6404,7 @@
     <string name="TellomiForwardGrid__contacts">Contacts</string>
     <string name="TellomiForwardGrid__groups">Groups</string>
     <string name="TellomiForwardGrid__no_results">No results for “%1$s”</string>
+    <string name="TellomiForwardGrid__hide_caption">Hide Caption</string>
     <string name="TellomiForwardGrid__add_a_message">Add a message…</string>
     <string name="TellomiForwardGrid__forwarded_to_s">Forwarded to %1$s</string>
     <string name="TellomiForwardGrid__forwarded_to_s_and_s">Forwarded to %1$s and %2$s</string>

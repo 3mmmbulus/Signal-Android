@@ -235,6 +235,48 @@ class TellomiForwardGridScreenTest {
     assertThat(sends).isEqualTo(1)
   }
 
+  /** 审计 5.4：没有可隐藏说明时底栏不出现「隐藏说明文字」开关。 */
+  @Test
+  fun `hide caption switch is absent when nothing to hide`() {
+    composeTestRule.setContent {
+      SignalTheme(isDarkMode = false) {
+        TellomiForwardGridBottomBar(
+          message = "",
+          selectedCount = 1,
+          isSendEnabled = true,
+          onMessageChanged = {},
+          onSend = {},
+          showHideCaptionToggle = false
+        )
+      }
+    }
+    assertThat(composeTestRule.onAllNodesWithTagCount(TellomiForwardGridTags.HIDE_CAPTION)).isEqualTo(0)
+    composeTestRule.onNodeWithText("Add a message…").assertIsDisplayed()
+  }
+
+  /** 审计 5.4：有说明文字时开关出现且默认关；拨动交给回调。 */
+  @Test
+  fun `hide caption switch defaults off and reports changes`() {
+    val reported = mutableListOf<Boolean>()
+    composeTestRule.setContent {
+      SignalTheme(isDarkMode = false) {
+        TellomiForwardGridBottomBar(
+          message = "",
+          selectedCount = 2,
+          isSendEnabled = true,
+          onMessageChanged = {},
+          onSend = {},
+          showHideCaptionToggle = true,
+          hideCaption = false,
+          onHideCaptionChanged = { reported += it }
+        )
+      }
+    }
+    composeTestRule.onNodeWithText("Hide Caption").assertIsDisplayed()
+    composeTestRule.onNodeWithTag(TellomiForwardGridTags.HIDE_CAPTION).assertIsDisplayed().performClick()
+    assertThat(reported).containsExactly(true)
+  }
+
   private fun androidx.compose.ui.test.junit4.ComposeContentTestRule.onAllNodesWithTagCount(tag: String): Int {
     return onAllNodes(androidx.compose.ui.test.hasTestTag(tag), useUnmergedTree = true).fetchSemanticsNodes().size
   }

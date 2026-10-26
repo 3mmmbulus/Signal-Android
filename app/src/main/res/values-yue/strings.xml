@@ -6050,6 +6050,7 @@
     <string name="TellomiForwardGrid__contacts">聯絡人</string>
     <string name="TellomiForwardGrid__groups">群組</string>
     <string name="TellomiForwardGrid__no_results">搵唔到「%1$s」</string>
+    <string name="TellomiForwardGrid__hide_caption">隱藏說明文字</string>
     <string name="TellomiForwardGrid__add_a_message">寫返句訊息…</string>
     <string name="TellomiForwardGrid__forwarded_to_s">已經轉寄畀 %1$s</string>
     <string name="TellomiForwardGrid__forwarded_to_s_and_s">已經轉寄畀 %1$s 同 %2$s</string>

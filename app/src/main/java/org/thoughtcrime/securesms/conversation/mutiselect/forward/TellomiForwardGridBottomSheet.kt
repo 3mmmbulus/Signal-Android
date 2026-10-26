@@ -189,6 +189,9 @@ class TellomiForwardGridBottomSheet :
                 isSendEnabled = state.stage == TellomiForwardGridViewModel.Stage.Selection,
                 onMessageChanged = viewModel::setMessage,
                 onSend = viewModel::send,
+                showHideCaptionToggle = state.showHideCaptionToggle,
+                hideCaption = state.hideCaption,
+                onHideCaptionChanged = viewModel::setHideCaption,
                 modifier = Modifier
                   .fillMaxWidth()
                   .imePadding()

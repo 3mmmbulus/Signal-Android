@@ -28,6 +28,8 @@ import org.thoughtcrime.securesms.util.RemoteConfig
 /**
  * 转发网格（tellomi/tellomi#1259）：选聊天、写附言、发送。
  *
+ * 审计 5.4：有带附件且有说明文字的消息时，底栏可「隐藏说明文字」（对齐 iOS #382）。
+ *
  * 发送与上游转发面板同一条路：先查对方安全码有没有刚变过（[UntrustedRecords]，变过就停在 [Stage.SafetyConfirmation] 等确认），
  * 再交给 [MultiselectForwardRepository.send]（附言先发，F-7）。
  */
@@ -52,6 +54,9 @@ class TellomiForwardGridViewModel(
     val searchResults: TellomiForwardSearchResults = TellomiForwardSearchResults(),
     val recentContacts: List<TellomiForwardTarget> = emptyList(),
     val message: String = "",
+    /** 审计 5.4：有可隐藏的说明文字时底栏显示开关；默认关 */
+    val showHideCaptionToggle: Boolean = false,
+    val hideCaption: Boolean = false,
     val stage: Stage = Stage.Selection
   )
 
@@ -98,7 +103,9 @@ class TellomiForwardGridViewModel(
     }
   }
 
-  private val internalState = MutableStateFlow(State())
+  private val internalState = MutableStateFlow(
+    State(showHideCaptionToggle = TellomiForwardCaptionPolicy.showsHideCaptionToggle(multiShareArgs))
+  )
   val state: StateFlow<State> = internalState
 
   private val internalEvents = MutableSharedFlow<Event>(extraBufferCapacity = 4, onBufferOverflow = BufferOverflow.DROP_OLDEST)
@@ -205,6 +212,14 @@ class TellomiForwardGridViewModel(
     internalState.update { it.copy(message = message) }
   }
 
+  /** 审计 5.4：拨动「隐藏说明文字」；没有可隐藏说明时界面不调。 */
+  fun setHideCaption(hide: Boolean) {
+    if (!internalState.value.showHideCaptionToggle) {
+      return
+    }
+    internalState.update { it.copy(hideCaption = hide) }
+  }
+
   fun send() {
     val current = internalState.value
     if (current.selected.isEmpty() || current.stage != Stage.Selection) {
@@ -246,10 +261,12 @@ class TellomiForwardGridViewModel(
       internalState.update { it.copy(stage = Stage.Selection) }
       return
     }
-    val message = internalState.value.message.trim()
+    val current = internalState.value
+    val message = current.message.trim()
+    val argsToSend = TellomiForwardCaptionPolicy.outgoingArgs(multiShareArgs, current.hideCaption)
     val recipients = keys.mapNotNull { knownTargets[it.recipientId] }
     internalState.update { it.copy(stage = Stage.SendPending) }
-    sender.send(message, multiShareArgs, keys) { result ->
+    sender.send(message, argsToSend, keys) { result ->
       internalState.update { it.copy(stage = Stage.Sent(result, recipients)) }
     }
   }
