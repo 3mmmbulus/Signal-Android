@@ -99,8 +99,6 @@ import androidx.recyclerview.widget.ConversationLayoutManager
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.bumptech.glide.Glide
-import com.google.android.material.datepicker.CalendarConstraints
-import com.google.android.material.datepicker.MaterialDatePicker
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.google.android.material.snackbar.BaseTransientBottomBar
 import com.google.android.material.snackbar.BaseTransientBottomBar.Duration
@@ -415,8 +413,6 @@ import org.thoughtcrime.securesms.util.SignalLocalMetrics
 import org.thoughtcrime.securesms.util.TextSecurePreferences
 import org.thoughtcrime.securesms.util.UriUtil
 import org.thoughtcrime.securesms.util.ViewUtil
-import org.thoughtcrime.securesms.util.atMidnight
-import org.thoughtcrime.securesms.util.atUTC
 import org.thoughtcrime.securesms.util.doAfterNextLayout
 import org.thoughtcrime.securesms.util.fragments.requireListener
 import org.thoughtcrime.securesms.util.getPoll
@@ -430,16 +426,14 @@ import org.thoughtcrime.securesms.util.hasPinnedMessageUpdate
 import org.thoughtcrime.securesms.util.isValidReactionTarget
 import org.thoughtcrime.securesms.util.padding
 import org.thoughtcrime.securesms.util.setIncognitoKeyboardEnabled
-import org.thoughtcrime.securesms.util.toMillis
 import org.thoughtcrime.securesms.util.viewModel
 import org.thoughtcrime.securesms.util.visible
 import org.thoughtcrime.securesms.verify.VerifyIdentityActivity
 import org.thoughtcrime.securesms.wallpaper.ChatWallpaper
 import org.thoughtcrime.securesms.wallpaper.ChatWallpaperDimLevelUtil
 import java.time.Instant
-import java.time.LocalDateTime
+import java.time.LocalDate
 import java.time.ZoneId
-import java.time.ZoneOffset
 import java.util.Locale
 import java.util.Optional
 import kotlin.time.Duration.Companion.days
@@ -4172,58 +4166,35 @@ class ConversationFragment :
   }
 
   /**
-   * Signal's jump-to-date picker (days without messages here are greyed out), from the search bar and — Tellomi
-   * (chat-telegram-parity F03) — from a date between messages, opening on that day ([selectionTimestamp], null = today).
+   * Tellomi（审计 7.2 / F03 + F03b）：跳日期月历（有消息的日子可选，有图/视频的日子铺缩略图）。
+   * 入口：搜索栏日历按钮、消息间日期分隔条。对齐 iOS #314/#389 与 Telegram 两端行为。
    */
   private fun showJumpToDatePicker(selectionTimestamp: Long?, onJumped: () -> Unit = {}) {
     disposables += viewModel.getEarliestMessageSentDate().subscribe { earliestDate ->
-      val local = LocalDateTime.now()
-        .atMidnight()
-        .atUTC()
-        .toMillis()
-      val selection = selectionTimestamp?.let {
-        Instant.ofEpochMilli(it).atZone(ZoneId.systemDefault()).toLocalDate().atStartOfDay(ZoneOffset.UTC).toInstant().toEpochMilli()
-      } ?: local
-      val datePicker =
-        MaterialDatePicker.Builder
-          .datePicker()
-          .setTitleText(getString(R.string.ScheduleMessageTimePickerBottomSheet__select_date_title))
-          .setSelection(selection)
-          .setCalendarConstraints(
-            CalendarConstraints.Builder()
-              .setValidator(viewModel.jumpToDateValidator)
-              .setStart(earliestDate)
-              .setEnd(local)
-              .setOpenAt(selection)
-              .build()
-          )
-          .build()
+      val zone = ZoneId.systemDefault()
+      val initialDayMs = selectionTimestamp?.let {
+        Instant.ofEpochMilli(it).atZone(zone).toLocalDate().atStartOfDay(zone).toInstant().toEpochMilli()
+      } ?: LocalDate.now(zone).atStartOfDay(zone).toInstant().toEpochMilli()
 
-      datePicker.addOnDismissListener {
-        datePicker.clearOnDismissListeners()
-        datePicker.clearOnPositiveButtonClickListeners()
+      childFragmentManager.clearFragmentResultListener(TellomiJumpToDateBottomSheet.REQUEST_KEY)
+      childFragmentManager.setFragmentResultListener(TellomiJumpToDateBottomSheet.REQUEST_KEY, viewLifecycleOwner) { _, bundle ->
+        val dayMs = bundle.getLong(TellomiJumpToDateBottomSheet.KEY_DAY_MS, -1L)
+        if (dayMs < 0L) return@setFragmentResultListener
+        disposables += viewModel
+          .moveToDate(dayMs)
+          .observeOn(AndroidSchedulers.mainThread())
+          .subscribeBy { position ->
+            moveToPosition(position - 1)
+            onJumped()
+          }
       }
 
-      datePicker.addOnPositiveButtonClickListener { selectedDate ->
-        if (selectedDate != null) {
-          val localMidnightTimestamp = Instant.ofEpochMilli(selectedDate)
-            .atZone(ZoneOffset.UTC)
-            .toLocalDate()
-            .atStartOfDay(ZoneId.systemDefault())
-            .toInstant()
-            .toEpochMilli()
-
-          disposables += viewModel
-            .moveToDate(localMidnightTimestamp)
-            .observeOn(AndroidSchedulers.mainThread())
-            .subscribeBy { position ->
-              moveToPosition(position - 1)
-              onJumped()
-            }
-        }
-      }
-
-      datePicker.show(childFragmentManager, "DATE_PICKER")
+      TellomiJumpToDateBottomSheet.show(
+        fragmentManager = childFragmentManager,
+        threadId = viewModel.threadId,
+        initialDayMs = initialDayMs,
+        earliestDayMs = earliestDate
+      )
     }
   }
 

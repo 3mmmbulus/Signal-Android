@@ -246,6 +246,29 @@ class MediaTable internal constructor(context: Context?, databaseHelper: SignalD
     return readableDatabase.rawQuery(query, args)
   }
 
+  /**
+   * Tellomi（审计 7.2 / F03b）：[startMs, endMs)（收到时间）里该会话的第一张图册媒体，过滤规则同 [getGalleryMediaForThread]。
+   * 跳日期月历每天缩略图用。
+   */
+  fun getFirstGalleryMediaInRange(threadId: Long, startMs: Long, endMs: Long): DatabaseAttachment? {
+    val query = (
+      applyEqualityOperator(threadId, GALLERY_MEDIA_QUERY_INCLUDING_TEMP_VIDEOS) +
+        " AND ${MessageTable.TABLE_NAME}.${MessageTable.DATE_RECEIVED} >= ?" +
+        " AND ${MessageTable.TABLE_NAME}.${MessageTable.DATE_RECEIVED} < ?" +
+        " ORDER BY ${MessageTable.TABLE_NAME}.${MessageTable.DATE_RECEIVED} ASC," +
+        " ${AttachmentTable.TABLE_NAME}.${AttachmentTable.DISPLAY_ORDER} DESC," +
+        " ${AttachmentTable.TABLE_NAME}.${AttachmentTable.ID} ASC" +
+        " LIMIT 1"
+      )
+    val args = arrayOf(threadId.toString(), startMs.toString(), endMs.toString())
+    readableDatabase.rawQuery(query, args).use { cursor ->
+      if (!cursor.moveToFirst()) {
+        return null
+      }
+      return SignalDatabase.attachments.getAttachment(cursor)
+    }
+  }
+
   @JvmOverloads
   fun getDocumentMediaForThread(threadId: Long, sorting: Sorting, limit: Int = 0): Cursor {
     var query = sorting.applyToQuery(applyEqualityOperator(threadId, DOCUMENT_MEDIA_QUERY))
