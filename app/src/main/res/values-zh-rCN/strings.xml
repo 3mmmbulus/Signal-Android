@@ -6163,6 +6163,7 @@
     <string name="TellomiForwardGrid__contacts">联系人</string>
     <string name="TellomiForwardGrid__groups">群组</string>
     <string name="TellomiForwardGrid__no_results">没有找到“%1$s”</string>
+    <string name="TellomiForwardGrid__hide_caption">隐藏说明文字</string>
     <string name="TellomiForwardGrid__add_a_message">添加消息…</string>
     <string name="TellomiForwardGrid__forwarded_to_s">已转发给 %1$s</string>
     <string name="TellomiForwardGrid__forwarded_to_s_and_s">已转发给 %1$s 和 %2$s</string>
