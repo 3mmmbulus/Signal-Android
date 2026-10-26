@@ -1731,6 +1731,8 @@ class ConversationFragment :
     )
     // Tellomi（交互审计 A-12）：按住录音时按钮后面的光晕跟着麦克风电平变。
     inputPanel.setVoiceLevelSource { audioRecorder.maxAmplitude }
+    // Tellomi（Telegram 对照 3.3 / F12）：锁定录音后暂停 / 继续。
+    inputPanel.setVoicePauseControl(audioRecorder)
 
     val conversationBannerListener = ConversationBannerListener()
     binding.conversationBanner.listener = conversationBannerListener

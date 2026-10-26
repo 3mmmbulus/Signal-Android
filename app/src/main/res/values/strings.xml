@@ -3722,6 +3722,9 @@
     <!-- conversation_input_panel -->
     <string name="conversation_input_panel__slide_to_cancel">Slide to cancel</string>
     <string name="conversation_input_panel__cancel">Cancel</string>
+    <!-- Tellomi（Telegram 对照 3.3 / F12）：锁定录音时暂停 / 继续 -->
+    <string name="TellomiVoicePause__pause_recording">Pause recording</string>
+    <string name="TellomiVoicePause__resume_recording">Resume recording</string>
 
     <!-- conversation_item -->
     <string name="conversation_item__mms_image_description">Media message</string>

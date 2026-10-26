@@ -3550,6 +3550,8 @@
     <!-- conversation_input_panel -->
     <string name="conversation_input_panel__slide_to_cancel">滑動以取消</string>
     <string name="conversation_input_panel__cancel">取消</string>
+    <string name="TellomiVoicePause__pause_recording">暫停錄音</string>
+    <string name="TellomiVoicePause__resume_recording">繼續錄音</string>
 
     <!-- conversation_item -->
     <string name="conversation_item__mms_image_description">媒體訊息</string>

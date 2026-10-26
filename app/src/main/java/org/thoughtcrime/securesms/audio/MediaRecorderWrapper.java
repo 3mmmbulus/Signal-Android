@@ -88,6 +88,38 @@ public class MediaRecorderWrapper implements Recorder {
     }
   }
 
+
+  @Override
+  public boolean pause() {
+    MediaRecorder current = recorder;
+    if (current == null) {
+      return false;
+    }
+    try {
+      // MediaRecorder.pause/resume since API 24; we only use this wrapper when SDK >= 26.
+      current.pause();
+      return true;
+    } catch (RuntimeException e) {
+      Log.w(TAG, "Unable to pause recording", e);
+      return false;
+    }
+  }
+
+  @Override
+  public boolean resume() {
+    MediaRecorder current = recorder;
+    if (current == null) {
+      return false;
+    }
+    try {
+      current.resume();
+      return true;
+    } catch (RuntimeException e) {
+      Log.w(TAG, "Unable to resume recording", e);
+      return false;
+    }
+  }
+
   private static int getSampleRate() {
     if ("Xiaomi".equals(Build.MANUFACTURER)) {
       // Recordings sound robotic with the standard sample rate.

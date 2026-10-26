@@ -16,4 +16,16 @@ public interface Recorder {
    * 没在录或读不到时返回 0。会从主线程调，和 [start] / [stop] 不在同一个线程。
    */
   int getMaxAmplitude();
+
+  /**
+   * Tellomi（Telegram 对照 3.3 / F12）：暂停录音；接在同一个文件后面继续。
+   * @return 是否生效
+   */
+  boolean pause();
+
+  /**
+   * Tellomi（Telegram 对照 3.3 / F12）：从暂停继续录音。
+   * @return 是否生效
+   */
+  boolean resume();
 }
